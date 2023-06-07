@@ -20,7 +20,6 @@ type Machine struct {
 	allowMods   ModuleNameList
 	printFunc   PrintFunc
 	// source code
-	scriptSource  scriptSourceType
 	scriptName    string
 	scriptContent []byte
 	scriptFS      fs.FS
@@ -28,14 +27,6 @@ type Machine struct {
 	thread    *starlark.Thread
 	coreCache *Cache
 }
-
-type scriptSourceType uint8
-
-const (
-	scriptSourceUnknown scriptSourceType = iota
-	scriptSourceContent
-	scriptSourceFileSystem
-)
 
 // NewEmptyMachine creates a new Starlark runtime environment.
 func NewEmptyMachine() *Machine {
@@ -120,22 +111,12 @@ func (m *Machine) SetPrintFunc(printFunc PrintFunc) {
 	m.printFunc = printFunc
 }
 
-// SetScriptContent sets the script name and content of the Starlark runtime environment.
-func (m *Machine) SetScriptContent(name string, content []byte) {
+// SetScript sets the script related things of the Starlark runtime environment.
+func (m *Machine) SetScript(name string, content []byte, fileSys fs.FS) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.scriptSource = scriptSourceContent
 	m.scriptName = name
 	m.scriptContent = content
-}
-
-// SetScriptFS sets the script name and file system of the Starlark runtime environment.
-func (m *Machine) SetScriptFS(name string, fileSys fs.FS) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.scriptSource = scriptSourceFileSystem
-	m.scriptName = name
 	m.scriptFS = fileSys
 }
