@@ -19,10 +19,11 @@ import (
 // See Section 9.7 of gopl.io for an explanation of this structure.
 // It also features online deadlock (load cycle) detection.
 type cache struct {
-	cacheMu  sync.Mutex
-	cache    map[string]*entry
-	globals  starlark.StringDict
-	readFile func(s string) ([]byte, error)
+	cacheMu    sync.Mutex
+	cache      map[string]*entry
+	globals    starlark.StringDict
+	readFile   func(s string) ([]byte, error)
+	loadModule func(s string) (starlark.StringDict, error)
 }
 
 type entry struct {
@@ -89,6 +90,19 @@ func (c *cache) doLoad(cc *cycleChecker, module string) (starlark.StringDict, er
 			return c.get(cc, module)
 		},
 	}
+
+	// 1: load from built-in module
+	m, err := c.loadModule(module)
+	if err != nil {
+		// fail to load module
+		return nil, err
+	}
+	if m != nil {
+		// module found and loaded
+		return m, nil
+	}
+
+	// 2: load from source file
 	b, err := c.readFile(module)
 	if err != nil {
 		return nil, err

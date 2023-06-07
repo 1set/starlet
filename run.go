@@ -44,13 +44,16 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 	// TODO: save or reuse thread
 	// cache load + printFunc -> thread
 	m.loadCache = &cache{
-		cache:    make(map[string]*entry),
-		readFile: m.readScriptFile,
-		globals:  predeclared,
+		cache:      make(map[string]*entry),
+		loadModule: m.loadAllowedModule,
+		readFile:   m.readScriptFile,
+		globals:    predeclared,
 	}
 	thread := &starlark.Thread{
-		Load:  m.cacheLoader,
 		Print: m.printFunc,
+		Load: func(thread *starlark.Thread, module string) (starlark.StringDict, error) {
+			return m.loadCache.Load(module)
+		},
 	}
 
 	// TODO: run script with context and thread
@@ -109,22 +112,14 @@ func (m *Machine) readScriptFile(filename string) ([]byte, error) {
 	return ioutil.ReadAll(rd)
 }
 
-// cacheLoader is a starlark.Loader that loads modules from built-in modules and cache.
-func (m *Machine) cacheLoader(thread *starlark.Thread, module string) (starlark.StringDict, error) {
-	// TODO: what if module is already loaded?
+// loadAllowedModule loads a module by name if it's allowed.
+func (m *Machine) loadAllowedModule(name string) (starlark.StringDict, error) {
 	for _, mod := range m.allowMods {
-		// find module by name
-		if string(mod) == module {
-			if dict, err := loadModuleByName(mod); err != nil {
-				return nil, fmt.Errorf("starlet: load module %q: %w", mod, err)
-			} else {
-				m.loadMod[mod] = struct{}{}
-				return dict, nil
-			}
+		if mod == ModuleName(name) {
+			// load module by name if it's allowed
+			return loadModuleByName(mod)
 		}
 	}
-
-	// built-in module not found
-	// TODO: maybe script module can't use built-in module -- refine cache things
-	return m.loadCache.Load(module)
+	// module not found
+	return nil, nil
 }
