@@ -1,0 +1,26 @@
+# Binaries for programs and plugins
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binary, build with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
+.glide/
+
+# we don't check in vendor, the lock file is just there so others know what we've tested against.
+vendor
+
+# VScode
+.vscode
+
+# stupid osx
+.DS_Store
+
+# Projects
+coverage.txt
