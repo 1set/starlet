@@ -1,6 +1,14 @@
 package starlet
 
-import "sync"
+import (
+	"sync"
+
+	"go.starlark.net/starlark"
+)
+
+// PrintFunc is a function that tells Starlark how to print messages.
+// If nil, the default `fmt.Fprintln(os.Stderr, msg)` will be used instead.
+type PrintFunc func(thread *starlark.Thread, msg string)
 
 // Machine is a wrapper of Starlark runtime environments.
 type Machine struct {
@@ -8,6 +16,8 @@ type Machine struct {
 	globals     map[string]interface{}
 	preloadMods ModuleNameList
 	allowMods   ModuleNameList
+	thread      *starlark.Thread
+	printFunc   PrintFunc
 }
 
 // NewEmptyMachine creates a new Starlark runtime environment.
@@ -64,4 +74,11 @@ func (m *Machine) GetAllowModules() ModuleNameList {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.allowMods.Clone()
+}
+
+// SetPrintFunc sets the print function of the Starlark runtime environment.
+func (m *Machine) SetPrintFunc(printFunc PrintFunc) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.printFunc = printFunc
 }
