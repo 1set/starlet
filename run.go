@@ -25,7 +25,7 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 		return nil, fmt.Errorf("starlet: run: %w", ErrUnknownScriptSource)
 	}
 
-	//// Assume: it's the first run
+	// TODO: Assume: it's the first run -- for rerun, we need to reset the cache
 
 	// clone preset globals if it's the first run, otherwise merge if newer
 	if m.liveData == nil {
@@ -55,18 +55,20 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 	}
 
 	// thread = cache.Load + printFunc
+	// TODO: save or reuse thread
 	thread := &starlark.Thread{
 		Load:  m.cacheLoader,
 		Print: m.printFunc,
 	}
 
 	// run
-	scritpName := m.scriptName
-	if scritpName == "" {
-		scritpName = "eval.star"
+	// TODO: run script with context and thread
+	scriptName := m.scriptName
+	if scriptName == "" {
+		scriptName = "eval.star"
 	}
 	m.runTimes++
-	res, err := starlark.ExecFile(thread, scritpName, m.scriptContent, predeclared)
+	res, err := starlark.ExecFile(thread, scriptName, m.scriptContent, predeclared)
 	if err != nil {
 		return nil, fmt.Errorf("starlet: exec: %w", err)
 	}
