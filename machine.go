@@ -24,7 +24,10 @@ type Machine struct {
 	scriptContent []byte
 	scriptFS      fs.FS
 	// runtime core
+	runTimes  uint
 	thread    *starlark.Thread
+	loadMod   map[ModuleName]struct{}
+	liveData  DataStore
 	coreCache *Cache
 }
 
