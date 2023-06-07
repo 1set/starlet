@@ -33,7 +33,7 @@ type scriptSourceType uint8
 const (
 	scriptSourceUnknown scriptSourceType = iota
 	scriptSourceContent
-	scriptSourceFS
+	scriptSourceFileSystem
 )
 
 // NewEmptyMachine creates a new Starlark runtime environment.
@@ -121,7 +121,7 @@ func (m *Machine) SetScriptFS(name string, fileSys fs.FS) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.scriptSource = scriptSourceFS
+	m.scriptSource = scriptSourceFileSystem
 	m.scriptName = name
 	m.scriptFS = fileSys
 }
