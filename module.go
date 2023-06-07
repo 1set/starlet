@@ -36,6 +36,9 @@ func (l ModuleNameList) Clone() []ModuleName {
 	return append([]ModuleName{}, l...)
 }
 
+// loadModuleByName loads a Starlark module by name.
+// It returns nil if the module is not found, returns an error if the module
+// is found but failed to load.
 func loadModuleByName(name ModuleName) (starlark.StringDict, error) {
 	switch name {
 	case ModuleGoIdiomatic:
@@ -62,5 +65,5 @@ func loadModuleByName(name ModuleName) (starlark.StringDict, error) {
 			"json": sjson.Module,
 		}, nil
 	}
-	return nil, ErrModuleNotFound
+	return nil, nil
 }

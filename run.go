@@ -86,6 +86,8 @@ func (m *Machine) loadBuiltinModules(modules ...ModuleName) error {
 		// load module and merge into live data
 		if dict, err := loadModuleByName(mod); err != nil {
 			return fmt.Errorf("starlet: load module %q: %w", mod, err)
+		} else if dict == nil {
+			return fmt.Errorf("starlet: load module %q: %w", mod, ErrModuleNotFound)
 		} else {
 			m.liveData.MergeDict(dict)
 		}
