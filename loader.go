@@ -59,6 +59,7 @@ func runLight(p *starlark.Program, globals map[string]interface{}, load LoadFunc
 	if err != nil {
 		return nil, err
 	}
+	ret.Freeze()
 	return convert.FromStringDict(ret), nil
 }
 

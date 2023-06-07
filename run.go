@@ -19,9 +19,19 @@ func (m *Machine) run(ctx context.Context) (DataStore, error) {
 		return nil, ErrUnknownScriptSource
 	}
 
+	// Assume: it's the first run
+	// clone globals + preset modules -> predeclared
+	// convert predeclared to starlark.StringDict
+	// create cache with predeclared + module allowed + fs reader with deduped loader
+	// thread = cache.Load + printFunc
+	// saved thread
+	// run script with context and thread
+	// convert result to DataStore
+
 	// TODO: implement
 	return nil, nil
 }
 
 // TODO: Multiple FS for script and modules
 // TODO: Reset machine
+// TODO: run with existing threads (global and module preset)
