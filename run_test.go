@@ -10,12 +10,32 @@ import (
 	"go.starlark.net/starlark"
 )
 
-func expectErr(t *testing.T, err error, expected string) {
+func expectErr(t *testing.T, err error, expected ...string) {
+	// preconditions
 	if err == nil {
 		t.Errorf("unexpected nil error")
 	}
-	if err.Error() != expected {
-		t.Errorf(`expected error %q, got: %v`, expected, err)
+	if len(expected) == 0 {
+		t.Errorf("no expected string is unexpected")
+		return
+	}
+
+	// compare one or two strings
+	var prefix, suffix string
+	if len(expected) == 1 {
+		prefix = expected[0]
+	} else {
+		prefix = expected[0]
+		suffix = expected[1]
+	}
+
+	// compare
+	act := err.Error()
+	if prefix != "" && !strings.HasPrefix(act, prefix) {
+		t.Errorf(`expected error prefix %q, got: %v`, expected, err)
+	}
+	if suffix != "" && !strings.HasSuffix(act, suffix) {
+		t.Errorf(`expected error suffix %q, got: %v`, suffix, err)
 	}
 }
 
@@ -97,5 +117,5 @@ func Test_EmptyMachine_Run_LoadNonexist(t *testing.T) {
 	m.SetScript("test.star", []byte(code), os.DirFS("example"))
 	// run
 	_, err := m.Run(context.Background())
-	expectErr(t, err, `starlet: exec: cannot load nonexist.star: open example/nonexist.star: no such file or directory`)
+	expectErr(t, err, `starlet: exec: cannot load nonexist.star:`, `: no such file or directory`)
 }

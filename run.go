@@ -60,7 +60,7 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 		scriptName = "eval.star"
 	}
 	m.runTimes++
-	
+
 	res, err := starlark.ExecFile(thread, scriptName, m.scriptContent, predeclared)
 	if err != nil {
 		return nil, fmt.Errorf("starlet: exec: %w", err)
