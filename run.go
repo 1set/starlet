@@ -14,6 +14,7 @@ func (m *Machine) run(ctx context.Context) (map[string]interface{}, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	// run the script from various sources
 	switch m.scriptSource {
 	case scriptSourceContent:
 		return m.runContent(ctx)
