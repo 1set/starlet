@@ -9,7 +9,7 @@ import (
 	"go.starlark.net/starlark"
 )
 
-// The following code is copied from the starlark-go repo,
+// The following code is copied and modified from the starlark-go repo,
 // https://go.starlark.net/starlark and is Copyright 2017 the Bazel authors,
 // with a BSD 3-clause license (see the LICENSE file in that repo).
 // Original source code: https://github.com/google/starlark-go/blob/master/starlark/example_test.go#L211
@@ -23,7 +23,7 @@ type cache struct {
 	cache      map[string]*entry
 	globals    starlark.StringDict
 	readFile   func(s string) ([]byte, error)
-	loadModule func(s string) (starlark.StringDict, error)
+	loadModule func(s string) (starlark.StringDict, error) // load from built-in module first
 }
 
 type entry struct {
