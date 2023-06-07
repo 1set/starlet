@@ -23,7 +23,6 @@ func (m *Machine) run(ctx context.Context) (map[string]interface{}, error) {
 	default:
 		return nil, ErrUnknownScriptSource
 	}
-	return nil, nil
 }
 
 func (m *Machine) runContent(ctx context.Context) (map[string]interface{}, error) {
