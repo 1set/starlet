@@ -43,7 +43,7 @@ func Test_EmptyMachine_Run_HelloWorld(t *testing.T) {
 	printFunc, cmpFunc := getPrintCompareFunc(t)
 	m.SetPrintFunc(printFunc)
 	// set code
-	code := `print("Aloha kāua!")`
+	code := `print("Aloha, Honua!")`
 	m.SetScript("aloha.star", []byte(code), nil)
 	// run
 	_, err := m.Run(context.Background())
@@ -51,7 +51,7 @@ func Test_EmptyMachine_Run_HelloWorld(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 	// compare
-	cmpFunc("Aloha kāua!\n")
+	cmpFunc("Aloha, Honua!\n")
 }
 
 func Test_EmptyMachine_Run_LoadNoFS(t *testing.T) {
