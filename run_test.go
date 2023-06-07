@@ -78,3 +78,22 @@ func Test_EmptyMachine_Run_LoadNonexist(t *testing.T) {
 		expectErr(t, err, `starlet: exec: cannot load nonexist.star:`, `: no such file or directory`)
 	}
 }
+
+func Test_Machine_Run_Globals(t *testing.T) {
+	m := starlet.NewMachine(map[string]interface{}{
+		"a": 2,
+	}, nil, nil)
+	// set code
+	code := `b = a * 10`
+	m.SetScript("test.star", []byte(code), nil)
+	// run
+	out, err := m.Run(context.Background())
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if out == nil {
+		t.Errorf("unexpected nil output")
+	} else if out["b"] != int64(20) {
+		t.Errorf("unexpected output: %v", out)
+	}
+}

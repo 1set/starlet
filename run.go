@@ -114,6 +114,7 @@ func (m *Machine) readScriptFile(filename string) ([]byte, error) {
 
 // loadAllowedModule loads a module by name if it's allowed.
 func (m *Machine) loadAllowedModule(name string) (starlark.StringDict, error) {
+	// TODO: check if module is already loaded as predeclared
 	for _, mod := range m.allowMods {
 		if mod == ModuleName(name) {
 			// load module by name if it's allowed
