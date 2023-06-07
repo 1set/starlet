@@ -28,7 +28,7 @@ type Machine struct {
 	thread    *starlark.Thread
 	loadMod   map[ModuleName]struct{}
 	liveData  DataStore
-	coreCache *Cache
+	loadCache *cache
 }
 
 // NewEmptyMachine creates a new Starlark runtime environment.

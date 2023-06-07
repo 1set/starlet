@@ -1,8 +1,6 @@
 package starlet
 
 import (
-	"fmt"
-
 	sjson "go.starlark.net/lib/json"
 	smath "go.starlark.net/lib/math"
 	stime "go.starlark.net/lib/time"
@@ -64,5 +62,5 @@ func loadModuleByName(name ModuleName) (starlark.StringDict, error) {
 			"json": sjson.Module,
 		}, nil
 	}
-	return nil, fmt.Errorf("unknown module name: %s", name)
+	return nil, ErrModuleNotFound
 }
