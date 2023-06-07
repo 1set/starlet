@@ -1,6 +1,7 @@
 package starlet
 
 import (
+	"io/fs"
 	"sync"
 
 	"go.starlark.net/starlark"
@@ -12,13 +13,28 @@ type PrintFunc func(thread *starlark.Thread, msg string)
 
 // Machine is a wrapper of Starlark runtime environments.
 type Machine struct {
-	mu          sync.RWMutex
+	mu sync.RWMutex
+	// set variables
 	globals     map[string]interface{}
 	preloadMods ModuleNameList
 	allowMods   ModuleNameList
-	thread      *starlark.Thread
 	printFunc   PrintFunc
+	// code cache
+	scriptSource  scriptSourceType
+	scriptName    string
+	scriptContent []byte
+	scriptFS      fs.FS
+	// runtime core
+	thread *starlark.Thread
 }
+
+type scriptSourceType uint
+
+const (
+	scriptSourceUnknown scriptSourceType = iota
+	scriptSourceContent
+	scriptSourceFS
+)
 
 // NewEmptyMachine creates a new Starlark runtime environment.
 func NewEmptyMachine() *Machine {
@@ -81,4 +97,22 @@ func (m *Machine) SetPrintFunc(printFunc PrintFunc) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.printFunc = printFunc
+}
+
+// SetScriptContent sets the script name and content of the Starlark runtime environment.
+func (m *Machine) SetScriptContent(name string, content []byte) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.scriptSource = scriptSourceContent
+	m.scriptName = name
+	m.scriptContent = content
+}
+
+// SetScriptFS sets the script name and file system of the Starlark runtime environment.
+func (m *Machine) SetScriptFS(name string, fileSys fs.FS) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.scriptSource = scriptSourceFS
+	m.scriptName = name
+	m.scriptFS = fileSys
 }
