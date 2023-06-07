@@ -1,11 +1,18 @@
 package starlet_test
 
 import (
+	"runtime"
 	"starlet"
 	"strings"
 	"testing"
 
 	"go.starlark.net/starlark"
+)
+
+var (
+	isOnWindows = runtime.GOOS == `windows`
+	isOnLinux   = runtime.GOOS == `linux`
+	isOnDarwin  = runtime.GOOS == `darwin`
 )
 
 func expectErr(t *testing.T, err error, expected ...string) {

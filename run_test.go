@@ -71,5 +71,10 @@ func Test_EmptyMachine_Run_LoadNonexist(t *testing.T) {
 	m.SetScript("test.star", []byte(code), os.DirFS("example"))
 	// run
 	_, err := m.Run(context.Background())
-	expectErr(t, err, `starlet: exec: cannot load nonexist.star:`, `: no such file or directory`)
+	// check result
+	if isOnWindows {
+		expectErr(t, err, `starlet: exec: cannot load nonexist.star:`, `The system cannot find the file specified.`)
+	} else {
+		expectErr(t, err, `starlet: exec: cannot load nonexist.star:`, `: no such file or directory`)
+	}
 }
