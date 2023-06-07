@@ -20,6 +20,8 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	// TODO: handle panic, what about other defers?
+
 	// either script content or name and FS must be set
 	if !((m.scriptContent != nil) || (m.scriptName != "" && m.scriptFS != nil)) {
 		return nil, fmt.Errorf("starlet: run: %w", ErrUnknownScriptSource)
