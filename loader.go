@@ -59,6 +59,7 @@ func runLight(p *starlark.Program, globals map[string]interface{}, load LoadFunc
 	if err != nil {
 		return nil, err
 	}
+	ret.Freeze()
 	return convert.FromStringDict(ret), nil
 }
 
@@ -99,6 +100,9 @@ func (c *Cache) Load(_ *starlark.Thread, module string) (starlark.StringDict, er
 
 // readFile reads the given filename from the given file system.
 func (c *Cache) readFile(filename string) ([]byte, error) {
+	if c.fs == nil {
+		return nil, fmt.Errorf("no file system given")
+	}
 	rd, err := c.fs.Open(filename)
 	if err != nil {
 		return nil, err
