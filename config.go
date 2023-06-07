@@ -43,3 +43,11 @@ const (
 	// ModuleJSON is the official Starlark JSON module.
 	ModuleJSON = ModuleName("json")
 )
+
+// ModuleNameList is a list of Starlark module names.
+type ModuleNameList []ModuleName
+
+// Clone returns a copy of the list.
+func (l ModuleNameList) Clone() []ModuleName {
+	return append([]ModuleName{}, l...)
+}
