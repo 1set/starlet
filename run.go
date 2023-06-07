@@ -36,3 +36,6 @@ func (m *Machine) runFileSystem(ctx context.Context) (map[string]interface{}, er
 	// TODO: implement
 	return nil, nil
 }
+
+// TODO: Multiple FS for script and modules
+// TODO: Reset machine
