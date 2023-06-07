@@ -19,7 +19,7 @@ type Machine struct {
 	preloadMods ModuleNameList
 	allowMods   ModuleNameList
 	printFunc   PrintFunc
-	// code cache
+	// source code
 	scriptSource  scriptSourceType
 	scriptName    string
 	scriptContent []byte
@@ -28,7 +28,7 @@ type Machine struct {
 	thread *starlark.Thread
 }
 
-type scriptSourceType uint
+type scriptSourceType uint8
 
 const (
 	scriptSourceUnknown scriptSourceType = iota
@@ -54,6 +54,7 @@ func NewMachine(globals map[string]interface{}, preloads ModuleNameList, allows 
 func (m *Machine) SetGlobals(globals map[string]interface{}) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	m.globals = globals
 }
 
@@ -61,6 +62,7 @@ func (m *Machine) SetGlobals(globals map[string]interface{}) {
 func (m *Machine) GetGlobals() map[string]interface{} {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
+
 	return m.globals
 }
 
@@ -68,6 +70,7 @@ func (m *Machine) GetGlobals() map[string]interface{} {
 func (m *Machine) SetPreloadModules(mods ModuleNameList) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	m.preloadMods = mods
 }
 
@@ -75,6 +78,7 @@ func (m *Machine) SetPreloadModules(mods ModuleNameList) {
 func (m *Machine) GetPreloadModules() ModuleNameList {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
+
 	return m.preloadMods.Clone()
 }
 
@@ -82,6 +86,7 @@ func (m *Machine) GetPreloadModules() ModuleNameList {
 func (m *Machine) SetAllowModules(mods ModuleNameList) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	m.allowMods = mods
 }
 
@@ -89,6 +94,7 @@ func (m *Machine) SetAllowModules(mods ModuleNameList) {
 func (m *Machine) GetAllowModules() ModuleNameList {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
+
 	return m.allowMods.Clone()
 }
 
@@ -96,6 +102,7 @@ func (m *Machine) GetAllowModules() ModuleNameList {
 func (m *Machine) SetPrintFunc(printFunc PrintFunc) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	m.printFunc = printFunc
 }
 
@@ -103,6 +110,7 @@ func (m *Machine) SetPrintFunc(printFunc PrintFunc) {
 func (m *Machine) SetScriptContent(name string, content []byte) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	m.scriptSource = scriptSourceContent
 	m.scriptName = name
 	m.scriptContent = content
@@ -112,6 +120,7 @@ func (m *Machine) SetScriptContent(name string, content []byte) {
 func (m *Machine) SetScriptFS(name string, fileSys fs.FS) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	m.scriptSource = scriptSourceFS
 	m.scriptName = name
 	m.scriptFS = fileSys
