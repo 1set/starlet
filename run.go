@@ -32,13 +32,13 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 	// preset globals + preload modules -> predeclared
 	m.liveData = m.globals.Clone()
 	if err := m.loadBuiltinModules(m.preloadMods...); err != nil {
-		return nil, fmt.Errorf("starlet: load preload modules: %w", err)
+		return nil, fmt.Errorf("starlet: preload modules: %w", err)
 	}
 
 	// convert into starlark.StringDict as predeclared
 	predeclared, err := convert.MakeStringDict(m.liveData)
 	if err != nil {
-		return nil, fmt.Errorf("starlet: convert predeclared: %w", err)
+		return nil, fmt.Errorf("starlet: convert: %w", err)
 	}
 
 	// TODO: save or reuse thread
@@ -88,9 +88,9 @@ func (m *Machine) loadBuiltinModules(modules ...ModuleName) error {
 		}
 		// load module and merge into live data
 		if dict, err := loadModuleByName(mod); err != nil {
-			return fmt.Errorf("starlet: load module %q: %w", mod, err)
+			return fmt.Errorf("load module %q: %w", mod, err)
 		} else if dict == nil {
-			return fmt.Errorf("starlet: load module %q: %w", mod, ErrModuleNotFound)
+			return fmt.Errorf("load module %q: %w", mod, ErrModuleNotFound)
 		} else {
 			m.liveData.MergeDict(dict)
 		}

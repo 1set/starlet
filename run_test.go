@@ -98,6 +98,18 @@ func Test_Machine_Run_Globals(t *testing.T) {
 	}
 }
 
+func Test_Machine_Run_Globals_Miss(t *testing.T) {
+	m := starlet.NewMachine(map[string]interface{}{
+		"a": 2,
+	}, nil, nil)
+	// set code
+	code := `b = c * 10`
+	m.SetScript("test.star", []byte(code), nil)
+	// run
+	_, err := m.Run(context.Background())
+	expectErr(t, err, `starlet: exec: test.star:1:5: undefined: c`)
+}
+
 func Test_Machine_Run_PreloadModules(t *testing.T) {
 	m := starlet.NewMachine(nil, []starlet.ModuleName{starlet.ModuleGoIdiomatic}, nil)
 	// set code
@@ -113,4 +125,24 @@ func Test_Machine_Run_PreloadModules(t *testing.T) {
 	} else if out["a"].(bool) != true {
 		t.Errorf("unexpected output: %v", out)
 	}
+}
+
+func Test_Machine_Run_PreloadModules_Miss(t *testing.T) {
+	m := starlet.NewMachine(nil, []starlet.ModuleName{}, nil)
+	// set code
+	code := `a = nil == None`
+	m.SetScript("test.star", []byte(code), nil)
+	// run
+	_, err := m.Run(context.Background())
+	expectErr(t, err, `starlet: exec: test.star:1:5: undefined: nil`)
+}
+
+func Test_Machine_Run_PreloadModules_NonExist(t *testing.T) {
+	m := starlet.NewMachine(nil, []starlet.ModuleName{"nonexist"}, nil)
+	// set code
+	code := `a = nil == None`
+	m.SetScript("test.star", []byte(code), nil)
+	// run
+	_, err := m.Run(context.Background())
+	expectErr(t, err, `starlet: preload modules: load module "nonexist": module not found`)
 }
