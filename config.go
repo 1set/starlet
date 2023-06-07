@@ -4,22 +4,22 @@ import (
 	"go.starlark.net/resolve"
 )
 
-// EnableRecursionSupport enables recursion support in Starlark.
+// EnableRecursionSupport enables recursion support in all Starlark environments.
 func EnableRecursionSupport() {
 	resolve.AllowRecursion = true
 }
 
-// DisableRecursionSupport disables recursion support in Starlark.
+// DisableRecursionSupport disables recursion support in all Starlark environments.
 func DisableRecursionSupport() {
 	resolve.AllowRecursion = false
 }
 
-// EnableGlobalReassign enables global reassignment in Starlark.
+// EnableGlobalReassign enables global reassignment in all Starlark environments.
 func EnableGlobalReassign() {
 	resolve.AllowGlobalReassign = true
 }
 
-// DisableGlobalReassign disables global reassignment in Starlark.
+// DisableGlobalReassign disables global reassignment in all Starlark environments.
 func DisableGlobalReassign() {
 	resolve.AllowGlobalReassign = false
 }

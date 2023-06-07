@@ -50,7 +50,7 @@ func newCache(fileSys fs.FS, globals starlark.StringDict) *Cache {
 	return c
 }
 
-func run(p *starlark.Program, globals map[string]interface{}, load LoadFunc) (map[string]interface{}, error) {
+func runLight(p *starlark.Program, globals map[string]interface{}, load LoadFunc) (map[string]interface{}, error) {
 	g, err := convert.MakeStringDict(globals)
 	if err != nil {
 		return nil, err
@@ -73,7 +73,7 @@ func (c *Cache) Run(filename string, globals map[string]interface{}) (map[string
 	c.mu.Lock()
 	if p, ok := c.scripts[filename]; ok {
 		c.mu.Unlock()
-		return run(p, globals, c.Load)
+		return runLight(p, globals, c.Load)
 	}
 	c.mu.Unlock()
 
@@ -88,7 +88,7 @@ func (c *Cache) Run(filename string, globals map[string]interface{}) (map[string
 	c.mu.Lock()
 	c.scripts[filename] = p
 	c.mu.Unlock()
-	return run(p, globals, c.Load)
+	return runLight(p, globals, c.Load)
 }
 
 // Load loads a module using the cache's configured directories.
