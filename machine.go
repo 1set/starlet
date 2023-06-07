@@ -15,26 +15,21 @@ type PrintFunc func(thread *starlark.Thread, msg string)
 type Machine struct {
 	mu sync.RWMutex
 	// set variables
-	globals     map[string]interface{}
+	globals     DataStore
 	preloadMods ModuleNameList
 	allowMods   ModuleNameList
 	printFunc   PrintFunc
 	// source code
-	scriptSource  scriptSourceType
 	scriptName    string
 	scriptContent []byte
 	scriptFS      fs.FS
 	// runtime core
-	thread *starlark.Thread
+	runTimes  uint
+	thread    *starlark.Thread
+	loadMod   map[ModuleName]struct{}
+	liveData  DataStore
+	loadCache *cache
 }
-
-type scriptSourceType uint8
-
-const (
-	scriptSourceUnknown scriptSourceType = iota
-	scriptSourceContent
-	scriptSourceFileSystem
-)
 
 // NewEmptyMachine creates a new Starlark runtime environment.
 func NewEmptyMachine() *Machine {
@@ -42,7 +37,7 @@ func NewEmptyMachine() *Machine {
 }
 
 // NewMachine creates a new Starlark runtime environment with given globals, preload modules and modules allowed to be loaded.
-func NewMachine(globals map[string]interface{}, preloads ModuleNameList, allows ModuleNameList) *Machine {
+func NewMachine(globals DataStore, preloads ModuleNameList, allows ModuleNameList) *Machine {
 	return &Machine{
 		globals:     globals,
 		preloadMods: preloads,
@@ -51,15 +46,28 @@ func NewMachine(globals map[string]interface{}, preloads ModuleNameList, allows 
 }
 
 // SetGlobals sets the globals of the Starlark runtime environment.
-func (m *Machine) SetGlobals(globals map[string]interface{}) {
+func (m *Machine) SetGlobals(globals DataStore) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	m.globals = globals
 }
 
+// AddGlobals adds the globals of the Starlark runtime environment.
+func (m *Machine) AddGlobals(globals DataStore) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.globals == nil {
+		m.globals = make(DataStore)
+	}
+	for k, v := range globals {
+		m.globals[k] = v
+	}
+}
+
 // GetGlobals gets the globals of the Starlark runtime environment.
-func (m *Machine) GetGlobals() map[string]interface{} {
+func (m *Machine) GetGlobals() DataStore {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -106,22 +114,12 @@ func (m *Machine) SetPrintFunc(printFunc PrintFunc) {
 	m.printFunc = printFunc
 }
 
-// SetScriptContent sets the script name and content of the Starlark runtime environment.
-func (m *Machine) SetScriptContent(name string, content []byte) {
+// SetScript sets the script related things of the Starlark runtime environment.
+func (m *Machine) SetScript(name string, content []byte, fileSys fs.FS) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.scriptSource = scriptSourceContent
 	m.scriptName = name
 	m.scriptContent = content
-}
-
-// SetScriptFS sets the script name and file system of the Starlark runtime environment.
-func (m *Machine) SetScriptFS(name string, fileSys fs.FS) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.scriptSource = scriptSourceFileSystem
-	m.scriptName = name
 	m.scriptFS = fileSys
 }
