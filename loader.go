@@ -2,41 +2,28 @@ package starlet
 
 import (
 	"fmt"
+	"io/fs"
 	"io/ioutil"
-	"path/filepath"
 	"sync"
 
 	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 )
 
-// New returns a Starlight Cache that looks in the given directories for plugin
-// files to run.  The directories are searched in order for files when Run is
-// called.  Calls to the script function load() will also look in these
-// directories. This function will panic if you give it no directories.
-func New(dirs ...string) *Cache {
-	if len(dirs) == 0 {
-		panic(fmt.Errorf("no directories given"))
-	}
-	return newCache(dirs, nil)
-}
-
 // WithGlobals returns a new Starlight cache that passes the listed global
 // values to scripts loaded with the load() script function.  Note that these
 // globals will *not* be passed to individual scripts you run unless you
 // explicitly pass them in the Run call.
-func WithGlobals(globals map[string]interface{}, dirs ...string) (*Cache, error) {
-	if len(dirs) == 0 {
-		return nil, fmt.Errorf("no directories given")
+func WithGlobals(globals map[string]interface{}, fileSys fs.FS) (*Cache, error) {
+	if fileSys == nil {
+		return nil, fmt.Errorf("no file system given")
 	}
 	g, err := convert.MakeStringDict(globals)
 	if err != nil {
 		return nil, err
 	}
-	return newCache(dirs, g), nil
+	return newCache(fileSys, g), nil
 }
-
-// Keep the rest!
 
 // LoadFunc is a function that tells Starlark how to find and load other scripts
 // using the load() function. If you don't use load() in your scripts, you can pass in nil.
@@ -44,11 +31,23 @@ type LoadFunc func(thread *starlark.Thread, module string) (starlark.StringDict,
 
 // Cache is a cache of scripts to avoid re-reading files and reparsing them.
 type Cache struct {
-	dirs  []string
-	cache *cache
-
 	mu      sync.Mutex
+	cache   *cache
+	fs      fs.FS
 	scripts map[string]*starlark.Program
+}
+
+func newCache(fileSys fs.FS, globals starlark.StringDict) *Cache {
+	c := &Cache{
+		fs:      fileSys,
+		scripts: map[string]*starlark.Program{},
+	}
+	c.cache = &cache{
+		cache:    make(map[string]*entry),
+		readFile: c.readFile,
+		globals:  globals,
+	}
+	return c
 }
 
 func run(p *starlark.Program, globals map[string]interface{}, load LoadFunc) (map[string]interface{}, error) {
@@ -61,19 +60,6 @@ func run(p *starlark.Program, globals map[string]interface{}, load LoadFunc) (ma
 		return nil, err
 	}
 	return convert.FromStringDict(ret), nil
-}
-
-func newCache(dirs []string, globals starlark.StringDict) *Cache {
-	c := &Cache{
-		dirs:    dirs,
-		scripts: map[string]*starlark.Program{},
-	}
-	c.cache = &cache{
-		cache:    make(map[string]*entry),
-		readFile: c.readFile,
-		globals:  globals,
-	}
-	return c
 }
 
 // Run looks for a file with the given filename, and runs it with the given globals
@@ -107,21 +93,17 @@ func (c *Cache) Run(filename string, globals map[string]interface{}) (map[string
 
 // Load loads a module using the cache's configured directories.
 func (c *Cache) Load(_ *starlark.Thread, module string) (starlark.StringDict, error) {
+	// TODO: add a way to load modules from structs.
 	return c.cache.Load(module)
 }
 
+// readFile reads the given filename from the given file system.
 func (c *Cache) readFile(filename string) ([]byte, error) {
-	var err error
-	var b []byte
-	for _, d := range c.dirs {
-		b, err = ioutil.ReadFile(filepath.Join(d, filename))
-		if err == nil {
-			return b, nil
-		}
+	rd, err := c.fs.Open(filename)
+	if err != nil {
+		return nil, err
 	}
-	// guaranteed to have at least one directory, so there should be at least
-	// not found error here.
-	return nil, fmt.Errorf("cannot find file %q in any of the configured directories %q", filename, c.dirs)
+	return ioutil.ReadAll(rd)
 }
 
 // Reset clears all cached scripts.
