@@ -94,7 +94,7 @@ func Test_EmptyMachine_Run_LoadNonexist(t *testing.T) {
 	m := starlet.NewEmptyMachine()
 	// set code
 	code := `load("nonexist.star", "a")`
-	m.SetScript("load_nonexist.star", []byte(code), os.DirFS("example"))
+	m.SetScript("test.star", []byte(code), os.DirFS("example"))
 	// run
 	_, err := m.Run(context.Background())
 	expectErr(t, err, `starlet: exec: cannot load nonexist.star: open example/nonexist.star: no such file or directory`)

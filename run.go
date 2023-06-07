@@ -29,14 +29,8 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 
 	// TODO: Assume: it's the first run -- for rerun, we need to reset the cache
 
-	// clone preset globals if it's the first run, otherwise merge if newer
-	if m.liveData == nil {
-		m.liveData = m.globals.Clone()
-	} else {
-		m.liveData.Merge(m.globals)
-	}
-
-	// load preload modules
+	// preset globals + preload modules -> predeclared
+	m.liveData = m.globals.Clone()
 	if err := m.loadBuiltinModules(m.preloadMods...); err != nil {
 		return nil, fmt.Errorf("starlet: load preload modules: %w", err)
 	}
@@ -47,29 +41,26 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 		return nil, fmt.Errorf("starlet: convert predeclared: %w", err)
 	}
 
-	// create cache
-	if m.loadCache == nil {
-		m.loadCache = &cache{
-			cache:    make(map[string]*entry),
-			readFile: m.readScriptFile,
-			globals:  predeclared,
-		}
-	}
-
-	// thread = cache.Load + printFunc
 	// TODO: save or reuse thread
+	// cache load + printFunc -> thread
+	m.loadCache = &cache{
+		cache:    make(map[string]*entry),
+		readFile: m.readScriptFile,
+		globals:  predeclared,
+	}
 	thread := &starlark.Thread{
 		Load:  m.cacheLoader,
 		Print: m.printFunc,
 	}
 
-	// run
 	// TODO: run script with context and thread
+	// run
 	scriptName := m.scriptName
 	if scriptName == "" {
 		scriptName = "eval.star"
 	}
 	m.runTimes++
+	
 	res, err := starlark.ExecFile(thread, scriptName, m.scriptContent, predeclared)
 	if err != nil {
 		return nil, fmt.Errorf("starlet: exec: %w", err)
