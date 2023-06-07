@@ -15,7 +15,7 @@ type PrintFunc func(thread *starlark.Thread, msg string)
 type Machine struct {
 	mu sync.RWMutex
 	// set variables
-	globals     map[string]interface{}
+	globals     DataStore
 	preloadMods ModuleNameList
 	allowMods   ModuleNameList
 	printFunc   PrintFunc
@@ -43,7 +43,7 @@ func NewEmptyMachine() *Machine {
 }
 
 // NewMachine creates a new Starlark runtime environment with given globals, preload modules and modules allowed to be loaded.
-func NewMachine(globals map[string]interface{}, preloads ModuleNameList, allows ModuleNameList) *Machine {
+func NewMachine(globals DataStore, preloads ModuleNameList, allows ModuleNameList) *Machine {
 	return &Machine{
 		globals:     globals,
 		preloadMods: preloads,
@@ -52,7 +52,7 @@ func NewMachine(globals map[string]interface{}, preloads ModuleNameList, allows 
 }
 
 // SetGlobals sets the globals of the Starlark runtime environment.
-func (m *Machine) SetGlobals(globals map[string]interface{}) {
+func (m *Machine) SetGlobals(globals DataStore) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -60,12 +60,12 @@ func (m *Machine) SetGlobals(globals map[string]interface{}) {
 }
 
 // AddGlobals adds the globals of the Starlark runtime environment.
-func (m *Machine) AddGlobals(globals map[string]interface{}) {
+func (m *Machine) AddGlobals(globals DataStore) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if m.globals == nil {
-		m.globals = make(map[string]interface{})
+		m.globals = make(DataStore)
 	}
 	for k, v := range globals {
 		m.globals[k] = v
@@ -73,7 +73,7 @@ func (m *Machine) AddGlobals(globals map[string]interface{}) {
 }
 
 // GetGlobals gets the globals of the Starlark runtime environment.
-func (m *Machine) GetGlobals() map[string]interface{} {
+func (m *Machine) GetGlobals() DataStore {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 

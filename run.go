@@ -10,7 +10,7 @@ var (
 )
 
 // Run runs the preset script with given globals and returns the result.
-func (m *Machine) run(ctx context.Context) (map[string]interface{}, error) {
+func (m *Machine) run(ctx context.Context) (DataStore, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -27,12 +27,12 @@ func (m *Machine) run(ctx context.Context) (map[string]interface{}, error) {
 	}
 }
 
-func (m *Machine) runContent(ctx context.Context) (map[string]interface{}, error) {
+func (m *Machine) runContent(ctx context.Context) (DataStore, error) {
 	// TODO: implement
 	return nil, nil
 }
 
-func (m *Machine) runFileSystem(ctx context.Context) (map[string]interface{}, error) {
+func (m *Machine) runFileSystem(ctx context.Context) (DataStore, error) {
 	// TODO: implement
 	return nil, nil
 }
