@@ -9,6 +9,7 @@ var (
 	ErrUnknownScriptSource = errors.New("unknown script source")
 )
 
+// Run runs the preset script with given globals and returns the result.
 func (m *Machine) run(ctx context.Context) (map[string]interface{}, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

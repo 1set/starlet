@@ -25,7 +25,8 @@ type Machine struct {
 	scriptContent []byte
 	scriptFS      fs.FS
 	// runtime core
-	thread *starlark.Thread
+	thread    *starlark.Thread
+	coreCache *Cache
 }
 
 type scriptSourceType uint8
@@ -56,6 +57,19 @@ func (m *Machine) SetGlobals(globals map[string]interface{}) {
 	defer m.mu.Unlock()
 
 	m.globals = globals
+}
+
+// AddGlobals adds the globals of the Starlark runtime environment.
+func (m *Machine) AddGlobals(globals map[string]interface{}) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.globals == nil {
+		m.globals = make(map[string]interface{})
+	}
+	for k, v := range globals {
+		m.globals[k] = v
+	}
 }
 
 // GetGlobals gets the globals of the Starlark runtime environment.
