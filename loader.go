@@ -10,31 +10,6 @@ import (
 	"go.starlark.net/starlark"
 )
 
-// LoadFunc is a function that tells Starlark how to find and load other scripts
-// using the load() function. If you don't use load() in your scripts, you can pass in nil.
-type LoadFunc func(thread *starlark.Thread, module string) (starlark.StringDict, error)
-
-// Cache is a cache of scripts to avoid re-reading files and reparsing them.
-type Cache struct {
-	dirs  []string
-	cache *cache
-
-	mu      sync.Mutex
-	scripts map[string]*starlark.Program
-}
-
-func run(p *starlark.Program, globals map[string]interface{}, load LoadFunc) (map[string]interface{}, error) {
-	g, err := convert.MakeStringDict(globals)
-	if err != nil {
-		return nil, err
-	}
-	ret, err := p.Init(&starlark.Thread{Load: load}, g)
-	if err != nil {
-		return nil, err
-	}
-	return convert.FromStringDict(ret), nil
-}
-
 // New returns a Starlight Cache that looks in the given directories for plugin
 // files to run.  The directories are searched in order for files when Run is
 // called.  Calls to the script function load() will also look in these
@@ -59,6 +34,33 @@ func WithGlobals(globals map[string]interface{}, dirs ...string) (*Cache, error)
 		return nil, err
 	}
 	return newCache(dirs, g), nil
+}
+
+// Keep the rest!
+
+// LoadFunc is a function that tells Starlark how to find and load other scripts
+// using the load() function. If you don't use load() in your scripts, you can pass in nil.
+type LoadFunc func(thread *starlark.Thread, module string) (starlark.StringDict, error)
+
+// Cache is a cache of scripts to avoid re-reading files and reparsing them.
+type Cache struct {
+	dirs  []string
+	cache *cache
+
+	mu      sync.Mutex
+	scripts map[string]*starlark.Program
+}
+
+func run(p *starlark.Program, globals map[string]interface{}, load LoadFunc) (map[string]interface{}, error) {
+	g, err := convert.MakeStringDict(globals)
+	if err != nil {
+		return nil, err
+	}
+	ret, err := p.Init(&starlark.Thread{Load: load}, g)
+	if err != nil {
+		return nil, err
+	}
+	return convert.FromStringDict(ret), nil
 }
 
 func newCache(dirs []string, globals starlark.StringDict) *Cache {
