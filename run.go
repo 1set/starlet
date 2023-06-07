@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	ErrUnknownScriptSource = errors.New("unknown script source")
-	ErrModuleNotFound      = errors.New("module not found")
+	ErrNoCodeToRun    = errors.New("no code to run")
+	ErrModuleNotFound = errors.New("module not found")
 )
 
 // Run runs the preset script with given globals and returns the result.
@@ -24,7 +24,7 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 
 	// either script content or name and FS must be set
 	if !((m.scriptContent != nil) || (m.scriptName != "" && m.scriptFS != nil)) {
-		return nil, fmt.Errorf("starlet: run: %w", ErrUnknownScriptSource)
+		return nil, fmt.Errorf("starlet: run: %w", ErrNoCodeToRun)
 	}
 
 	// TODO: Assume: it's the first run -- for rerun, we need to reset the cache
