@@ -2,6 +2,6 @@ def answer():
     return 42
 
 def custom():
-    return "custom: {}".format(magic_number)
+    return "Custom[{}]".format(magic_number)
 
-print("C", custom())
+# print("C", custom())

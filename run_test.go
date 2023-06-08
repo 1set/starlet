@@ -13,7 +13,7 @@ func Test_EmptyMachine_Run_NoCode(t *testing.T) {
 	m := starlet.NewEmptyMachine()
 	// run with empty script
 	_, err := m.Run(context.Background())
-	expectErr(t, err, `starlet: run: no code to run`)
+	expectErr(t, err, `starlet: run: no script to execute`)
 }
 
 func Test_EmptyMachine_Run_NoSpecificFile(t *testing.T) {
@@ -21,7 +21,7 @@ func Test_EmptyMachine_Run_NoSpecificFile(t *testing.T) {
 	m.SetScript("", nil, os.DirFS("example"))
 	// run with no specific file name
 	_, err := m.Run(context.Background())
-	expectErr(t, err, `starlet: run: no code to run`)
+	expectErr(t, err, `starlet: run: no specific file`)
 }
 
 func Test_EmptyMachine_Run_APlusB(t *testing.T) {
@@ -70,6 +70,19 @@ func Test_EmptyMachine_Run_LocalFile(t *testing.T) {
 	}
 	// compare
 	cmpFunc("Aloha, Honua!\n")
+}
+
+func Test_EmptyMachine_Run_LocalFileNonExist(t *testing.T) {
+	m := starlet.NewEmptyMachine()
+	// set code
+	m.SetScript("notfound.star", nil, os.DirFS("example"))
+	// run
+	_, err := m.Run(context.Background())
+	if isOnWindows {
+		expectErr(t, err, `starlet: open: cannot open notfound.star: open`, `The system cannot find the file specified.`)
+	} else {
+		expectErr(t, err, `starlet: open: open`, `: no such file or directory`)
+	}
 }
 
 func Test_EmptyMachine_Run_LoadFunc(t *testing.T) {
@@ -142,15 +155,14 @@ func Test_Machine_Run_File_Globals(t *testing.T) {
 	} else if fn, ok := f.(*starlark.Function); !ok {
 		t.Errorf("unexpected output: %v", out)
 	} else {
-		t.Logf("function: %v", fn)
-		//// call function
-		//r, err := fn.Call(context.Background(), []interface{}{int64(10)})
-		//if err != nil {
-		//	t.Errorf("unexpected error: %v", err)
-		//}
-		//if r != int64(40) {
-		//	t.Errorf("unexpected result: %v", r)
-		//}
+		res, err := starlark.Call(&starlark.Thread{Name: "afterparty"}, fn, nil, nil)
+		if err != nil {
+			t.Errorf("unexpected call error: %v", err)
+		} else if r, ok := res.(starlark.String); !ok {
+			t.Errorf("unexpected call result: %v", res)
+		} else if r != "Custom[30]" {
+			t.Errorf("unexpected call string result: %q", res)
+		}
 	}
 }
 

@@ -11,8 +11,17 @@ import (
 )
 
 var (
-	ErrNoCodeToRun    = errors.New("no code to run")
-	ErrModuleNotFound = errors.New("module not found")
+	ErrNoFileToRun         = errors.New("no specific file")
+	ErrNoScriptSourceToRun = errors.New("no script to execute")
+	ErrModuleNotFound      = errors.New("module not found")
+)
+
+type sourceCodeType uint8
+
+const (
+	sourceCodeTypeUnknown sourceCodeType = iota
+	sourceCodeTypeContent
+	sourceCodeTypeFSName
 )
 
 // Run runs the preset script with given globals and returns the result.
@@ -23,8 +32,22 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 	// TODO: handle panic, what about other defers?
 
 	// either script content or name and FS must be set
-	if !((m.scriptContent != nil) || (m.scriptName != "" && m.scriptFS != nil)) {
-		return nil, fmt.Errorf("starlet: run: %w", ErrNoCodeToRun)
+	var (
+		scriptName = m.scriptName
+		srcType    sourceCodeType
+	)
+	if m.scriptContent != nil {
+		srcType = sourceCodeTypeContent
+		if scriptName == "" {
+			scriptName = "eval.star"
+		}
+	} else if m.scriptFS != nil {
+		srcType = sourceCodeTypeFSName
+		if scriptName == "" {
+			return nil, fmt.Errorf("starlet: run: %w", ErrNoFileToRun)
+		}
+	} else {
+		return nil, fmt.Errorf("starlet: run: %w", ErrNoScriptSourceToRun)
 	}
 
 	// TODO: Assume: it's the first run -- for rerun, we need to reset the cache
@@ -58,13 +81,18 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 
 	// TODO: run script with context and thread
 	// run
-	scriptName := m.scriptName
-	if scriptName == "" {
-		scriptName = "eval.star"
-	}
 	m.runTimes++
-
-	res, err := starlark.ExecFile(thread, scriptName, m.scriptContent, predeclared)
+	var res starlark.StringDict
+	switch srcType {
+	case sourceCodeTypeContent:
+		res, err = starlark.ExecFile(thread, scriptName, m.scriptContent, predeclared)
+	case sourceCodeTypeFSName:
+		rd, err := m.scriptFS.Open(scriptName)
+		if err != nil {
+			return nil, fmt.Errorf("starlet: open: %w", err)
+		}
+		res, err = starlark.ExecFile(thread, scriptName, rd, predeclared)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("starlet: exec: %w", err)
 	}
