@@ -54,6 +54,24 @@ func Test_EmptyMachine_Run_HelloWorld(t *testing.T) {
 	cmpFunc("Aloha, Honua!\n")
 }
 
+func Test_EmptyMachine_Run_LoadFunc(t *testing.T) {
+	m := starlet.NewEmptyMachine()
+	// set code
+	code := `load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]`
+	m.SetScript("test.star", []byte(code), os.DirFS("example"))
+	// run
+	out, err := m.Run(context.Background())
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	// check result
+	if out == nil {
+		t.Errorf("unexpected nil output")
+	} else if out["val"] != int64(55) {
+		t.Errorf("unexpected output: %v", out)
+	}
+}
+
 func Test_EmptyMachine_Run_LoadNoFS(t *testing.T) {
 	m := starlet.NewEmptyMachine()
 	// set code
@@ -64,7 +82,7 @@ func Test_EmptyMachine_Run_LoadNoFS(t *testing.T) {
 	expectErr(t, err, `starlet: exec: cannot load fibonacci.star: no file system given`)
 }
 
-func Test_EmptyMachine_Run_LoadNonexist(t *testing.T) {
+func Test_EmptyMachine_Run_LoadNonExist(t *testing.T) {
 	m := starlet.NewEmptyMachine()
 	// set code
 	code := `load("nonexist.star", "a")`
@@ -98,18 +116,6 @@ func Test_Machine_Run_Globals(t *testing.T) {
 	}
 }
 
-func Test_Machine_Run_Globals_Miss(t *testing.T) {
-	m := starlet.NewMachine(map[string]interface{}{
-		"a": 2,
-	}, nil, nil)
-	// set code
-	code := `b = c * 10`
-	m.SetScript("test.star", []byte(code), nil)
-	// run
-	_, err := m.Run(context.Background())
-	expectErr(t, err, `starlet: exec: test.star:1:5: undefined: c`)
-}
-
 func Test_Machine_Run_PreloadModules(t *testing.T) {
 	m := starlet.NewMachine(nil, []starlet.ModuleName{starlet.ModuleGoIdiomatic}, nil)
 	// set code
@@ -127,6 +133,18 @@ func Test_Machine_Run_PreloadModules(t *testing.T) {
 	}
 }
 
+func Test_Machine_Run_Globals_Miss(t *testing.T) {
+	m := starlet.NewMachine(map[string]interface{}{
+		"a": 2,
+	}, nil, nil)
+	// set code
+	code := `b = c * 10`
+	m.SetScript("test.star", []byte(code), nil)
+	// run
+	_, err := m.Run(context.Background())
+	expectErr(t, err, `starlet: exec: test.star:1:5: undefined: c`)
+}
+
 func Test_Machine_Run_PreloadModules_MissLoad(t *testing.T) {
 	m := starlet.NewMachine(nil, []starlet.ModuleName{}, nil)
 	// set code
@@ -137,7 +155,7 @@ func Test_Machine_Run_PreloadModules_MissLoad(t *testing.T) {
 	expectErr(t, err, `starlet: exec: test.star:1:5: undefined: nil`)
 }
 
-func Test_Machine_Run_PreloadModules_NonExist(t *testing.T) {
+func Test_Machine_Run_PreloadModules_NonExistModule(t *testing.T) {
 	m := starlet.NewMachine(nil, []starlet.ModuleName{"nonexist"}, nil)
 	// set code
 	code := `a = nil == None`

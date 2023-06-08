@@ -19,6 +19,7 @@ func expectErr(t *testing.T, err error, expected ...string) {
 	// preconditions
 	if err == nil {
 		t.Errorf("unexpected nil error")
+		return
 	}
 	if len(expected) == 0 {
 		t.Errorf("no expected string is unexpected")
@@ -38,9 +39,11 @@ func expectErr(t *testing.T, err error, expected ...string) {
 	act := err.Error()
 	if prefix != "" && !strings.HasPrefix(act, prefix) {
 		t.Errorf(`expected error prefix: %q, got: %q`, expected, act)
+		return
 	}
 	if suffix != "" && !strings.HasSuffix(act, suffix) {
 		t.Errorf(`expected error suffix: %q, got: %q`, suffix, act)
+		return
 	}
 }
 
