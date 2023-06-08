@@ -481,9 +481,7 @@ func Test_Machine_Run_Loaders(t *testing.T) {
 		},
 		{
 			name:    "Preload Module: Go",
-			globals: map[string]interface{}{},
 			preList: starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic")},
-			lazyMap: starlet.ModuleLoaderMap{},
 			code:    `val = nil != true`,
 			cmpResult: func(val interface{}) bool {
 				return val.(bool) == true
@@ -491,8 +489,6 @@ func Test_Machine_Run_Loaders(t *testing.T) {
 		},
 		{
 			name:    "LazyLoad Module: Go",
-			globals: map[string]interface{}{},
-			preList: starlet.ModuleLoaderList{},
 			lazyMap: starlet.ModuleLoaderMap{"gogo": starlet.GetBuiltinModule("go_idiomatic")},
 			code:    `load("gogo", "nil", "true"); val = nil != true`,
 			cmpResult: func(val interface{}) bool {
