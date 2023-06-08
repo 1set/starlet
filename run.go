@@ -53,22 +53,19 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 	// TODO: Assume: it's the first run -- for rerun, we need to reset the cache
 
 	// preset globals + preload modules -> predeclared
-	m.liveData = m.globals.Clone()
-	if err := m.loadBuiltinModules(m.preloadMods...); err != nil {
-		return nil, fmt.Errorf("starlet: preload: %w", err)
-	}
-
-	// convert into starlark.StringDict as predeclared
-	predeclared, err := convert.MakeStringDict(m.liveData)
+	predeclared, err := convert.MakeStringDict(m.globals.Clone())
 	if err != nil {
 		return nil, fmt.Errorf("starlet: convert: %w", err)
+	}
+	if err = m.preloadMods.LoadAll(predeclared); err != nil {
+		return nil, err
 	}
 
 	// TODO: save or reuse thread
 	// cache load + printFunc -> thread
 	m.loadCache = &cache{
 		cache:    make(map[string]*entry),
-		loadMod:  m.loadAllowedModule,
+		loadMod:  m.lazyloadMods.GetLazyLoader(),
 		readFile: m.readScriptFile,
 		globals:  predeclared,
 	}
@@ -101,33 +98,6 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 	return convert.FromStringDict(res), nil
 }
 
-// TODO: Multiple FS for script and modules
-// TODO: Reset machine
-// TODO: run with existing threads (global and module preset)
-
-func (m *Machine) loadBuiltinModules(modules ...ModuleName) error {
-	if m.loadMod == nil {
-		m.loadMod = make(map[ModuleName]struct{})
-	}
-	for _, mod := range modules {
-		// skip if already loaded
-		if _, ok := m.loadMod[mod]; ok {
-			continue
-		}
-		// load module and merge into live data
-		if dict, err := loadModuleByName(mod); err != nil {
-			return fmt.Errorf("load module %q: %w", mod, err)
-		} else if dict == nil {
-			return fmt.Errorf("load module %q: %w", mod, ErrModuleNotFound)
-		} else {
-			m.liveData.MergeDict(dict)
-		}
-		// mark as loaded
-		m.loadMod[mod] = struct{}{}
-	}
-	return nil
-}
-
 // readScriptFile reads the given filename from the given file system.
 func (m *Machine) readScriptFile(filename string) ([]byte, error) {
 	if m.scriptFS == nil {
@@ -140,15 +110,6 @@ func (m *Machine) readScriptFile(filename string) ([]byte, error) {
 	return ioutil.ReadAll(rd)
 }
 
-// loadAllowedModule loads a module by name if it's allowed.
-func (m *Machine) loadAllowedModule(name string) (starlark.StringDict, error) {
-	// TODO: check if module is already loaded as predeclared
-	for _, mod := range m.allowMods {
-		if mod == ModuleName(name) {
-			// load module by name if it's allowed
-			return loadModuleByName(mod)
-		}
-	}
-	// module not found
-	return nil, nil
-}
+// TODO: Multiple FS for script and modules
+// TODO: Reset machine
+// TODO: run with existing threads (global and module preset)

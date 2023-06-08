@@ -15,10 +15,10 @@ type PrintFunc func(thread *starlark.Thread, msg string)
 type Machine struct {
 	mu sync.RWMutex
 	// set variables
-	globals     DataStore
-	preloadMods ModuleNameList
-	allowMods   ModuleNameList
-	printFunc   PrintFunc
+	globals      DataStore
+	preloadMods  ModuleLoaderList
+	lazyloadMods ModuleLoaderMap
+	printFunc    PrintFunc
 	// source code
 	scriptName    string
 	scriptContent []byte
@@ -26,8 +26,6 @@ type Machine struct {
 	// runtime core
 	runTimes  uint
 	thread    *starlark.Thread
-	loadMod   map[ModuleName]struct{}
-	liveData  DataStore
 	loadCache *cache
 }
 
@@ -36,12 +34,21 @@ func NewEmptyMachine() *Machine {
 	return &Machine{}
 }
 
-// NewMachine creates a new Starlark runtime environment with given globals, preload modules and modules allowed to be loaded.
-func NewMachine(globals DataStore, preloads ModuleNameList, allows ModuleNameList) *Machine {
+// NewMachine creates a new Starlark runtime environment with given globals, preload and lazyload module names.
+// TODO: Rename it as simple or easy. With Must in Name
+func NewMachine(globals DataStore, preloads []string, lazyloads []string) *Machine {
+	pre, err := CreateBuiltinModuleLoaderList(preloads)
+	if err != nil {
+		panic(err)
+	}
+	lazy, err := CreateBuiltinModuleLoaderMap(lazyloads)
+	if err != nil {
+		panic(err)
+	}
 	return &Machine{
-		globals:     globals,
-		preloadMods: preloads,
-		allowMods:   allows,
+		globals:      globals,
+		preloadMods:  pre,
+		lazyloadMods: lazy,
 	}
 }
 
@@ -75,7 +82,7 @@ func (m *Machine) GetGlobals() DataStore {
 }
 
 // SetPreloadModules sets the preload modules of the Starlark runtime environment.
-func (m *Machine) SetPreloadModules(mods ModuleNameList) {
+func (m *Machine) SetPreloadModules(mods ModuleLoaderList) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -83,27 +90,27 @@ func (m *Machine) SetPreloadModules(mods ModuleNameList) {
 }
 
 // GetPreloadModules gets the preload modules of the Starlark runtime environment.
-func (m *Machine) GetPreloadModules() ModuleNameList {
+func (m *Machine) GetPreloadModules() ModuleLoaderList {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	return m.preloadMods.Clone()
 }
 
-// SetAllowModules sets the modules allowed to be loaded of the Starlark runtime environment.
-func (m *Machine) SetAllowModules(mods ModuleNameList) {
+// SetLazyloadModules sets the modules allowed to be loaded later of the Starlark runtime environment.
+func (m *Machine) SetLazyloadModules(mods ModuleLoaderMap) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.allowMods = mods
+	m.lazyloadMods = mods
 }
 
-// GetAllowModules gets the modules allowed to be loaded of the Starlark runtime environment.
-func (m *Machine) GetAllowModules() ModuleNameList {
+// GetLazyloadModules gets the modules allowed to be loaded later of the Starlark runtime environment.
+func (m *Machine) GetLazyloadModules() ModuleLoaderMap {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	return m.allowMods.Clone()
+	return m.lazyloadMods.Clone()
 }
 
 // SetPrintFunc sets the print function of the Starlark runtime environment.

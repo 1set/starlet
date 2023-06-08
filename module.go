@@ -1,72 +1,14 @@
 package starlet
 
 import (
+	"fmt"
+
 	sjson "go.starlark.net/lib/json"
 	smath "go.starlark.net/lib/math"
 	stime "go.starlark.net/lib/time"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
-
-// ModuleName represents a Starlark module name or collection of functions and values.
-type ModuleName string
-
-const (
-	// ModuleGoIdiomatic is a collection of Go idiomatic functions and values. e.g. true, false, nil, exit, etc.
-	ModuleGoIdiomatic = ModuleName("go_idiomatic")
-
-	// ModuleStruct is the official Starlark struct and module.
-	ModuleStruct = ModuleName("struct")
-
-	// ModuleTime is the official Starlark time module.
-	ModuleTime = ModuleName("time")
-
-	// ModuleMath is the official Starlark math module.
-	ModuleMath = ModuleName("math")
-
-	// ModuleJSON is the official Starlark JSON module.
-	ModuleJSON = ModuleName("json")
-)
-
-// ModuleNameList is a list of Starlark module names.
-type ModuleNameList []ModuleName
-
-// Clone returns a copy of the list.
-func (l ModuleNameList) Clone() []ModuleName {
-	return append([]ModuleName{}, l...)
-}
-
-// loadModuleByName loads a Starlark module with the given name.
-// It returns an error as second return value if the module is found but fails to load.
-// Otherwise, the first return value is nil if the module is not found.
-func loadModuleByName(name ModuleName) (starlark.StringDict, error) {
-	switch name {
-	case ModuleGoIdiomatic:
-		return starlark.StringDict{
-			"true":  starlark.True,
-			"false": starlark.False,
-			"nil":   starlark.None,
-			//"exit":  starlark.NewBuiltin("exit", exit),
-		}, nil
-	case ModuleStruct:
-		return starlark.StringDict{
-			"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
-		}, nil
-	case ModuleTime:
-		return starlark.StringDict{
-			"time": stime.Module,
-		}, nil
-	case ModuleMath:
-		return starlark.StringDict{
-			"math": smath.Module,
-		}, nil
-	case ModuleJSON:
-		return starlark.StringDict{
-			"json": sjson.Module,
-		}, nil
-	}
-	return nil, nil
-}
 
 // Now my refactor begins 2023-06-08 19:10:38 CST
 
@@ -116,6 +58,26 @@ func (l ModuleLoaderList) Clone() []ModuleLoader {
 	return append([]ModuleLoader{}, l...)
 }
 
+// LoadAll loads all modules in the list into the given StringDict.
+// It returns an error as second return value if any module fails to load.
+func (l ModuleLoaderList) LoadAll(d starlark.StringDict) error {
+	if d == nil {
+		return fmt.Errorf("starlet: cannot load modules into nil dict")
+	}
+	for _, ld := range l {
+		m, err := ld()
+		if err != nil {
+			return fmt.Errorf("starlet: failed to load module: %w", err)
+		}
+		if m != nil {
+			for k, v := range m {
+				d[k] = v
+			}
+		}
+	}
+	return nil
+}
+
 // ModuleLoaderMap is a map of Starlark module loaders, usually used to load a map of modules by name.
 type ModuleLoaderMap map[string]ModuleLoader
 
@@ -151,7 +113,7 @@ func CreateBuiltinModuleLoaderList(names []string) (ModuleLoaderList, error) {
 	for i, name := range names {
 		ld[i] = allBuiltinModules[name]
 		if ld[i] == nil {
-			return ld, ErrModuleNotFound
+			return ld, fmt.Errorf("starlet: module %q: %w", name, ErrModuleNotFound)
 		}
 	}
 	return ld, nil
@@ -164,7 +126,7 @@ func CreateBuiltinModuleLoaderMap(names []string) (ModuleLoaderMap, error) {
 	for _, name := range names {
 		ld[name] = allBuiltinModules[name]
 		if ld[name] == nil {
-			return ld, ErrModuleNotFound
+			return ld, fmt.Errorf("starlet: module %q: %w", name, ErrModuleNotFound)
 		}
 	}
 	return ld, nil
