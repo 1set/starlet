@@ -29,14 +29,30 @@ type Machine struct {
 	loadCache *cache
 }
 
-// NewEmptyMachine creates a new Starlark runtime environment.
-func NewEmptyMachine() *Machine {
+// NewDefault creates a new Starlark runtime environment.
+func NewDefault() *Machine {
 	return &Machine{}
 }
 
-// NewMachine creates a new Starlark runtime environment with given globals, preload and lazyload module names.
-// TODO: Rename it as simple or easy. With Must in Name
-func NewMachine(globals DataStore, preloads []string, lazyloads []string) *Machine {
+// NewWithGlobals creates a new Starlark runtime environment with given globals.
+func NewWithGlobals(globals DataStore) *Machine {
+	return &Machine{
+		globals: globals,
+	}
+}
+
+// NewWithLoaders creates a new Starlark runtime environment with given globals and preload module loaders.
+func NewWithLoaders(globals DataStore, preload ModuleLoaderList, lazyload ModuleLoaderMap) *Machine {
+	return &Machine{
+		globals:      globals,
+		preloadMods:  preload,
+		lazyloadMods: lazyload,
+	}
+}
+
+// NewWithNames creates a new Starlark runtime environment with given globals, preload and lazyload module names.
+// It panics if any of the given module fails to load.
+func NewWithNames(globals DataStore, preloads []string, lazyloads []string) *Machine {
 	pre, err := CreateBuiltinModuleLoaderList(preloads)
 	if err != nil {
 		panic(err)

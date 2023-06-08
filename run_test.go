@@ -11,14 +11,14 @@ import (
 )
 
 func Test_EmptyMachine_Run_NoCode(t *testing.T) {
-	m := starlet.NewEmptyMachine()
+	m := starlet.NewDefault()
 	// run with empty script
 	_, err := m.Run(context.Background())
 	expectErr(t, err, `starlet: run: no script to execute`)
 }
 
 func Test_EmptyMachine_Run_NoSpecificFile(t *testing.T) {
-	m := starlet.NewEmptyMachine()
+	m := starlet.NewDefault()
 	m.SetScript("", nil, os.DirFS("example"))
 	// run with no specific file name
 	_, err := m.Run(context.Background())
@@ -26,7 +26,7 @@ func Test_EmptyMachine_Run_NoSpecificFile(t *testing.T) {
 }
 
 func Test_EmptyMachine_Run_APlusB(t *testing.T) {
-	m := starlet.NewEmptyMachine()
+	m := starlet.NewDefault()
 	code := `a = 1 + 2`
 	m.SetScript("a_plus_b.star", []byte(code), nil)
 	out, err := m.Run(context.Background())
@@ -41,7 +41,7 @@ func Test_EmptyMachine_Run_APlusB(t *testing.T) {
 }
 
 func Test_EmptyMachine_Run_HelloWorld(t *testing.T) {
-	m := starlet.NewEmptyMachine()
+	m := starlet.NewDefault()
 	// set print function
 	printFunc, cmpFunc := getPrintCompareFunc(t)
 	m.SetPrintFunc(printFunc)
@@ -58,7 +58,7 @@ func Test_EmptyMachine_Run_HelloWorld(t *testing.T) {
 }
 
 func Test_EmptyMachine_Run_LocalFile(t *testing.T) {
-	m := starlet.NewEmptyMachine()
+	m := starlet.NewDefault()
 	// set print function
 	printFunc, cmpFunc := getPrintCompareFunc(t)
 	m.SetPrintFunc(printFunc)
@@ -74,7 +74,7 @@ func Test_EmptyMachine_Run_LocalFile(t *testing.T) {
 }
 
 func Test_EmptyMachine_Run_LocalFileNonExist(t *testing.T) {
-	m := starlet.NewEmptyMachine()
+	m := starlet.NewDefault()
 	// set code
 	m.SetScript("notfound.star", nil, os.DirFS("example"))
 	// run
@@ -87,7 +87,7 @@ func Test_EmptyMachine_Run_LocalFileNonExist(t *testing.T) {
 }
 
 func Test_EmptyMachine_Run_FSNonExist(t *testing.T) {
-	m := starlet.NewEmptyMachine()
+	m := starlet.NewDefault()
 	// set code
 	m.SetScript("aloha.star", nil, os.DirFS("not-found-dir"))
 	// run
@@ -100,7 +100,7 @@ func Test_EmptyMachine_Run_FSNonExist(t *testing.T) {
 }
 
 func Test_EmptyMachine_Run_LoadFunc(t *testing.T) {
-	m := starlet.NewEmptyMachine()
+	m := starlet.NewDefault()
 	// set code
 	code := `load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]`
 	m.SetScript("test.star", []byte(code), os.DirFS("example"))
@@ -118,7 +118,7 @@ func Test_EmptyMachine_Run_LoadFunc(t *testing.T) {
 }
 
 func Test_EmptyMachine_Run_LoadNonExist(t *testing.T) {
-	m := starlet.NewEmptyMachine()
+	m := starlet.NewDefault()
 	// set code
 	code := `load("nonexist.star", "a")`
 	m.SetScript("test.star", []byte(code), os.DirFS("example"))
@@ -133,7 +133,7 @@ func Test_EmptyMachine_Run_LoadNonExist(t *testing.T) {
 }
 
 func Test_Machine_Run_Globals(t *testing.T) {
-	m := starlet.NewMachine(map[string]interface{}{
+	m := starlet.NewWithNames(map[string]interface{}{
 		"a": 2,
 	}, nil, nil)
 	// set code
@@ -152,7 +152,7 @@ func Test_Machine_Run_Globals(t *testing.T) {
 }
 
 func Test_Machine_Run_File_Globals(t *testing.T) {
-	m := starlet.NewMachine(map[string]interface{}{
+	m := starlet.NewWithNames(map[string]interface{}{
 		"magic_number": 30,
 	}, nil, nil)
 	// set code
@@ -181,7 +181,7 @@ func Test_Machine_Run_File_Globals(t *testing.T) {
 }
 
 func Test_Machine_Run_Load_Use_Globals(t *testing.T) {
-	m := starlet.NewMachine(map[string]interface{}{
+	m := starlet.NewWithNames(map[string]interface{}{
 		"magic_number": 50,
 	}, nil, nil)
 	// set code
@@ -202,7 +202,7 @@ func Test_Machine_Run_Load_Use_Globals(t *testing.T) {
 }
 
 func Test_Machine_Run_File_Missing_Globals(t *testing.T) {
-	m := starlet.NewMachine(map[string]interface{}{
+	m := starlet.NewWithNames(map[string]interface{}{
 		"other_number": 30,
 	}, nil, nil)
 	// set code
@@ -213,7 +213,7 @@ func Test_Machine_Run_File_Missing_Globals(t *testing.T) {
 }
 
 func Test_Machine_Run_PreloadModules(t *testing.T) {
-	m := starlet.NewMachine(nil, []string{"go_idiomatic"}, nil)
+	m := starlet.NewWithNames(nil, []string{"go_idiomatic"}, nil)
 	// set code
 	code := `a = nil == None`
 	m.SetScript("test.star", []byte(code), nil)
@@ -230,7 +230,7 @@ func Test_Machine_Run_PreloadModules(t *testing.T) {
 }
 
 func Test_Machine_Run_LazyloadModules(t *testing.T) {
-	m := starlet.NewMachine(nil, nil, []string{"go_idiomatic"})
+	m := starlet.NewWithNames(nil, nil, []string{"go_idiomatic"})
 	// set code
 	code := `
 load("go_idiomatic", "nil")
@@ -256,7 +256,7 @@ func Test_Machine_Run_Load_Shadow_Globals(t *testing.T) {
 		starlet.DisableGlobalReassign()
 	}()
 	// create machine
-	m := starlet.NewMachine(map[string]interface{}{"fibonacci": 123}, nil, nil)
+	m := starlet.NewWithNames(map[string]interface{}{"fibonacci": 123}, nil, nil)
 	// set code
 	code := `
 x = fibonacci * 2
@@ -281,7 +281,7 @@ z = fib(10)[-1]
 
 func Test_Machine_Run_Load_With_Globals(t *testing.T) {
 	// create machine
-	m := starlet.NewMachine(map[string]interface{}{"num": 10}, nil, nil)
+	m := starlet.NewWithNames(map[string]interface{}{"num": 10}, nil, nil)
 	// set code
 	code := `
 x = num * 2
@@ -432,7 +432,7 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 				}
 			}()
 
-			m := starlet.NewMachine(tc.globals, tc.preloadMods, tc.lazyMods)
+			m := starlet.NewWithNames(tc.globals, tc.preloadMods, tc.lazyMods)
 			m.SetPrintFunc(getLogPrintFunc(t))
 			m.SetScript("test.star", []byte(tc.code), tc.modFS)
 			_, err := m.Run(context.Background())
