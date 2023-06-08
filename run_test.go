@@ -10,14 +10,14 @@ import (
 	"go.starlark.net/starlark"
 )
 
-func Test_EmptyMachine_Run_NoCode(t *testing.T) {
+func Test_DefaultMachine_Run_NoCode(t *testing.T) {
 	m := starlet.NewDefault()
 	// run with empty script
 	_, err := m.Run(context.Background())
 	expectErr(t, err, `starlet: run: no script to execute`)
 }
 
-func Test_EmptyMachine_Run_NoSpecificFile(t *testing.T) {
+func Test_DefaultMachine_Run_NoSpecificFile(t *testing.T) {
 	m := starlet.NewDefault()
 	m.SetScript("", nil, os.DirFS("example"))
 	// run with no specific file name
@@ -25,7 +25,7 @@ func Test_EmptyMachine_Run_NoSpecificFile(t *testing.T) {
 	expectErr(t, err, `starlet: run: no specific file`)
 }
 
-func Test_EmptyMachine_Run_APlusB(t *testing.T) {
+func Test_DefaultMachine_Run_APlusB(t *testing.T) {
 	m := starlet.NewDefault()
 	code := `a = 1 + 2`
 	m.SetScript("a_plus_b.star", []byte(code), nil)
@@ -40,7 +40,7 @@ func Test_EmptyMachine_Run_APlusB(t *testing.T) {
 	}
 }
 
-func Test_EmptyMachine_Run_HelloWorld(t *testing.T) {
+func Test_DefaultMachine_Run_HelloWorld(t *testing.T) {
 	m := starlet.NewDefault()
 	// set print function
 	printFunc, cmpFunc := getPrintCompareFunc(t)
@@ -57,7 +57,7 @@ func Test_EmptyMachine_Run_HelloWorld(t *testing.T) {
 	cmpFunc("Aloha, Honua!\n")
 }
 
-func Test_EmptyMachine_Run_LocalFile(t *testing.T) {
+func Test_DefaultMachine_Run_LocalFile(t *testing.T) {
 	m := starlet.NewDefault()
 	// set print function
 	printFunc, cmpFunc := getPrintCompareFunc(t)
@@ -73,7 +73,7 @@ func Test_EmptyMachine_Run_LocalFile(t *testing.T) {
 	cmpFunc("Aloha, Honua!\n")
 }
 
-func Test_EmptyMachine_Run_LocalFileNonExist(t *testing.T) {
+func Test_DefaultMachine_Run_LocalFileNonExist(t *testing.T) {
 	m := starlet.NewDefault()
 	// set code
 	m.SetScript("notfound.star", nil, os.DirFS("example"))
@@ -86,7 +86,7 @@ func Test_EmptyMachine_Run_LocalFileNonExist(t *testing.T) {
 	}
 }
 
-func Test_EmptyMachine_Run_FSNonExist(t *testing.T) {
+func Test_DefaultMachine_Run_FSNonExist(t *testing.T) {
 	m := starlet.NewDefault()
 	// set code
 	m.SetScript("aloha.star", nil, os.DirFS("not-found-dir"))
@@ -99,7 +99,7 @@ func Test_EmptyMachine_Run_FSNonExist(t *testing.T) {
 	}
 }
 
-func Test_EmptyMachine_Run_LoadFunc(t *testing.T) {
+func Test_DefaultMachine_Run_LoadFunc(t *testing.T) {
 	m := starlet.NewDefault()
 	// set code
 	code := `load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]`
@@ -117,7 +117,7 @@ func Test_EmptyMachine_Run_LoadFunc(t *testing.T) {
 	}
 }
 
-func Test_EmptyMachine_Run_LoadNonExist(t *testing.T) {
+func Test_DefaultMachine_Run_LoadNonExist(t *testing.T) {
 	m := starlet.NewDefault()
 	// set code
 	code := `load("nonexist.star", "a")`
