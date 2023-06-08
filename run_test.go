@@ -133,6 +133,26 @@ func Test_Machine_Run_PreloadModules(t *testing.T) {
 	}
 }
 
+func Test_Machine_Run_AllowedModules(t *testing.T) {
+	m := starlet.NewMachine(nil, nil, []starlet.ModuleName{starlet.ModuleGoIdiomatic})
+	// set code
+	code := `
+load("go_idiomatic", "nil")
+a = nil == None
+`
+	m.SetScript("test.star", []byte(code), nil)
+	// run
+	out, err := m.Run(context.Background())
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if out == nil {
+		t.Errorf("unexpected nil output")
+	} else if out["a"].(bool) != true {
+		t.Errorf("unexpected output: %v", out)
+	}
+}
+
 func Test_Machine_Run_LoadErrors(t *testing.T) {
 	testCases := []struct {
 		name        string
@@ -142,12 +162,20 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 		code        string
 		expectedErr string
 	}{
+		// for globals
 		{
 			name:        "Missed Globals Variable",
 			globals:     map[string]interface{}{"a": 2},
 			code:        `b = c * 10`,
 			expectedErr: `starlet: exec: test.star:1:5: undefined: c`,
 		},
+		{
+			name:        "Wrong Type Globals Variable",
+			globals:     map[string]interface{}{"a": 2},
+			code:        `b = a + "10"`,
+			expectedErr: `starlet: exec: unknown binary op: int + string`,
+		},
+		// for preload modules
 		{
 			name:        "Missed Preload Modules",
 			preloadMods: []starlet.ModuleName{},
@@ -160,6 +188,7 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 			code:        `a = nil == None`,
 			expectedErr: `starlet: preload modules: load module "nonexist": module not found`,
 		},
+		// for allow modules
 		{
 			name:        "Missed load() for Builtin Modules",
 			allowMods:   []starlet.ModuleName{starlet.ModuleGoIdiomatic},
