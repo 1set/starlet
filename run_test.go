@@ -2,6 +2,7 @@ package starlet_test
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"os"
 	"starlet"
@@ -442,7 +443,10 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 }
 
 func Test_Machine_Run_Loaders(t *testing.T) {
-	testFS := os.DirFS("example")
+	var (
+		testFS               = os.DirFS("example")
+		failName, failLoader = getErrorModuleLoader()
+	)
 	testCases := []struct {
 		name        string
 		globals     map[string]interface{}
@@ -455,7 +459,7 @@ func Test_Machine_Run_Loaders(t *testing.T) {
 	}{
 		{
 			name:    "Nil Loaders",
-			globals: map[string]interface{}{},
+			globals: nil,
 			preList: nil,
 			lazyMap: nil,
 			code:    `val = 1 + 2`,
@@ -493,6 +497,27 @@ func Test_Machine_Run_Loaders(t *testing.T) {
 			code:    `load("gogo", "nil", "true"); val = nil != true`,
 			cmpResult: func(val interface{}) bool {
 				return val.(bool) == true
+			},
+		},
+		{
+			name:        "Preload Module Fails",
+			preList:     starlet.ModuleLoaderList{failLoader},
+			code:        `val = 1 + 2`,
+			modFS:       testFS,
+			expectedErr: `starlet: failed to load module: invalid module loader`,
+		},
+		{
+			name:        "LazyLoad Module Fails",
+			lazyMap:     starlet.ModuleLoaderMap{failName: failLoader},
+			code:        fmt.Sprintf(`load(%q, "nil", "true"); val = nil != true`, failName),
+			expectedErr: fmt.Sprintf(`starlet: exec: cannot load %s: invalid module loader`, failName),
+		},
+		{
+			name:    "LazyLoad Module Unload",
+			lazyMap: starlet.ModuleLoaderMap{failName: failLoader},
+			code:    `val = 2 * 10`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 20
 			},
 		},
 	}
