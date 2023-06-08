@@ -127,7 +127,7 @@ func Test_Machine_Run_PreloadModules(t *testing.T) {
 	}
 }
 
-func Test_Machine_Run_PreloadModules_Miss(t *testing.T) {
+func Test_Machine_Run_PreloadModules_MissLoad(t *testing.T) {
 	m := starlet.NewMachine(nil, []starlet.ModuleName{}, nil)
 	// set code
 	code := `a = nil == None`
@@ -145,4 +145,24 @@ func Test_Machine_Run_PreloadModules_NonExist(t *testing.T) {
 	// run
 	_, err := m.Run(context.Background())
 	expectErr(t, err, `starlet: preload modules: load module "nonexist": module not found`)
+}
+
+func Test_Machine_Run_LoadBuiltinModules_MissLoad(t *testing.T) {
+	m := starlet.NewMachine(nil, nil, []starlet.ModuleName{starlet.ModuleGoIdiomatic})
+	// set code
+	code := `a = nil == None`
+	m.SetScript("test.star", []byte(code), nil)
+	// run
+	_, err := m.Run(context.Background())
+	expectErr(t, err, `starlet: exec: test.star:1:5: undefined: nil`)
+}
+
+func Test_Machine_Run_LoadBuiltinModules_NonExistModule(t *testing.T) {
+	m := starlet.NewMachine(nil, nil, []starlet.ModuleName{"nonexist"})
+	// set code
+	code := `load("nonexist", "nil"); a = nil == None`
+	m.SetScript("test.star", []byte(code), nil)
+	// run
+	_, err := m.Run(context.Background())
+	expectErr(t, err, `starlet: exec: cannot load nonexist: no file system given`)
 }
