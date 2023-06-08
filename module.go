@@ -52,6 +52,11 @@ func ListBuiltinModules() []string {
 	return modules
 }
 
+// GetBuiltinModule returns the builtin module with the given name.
+func GetBuiltinModule(name string) ModuleLoader {
+	return allBuiltinModules[name]
+}
+
 // ModuleLoader is a function that loads a Starlark module and returns the module's string dict.
 type ModuleLoader func() (starlark.StringDict, error)
 

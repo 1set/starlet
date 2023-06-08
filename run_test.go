@@ -475,6 +475,26 @@ func Test_Machine_Run_Loaders(t *testing.T) {
 				return val.(int64) == 7
 			},
 		},
+		{
+			name:    "Preload Module: Go",
+			globals: map[string]interface{}{},
+			preList: starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic")},
+			lazyMap: starlet.ModuleLoaderMap{},
+			code:    `val = nil != true`,
+			cmpResult: func(val interface{}) bool {
+				return val.(bool) == true
+			},
+		},
+		{
+			name:    "LazyLoad Module: Go",
+			globals: map[string]interface{}{},
+			preList: starlet.ModuleLoaderList{},
+			lazyMap: starlet.ModuleLoaderMap{"gogo": starlet.GetBuiltinModule("go_idiomatic")},
+			code:    `load("gogo", "nil", "true"); val = nil != true`,
+			cmpResult: func(val interface{}) bool {
+				return val.(bool) == true
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -488,7 +508,10 @@ func Test_Machine_Run_Loaders(t *testing.T) {
 			if tc.expectedErr != "" {
 				expectErr(t, err, tc.expectedErr)
 				return
+			} else if err != nil {
+				t.Errorf("Expected no errors, got error: %v", err)
 			}
+
 			if tc.cmpResult != nil {
 				if out == nil {
 					t.Errorf("Unexpected empty result: %v", out)
