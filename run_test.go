@@ -229,7 +229,7 @@ func Test_Machine_Run_PreloadModules(t *testing.T) {
 	}
 }
 
-func Test_Machine_Run_AllowedModules(t *testing.T) {
+func Test_Machine_Run_LazyloadModules(t *testing.T) {
 	m := starlet.NewMachine(nil, nil, []string{"go_idiomatic"})
 	// set code
 	code := `
@@ -343,22 +343,22 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 			expectedErr:   `starlet: module "nonexist": module not found`,
 			expectedPanic: true,
 		},
-		// for allow modules
+		// for lazyload modules
 		{
-			name:        "Missed load() for Builtin Modules",
+			name:        "Missed load() for LazyLoad Modules",
 			lazyMods:    []string{"go_idiomatic"},
 			code:        `a = nil == None`,
 			expectedErr: `starlet: exec: test.star:1:5: undefined: nil`,
 		},
 		{
-			name:          "NonExist Builtin Modules",
+			name:          "NonExist LazyLoad Modules",
 			lazyMods:      []string{"nonexist"},
 			code:          `load("nonexist", "nil"); a = nil == None`,
 			expectedErr:   `starlet: module "nonexist": module not found`,
 			expectedPanic: true,
 		},
 		{
-			name:        "NonExist Function in Builtin Modules",
+			name:        "NonExist Function in LazyLoad Modules",
 			lazyMods:    []string{"go_idiomatic"},
 			code:        `load("go_idiomatic", "fake"); a = fake == None`,
 			expectedErr: `starlet: exec: load: name fake not found in module go_idiomatic`,
