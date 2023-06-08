@@ -138,7 +138,7 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 		name        string
 		globals     map[string]interface{}
 		preloadMods []starlet.ModuleName
-		builtinMods []starlet.ModuleName
+		allowMods   []starlet.ModuleName
 		code        string
 		expectedErr string
 	}{
@@ -162,21 +162,27 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 		},
 		{
 			name:        "Missed load() for Builtin Modules",
-			builtinMods: []starlet.ModuleName{starlet.ModuleGoIdiomatic},
+			allowMods:   []starlet.ModuleName{starlet.ModuleGoIdiomatic},
 			code:        `a = nil == None`,
 			expectedErr: `starlet: exec: test.star:1:5: undefined: nil`,
 		},
 		{
 			name:        "NonExist Builtin Modules",
-			builtinMods: []starlet.ModuleName{"nonexist"},
+			allowMods:   []starlet.ModuleName{"nonexist"},
 			code:        `load("nonexist", "nil"); a = nil == None`,
 			expectedErr: `starlet: exec: cannot load nonexist: no file system given`,
+		},
+		{
+			name:        "NonExist Function Builtin Modules",
+			allowMods:   []starlet.ModuleName{starlet.ModuleGoIdiomatic},
+			code:        `load("go_idiomatic", "fake"); a = fake == None`,
+			expectedErr: `starlet: exec: load: name fake not found in module go_idiomatic`,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			m := starlet.NewMachine(tc.globals, tc.preloadMods, tc.builtinMods)
+			m := starlet.NewMachine(tc.globals, tc.preloadMods, tc.allowMods)
 			m.SetScript("test.star", []byte(tc.code), nil)
 			_, err := m.Run(context.Background())
 			expectErr(t, err, tc.expectedErr)
