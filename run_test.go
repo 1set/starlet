@@ -180,6 +180,17 @@ func Test_Machine_Run_File_Globals(t *testing.T) {
 	}
 }
 
+func Test_Machine_Run_File_Missing_Globals(t *testing.T) {
+	m := starlet.NewMachine(map[string]interface{}{
+		"other_number": 30,
+	}, nil, nil)
+	// set code
+	m.SetScript("magic.star", nil, os.DirFS("example"))
+	// run
+	_, err := m.Run(context.Background())
+	expectErr(t, err, `starlet: exec: magic.star:5:32: undefined: magic_number`)
+}
+
 func Test_Machine_Run_PreloadModules(t *testing.T) {
 	m := starlet.NewMachine(nil, []starlet.ModuleName{starlet.ModuleGoIdiomatic}, nil)
 	// set code

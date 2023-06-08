@@ -87,9 +87,9 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 	case sourceCodeTypeContent:
 		res, err = starlark.ExecFile(thread, scriptName, m.scriptContent, predeclared)
 	case sourceCodeTypeFSName:
-		rd, err := m.scriptFS.Open(scriptName)
-		if err != nil {
-			return nil, fmt.Errorf("starlet: open: %w", err)
+		rd, e := m.scriptFS.Open(scriptName)
+		if e != nil {
+			return nil, fmt.Errorf("starlet: open: %w", e)
 		}
 		res, err = starlark.ExecFile(thread, scriptName, rd, predeclared)
 	}
