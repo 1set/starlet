@@ -1,5 +1,7 @@
 
 fibonacci = 123
+x = fibonacci * 2
+print("Z", x)
 
 load("fibonacci.star", "fibonacci")
 # load("fibonacci.star", "fibonacci")

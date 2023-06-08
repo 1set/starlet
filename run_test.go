@@ -144,6 +144,36 @@ a = nil == None
 	}
 }
 
+func Test_Machine_Run_Globals_Load(t *testing.T) {
+	// enable global reassign only for this test, if it's not enabled, it will fail for: local variable fibonacci referenced before assignment
+	starlet.EnableGlobalReassign()
+	defer func() {
+		starlet.DisableGlobalReassign()
+	}()
+	// create machine
+	m := starlet.NewMachine(map[string]interface{}{"fibonacci": 123}, nil, nil)
+	// set code
+	code := `
+x = fibonacci * 2
+load("fibonacci.star", "fibonacci")
+load("fibonacci.star", fib="fibonacci")
+y = fibonacci(10)[-1]
+z = fib(10)[-1]
+`
+	m.SetScript("test.star", []byte(code), os.DirFS("example"))
+	// run
+	out, err := m.Run(context.Background())
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	// check result
+	if out == nil {
+		t.Errorf("unexpected nil output")
+	} else if out["x"] != int64(246) || out["y"] != int64(55) || out["z"] != int64(55) {
+		t.Errorf("unexpected output: %v", out)
+	}
+}
+
 func Test_Machine_Run_LoadErrors(t *testing.T) {
 	testFS := os.DirFS("example")
 	testCases := []struct {
@@ -238,12 +268,11 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 		},
 		// for globals + user modules
 		{
-			name:    "User Modules Override Globals",
-			globals: map[string]interface{}{"fibonacci": 2},
-			//code:        `x = fibonacci * 10; load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]; print(x, val)`,
-			code:        `x = fibonacci * 10; print(x)`,
+			name:        "User Modules Override Globals",
+			globals:     map[string]interface{}{"fibonacci": 2},
+			code:        `x = fibonacci * 10; load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]; print(x, val)`,
 			modFS:       testFS,
-			expectedErr: `starlet: exec: test.star:1:7: undefined: fibonacci`,
+			expectedErr: `starlet: exec: local variable fibonacci referenced before assignment`,
 		},
 	}
 
