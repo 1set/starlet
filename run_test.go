@@ -318,6 +318,12 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 	}{
 		// for globals
 		{
+			name:        "Unsupport Globals Type",
+			globals:     map[string]interface{}{"a": make(chan int)},
+			code:        `b = a`,
+			expectedErr: `starlet: convert: type chan int is not a supported starlark type`,
+		},
+		{
 			name:        "Missed Globals Variable",
 			globals:     map[string]interface{}{"a": 2},
 			code:        `b = c * 10`,
