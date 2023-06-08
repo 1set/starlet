@@ -38,7 +38,7 @@ func expectErr(t *testing.T, err error, expected ...string) {
 	// compare
 	act := err.Error()
 	if prefix != "" && !strings.HasPrefix(act, prefix) {
-		t.Errorf(`expected error prefix: %q, got: %q`, expected, act)
+		t.Errorf(`expected error prefix: %q, got: %q`, prefix, act)
 		return
 	}
 	if suffix != "" && !strings.HasSuffix(act, suffix) {
@@ -59,4 +59,10 @@ func getPrintCompareFunc(t *testing.T) (starlet.PrintFunc, func(s string)) {
 				t.Errorf("expected print(): %q, got: %q", exp, act)
 			}
 		}
+}
+
+func getLogPrintFunc(t *testing.T) starlet.PrintFunc {
+	return func(thread *starlark.Thread, msg string) {
+		t.Logf("[⭐ Log] %s", msg)
+	}
 }
