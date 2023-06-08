@@ -2,6 +2,7 @@ package starlet_test
 
 import (
 	"context"
+	"io/fs"
 	"os"
 	"starlet"
 	"testing"
@@ -72,16 +73,6 @@ func Test_EmptyMachine_Run_LoadFunc(t *testing.T) {
 	}
 }
 
-func Test_EmptyMachine_Run_LoadNoFS(t *testing.T) {
-	m := starlet.NewEmptyMachine()
-	// set code
-	code := `load("fibonacci.star", "fibonacci")`
-	m.SetScript("test.star", []byte(code), nil)
-	// run
-	_, err := m.Run(context.Background())
-	expectErr(t, err, `starlet: exec: cannot load fibonacci.star: no file system given`)
-}
-
 func Test_EmptyMachine_Run_LoadNonExist(t *testing.T) {
 	m := starlet.NewEmptyMachine()
 	// set code
@@ -91,9 +82,9 @@ func Test_EmptyMachine_Run_LoadNonExist(t *testing.T) {
 	_, err := m.Run(context.Background())
 	// check result
 	if isOnWindows {
-		expectErr(t, err, `starlet: exec: cannot load nonexist.star:`, `The system cannot find the file specified.`)
+		expectErr(t, err, `starlet: exec: cannot load nonexist.star: open`, `The system cannot find the file specified.`)
 	} else {
-		expectErr(t, err, `starlet: exec: cannot load nonexist.star:`, `: no such file or directory`)
+		expectErr(t, err, `starlet: exec: cannot load nonexist.star: open`, `: no such file or directory`)
 	}
 }
 
@@ -154,12 +145,14 @@ a = nil == None
 }
 
 func Test_Machine_Run_LoadErrors(t *testing.T) {
+	testFS := os.DirFS("example")
 	testCases := []struct {
 		name        string
 		globals     map[string]interface{}
 		preloadMods []starlet.ModuleName
 		allowMods   []starlet.ModuleName
 		code        string
+		modFS       fs.FS
 		expectedErr string
 	}{
 		// for globals
@@ -207,12 +200,30 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 			code:        `load("go_idiomatic", "fake"); a = fake == None`,
 			expectedErr: `starlet: exec: load: name fake not found in module go_idiomatic`,
 		},
+		// for load fs --- user modules
+		{
+			name:        "No FS for User Modules",
+			code:        `load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]`,
+			expectedErr: `starlet: exec: cannot load fibonacci.star: no file system given`,
+		},
+		{
+			name:        "Missed load() for User Modules",
+			code:        `val = fibonacci(10)[-1]`,
+			modFS:       testFS,
+			expectedErr: `starlet: exec: test.star:1:7: undefined: fibonacci`,
+		},
+		{
+			name:        "NonExist User Modules",
+			code:        `load("nonexist.star", "fibonacci"); val = fibonacci(10)[-1]`,
+			modFS:       testFS,
+			expectedErr: `starlet: exec: cannot load nonexist.star: open`,
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			m := starlet.NewMachine(tc.globals, tc.preloadMods, tc.allowMods)
-			m.SetScript("test.star", []byte(tc.code), nil)
+			m.SetScript("test.star", []byte(tc.code), tc.modFS)
 			_, err := m.Run(context.Background())
 			expectErr(t, err, tc.expectedErr)
 		})
