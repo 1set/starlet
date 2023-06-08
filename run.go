@@ -11,8 +11,17 @@ import (
 )
 
 var (
-	ErrNoCodeToRun    = errors.New("no code to run")
-	ErrModuleNotFound = errors.New("module not found")
+	ErrNoFileToRun         = errors.New("no specific file")
+	ErrNoScriptSourceToRun = errors.New("no script to execute")
+	ErrModuleNotFound      = errors.New("module not found")
+)
+
+type sourceCodeType uint8
+
+const (
+	sourceCodeTypeUnknown sourceCodeType = iota
+	sourceCodeTypeContent
+	sourceCodeTypeFSName
 )
 
 // Run runs the preset script with given globals and returns the result.
@@ -23,8 +32,22 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 	// TODO: handle panic, what about other defers?
 
 	// either script content or name and FS must be set
-	if !((m.scriptContent != nil) || (m.scriptName != "" && m.scriptFS != nil)) {
-		return nil, fmt.Errorf("starlet: run: %w", ErrNoCodeToRun)
+	var (
+		scriptName = m.scriptName
+		srcType    sourceCodeType
+	)
+	if m.scriptContent != nil {
+		srcType = sourceCodeTypeContent
+		if scriptName == "" {
+			scriptName = "eval.star"
+		}
+	} else if m.scriptFS != nil {
+		srcType = sourceCodeTypeFSName
+		if scriptName == "" {
+			return nil, fmt.Errorf("starlet: run: %w", ErrNoFileToRun)
+		}
+	} else {
+		return nil, fmt.Errorf("starlet: run: %w", ErrNoScriptSourceToRun)
 	}
 
 	// TODO: Assume: it's the first run -- for rerun, we need to reset the cache
@@ -32,36 +55,44 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 	// preset globals + preload modules -> predeclared
 	m.liveData = m.globals.Clone()
 	if err := m.loadBuiltinModules(m.preloadMods...); err != nil {
-		return nil, fmt.Errorf("starlet: load preload modules: %w", err)
+		return nil, fmt.Errorf("starlet: preload: %w", err)
 	}
 
 	// convert into starlark.StringDict as predeclared
 	predeclared, err := convert.MakeStringDict(m.liveData)
 	if err != nil {
-		return nil, fmt.Errorf("starlet: convert predeclared: %w", err)
+		return nil, fmt.Errorf("starlet: convert: %w", err)
 	}
 
 	// TODO: save or reuse thread
 	// cache load + printFunc -> thread
 	m.loadCache = &cache{
 		cache:    make(map[string]*entry),
+		loadMod:  m.loadAllowedModule,
 		readFile: m.readScriptFile,
 		globals:  predeclared,
 	}
 	thread := &starlark.Thread{
-		Load:  m.cacheLoader,
 		Print: m.printFunc,
+		Load: func(thread *starlark.Thread, module string) (starlark.StringDict, error) {
+			return m.loadCache.Load(module)
+		},
 	}
 
 	// TODO: run script with context and thread
 	// run
-	scriptName := m.scriptName
-	if scriptName == "" {
-		scriptName = "eval.star"
-	}
 	m.runTimes++
-
-	res, err := starlark.ExecFile(thread, scriptName, m.scriptContent, predeclared)
+	var res starlark.StringDict
+	switch srcType {
+	case sourceCodeTypeContent:
+		res, err = starlark.ExecFile(thread, scriptName, m.scriptContent, predeclared)
+	case sourceCodeTypeFSName:
+		rd, err := m.scriptFS.Open(scriptName)
+		if err != nil {
+			return nil, fmt.Errorf("starlet: open: %w", err)
+		}
+		res, err = starlark.ExecFile(thread, scriptName, rd, predeclared)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("starlet: exec: %w", err)
 	}
@@ -85,7 +116,9 @@ func (m *Machine) loadBuiltinModules(modules ...ModuleName) error {
 		}
 		// load module and merge into live data
 		if dict, err := loadModuleByName(mod); err != nil {
-			return fmt.Errorf("starlet: load module %q: %w", mod, err)
+			return fmt.Errorf("load module %q: %w", mod, err)
+		} else if dict == nil {
+			return fmt.Errorf("load module %q: %w", mod, ErrModuleNotFound)
 		} else {
 			m.liveData.MergeDict(dict)
 		}
@@ -107,22 +140,15 @@ func (m *Machine) readScriptFile(filename string) ([]byte, error) {
 	return ioutil.ReadAll(rd)
 }
 
-// cacheLoader is a starlark.Loader that loads modules from built-in modules and cache.
-func (m *Machine) cacheLoader(thread *starlark.Thread, module string) (starlark.StringDict, error) {
-	// TODO: what if module is already loaded?
+// loadAllowedModule loads a module by name if it's allowed.
+func (m *Machine) loadAllowedModule(name string) (starlark.StringDict, error) {
+	// TODO: check if module is already loaded as predeclared
 	for _, mod := range m.allowMods {
-		// find module by name
-		if string(mod) == module {
-			if dict, err := loadModuleByName(mod); err != nil {
-				return nil, fmt.Errorf("starlet: load module %q: %w", mod, err)
-			} else {
-				m.loadMod[mod] = struct{}{}
-				return dict, nil
-			}
+		if mod == ModuleName(name) {
+			// load module by name if it's allowed
+			return loadModuleByName(mod)
 		}
 	}
-
-	// built-in module not found
-	// TODO: maybe script module can't use built-in module -- refine cache things
-	return m.loadCache.Load(module)
+	// module not found
+	return nil, nil
 }

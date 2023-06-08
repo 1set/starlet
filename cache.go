@@ -9,7 +9,7 @@ import (
 	"go.starlark.net/starlark"
 )
 
-// The following code is copied from the starlark-go repo,
+// The following code is copied and modified from the starlark-go repo,
 // https://go.starlark.net/starlark and is Copyright 2017 the Bazel authors,
 // with a BSD 3-clause license (see the LICENSE file in that repo).
 // Original source code: https://github.com/google/starlark-go/blob/master/starlark/example_test.go#L211
@@ -22,7 +22,8 @@ type cache struct {
 	cacheMu  sync.Mutex
 	cache    map[string]*entry
 	globals  starlark.StringDict
-	readFile func(s string) ([]byte, error)
+	loadMod  func(s string) (starlark.StringDict, error) // load from built-in module first
+	readFile func(s string) ([]byte, error)              // and then from file system
 }
 
 type entry struct {
@@ -89,6 +90,19 @@ func (c *cache) doLoad(cc *cycleChecker, module string) (starlark.StringDict, er
 			return c.get(cc, module)
 		},
 	}
+
+	// 1: load from built-in module, the first field returns nil if not found
+	m, err := c.loadMod(module)
+	if err != nil {
+		// fail to load module
+		return nil, err
+	}
+	if m != nil {
+		// module found and loaded
+		return m, nil
+	}
+
+	// 2: load from source file
 	b, err := c.readFile(module)
 	if err != nil {
 		return nil, err
