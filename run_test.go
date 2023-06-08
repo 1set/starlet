@@ -440,3 +440,64 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 		})
 	}
 }
+
+func Test_Machine_Run_Loaders(t *testing.T) {
+	testFS := os.DirFS("example")
+	testCases := []struct {
+		name        string
+		globals     map[string]interface{}
+		preList     starlet.ModuleLoaderList
+		lazyMap     starlet.ModuleLoaderMap
+		code        string
+		modFS       fs.FS
+		expectedErr string
+		cmpResult   func(val interface{}) bool
+	}{
+		{
+			name:    "Nil Loaders",
+			globals: map[string]interface{}{},
+			preList: nil,
+			lazyMap: nil,
+			code:    `val = 1 + 2`,
+			modFS:   testFS,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 3
+			},
+		},
+		{
+			name:    "Empty Loaders",
+			globals: map[string]interface{}{},
+			preList: starlet.ModuleLoaderList{},
+			lazyMap: starlet.ModuleLoaderMap{},
+			code:    `val = 3 + 4`,
+			modFS:   testFS,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 7
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := starlet.NewWithLoaders(tc.globals, tc.preList, tc.lazyMap)
+			m.SetPrintFunc(getLogPrintFunc(t))
+			m.SetScript("test.star", []byte(tc.code), tc.modFS)
+			out, err := m.Run(context.Background())
+
+			// check result
+			if tc.expectedErr != "" {
+				expectErr(t, err, tc.expectedErr)
+				return
+			}
+			if tc.cmpResult != nil {
+				if out == nil {
+					t.Errorf("Unexpected empty result: %v", out)
+				} else if v, ok := out["val"]; !ok {
+					t.Errorf("Unexpected missing result: %v", out)
+				} else if !tc.cmpResult(v) {
+					t.Errorf("Unexpected result: %v", out)
+				}
+			}
+		})
+	}
+}
