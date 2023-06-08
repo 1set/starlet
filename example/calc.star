@@ -1,6 +1,10 @@
+
+fibonacci = 123
+
 load("fibonacci.star", "fibonacci")
-load("fibonacci.star", "fib_last")
+# load("fibonacci.star", "fibonacci")
+load("fibonacci.star", fib="fibonacci")
 
 f = fibonacci(10)
-print(f[-1])
-print(fib_last(20))
+print("A", f[-1])
+print("B", fib(10)[-1])

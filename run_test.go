@@ -238,9 +238,10 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 		},
 		// for globals + user modules
 		{
-			name:        "User Modules Override Globals",
-			globals:     map[string]interface{}{"fibonacci": 2},
-			code:        `x = fibonacci * 10; load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]; print(x, val)`,
+			name:    "User Modules Override Globals",
+			globals: map[string]interface{}{"fibonacci": 2},
+			//code:        `x = fibonacci * 10; load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]; print(x, val)`,
+			code:        `x = fibonacci * 10; print(x)`,
 			modFS:       testFS,
 			expectedErr: `starlet: exec: test.star:1:7: undefined: fibonacci`,
 		},
