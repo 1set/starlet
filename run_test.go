@@ -2,6 +2,7 @@ package starlet_test
 
 import (
 	"context"
+	"go.starlark.net/starlark"
 	"io/fs"
 	"os"
 	"starlet"
@@ -46,6 +47,22 @@ func Test_EmptyMachine_Run_HelloWorld(t *testing.T) {
 	// set code
 	code := `print("Aloha, Honua!")`
 	m.SetScript("aloha.star", []byte(code), nil)
+	// run
+	_, err := m.Run(context.Background())
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	// compare
+	cmpFunc("Aloha, Honua!\n")
+}
+
+func Test_EmptyMachine_Run_LocalFile(t *testing.T) {
+	m := starlet.NewEmptyMachine()
+	// set print function
+	printFunc, cmpFunc := getPrintCompareFunc(t)
+	m.SetPrintFunc(printFunc)
+	// set code
+	m.SetScript("aloha.star", nil, os.DirFS("example"))
 	// run
 	_, err := m.Run(context.Background())
 	if err != nil {
@@ -107,6 +124,36 @@ func Test_Machine_Run_Globals(t *testing.T) {
 	}
 }
 
+func Test_Machine_Run_File_Globals(t *testing.T) {
+	m := starlet.NewMachine(map[string]interface{}{
+		"magic_number": 30,
+	}, nil, nil)
+	// set code
+	m.SetScript("magic.star", nil, os.DirFS("example"))
+	// run
+	out, err := m.Run(context.Background())
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if out == nil {
+		t.Errorf("unexpected nil output")
+	} else if f, ok := out["custom"]; !ok {
+		t.Errorf("got no func, unexpected output: %v", out)
+	} else if fn, ok := f.(*starlark.Function); !ok {
+		t.Errorf("unexpected output: %v", out)
+	} else {
+		t.Logf("function: %v", fn)
+		//// call function
+		//r, err := fn.Call(context.Background(), []interface{}{int64(10)})
+		//if err != nil {
+		//	t.Errorf("unexpected error: %v", err)
+		//}
+		//if r != int64(40) {
+		//	t.Errorf("unexpected result: %v", r)
+		//}
+	}
+}
+
 func Test_Machine_Run_PreloadModules(t *testing.T) {
 	m := starlet.NewMachine(nil, []starlet.ModuleName{starlet.ModuleGoIdiomatic}, nil)
 	// set code
@@ -144,7 +191,7 @@ a = nil == None
 	}
 }
 
-func Test_Machine_Run_Globals_Load(t *testing.T) {
+func Test_Machine_Run_Load_Shadow_Globals(t *testing.T) {
 	// enable global reassign only for this test, if it's not enabled, it will fail for: local variable fibonacci referenced before assignment
 	starlet.EnableGlobalReassign()
 	defer func() {
@@ -170,6 +217,31 @@ z = fib(10)[-1]
 	if out == nil {
 		t.Errorf("unexpected nil output")
 	} else if out["x"] != int64(246) || out["y"] != int64(55) || out["z"] != int64(55) {
+		t.Errorf("unexpected output: %v", out)
+	}
+}
+
+func Test_Machine_Run_Load_With_Globals(t *testing.T) {
+	// create machine
+	m := starlet.NewMachine(map[string]interface{}{"num": 10}, nil, nil)
+	// set code
+	code := `
+x = num * 2
+load("fibonacci.star", "fibonacci")
+load("fibonacci.star", fib="fibonacci")
+y = fibonacci(num)[-1]
+z = fib(num)[-1]
+`
+	m.SetScript("test.star", []byte(code), os.DirFS("example"))
+	// run
+	out, err := m.Run(context.Background())
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	// check result
+	if out == nil {
+		t.Errorf("unexpected nil output")
+	} else if out["x"] != int64(20) || out["y"] != int64(55) || out["z"] != int64(55) {
 		t.Errorf("unexpected output: %v", out)
 	}
 }
