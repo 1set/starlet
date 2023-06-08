@@ -180,7 +180,7 @@ func Test_Machine_Run_File_Globals(t *testing.T) {
 	}
 }
 
-func Test_Machine_Run_Load_Globals(t *testing.T) {
+func Test_Machine_Run_Load_Use_Globals(t *testing.T) {
 	m := starlet.NewMachine(map[string]interface{}{
 		"magic_number": 50,
 	}, nil, nil)
@@ -195,7 +195,7 @@ func Test_Machine_Run_Load_Globals(t *testing.T) {
 	if out == nil {
 		t.Errorf("unexpected nil output")
 	} else if f, ok := out["val"]; !ok {
-		t.Errorf("got value, unexpected output: %v", out)
+		t.Errorf("got no value, unexpected output: %v", out)
 	} else if f != "Custom[50]" {
 		t.Errorf("unexpected output: %v", out)
 	}
