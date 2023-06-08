@@ -213,6 +213,12 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 			expectedErr: `starlet: exec: test.star:1:7: undefined: fibonacci`,
 		},
 		{
+			name:        "Duplicate load() for User Modules",
+			code:        `load("fibonacci.star", "fibonacci"); load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]`,
+			modFS:       testFS,
+			expectedErr: `starlet: exec: test.star:1:62: cannot reassign top-level fibonacci`,
+		},
+		{
 			name:        "NonExist User Modules",
 			code:        `load("nonexist.star", "fibonacci"); val = fibonacci(10)[-1]`,
 			modFS:       testFS,
@@ -230,8 +236,17 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 			modFS:       testFS,
 			expectedErr: `starlet: exec: load: name fake not found in module fibonacci.star`,
 		},
+		// for globals + user modules
+		{
+			name:    "User Modules Override Globals",
+			globals: map[string]interface{}{"fibonacci": 2},
+			code:    `load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]`,
+			modFS:   testFS,
+			//expectedErr: `starlet: exec: test.star:1:7: undefined: fibonacci`,
+		},
 	}
 
+	//starlet.EnableGlobalReassign()
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			m := starlet.NewMachine(tc.globals, tc.preloadMods, tc.allowMods)
