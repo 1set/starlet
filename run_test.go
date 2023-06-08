@@ -93,7 +93,7 @@ func Test_EmptyMachine_Run_FSNonExist(t *testing.T) {
 	// run
 	_, err := m.Run(context.Background())
 	if isOnWindows {
-		expectErr(t, err, `starlet: open: open`, `The system cannot find the file specified.`)
+		expectErr(t, err, `starlet: open: open`, `The system cannot find the path specified.`)
 	} else {
 		expectErr(t, err, `starlet: open: open`, `: no such file or directory`)
 	}
