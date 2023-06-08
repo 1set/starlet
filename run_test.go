@@ -180,8 +180,40 @@ func Test_Machine_Run_File_Globals(t *testing.T) {
 	}
 }
 
+func Test_Machine_Run_Load_Use_Globals(t *testing.T) {
+	m := starlet.NewMachine(map[string]interface{}{
+		"magic_number": 50,
+	}, nil, nil)
+	// set code
+	code := `load("magic.star", "custom"); val = custom()`
+	m.SetScript("dummy.star", []byte(code), os.DirFS("example"))
+	// run
+	out, err := m.Run(context.Background())
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if out == nil {
+		t.Errorf("unexpected nil output")
+	} else if f, ok := out["val"]; !ok {
+		t.Errorf("got no value, unexpected output: %v", out)
+	} else if f != "Custom[50]" {
+		t.Errorf("unexpected output: %v", out)
+	}
+}
+
+func Test_Machine_Run_File_Missing_Globals(t *testing.T) {
+	m := starlet.NewMachine(map[string]interface{}{
+		"other_number": 30,
+	}, nil, nil)
+	// set code
+	m.SetScript("magic.star", nil, os.DirFS("example"))
+	// run
+	_, err := m.Run(context.Background())
+	expectErr(t, err, `starlet: exec: magic.star:5:32: undefined: magic_number`)
+}
+
 func Test_Machine_Run_PreloadModules(t *testing.T) {
-	m := starlet.NewMachine(nil, []starlet.ModuleName{starlet.ModuleGoIdiomatic}, nil)
+	m := starlet.NewMachine(nil, []string{"go_idiomatic"}, nil)
 	// set code
 	code := `a = nil == None`
 	m.SetScript("test.star", []byte(code), nil)
@@ -197,8 +229,8 @@ func Test_Machine_Run_PreloadModules(t *testing.T) {
 	}
 }
 
-func Test_Machine_Run_AllowedModules(t *testing.T) {
-	m := starlet.NewMachine(nil, nil, []starlet.ModuleName{starlet.ModuleGoIdiomatic})
+func Test_Machine_Run_LazyloadModules(t *testing.T) {
+	m := starlet.NewMachine(nil, nil, []string{"go_idiomatic"})
 	// set code
 	code := `
 load("go_idiomatic", "nil")
@@ -275,15 +307,22 @@ z = fib(num)[-1]
 func Test_Machine_Run_LoadErrors(t *testing.T) {
 	testFS := os.DirFS("example")
 	testCases := []struct {
-		name        string
-		globals     map[string]interface{}
-		preloadMods []starlet.ModuleName
-		allowMods   []starlet.ModuleName
-		code        string
-		modFS       fs.FS
-		expectedErr string
+		name          string
+		globals       map[string]interface{}
+		preloadMods   []string
+		lazyMods      []string
+		code          string
+		modFS         fs.FS
+		expectedErr   string
+		expectedPanic bool
 	}{
 		// for globals
+		{
+			name:        "Unsupport Globals Type",
+			globals:     map[string]interface{}{"a": make(chan int)},
+			code:        `b = a`,
+			expectedErr: `starlet: convert: type chan int is not a supported starlark type`,
+		},
 		{
 			name:        "Missed Globals Variable",
 			globals:     map[string]interface{}{"a": 2},
@@ -299,32 +338,34 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 		// for preload modules
 		{
 			name:        "Missed Preload Modules",
-			preloadMods: []starlet.ModuleName{},
+			preloadMods: []string{},
 			code:        `a = nil == None`,
 			expectedErr: `starlet: exec: test.star:1:5: undefined: nil`,
 		},
 		{
-			name:        "NonExist Preload Modules",
-			preloadMods: []starlet.ModuleName{"nonexist"},
-			code:        `a = nil == None`,
-			expectedErr: `starlet: preload: load module "nonexist": module not found`,
+			name:          "NonExist Preload Modules",
+			preloadMods:   []string{"nonexist"},
+			code:          `a = nil == None`,
+			expectedErr:   `starlet: module "nonexist": module not found`,
+			expectedPanic: true,
 		},
-		// for allow modules
+		// for lazyload modules
 		{
-			name:        "Missed load() for Builtin Modules",
-			allowMods:   []starlet.ModuleName{starlet.ModuleGoIdiomatic},
+			name:        "Missed load() for LazyLoad Modules",
+			lazyMods:    []string{"go_idiomatic"},
 			code:        `a = nil == None`,
 			expectedErr: `starlet: exec: test.star:1:5: undefined: nil`,
 		},
 		{
-			name:        "NonExist Builtin Modules",
-			allowMods:   []starlet.ModuleName{"nonexist"},
-			code:        `load("nonexist", "nil"); a = nil == None`,
-			expectedErr: `starlet: exec: cannot load nonexist: no file system given`,
+			name:          "NonExist LazyLoad Modules",
+			lazyMods:      []string{"nonexist"},
+			code:          `load("nonexist", "nil"); a = nil == None`,
+			expectedErr:   `starlet: module "nonexist": module not found`,
+			expectedPanic: true,
 		},
 		{
-			name:        "NonExist Function in Builtin Modules",
-			allowMods:   []starlet.ModuleName{starlet.ModuleGoIdiomatic},
+			name:        "NonExist Function in LazyLoad Modules",
+			lazyMods:    []string{"go_idiomatic"},
 			code:        `load("go_idiomatic", "fake"); a = fake == None`,
 			expectedErr: `starlet: exec: load: name fake not found in module go_idiomatic`,
 		},
@@ -378,7 +419,20 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 	//starlet.EnableGlobalReassign()
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			m := starlet.NewMachine(tc.globals, tc.preloadMods, tc.allowMods)
+			defer func() {
+				if r := recover(); r != nil {
+					err := r.(error)
+					if !tc.expectedPanic {
+						t.Errorf("Unexpected panic: %v", err)
+					} else {
+						expectErr(t, err, tc.expectedErr)
+					}
+				} else if tc.expectedPanic {
+					t.Errorf("Expected panic, but got none")
+				}
+			}()
+
+			m := starlet.NewMachine(tc.globals, tc.preloadMods, tc.lazyMods)
 			m.SetPrintFunc(getLogPrintFunc(t))
 			m.SetScript("test.star", []byte(tc.code), tc.modFS)
 			_, err := m.Run(context.Background())
