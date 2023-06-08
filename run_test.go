@@ -195,7 +195,7 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 			expectedErr: `starlet: exec: cannot load nonexist: no file system given`,
 		},
 		{
-			name:        "NonExist Function Builtin Modules",
+			name:        "NonExist Function in Builtin Modules",
 			allowMods:   []starlet.ModuleName{starlet.ModuleGoIdiomatic},
 			code:        `load("go_idiomatic", "fake"); a = fake == None`,
 			expectedErr: `starlet: exec: load: name fake not found in module go_idiomatic`,
@@ -217,6 +217,18 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 			code:        `load("nonexist.star", "fibonacci"); val = fibonacci(10)[-1]`,
 			modFS:       testFS,
 			expectedErr: `starlet: exec: cannot load nonexist.star: open`,
+		},
+		{
+			name:        "NonExist Function in User Modules",
+			code:        `load("fibonacci.star", "fake"); val = fake(10)[-1]`,
+			modFS:       testFS,
+			expectedErr: `starlet: exec: load: name fake not found in module fibonacci.star`,
+		},
+		{
+			name:        "Existing and NonExist Function in User Modules",
+			code:        `load("fibonacci.star", "fibonacci", "fake"); val = fibonacci(10)[-1]`,
+			modFS:       testFS,
+			expectedErr: `starlet: exec: load: name fake not found in module fibonacci.star`,
 		},
 	}
 
