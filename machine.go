@@ -11,6 +11,10 @@ import (
 // If nil, the default `fmt.Fprintln(os.Stderr, msg)` will be used instead.
 type PrintFunc func(thread *starlark.Thread, msg string)
 
+// LoadFunc is a function that tells Starlark how to find and load other scripts
+// using the load() function. If you don't use load() in your scripts, you can pass in nil.
+type LoadFunc func(thread *starlark.Thread, module string) (starlark.StringDict, error)
+
 // Machine is a wrapper of Starlark runtime environments.
 type Machine struct {
 	mu sync.RWMutex
