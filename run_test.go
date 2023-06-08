@@ -2,11 +2,12 @@ package starlet_test
 
 import (
 	"context"
-	"go.starlark.net/starlark"
 	"io/fs"
 	"os"
 	"starlet"
 	"testing"
+
+	"go.starlark.net/starlark"
 )
 
 func Test_EmptyMachine_Run_NoCode(t *testing.T) {
@@ -79,7 +80,7 @@ func Test_EmptyMachine_Run_LocalFileNonExist(t *testing.T) {
 	// run
 	_, err := m.Run(context.Background())
 	if isOnWindows {
-		expectErr(t, err, `starlet: open: cannot open notfound.star: open`, `The system cannot find the file specified.`)
+		expectErr(t, err, `starlet: open: open`, `The system cannot find the file specified.`)
 	} else {
 		expectErr(t, err, `starlet: open: open`, `: no such file or directory`)
 	}

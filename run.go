@@ -67,10 +67,10 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 	// TODO: save or reuse thread
 	// cache load + printFunc -> thread
 	m.loadCache = &cache{
-		cache:      make(map[string]*entry),
-		loadModule: m.loadAllowedModule,
-		readFile:   m.readScriptFile,
-		globals:    predeclared,
+		cache:    make(map[string]*entry),
+		loadMod:  m.loadAllowedModule,
+		readFile: m.readScriptFile,
+		globals:  predeclared,
 	}
 	thread := &starlark.Thread{
 		Print: m.printFunc,
