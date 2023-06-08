@@ -1,6 +1,7 @@
 package starlet_test
 
 import (
+	"errors"
 	"runtime"
 	"starlet"
 	"strings"
@@ -61,8 +62,16 @@ func getPrintCompareFunc(t *testing.T) (starlet.PrintFunc, func(s string)) {
 		}
 }
 
+// getLogPrintFunc returns a print function that logs to testing.T.
 func getLogPrintFunc(t *testing.T) starlet.PrintFunc {
 	return func(thread *starlark.Thread, msg string) {
 		t.Logf("[⭐ Log] %s", msg)
+	}
+}
+
+// getErrorModuleLoader returns a module loader that always returns an error, and its name.
+func getErrorModuleLoader() (string, starlet.ModuleLoader) {
+	return "wrong", func() (starlark.StringDict, error) {
+		return nil, errors.New("invalid module loader")
 	}
 }
