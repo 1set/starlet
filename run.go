@@ -55,7 +55,7 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 	// preset globals + preload modules -> predeclared
 	m.liveData = m.globals.Clone()
 	if err := m.loadBuiltinModules(m.preloadMods...); err != nil {
-		return nil, fmt.Errorf("starlet: preload modules: %w", err)
+		return nil, fmt.Errorf("starlet: preload: %w", err)
 	}
 
 	// convert into starlark.StringDict as predeclared

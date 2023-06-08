@@ -294,7 +294,7 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 			name:        "NonExist Preload Modules",
 			preloadMods: []starlet.ModuleName{"nonexist"},
 			code:        `a = nil == None`,
-			expectedErr: `starlet: preload modules: load module "nonexist": module not found`,
+			expectedErr: `starlet: preload: load module "nonexist": module not found`,
 		},
 		// for allow modules
 		{
