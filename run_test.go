@@ -273,6 +273,7 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 			code:        `x = fibonacci * 10; load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]; print(x, val)`,
 			modFS:       testFS,
 			expectedErr: `starlet: exec: local variable fibonacci referenced before assignment`,
+			// NOTE: for this behavior: read the comments before `r.useToplevel(use)` in `func (r *resolver) use(id *syntax.Ident)` in file: go.starlark.net@v0.0.0-20230525235612-a134d8f9ddca/resolve/resolve.go
 		},
 	}
 
