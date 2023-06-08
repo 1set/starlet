@@ -2,6 +2,7 @@ package starlet
 
 import (
 	"fmt"
+	"sort"
 
 	sjson "go.starlark.net/lib/json"
 	smath "go.starlark.net/lib/math"
@@ -9,8 +10,6 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
-
-// Now my refactor begins 2023-06-08 19:10:38 CST
 
 var allBuiltinModules = ModuleLoaderMap{
 	"go_idiomatic": func() (starlark.StringDict, error) {
@@ -41,6 +40,16 @@ var allBuiltinModules = ModuleLoaderMap{
 			"json": sjson.Module,
 		}, nil
 	},
+}
+
+// ListBuiltinModules returns a list of all builtin modules.
+func ListBuiltinModules() []string {
+	modules := make([]string, 0, len(allBuiltinModules))
+	for k := range allBuiltinModules {
+		modules = append(modules, k)
+	}
+	sort.Strings(modules)
+	return modules
 }
 
 // ModuleLoader is a function that loads a Starlark module and returns the module's string dict.
