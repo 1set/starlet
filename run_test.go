@@ -86,6 +86,19 @@ func Test_EmptyMachine_Run_LocalFileNonExist(t *testing.T) {
 	}
 }
 
+func Test_EmptyMachine_Run_FSNonExist(t *testing.T) {
+	m := starlet.NewEmptyMachine()
+	// set code
+	m.SetScript("aloha.star", nil, os.DirFS("not-found-dir"))
+	// run
+	_, err := m.Run(context.Background())
+	if isOnWindows {
+		expectErr(t, err, `starlet: open: open`, `The system cannot find the file specified.`)
+	} else {
+		expectErr(t, err, `starlet: open: open`, `: no such file or directory`)
+	}
+}
+
 func Test_EmptyMachine_Run_LoadFunc(t *testing.T) {
 	m := starlet.NewEmptyMachine()
 	// set code
