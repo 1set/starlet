@@ -153,15 +153,21 @@ func MakeBuiltinModuleLoaderMap(names []string) (ModuleLoaderMap, error) {
 }
 
 // CreateModuleLoaderFromSource creates a module loader from the given source code.
-func CreateModuleLoaderFromSource(source string, predeclared starlark.StringDict) ModuleLoader {
+func CreateModuleLoaderFromSource(name, source string, predeclared starlark.StringDict) ModuleLoader {
 	return func() (starlark.StringDict, error) {
-		return starlark.ExecFile(&starlark.Thread{}, "load.star", source, predeclared)
+		if name == "" {
+			name = "load.star"
+		}
+		return starlark.ExecFile(&starlark.Thread{}, name, source, predeclared)
 	}
 }
 
 // CreateModuleLoaderFromReader creates a module loader from the given IO reader.
-func CreateModuleLoaderFromReader(rd io.Reader, predeclared starlark.StringDict) ModuleLoader {
+func CreateModuleLoaderFromReader(name string, rd io.Reader, predeclared starlark.StringDict) ModuleLoader {
 	return func() (starlark.StringDict, error) {
-		return starlark.ExecFile(&starlark.Thread{}, "load.star", rd, predeclared)
+		if name == "" {
+			name = "load.star"
+		}
+		return starlark.ExecFile(&starlark.Thread{}, name, rd, predeclared)
 	}
 }
