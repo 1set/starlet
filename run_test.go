@@ -497,7 +497,7 @@ func Test_Machine_Run_Loaders(t *testing.T) {
 			modFS:       testFS,
 			expectedErr: `starlet: exec: cannot load nil_loader: starlet: nil module loader "nil_loader"`,
 		},
-		// only pre loader
+		// only pre loaders
 		{
 			name:    "Preload Module: Go",
 			preList: starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic")},
@@ -529,7 +529,7 @@ func Test_Machine_Run_Loaders(t *testing.T) {
 				return val.(string) == `🍎🫐🥥`
 			},
 		},
-		// only lazy loader
+		// only lazy loaders
 		{
 			name:    "LazyLoad Module: Go",
 			lazyMap: starlet.ModuleLoaderMap{"gogo": starlet.GetBuiltinModule("go_idiomatic")},
@@ -557,9 +557,9 @@ func Test_Machine_Run_Loaders(t *testing.T) {
 			lazyMap: starlet.ModuleLoaderMap{appleName: appleLoader, berryName: berryLoader, cocoName: cocoLoader},
 			code: `
 load("mock_apple", "apple")
-load("mock_blueberry", "blueberry")
-load("mock_coconut", "coconut")
-val = apple + blueberry + coconut
+load("mock_blueberry", berry="blueberry")
+load("mock_coconut", coco="coconut")
+val = apple + berry + coco
 `,
 			cmpResult: func(val interface{}) bool {
 				return val.(string) == `🍎🫐🥥`
