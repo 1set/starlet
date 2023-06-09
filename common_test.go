@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 )
 
@@ -73,5 +74,47 @@ func getLogPrintFunc(t *testing.T) starlet.PrintFunc {
 func getErrorModuleLoader() (string, starlet.ModuleLoader) {
 	return "wrong", func() (starlark.StringDict, error) {
 		return nil, errors.New("invalid module loader")
+	}
+}
+
+// getAppleModuleLoader returns a module loader that always returns a simple module, and its name.
+func getAppleModuleLoader() (string, starlet.ModuleLoader) {
+	return "mock_apple", func() (starlark.StringDict, error) {
+		const val = 10
+		return starlark.StringDict{
+			"apple":  starlark.String("🍎"),
+			"number": starlark.MakeInt(val),
+			"process": convert.MakeStarFn("process", func(x int) int {
+				return x * val
+			}),
+		}, nil
+	}
+}
+
+// getBlueberryModuleLoader returns a module loader that always returns a simple module, and its name.
+func getBlueberryModuleLoader() (string, starlet.ModuleLoader) {
+	return "mock_blueberry", func() (starlark.StringDict, error) {
+		const val = 20
+		return starlark.StringDict{
+			"blueberry": starlark.String("🫐"),
+			"number":    starlark.MakeInt(val),
+			"process": convert.MakeStarFn("process", func(x int) int {
+				return x * val
+			}),
+		}, nil
+	}
+}
+
+// getCoconutModuleLoader returns a module loader that always returns a simple module, and its name.
+func getCoconutModuleLoader() (string, starlet.ModuleLoader) {
+	return "mock_coconut", func() (starlark.StringDict, error) {
+		const val = 30
+		return starlark.StringDict{
+			"coconut": starlark.String("🥥"),
+			"number":  starlark.MakeInt(val),
+			"process": convert.MakeStarFn("process", func(x int) int {
+				return x * val
+			}),
+		}, nil
 	}
 }

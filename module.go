@@ -81,7 +81,6 @@ func (l ModuleLoaderList) LoadAll(d starlark.StringDict) error {
 	for _, ld := range l {
 		if ld == nil {
 			return fmt.Errorf("starlet: nil module loader")
-			//continue
 		}
 		m, err := ld()
 		if err != nil {
