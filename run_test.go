@@ -545,6 +545,14 @@ func Test_Machine_Run_Loaders(t *testing.T) {
 				return val.(int64) == 20
 			},
 		},
+		{
+			name:    "More Shadowed Preload Modules",
+			preList: starlet.ModuleLoaderList{appleLoader, berryLoader, cocoLoader},
+			code:    `val = number`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 40
+			},
+		},
 		// only lazy loaders
 		{
 			name:    "LazyLoad Module: Go",
@@ -590,6 +598,52 @@ load("mock_blueberry", "number")
 val = number
 `,
 			expectedErr: `starlet: exec: test.star:3:25: cannot reassign top-level number`,
+		},
+		// both pre and lazy loaders
+		{
+			name:    "Preload and LazyLoad Same Modules for Same Variable",
+			preList: starlet.ModuleLoaderList{appleLoader},
+			lazyMap: starlet.ModuleLoaderMap{appleName: appleLoader},
+			code:    `load("mock_apple", "number"); val = number`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 10
+			},
+		},
+		{
+			name:    "Preload and LazyLoad Same Modules with Different Names",
+			preList: starlet.ModuleLoaderList{appleLoader},
+			lazyMap: starlet.ModuleLoaderMap{appleName: appleLoader},
+			code:    `load("mock_apple", n1="number"); val = number + n1`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 20
+			},
+		},
+		{
+			name:    "Preload and LazyLoad Different Modules with Different Names",
+			preList: starlet.ModuleLoaderList{appleLoader},
+			lazyMap: starlet.ModuleLoaderMap{berryName: berryLoader},
+			code:    `load("mock_blueberry", n2="number"); val = number + n2`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 30
+			},
+		},
+		{
+			name:    "Preload and LazyLoad Different Modules for Same Variable",
+			preList: starlet.ModuleLoaderList{appleLoader},
+			lazyMap: starlet.ModuleLoaderMap{berryName: berryLoader},
+			code:    `load("mock_blueberry", "number"); val = number`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 20
+			},
+		},
+		{
+			name:    "Preload and LazyLoad Same Modules for Same Function",
+			preList: starlet.ModuleLoaderList{appleLoader},
+			lazyMap: starlet.ModuleLoaderMap{berryName: berryLoader},
+			code:    `load("mock_blueberry", "process"); val = process(10)`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 200
+			},
 		},
 	}
 

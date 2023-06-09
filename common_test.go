@@ -108,7 +108,7 @@ func getBlueberryModuleLoader() (string, starlet.ModuleLoader) {
 // getCoconutModuleLoader returns a module loader that always returns a simple module, and its name.
 func getCoconutModuleLoader() (string, starlet.ModuleLoader) {
 	return "mock_coconut", func() (starlark.StringDict, error) {
-		const val = 30
+		const val = 40
 		return starlark.StringDict{
 			"coconut": starlark.String("🥥"),
 			"number":  starlark.MakeInt(val),
