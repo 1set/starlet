@@ -495,7 +495,7 @@ func Test_Machine_Run_Loaders(t *testing.T) {
 			lazyMap:     starlet.ModuleLoaderMap{"nil_loader": nil},
 			code:        `load("nil_loader", "num"); val = 5 + 6`,
 			modFS:       testFS,
-			expectedErr: `starlet: exec: cannot load nil_loader: starlet: nil module loader "nil_loader"`,
+			expectedErr: `starlet: exec: cannot load nil_loader: nil module loader "nil_loader"`,
 		},
 		// only pre loaders
 		{

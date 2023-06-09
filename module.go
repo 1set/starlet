@@ -123,7 +123,7 @@ func (m ModuleLoaderMap) GetLazyLoader() NamedModuleLoader {
 		if !ok {
 			return nil, nil
 		} else if ld == nil {
-			return nil, fmt.Errorf("starlet: nil module loader %q", s)
+			return nil, fmt.Errorf("nil module loader %q", s)
 		}
 		return ld()
 	}

@@ -106,3 +106,72 @@ func Test_ModuleLoaderList_LoadAll(t *testing.T) {
 		})
 	}
 }
+
+func Test_ModuleLoaderMap_Clone(t *testing.T) {
+	moduleLoaderMap := starlet.ModuleLoaderMap{
+		"go_idiomatic": starlet.GetBuiltinModule("go_idiomatic"),
+		"struct":       starlet.GetBuiltinModule("struct"),
+	}
+
+	clone := moduleLoaderMap.Clone()
+	if len(clone) != len(moduleLoaderMap) {
+		t.Errorf("Expected clone length %d, got %d", len(moduleLoaderMap), len(clone))
+	}
+	for k := range clone {
+		if reflect.DeepEqual(clone[k], moduleLoaderMap[k]) {
+			t.Errorf("Expected different clone at key %q to be %T, got %T", k, moduleLoaderMap[k], clone[k])
+		}
+	}
+}
+
+func Test_ModuleLoaderMap_GetLazyLoader(t *testing.T) {
+	failName, failLoader := getErrorModuleLoader()
+	tests := []struct {
+		name          string
+		moduleLoaders starlet.ModuleLoaderMap
+		moduleName    string
+		wantErr       string
+		wantMod       bool
+	}{
+		{
+			name:          "nil map",
+			moduleLoaders: nil,
+			moduleName:    "unknown",
+		},
+		{
+			name:          "nil module",
+			moduleLoaders: starlet.ModuleLoaderMap{"unknown": nil},
+			moduleName:    "unknown",
+			wantErr:       `nil module loader "unknown"`,
+		},
+		{
+			name:          "valid module",
+			moduleLoaders: starlet.ModuleLoaderMap{"go_idiomatic": starlet.GetBuiltinModule("go_idiomatic")},
+			moduleName:    "go_idiomatic",
+			wantMod:       true,
+		},
+		{
+			name:          "invalid module",
+			moduleLoaders: starlet.ModuleLoaderMap{failName: failLoader},
+			moduleName:    failName,
+			wantErr:       "invalid module loader",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			loader := tt.moduleLoaders.GetLazyLoader()
+			mod, err := loader(tt.moduleName)
+			if tt.wantErr != "" {
+				expectErr(t, err, tt.wantErr)
+			} else if err != nil {
+				t.Errorf("Expected no error, got '%v'", err)
+			}
+			if tt.wantMod && mod == nil {
+				t.Errorf("Expected loader, got nil")
+			} else if !tt.wantMod && mod != nil {
+				t.Errorf("Expected nil, got loader: %v", mod)
+			}
+		})
+	}
+}
