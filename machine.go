@@ -11,6 +11,10 @@ import (
 // If nil, the default `fmt.Fprintln(os.Stderr, msg)` will be used instead.
 type PrintFunc func(thread *starlark.Thread, msg string)
 
+// LoadFunc is a function that tells Starlark how to find and load other scripts
+// using the load() function. If you don't use load() in your scripts, you can pass in nil.
+type LoadFunc func(thread *starlark.Thread, module string) (starlark.StringDict, error)
+
 // Machine is a wrapper of Starlark runtime environments.
 type Machine struct {
 	mu sync.RWMutex
@@ -29,19 +33,35 @@ type Machine struct {
 	loadCache *cache
 }
 
-// NewEmptyMachine creates a new Starlark runtime environment.
-func NewEmptyMachine() *Machine {
+// NewDefault creates a new Starlark runtime environment.
+func NewDefault() *Machine {
 	return &Machine{}
 }
 
-// NewMachine creates a new Starlark runtime environment with given globals, preload and lazyload module names.
-// TODO: Rename it as simple or easy. With Must in Name
-func NewMachine(globals DataStore, preloads []string, lazyloads []string) *Machine {
-	pre, err := CreateBuiltinModuleLoaderList(preloads)
+// NewWithGlobals creates a new Starlark runtime environment with given globals.
+func NewWithGlobals(globals DataStore) *Machine {
+	return &Machine{
+		globals: globals,
+	}
+}
+
+// NewWithLoaders creates a new Starlark runtime environment with given globals and preload module loaders.
+func NewWithLoaders(globals DataStore, preload ModuleLoaderList, lazyload ModuleLoaderMap) *Machine {
+	return &Machine{
+		globals:      globals,
+		preloadMods:  preload,
+		lazyloadMods: lazyload,
+	}
+}
+
+// NewWithNames creates a new Starlark runtime environment with given globals, preload and lazyload module names.
+// It panics if any of the given module fails to load.
+func NewWithNames(globals DataStore, preloads []string, lazyloads []string) *Machine {
+	pre, err := MakeBuiltinModuleLoaderList(preloads)
 	if err != nil {
 		panic(err)
 	}
-	lazy, err := CreateBuiltinModuleLoaderMap(lazyloads)
+	lazy, err := MakeBuiltinModuleLoaderMap(lazyloads)
 	if err != nil {
 		panic(err)
 	}

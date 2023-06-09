@@ -52,6 +52,11 @@ func ListBuiltinModules() []string {
 	return modules
 }
 
+// GetBuiltinModule returns the builtin module with the given name.
+func GetBuiltinModule(name string) ModuleLoader {
+	return allBuiltinModules[name]
+}
+
 // ModuleLoader is a function that loads a Starlark module and returns the module's string dict.
 type ModuleLoader func() (starlark.StringDict, error)
 
@@ -74,6 +79,9 @@ func (l ModuleLoaderList) LoadAll(d starlark.StringDict) error {
 		return fmt.Errorf("starlet: cannot load modules into nil dict")
 	}
 	for _, ld := range l {
+		if ld == nil {
+			return fmt.Errorf("starlet: nil module loader")
+		}
 		m, err := ld()
 		if err != nil {
 			return fmt.Errorf("starlet: failed to load module: %w", err)
@@ -110,14 +118,16 @@ func (m ModuleLoaderMap) GetLazyLoader() NamedModuleLoader {
 		ld, ok := m[s]
 		if !ok {
 			return nil, nil
+		} else if ld == nil {
+			return nil, fmt.Errorf("starlet: nil module loader %q", s)
 		}
 		return ld()
 	}
 }
 
-// CreateBuiltinModuleLoaderList creates a list of module loaders from a list of module names.
+// MakeBuiltinModuleLoaderList creates a list of module loaders from a list of module names.
 // It returns an error as second return value if any module is not found.
-func CreateBuiltinModuleLoaderList(names []string) (ModuleLoaderList, error) {
+func MakeBuiltinModuleLoaderList(names []string) (ModuleLoaderList, error) {
 	ld := make(ModuleLoaderList, len(names))
 	for i, name := range names {
 		ld[i] = allBuiltinModules[name]
@@ -128,9 +138,9 @@ func CreateBuiltinModuleLoaderList(names []string) (ModuleLoaderList, error) {
 	return ld, nil
 }
 
-// CreateBuiltinModuleLoaderMap creates a map of module loaders from a list of module names.
+// MakeBuiltinModuleLoaderMap creates a map of module loaders from a list of module names.
 // It returns an error as second return value if any module is not found.
-func CreateBuiltinModuleLoaderMap(names []string) (ModuleLoaderMap, error) {
+func MakeBuiltinModuleLoaderMap(names []string) (ModuleLoaderMap, error) {
 	ld := make(ModuleLoaderMap, len(names))
 	for _, name := range names {
 		ld[name] = allBuiltinModules[name]
