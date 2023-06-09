@@ -1,9 +1,12 @@
 package starlet
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"sort"
+	"strings"
 
 	sjson "go.starlark.net/lib/json"
 	smath "go.starlark.net/lib/math"
@@ -152,8 +155,21 @@ func MakeBuiltinModuleLoaderMap(names []string) (ModuleLoaderMap, error) {
 	return ld, nil
 }
 
-// CreateModuleLoaderFromSource creates a module loader from the given source code.
-func CreateModuleLoaderFromSource(name, source string, predeclared starlark.StringDict) ModuleLoader {
+// CreateModuleLoaderFromFile creates a module loader from the given file.
+func CreateModuleLoaderFromFile(name string, fileSys fs.FS, predeclared starlark.StringDict) ModuleLoader {
+	return func() (starlark.StringDict, error) {
+		// read file content
+		b, err := readScriptFile(name, fileSys)
+		if err != nil {
+			return nil, err
+		}
+		// execute file
+		return starlark.ExecFile(&starlark.Thread{}, name, b, predeclared)
+	}
+}
+
+// CreateModuleLoaderFromString creates a module loader from the given source code.
+func CreateModuleLoaderFromString(name, source string, predeclared starlark.StringDict) ModuleLoader {
 	return func() (starlark.StringDict, error) {
 		if name == "" {
 			name = "load.star"
@@ -170,4 +186,32 @@ func CreateModuleLoaderFromReader(name string, rd io.Reader, predeclared starlar
 		}
 		return starlark.ExecFile(&starlark.Thread{}, name, rd, predeclared)
 	}
+}
+
+// readScriptFile reads a script file from the given file system.
+func readScriptFile(name string, fileSys fs.FS) ([]byte, error) {
+	// precondition checks
+	if name == "" {
+		return nil, errors.New("no file name given")
+	}
+	if fileSys == nil {
+		return nil, errors.New("no file system given")
+	}
+
+	// if file name does not end with ".star", append it
+	if !strings.HasSuffix(name, ".star") {
+		name += ".star"
+	}
+
+	// open file
+	f, err := fileSys.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = f.Close()
+	}()
+
+	// read
+	return io.ReadAll(f)
 }
