@@ -2,6 +2,7 @@ package starlet_test
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"os"
 	"starlet"
@@ -10,23 +11,23 @@ import (
 	"go.starlark.net/starlark"
 )
 
-func Test_EmptyMachine_Run_NoCode(t *testing.T) {
-	m := starlet.NewEmptyMachine()
+func Test_DefaultMachine_Run_NoCode(t *testing.T) {
+	m := starlet.NewDefault()
 	// run with empty script
 	_, err := m.Run(context.Background())
 	expectErr(t, err, `starlet: run: no script to execute`)
 }
 
-func Test_EmptyMachine_Run_NoSpecificFile(t *testing.T) {
-	m := starlet.NewEmptyMachine()
+func Test_DefaultMachine_Run_NoSpecificFile(t *testing.T) {
+	m := starlet.NewDefault()
 	m.SetScript("", nil, os.DirFS("example"))
 	// run with no specific file name
 	_, err := m.Run(context.Background())
 	expectErr(t, err, `starlet: run: no specific file`)
 }
 
-func Test_EmptyMachine_Run_APlusB(t *testing.T) {
-	m := starlet.NewEmptyMachine()
+func Test_DefaultMachine_Run_APlusB(t *testing.T) {
+	m := starlet.NewDefault()
 	code := `a = 1 + 2`
 	m.SetScript("a_plus_b.star", []byte(code), nil)
 	out, err := m.Run(context.Background())
@@ -40,8 +41,8 @@ func Test_EmptyMachine_Run_APlusB(t *testing.T) {
 	}
 }
 
-func Test_EmptyMachine_Run_HelloWorld(t *testing.T) {
-	m := starlet.NewEmptyMachine()
+func Test_DefaultMachine_Run_HelloWorld(t *testing.T) {
+	m := starlet.NewDefault()
 	// set print function
 	printFunc, cmpFunc := getPrintCompareFunc(t)
 	m.SetPrintFunc(printFunc)
@@ -57,8 +58,8 @@ func Test_EmptyMachine_Run_HelloWorld(t *testing.T) {
 	cmpFunc("Aloha, Honua!\n")
 }
 
-func Test_EmptyMachine_Run_LocalFile(t *testing.T) {
-	m := starlet.NewEmptyMachine()
+func Test_DefaultMachine_Run_LocalFile(t *testing.T) {
+	m := starlet.NewDefault()
 	// set print function
 	printFunc, cmpFunc := getPrintCompareFunc(t)
 	m.SetPrintFunc(printFunc)
@@ -73,8 +74,8 @@ func Test_EmptyMachine_Run_LocalFile(t *testing.T) {
 	cmpFunc("Aloha, Honua!\n")
 }
 
-func Test_EmptyMachine_Run_LocalFileNonExist(t *testing.T) {
-	m := starlet.NewEmptyMachine()
+func Test_DefaultMachine_Run_LocalFileNonExist(t *testing.T) {
+	m := starlet.NewDefault()
 	// set code
 	m.SetScript("notfound.star", nil, os.DirFS("example"))
 	// run
@@ -86,8 +87,8 @@ func Test_EmptyMachine_Run_LocalFileNonExist(t *testing.T) {
 	}
 }
 
-func Test_EmptyMachine_Run_FSNonExist(t *testing.T) {
-	m := starlet.NewEmptyMachine()
+func Test_DefaultMachine_Run_FSNonExist(t *testing.T) {
+	m := starlet.NewDefault()
 	// set code
 	m.SetScript("aloha.star", nil, os.DirFS("not-found-dir"))
 	// run
@@ -99,8 +100,8 @@ func Test_EmptyMachine_Run_FSNonExist(t *testing.T) {
 	}
 }
 
-func Test_EmptyMachine_Run_LoadFunc(t *testing.T) {
-	m := starlet.NewEmptyMachine()
+func Test_DefaultMachine_Run_LoadFunc(t *testing.T) {
+	m := starlet.NewDefault()
 	// set code
 	code := `load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]`
 	m.SetScript("test.star", []byte(code), os.DirFS("example"))
@@ -117,8 +118,8 @@ func Test_EmptyMachine_Run_LoadFunc(t *testing.T) {
 	}
 }
 
-func Test_EmptyMachine_Run_LoadNonExist(t *testing.T) {
-	m := starlet.NewEmptyMachine()
+func Test_DefaultMachine_Run_LoadNonExist(t *testing.T) {
+	m := starlet.NewDefault()
 	// set code
 	code := `load("nonexist.star", "a")`
 	m.SetScript("test.star", []byte(code), os.DirFS("example"))
@@ -133,7 +134,7 @@ func Test_EmptyMachine_Run_LoadNonExist(t *testing.T) {
 }
 
 func Test_Machine_Run_Globals(t *testing.T) {
-	m := starlet.NewMachine(map[string]interface{}{
+	m := starlet.NewWithNames(map[string]interface{}{
 		"a": 2,
 	}, nil, nil)
 	// set code
@@ -152,7 +153,7 @@ func Test_Machine_Run_Globals(t *testing.T) {
 }
 
 func Test_Machine_Run_File_Globals(t *testing.T) {
-	m := starlet.NewMachine(map[string]interface{}{
+	m := starlet.NewWithNames(map[string]interface{}{
 		"magic_number": 30,
 	}, nil, nil)
 	// set code
@@ -181,7 +182,7 @@ func Test_Machine_Run_File_Globals(t *testing.T) {
 }
 
 func Test_Machine_Run_Load_Use_Globals(t *testing.T) {
-	m := starlet.NewMachine(map[string]interface{}{
+	m := starlet.NewWithNames(map[string]interface{}{
 		"magic_number": 50,
 	}, nil, nil)
 	// set code
@@ -202,7 +203,7 @@ func Test_Machine_Run_Load_Use_Globals(t *testing.T) {
 }
 
 func Test_Machine_Run_File_Missing_Globals(t *testing.T) {
-	m := starlet.NewMachine(map[string]interface{}{
+	m := starlet.NewWithNames(map[string]interface{}{
 		"other_number": 30,
 	}, nil, nil)
 	// set code
@@ -213,7 +214,7 @@ func Test_Machine_Run_File_Missing_Globals(t *testing.T) {
 }
 
 func Test_Machine_Run_PreloadModules(t *testing.T) {
-	m := starlet.NewMachine(nil, []string{"go_idiomatic"}, nil)
+	m := starlet.NewWithNames(nil, []string{"go_idiomatic"}, nil)
 	// set code
 	code := `a = nil == None`
 	m.SetScript("test.star", []byte(code), nil)
@@ -230,7 +231,7 @@ func Test_Machine_Run_PreloadModules(t *testing.T) {
 }
 
 func Test_Machine_Run_LazyloadModules(t *testing.T) {
-	m := starlet.NewMachine(nil, nil, []string{"go_idiomatic"})
+	m := starlet.NewWithNames(nil, nil, []string{"go_idiomatic"})
 	// set code
 	code := `
 load("go_idiomatic", "nil")
@@ -256,7 +257,7 @@ func Test_Machine_Run_Load_Shadow_Globals(t *testing.T) {
 		starlet.DisableGlobalReassign()
 	}()
 	// create machine
-	m := starlet.NewMachine(map[string]interface{}{"fibonacci": 123}, nil, nil)
+	m := starlet.NewWithNames(map[string]interface{}{"fibonacci": 123}, nil, nil)
 	// set code
 	code := `
 x = fibonacci * 2
@@ -281,7 +282,7 @@ z = fib(10)[-1]
 
 func Test_Machine_Run_Load_With_Globals(t *testing.T) {
 	// create machine
-	m := starlet.NewMachine(map[string]interface{}{"num": 10}, nil, nil)
+	m := starlet.NewWithNames(map[string]interface{}{"num": 10}, nil, nil)
 	// set code
 	code := `
 x = num * 2
@@ -432,11 +433,269 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 				}
 			}()
 
-			m := starlet.NewMachine(tc.globals, tc.preloadMods, tc.lazyMods)
+			m := starlet.NewWithNames(tc.globals, tc.preloadMods, tc.lazyMods)
 			m.SetPrintFunc(getLogPrintFunc(t))
 			m.SetScript("test.star", []byte(tc.code), tc.modFS)
 			_, err := m.Run(context.Background())
 			expectErr(t, err, tc.expectedErr)
+		})
+	}
+}
+
+func Test_Machine_Run_Loaders(t *testing.T) {
+	var (
+		testFS                 = os.DirFS("example")
+		failName, failLoader   = getErrorModuleLoader()
+		appleName, appleLoader = getAppleModuleLoader()
+		berryName, berryLoader = getBlueberryModuleLoader()
+		cocoName, cocoLoader   = getCoconutModuleLoader()
+	)
+	testCases := []struct {
+		name        string
+		globals     map[string]interface{}
+		preList     starlet.ModuleLoaderList
+		lazyMap     starlet.ModuleLoaderMap
+		code        string
+		modFS       fs.FS
+		expectedErr string
+		cmpResult   func(val interface{}) bool
+	}{
+		// no loaders
+		{
+			name:    "Nil Loaders",
+			globals: nil,
+			preList: nil,
+			lazyMap: nil,
+			code:    `val = 1 + 2`,
+			modFS:   testFS,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 3
+			},
+		},
+		{
+			name:    "Empty Loaders",
+			globals: map[string]interface{}{},
+			preList: starlet.ModuleLoaderList{},
+			lazyMap: starlet.ModuleLoaderMap{},
+			code:    `val = 3 + 4`,
+			modFS:   testFS,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 7
+			},
+		},
+		{
+			name:        "Nil Loader List Element",
+			preList:     starlet.ModuleLoaderList{nil},
+			code:        `val = 4 + 5`,
+			modFS:       testFS,
+			expectedErr: `starlet: nil module loader`,
+		},
+		{
+			name:        "Nil Loader Map Element",
+			lazyMap:     starlet.ModuleLoaderMap{"nil_loader": nil},
+			code:        `load("nil_loader", "num"); val = 5 + 6`,
+			modFS:       testFS,
+			expectedErr: `starlet: exec: cannot load nil_loader: starlet: nil module loader "nil_loader"`,
+		},
+		// only pre loaders
+		{
+			name:    "Preload Module: Go",
+			preList: starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic")},
+			code:    `val = nil != true`,
+			cmpResult: func(val interface{}) bool {
+				return val.(bool) == true
+			},
+		},
+		{
+			name:        "Preload Module Fails",
+			preList:     starlet.ModuleLoaderList{failLoader},
+			code:        `val = 1 + 2`,
+			modFS:       testFS,
+			expectedErr: `starlet: failed to load module: invalid module loader`,
+		},
+		{
+			name:    "Preload Module Untouched",
+			preList: starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic")},
+			code:    `val = 1 + 2`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 3
+			},
+		},
+		{
+			name:    "Multiple Preload Modules",
+			preList: starlet.ModuleLoaderList{appleLoader, berryLoader, cocoLoader},
+			code:    `val = apple + blueberry + coconut`,
+			cmpResult: func(val interface{}) bool {
+				return val.(string) == `🍎🫐🥥`
+			},
+		},
+		{
+			name:    "Duplicate Preload Modules",
+			preList: starlet.ModuleLoaderList{appleLoader, appleLoader},
+			code:    `val = apple + apple`,
+			cmpResult: func(val interface{}) bool {
+				return val.(string) == `🍎🍎`
+			},
+		},
+		{
+			name:    "Shadowed Preload Modules",
+			preList: starlet.ModuleLoaderList{appleLoader, berryLoader},
+			code:    `val = number`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 20
+			},
+		},
+		{
+			name:    "More Shadowed Preload Modules",
+			preList: starlet.ModuleLoaderList{appleLoader, berryLoader, cocoLoader},
+			code:    `val = number`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 40
+			},
+		},
+		// only lazy loaders
+		{
+			name:    "LazyLoad Module: Go",
+			lazyMap: starlet.ModuleLoaderMap{"gogo": starlet.GetBuiltinModule("go_idiomatic")},
+			code:    `load("gogo", "nil", "true"); val = nil != true`,
+			cmpResult: func(val interface{}) bool {
+				return val.(bool) == true
+			},
+		},
+		{
+			name:        "Invalid LazyLoad Module Fails",
+			lazyMap:     starlet.ModuleLoaderMap{failName: failLoader},
+			code:        fmt.Sprintf(`load(%q, "nil", "true"); val = nil != true`, failName),
+			expectedErr: fmt.Sprintf(`starlet: exec: cannot load %s: invalid module loader`, failName),
+		},
+		{
+			name:    "Invalid LazyLoad Module Untouched",
+			lazyMap: starlet.ModuleLoaderMap{failName: failLoader},
+			code:    `val = 2 * 10`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 20
+			},
+		},
+		{
+			name:    "Multiple LazyLoad Modules",
+			lazyMap: starlet.ModuleLoaderMap{appleName: appleLoader, berryName: berryLoader, cocoName: cocoLoader},
+			code: `
+load("mock_apple", "apple")
+load("mock_blueberry", berry="blueberry")
+load("mock_coconut", coco="coconut")
+val = apple + berry + coco
+`,
+			cmpResult: func(val interface{}) bool {
+				return val.(string) == `🍎🫐🥥`
+			},
+		},
+		{
+			name:    "Shadowed LazyLoad Modules",
+			lazyMap: starlet.ModuleLoaderMap{appleName: appleLoader, berryName: berryLoader},
+			code: `
+load("mock_apple", "number")
+load("mock_blueberry", "number")
+val = number
+`,
+			expectedErr: `starlet: exec: test.star:3:25: cannot reassign top-level number`,
+		},
+		// both pre and lazy loaders
+		{
+			name:    "Preload and LazyLoad Same Modules for Same Variable",
+			preList: starlet.ModuleLoaderList{appleLoader},
+			lazyMap: starlet.ModuleLoaderMap{appleName: appleLoader},
+			code:    `load("mock_apple", "number"); val = number`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 10
+			},
+		},
+		{
+			name:    "Preload and LazyLoad Same Modules with Different Names",
+			preList: starlet.ModuleLoaderList{appleLoader},
+			lazyMap: starlet.ModuleLoaderMap{appleName: appleLoader},
+			code:    `load("mock_apple", n1="number"); val = number + n1`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 20
+			},
+		},
+		{
+			name:    "Preload and LazyLoad Different Modules with Different Names",
+			preList: starlet.ModuleLoaderList{appleLoader},
+			lazyMap: starlet.ModuleLoaderMap{berryName: berryLoader},
+			code:    `load("mock_blueberry", n2="number"); val = number + n2`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 30
+			},
+		},
+		{
+			name:    "Preload and LazyLoad Different Modules for Same Variable",
+			preList: starlet.ModuleLoaderList{appleLoader},
+			lazyMap: starlet.ModuleLoaderMap{berryName: berryLoader},
+			code:    `load("mock_blueberry", "number"); val = number`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 20
+			},
+		},
+		{
+			name:    "Preload and LazyLoad Same Modules for Same Function",
+			preList: starlet.ModuleLoaderList{appleLoader},
+			lazyMap: starlet.ModuleLoaderMap{berryName: berryLoader},
+			code:    `load("mock_blueberry", "process"); val = process(10)`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 200
+			},
+		},
+		{
+			name:    "Preload and LazyLoad Different Modules",
+			preList: starlet.ModuleLoaderList{appleLoader},
+			lazyMap: starlet.ModuleLoaderMap{berryName: berryLoader, cocoName: cocoLoader},
+			code: `
+load("mock_blueberry", n2="number")
+load("mock_coconut", n3="number")
+val = number + n2 + n3
+`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 70
+			},
+		},
+		{
+			name:    "Preload and LazyLoad Different Modules with Same Name",
+			preList: starlet.ModuleLoaderList{appleLoader, berryLoader},
+			lazyMap: starlet.ModuleLoaderMap{cocoName: cocoLoader},
+			code: `
+load("mock_coconut", n3="number")
+val = number + n3
+`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 60
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := starlet.NewWithLoaders(tc.globals, tc.preList, tc.lazyMap)
+			m.SetPrintFunc(getLogPrintFunc(t))
+			m.SetScript("test.star", []byte(tc.code), tc.modFS)
+			out, err := m.Run(context.Background())
+
+			// check result
+			if tc.expectedErr != "" {
+				expectErr(t, err, tc.expectedErr)
+				return
+			} else if err != nil {
+				t.Errorf("Expected no errors, got error: %v", err)
+			}
+
+			if tc.cmpResult != nil {
+				if out == nil {
+					t.Errorf("Unexpected empty result: %v", out)
+				} else if v, ok := out["val"]; !ok {
+					t.Errorf("Unexpected missing result: %v", out)
+				} else if !tc.cmpResult(v) {
+					t.Errorf("Unexpected result: %v", out)
+				}
+			}
 		})
 	}
 }

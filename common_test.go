@@ -1,11 +1,13 @@
 package starlet_test
 
 import (
+	"errors"
 	"runtime"
 	"starlet"
 	"strings"
 	"testing"
 
+	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 )
 
@@ -61,8 +63,58 @@ func getPrintCompareFunc(t *testing.T) (starlet.PrintFunc, func(s string)) {
 		}
 }
 
+// getLogPrintFunc returns a print function that logs to testing.T.
 func getLogPrintFunc(t *testing.T) starlet.PrintFunc {
 	return func(thread *starlark.Thread, msg string) {
 		t.Logf("[⭐ Log] %s", msg)
+	}
+}
+
+// getErrorModuleLoader returns a module loader that always returns an error, and its name.
+func getErrorModuleLoader() (string, starlet.ModuleLoader) {
+	return "wrong", func() (starlark.StringDict, error) {
+		return nil, errors.New("invalid module loader")
+	}
+}
+
+// getAppleModuleLoader returns a module loader that always returns a simple module, and its name.
+func getAppleModuleLoader() (string, starlet.ModuleLoader) {
+	return "mock_apple", func() (starlark.StringDict, error) {
+		const val = 10
+		return starlark.StringDict{
+			"apple":  starlark.String("🍎"),
+			"number": starlark.MakeInt(val),
+			"process": convert.MakeStarFn("process", func(x int) int {
+				return x * val
+			}),
+		}, nil
+	}
+}
+
+// getBlueberryModuleLoader returns a module loader that always returns a simple module, and its name.
+func getBlueberryModuleLoader() (string, starlet.ModuleLoader) {
+	return "mock_blueberry", func() (starlark.StringDict, error) {
+		const val = 20
+		return starlark.StringDict{
+			"blueberry": starlark.String("🫐"),
+			"number":    starlark.MakeInt(val),
+			"process": convert.MakeStarFn("process", func(x int) int {
+				return x * val
+			}),
+		}, nil
+	}
+}
+
+// getCoconutModuleLoader returns a module loader that always returns a simple module, and its name.
+func getCoconutModuleLoader() (string, starlet.ModuleLoader) {
+	return "mock_coconut", func() (starlark.StringDict, error) {
+		const val = 40
+		return starlark.StringDict{
+			"coconut": starlark.String("🥥"),
+			"number":  starlark.MakeInt(val),
+			"process": convert.MakeStarFn("process", func(x int) int {
+				return x * val
+			}),
+		}, nil
 	}
 }
