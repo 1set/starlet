@@ -529,6 +529,22 @@ func Test_Machine_Run_Loaders(t *testing.T) {
 				return val.(string) == `🍎🫐🥥`
 			},
 		},
+		{
+			name:    "Duplicate Preload Modules",
+			preList: starlet.ModuleLoaderList{appleLoader, appleLoader},
+			code:    `val = apple + apple`,
+			cmpResult: func(val interface{}) bool {
+				return val.(string) == `🍎🍎`
+			},
+		},
+		{
+			name:    "Shadowed Preload Modules",
+			preList: starlet.ModuleLoaderList{appleLoader, berryLoader},
+			code:    `val = number`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 20
+			},
+		},
 		// only lazy loaders
 		{
 			name:    "LazyLoad Module: Go",
@@ -564,6 +580,16 @@ val = apple + berry + coco
 			cmpResult: func(val interface{}) bool {
 				return val.(string) == `🍎🫐🥥`
 			},
+		},
+		{
+			name:    "Shadowed LazyLoad Modules",
+			lazyMap: starlet.ModuleLoaderMap{appleName: appleLoader, berryName: berryLoader},
+			code: `
+load("mock_apple", "number")
+load("mock_blueberry", "number")
+val = number
+`,
+			expectedErr: `starlet: exec: test.star:3:25: cannot reassign top-level number`,
 		},
 	}
 
