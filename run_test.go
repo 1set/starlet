@@ -645,6 +645,31 @@ val = number
 				return val.(int64) == 200
 			},
 		},
+		{
+			name:    "Preload and LazyLoad Different Modules",
+			preList: starlet.ModuleLoaderList{appleLoader},
+			lazyMap: starlet.ModuleLoaderMap{berryName: berryLoader, cocoName: cocoLoader},
+			code: `
+load("mock_blueberry", n2="number")
+load("mock_coconut", n3="number")
+val = number + n2 + n3
+`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 70
+			},
+		},
+		{
+			name:    "Preload and LazyLoad Different Modules with Same Name",
+			preList: starlet.ModuleLoaderList{appleLoader, berryLoader},
+			lazyMap: starlet.ModuleLoaderMap{cocoName: cocoLoader},
+			code: `
+load("mock_coconut", n3="number")
+val = number + n3
+`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 60
+			},
+		},
 	}
 
 	for _, tc := range testCases {
