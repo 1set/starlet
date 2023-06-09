@@ -480,6 +480,20 @@ func Test_Machine_Run_Loaders(t *testing.T) {
 			},
 		},
 		{
+			name:        "Nil Loader List Element",
+			preList:     starlet.ModuleLoaderList{nil},
+			code:        `val = 4 + 5`,
+			modFS:       testFS,
+			expectedErr: `starlet: nil module loader`,
+		},
+		{
+			name:        "Nil Loader Map Element",
+			lazyMap:     starlet.ModuleLoaderMap{"nil_loader": nil},
+			code:        `load("nil_loader", "num"); val = 5 + 6`,
+			modFS:       testFS,
+			expectedErr: `starlet: exec: cannot load nil_loader: starlet: nil module loader "nil_loader"`,
+		},
+		{
 			name:    "Preload Module: Go",
 			preList: starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic")},
 			code:    `val = nil != true`,

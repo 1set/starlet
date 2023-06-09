@@ -79,6 +79,10 @@ func (l ModuleLoaderList) LoadAll(d starlark.StringDict) error {
 		return fmt.Errorf("starlet: cannot load modules into nil dict")
 	}
 	for _, ld := range l {
+		if ld == nil {
+			return fmt.Errorf("starlet: nil module loader")
+			//continue
+		}
 		m, err := ld()
 		if err != nil {
 			return fmt.Errorf("starlet: failed to load module: %w", err)
@@ -115,6 +119,8 @@ func (m ModuleLoaderMap) GetLazyLoader() NamedModuleLoader {
 		ld, ok := m[s]
 		if !ok {
 			return nil, nil
+		} else if ld == nil {
+			return nil, fmt.Errorf("starlet: nil module loader %q", s)
 		}
 		return ld()
 	}
