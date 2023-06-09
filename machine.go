@@ -57,11 +57,11 @@ func NewWithLoaders(globals DataStore, preload ModuleLoaderList, lazyload Module
 // NewWithNames creates a new Starlark runtime environment with given globals, preload and lazyload module names.
 // It panics if any of the given module fails to load.
 func NewWithNames(globals DataStore, preloads []string, lazyloads []string) *Machine {
-	pre, err := CreateBuiltinModuleLoaderList(preloads)
+	pre, err := MakeBuiltinModuleLoaderList(preloads)
 	if err != nil {
 		panic(err)
 	}
-	lazy, err := CreateBuiltinModuleLoaderMap(lazyloads)
+	lazy, err := MakeBuiltinModuleLoaderMap(lazyloads)
 	if err != nil {
 		panic(err)
 	}
