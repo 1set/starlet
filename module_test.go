@@ -175,3 +175,73 @@ func Test_ModuleLoaderMap_GetLazyLoader(t *testing.T) {
 		})
 	}
 }
+
+func Test_MakeBuiltinModuleLoaderList(t *testing.T) {
+	tests := []struct {
+		name         string
+		modules      []string
+		wantErr      string
+		expectedSize int
+	}{
+		{
+			name:         "valid modules",
+			modules:      []string{"json", "math", "time", "struct", "go_idiomatic"},
+			expectedSize: 5,
+		},
+		{
+			name:         "non-existent module",
+			modules:      []string{"non_existent"},
+			wantErr:      "starlet: module \"non_existent\": module not found",
+			expectedSize: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			loaderList, err := starlet.MakeBuiltinModuleLoaderList(tt.modules)
+			if tt.wantErr != "" {
+				expectErr(t, err, tt.wantErr)
+			} else if err != nil {
+				t.Errorf("Expected no error, got '%v'", err)
+			}
+			if len(loaderList) != tt.expectedSize {
+				t.Fatalf("Expected %d loaders, got %d", tt.expectedSize, len(loaderList))
+			}
+		})
+	}
+}
+
+func Test_MakeBuiltinModuleLoaderMap(t *testing.T) {
+	tests := []struct {
+		name         string
+		modules      []string
+		wantErr      string
+		expectedSize int
+	}{
+		{
+			name:         "valid modules",
+			modules:      []string{"json", "math", "time", "struct", "go_idiomatic"},
+			expectedSize: 5,
+		},
+		{
+			name:         "non-existent module",
+			modules:      []string{"non_existent"},
+			wantErr:      "starlet: module \"non_existent\": module not found",
+			expectedSize: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			loaderMap, err := starlet.MakeBuiltinModuleLoaderMap(tt.modules)
+			if tt.wantErr != "" {
+				expectErr(t, err, tt.wantErr)
+			} else if err != nil {
+				t.Errorf("Expected no error, got '%v'", err)
+			}
+			if len(loaderMap) != tt.expectedSize {
+				t.Fatalf("Expected %d loaders, got %d", tt.expectedSize, len(loaderMap))
+			}
+		})
+	}
+}
