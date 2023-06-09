@@ -2,6 +2,7 @@ package starlet
 
 import (
 	"fmt"
+	"io"
 	"sort"
 
 	sjson "go.starlark.net/lib/json"
@@ -149,4 +150,18 @@ func MakeBuiltinModuleLoaderMap(names []string) (ModuleLoaderMap, error) {
 		}
 	}
 	return ld, nil
+}
+
+// CreateModuleLoaderFromSource creates a module loader from the given source code.
+func CreateModuleLoaderFromSource(source string, predeclared starlark.StringDict) ModuleLoader {
+	return func() (starlark.StringDict, error) {
+		return starlark.ExecFile(&starlark.Thread{}, "load.star", source, predeclared)
+	}
+}
+
+// CreateModuleLoaderFromReader creates a module loader from the given IO reader.
+func CreateModuleLoaderFromReader(rd io.Reader, predeclared starlark.StringDict) ModuleLoader {
+	return func() (starlark.StringDict, error) {
+		return starlark.ExecFile(&starlark.Thread{}, "load.star", rd, predeclared)
+	}
 }
