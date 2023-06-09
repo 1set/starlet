@@ -24,6 +24,16 @@ var allBuiltinModules = ModuleLoaderMap{
 			//"exit":  starlark.NewBuiltin("exit", exit),
 		}, nil
 	},
+	"json": func() (starlark.StringDict, error) {
+		return starlark.StringDict{
+			"json": sjson.Module,
+		}, nil
+	},
+	"math": func() (starlark.StringDict, error) {
+		return starlark.StringDict{
+			"math": smath.Module,
+		}, nil
+	},
 	"struct": func() (starlark.StringDict, error) {
 		return starlark.StringDict{
 			"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
@@ -32,16 +42,6 @@ var allBuiltinModules = ModuleLoaderMap{
 	"time": func() (starlark.StringDict, error) {
 		return starlark.StringDict{
 			"time": stime.Module,
-		}, nil
-	},
-	"math": func() (starlark.StringDict, error) {
-		return starlark.StringDict{
-			"math": smath.Module,
-		}, nil
-	},
-	"json": func() (starlark.StringDict, error) {
-		return starlark.StringDict{
-			"json": sjson.Module,
 		}, nil
 	},
 }
