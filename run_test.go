@@ -444,8 +444,11 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 
 func Test_Machine_Run_Loaders(t *testing.T) {
 	var (
-		testFS               = os.DirFS("example")
-		failName, failLoader = getErrorModuleLoader()
+		testFS                 = os.DirFS("example")
+		failName, failLoader   = getErrorModuleLoader()
+		appleName, appleLoader = getAppleModuleLoader()
+		berryName, berryLoader = getBlueberryModuleLoader()
+		cocoName, cocoLoader   = getCoconutModuleLoader()
 	)
 	testCases := []struct {
 		name        string
@@ -457,6 +460,7 @@ func Test_Machine_Run_Loaders(t *testing.T) {
 		expectedErr string
 		cmpResult   func(val interface{}) bool
 	}{
+		// no loaders
 		{
 			name:    "Nil Loaders",
 			globals: nil,
@@ -493,18 +497,11 @@ func Test_Machine_Run_Loaders(t *testing.T) {
 			modFS:       testFS,
 			expectedErr: `starlet: exec: cannot load nil_loader: starlet: nil module loader "nil_loader"`,
 		},
+		// only pre loader
 		{
 			name:    "Preload Module: Go",
 			preList: starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic")},
 			code:    `val = nil != true`,
-			cmpResult: func(val interface{}) bool {
-				return val.(bool) == true
-			},
-		},
-		{
-			name:    "LazyLoad Module: Go",
-			lazyMap: starlet.ModuleLoaderMap{"gogo": starlet.GetBuiltinModule("go_idiomatic")},
-			code:    `load("gogo", "nil", "true"); val = nil != true`,
 			cmpResult: func(val interface{}) bool {
 				return val.(bool) == true
 			},
@@ -517,17 +514,55 @@ func Test_Machine_Run_Loaders(t *testing.T) {
 			expectedErr: `starlet: failed to load module: invalid module loader`,
 		},
 		{
-			name:        "LazyLoad Module Fails",
+			name:    "Preload Module Untouched",
+			preList: starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic")},
+			code:    `val = 1 + 2`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == 3
+			},
+		},
+		{
+			name:    "Multiple Preload Modules",
+			preList: starlet.ModuleLoaderList{appleLoader, berryLoader, cocoLoader},
+			code:    `val = apple + blueberry + coconut`,
+			cmpResult: func(val interface{}) bool {
+				return val.(string) == `🍎🫐🥥`
+			},
+		},
+		// only lazy loader
+		{
+			name:    "LazyLoad Module: Go",
+			lazyMap: starlet.ModuleLoaderMap{"gogo": starlet.GetBuiltinModule("go_idiomatic")},
+			code:    `load("gogo", "nil", "true"); val = nil != true`,
+			cmpResult: func(val interface{}) bool {
+				return val.(bool) == true
+			},
+		},
+		{
+			name:        "Invalid LazyLoad Module Fails",
 			lazyMap:     starlet.ModuleLoaderMap{failName: failLoader},
 			code:        fmt.Sprintf(`load(%q, "nil", "true"); val = nil != true`, failName),
 			expectedErr: fmt.Sprintf(`starlet: exec: cannot load %s: invalid module loader`, failName),
 		},
 		{
-			name:    "LazyLoad Module Unload",
+			name:    "Invalid LazyLoad Module Untouched",
 			lazyMap: starlet.ModuleLoaderMap{failName: failLoader},
 			code:    `val = 2 * 10`,
 			cmpResult: func(val interface{}) bool {
 				return val.(int64) == 20
+			},
+		},
+		{
+			name:    "Multiple LazyLoad Modules",
+			lazyMap: starlet.ModuleLoaderMap{appleName: appleLoader, berryName: berryLoader, cocoName: cocoLoader},
+			code: `
+load("mock_apple", "apple")
+load("mock_blueberry", "blueberry")
+load("mock_coconut", "coconut")
+val = apple + blueberry + coconut
+`,
+			cmpResult: func(val interface{}) bool {
+				return val.(string) == `🍎🫐🥥`
 			},
 		},
 	}
