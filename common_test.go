@@ -2,6 +2,7 @@ package starlet_test
 
 import (
 	"errors"
+	"io"
 	"runtime"
 	"starlet"
 	"strings"
@@ -117,4 +118,25 @@ func getCoconutModuleLoader() (string, starlet.ModuleLoader) {
 			}),
 		}, nil
 	}
+}
+
+// errorReader is a reader that reads that fails at the given point.
+type errorReader struct {
+	data   []byte
+	count  int
+	target int
+}
+
+func newErrorReader(data []byte, target int) *errorReader {
+	return &errorReader{data: data, target: target}
+}
+
+// Read implements the io.Reader interface.
+func (r *errorReader) Read(p []byte) (n int, err error) {
+	r.count++
+	if r.count == r.target {
+		return 0, errors.New("desired error")
+	}
+	copy(p, r.data)
+	return len(r.data), io.EOF
 }

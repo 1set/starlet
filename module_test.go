@@ -1,8 +1,10 @@
 package starlet_test
 
 import (
+	"io"
 	"reflect"
 	"starlet"
+	"strings"
 	"testing"
 
 	"go.starlark.net/starlark"
@@ -246,7 +248,7 @@ func Test_MakeBuiltinModuleLoaderMap(t *testing.T) {
 	}
 }
 
-func TestModuleLoaderFromString(t *testing.T) {
+func Test_ModuleLoaderFromString(t *testing.T) {
 	tests := []struct {
 		name        string
 		fileName    string
@@ -314,6 +316,57 @@ val = 3
 		t.Run(tt.name, func(t *testing.T) {
 			// make and run the module
 			loader := starlet.ModuleLoaderFromString(tt.fileName, tt.source, tt.predeclared)
+			mod, err := loader()
+			if tt.wantErr != "" {
+				expectErr(t, err, tt.wantErr)
+			}
+			// check the module result
+			la := len(mod)
+			le := len(tt.wantKeys)
+			if la != le {
+				t.Errorf("Expected module has %d keys, got %d", le, la)
+				return
+			}
+			if len(tt.wantKeys) != 0 {
+				for _, key := range tt.wantKeys {
+					if _, ok := mod[key]; !ok {
+						t.Errorf("Expected module to contain key %q, got: %v", key, mod)
+						return
+					}
+				}
+			}
+		})
+	}
+}
+
+func Test_ModuleLoaderFromReader(t *testing.T) {
+	tests := []struct {
+		name        string
+		fileName    string
+		source      io.Reader
+		predeclared starlark.StringDict
+		wantKeys    []string
+		wantErr     string
+	}{
+		{
+			name:        "empty filename",
+			fileName:    "",
+			source:      strings.NewReader("a = 1"),
+			predeclared: map[string]starlark.Value{"b": starlark.MakeInt(2)},
+			wantKeys:    []string{"a"},
+		},
+		{
+			name:        "empty source",
+			fileName:    "test.star",
+			source:      strings.NewReader(""),
+			predeclared: map[string]starlark.Value{"b": starlark.MakeInt(2)},
+			wantKeys:    []string{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// make and run the module
+			loader := starlet.ModuleLoaderFromReader(tt.fileName, tt.source, tt.predeclared)
 			mod, err := loader()
 			if tt.wantErr != "" {
 				expectErr(t, err, tt.wantErr)
