@@ -2,6 +2,8 @@ package starlet_test
 
 import (
 	"io"
+	"io/fs"
+	"os"
 	"reflect"
 	"starlet"
 	"strings"
@@ -386,6 +388,91 @@ func Test_ModuleLoaderFromReader(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// make and run the module
 			loader := starlet.ModuleLoaderFromReader(tt.fileName, tt.source, tt.predeclared)
+			mod, err := loader()
+			if tt.wantErr != "" {
+				expectErr(t, err, tt.wantErr)
+			} else if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+				return
+			}
+			// check the module result
+			la := len(mod)
+			le := len(tt.wantKeys)
+			if la != le {
+				t.Errorf("Expected module has %d keys, got %d", le, la)
+				return
+			}
+			if len(tt.wantKeys) != 0 {
+				for _, key := range tt.wantKeys {
+					if _, ok := mod[key]; !ok {
+						t.Errorf("Expected module to contain key %q, got: %v", key, mod)
+						return
+					}
+				}
+			}
+		})
+	}
+}
+
+func Test_ModuleLoaderFromFile(t *testing.T) {
+	testFS := os.DirFS("example")
+	tests := []struct {
+		name        string
+		fileName    string
+		fileSys     fs.FS
+		predeclared starlark.StringDict
+		wantKeys    []string
+		wantErr     string
+	}{
+		{
+			name:        "empty filename",
+			fileName:    "",
+			fileSys:     testFS,
+			predeclared: map[string]starlark.Value{"b": starlark.MakeInt(2)},
+			wantErr:     "no file name given",
+		},
+		{
+			name:        "empty file system",
+			fileName:    "test.star",
+			fileSys:     nil,
+			predeclared: map[string]starlark.Value{"b": starlark.MakeInt(2)},
+			wantErr:     "no file system given",
+		},
+		{
+			name:        "nonexistent file",
+			fileName:    "nonexistent.star",
+			fileSys:     testFS,
+			predeclared: map[string]starlark.Value{"b": starlark.MakeInt(2)},
+			wantKeys:    []string{},
+			wantErr:     "open ",
+		},
+		{
+			name:        "empty file",
+			fileName:    "empty.star",
+			fileSys:     testFS,
+			predeclared: map[string]starlark.Value{"b": starlark.MakeInt(2)},
+			wantKeys:    []string{},
+		},
+		{
+			name:        "function file",
+			fileName:    "fibonacci.star",
+			fileSys:     testFS,
+			predeclared: map[string]starlark.Value{"b": starlark.MakeInt(2)},
+			wantKeys:    []string{"fibonacci", "fib_last"},
+		},
+		{
+			name:        "omit file extension",
+			fileName:    "fibonacci",
+			fileSys:     testFS,
+			predeclared: map[string]starlark.Value{"b": starlark.MakeInt(2)},
+			wantKeys:    []string{"fibonacci", "fib_last"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// make and run the module
+			loader := starlet.ModuleLoaderFromFile(tt.fileName, tt.fileSys, tt.predeclared)
 			mod, err := loader()
 			if tt.wantErr != "" {
 				expectErr(t, err, tt.wantErr)
