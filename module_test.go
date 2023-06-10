@@ -269,6 +269,46 @@ func TestModuleLoaderFromString(t *testing.T) {
 			predeclared: map[string]starlark.Value{"b": starlark.MakeInt(2)},
 			wantKeys:    []string{},
 		},
+		{
+			name:        "empty predeclared",
+			fileName:    "test.star",
+			source:      "a = 1",
+			predeclared: nil,
+			wantKeys:    []string{"a"},
+		},
+		{
+			name:        "override predeclared",
+			fileName:    "test.star",
+			source:      "a = 10",
+			predeclared: map[string]starlark.Value{"a": starlark.MakeInt(2)},
+			wantKeys:    []string{"a"}, // source overrides predeclared
+		},
+		{
+			name:     "functions",
+			fileName: "test.star",
+			source: `
+def foo():
+  return 1
+
+def bar():
+  return 2
+
+val = 3
+`,
+			wantKeys: []string{"foo", "bar", "val"},
+		},
+		{
+			name:     "multiple keys",
+			fileName: "test.star",
+			source:   "a = 1\nb = 2",
+			wantKeys: []string{"a", "b"},
+		},
+		{
+			name:     "invalid source code",
+			fileName: "wrong.star",
+			source:   "asfdasf",
+			wantErr:  "wrong.star:1:1: undefined: asfdasf",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
