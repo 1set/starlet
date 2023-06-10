@@ -2,7 +2,7 @@ package starlet_test
 
 import (
 	"errors"
-	"io"
+	"fmt"
 	"runtime"
 	"starlet"
 	"strings"
@@ -127,16 +127,16 @@ type errorReader struct {
 	target int
 }
 
-func newErrorReader(data []byte, target int) *errorReader {
-	return &errorReader{data: data, target: target}
+func newErrorReader(data string, target int) *errorReader {
+	return &errorReader{data: []byte(data), target: target}
 }
 
 // Read implements the io.Reader interface.
 func (r *errorReader) Read(p []byte) (n int, err error) {
 	r.count++
 	if r.count == r.target {
-		return 0, errors.New("desired error")
+		return 0, fmt.Errorf("desired error at %d", r.target)
 	}
 	copy(p, r.data)
-	return len(r.data), io.EOF
+	return len(r.data), nil
 }

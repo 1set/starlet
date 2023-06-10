@@ -362,6 +362,25 @@ func Test_ModuleLoaderFromReader(t *testing.T) {
 			predeclared: map[string]starlark.Value{"b": starlark.MakeInt(2)},
 			wantKeys:    []string{},
 		},
+		{
+			name:        "nil source",
+			fileName:    "test.star",
+			source:      nil,
+			predeclared: map[string]starlark.Value{"b": starlark.MakeInt(2)},
+			wantErr:     "open test.star:",
+		},
+		{
+			name:     "first error reader",
+			fileName: "wrong.star",
+			source:   newErrorReader("a = 1\nb = 2\nc = 3", 1),
+			wantErr:  `read wrong.star: desired error at 1`,
+		},
+		{
+			name:     "second error reader",
+			fileName: "wrong.star",
+			source:   newErrorReader("a = 1\nb = 2\nc = 3\n", 2),
+			wantErr:  `read wrong.star: desired error at 2`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -370,6 +389,9 @@ func Test_ModuleLoaderFromReader(t *testing.T) {
 			mod, err := loader()
 			if tt.wantErr != "" {
 				expectErr(t, err, tt.wantErr)
+			} else if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+				return
 			}
 			// check the module result
 			la := len(mod)
