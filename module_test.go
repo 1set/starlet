@@ -364,10 +364,10 @@ func Test_ModuleLoaderFromReader(t *testing.T) {
 		},
 		{
 			name:        "nil source",
-			fileName:    "test.star",
+			fileName:    "none.star",
 			source:      nil,
 			predeclared: map[string]starlark.Value{"b": starlark.MakeInt(2)},
-			wantErr:     "open test.star:",
+			wantErr:     "open none.star:",
 		},
 		{
 			name:     "first error reader",
