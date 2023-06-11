@@ -1,8 +1,12 @@
 package starlet
 
 import (
+	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"sort"
+	"strings"
 
 	sjson "go.starlark.net/lib/json"
 	smath "go.starlark.net/lib/math"
@@ -20,6 +24,16 @@ var allBuiltinModules = ModuleLoaderMap{
 			//"exit":  starlark.NewBuiltin("exit", exit),
 		}, nil
 	},
+	"json": func() (starlark.StringDict, error) {
+		return starlark.StringDict{
+			"json": sjson.Module,
+		}, nil
+	},
+	"math": func() (starlark.StringDict, error) {
+		return starlark.StringDict{
+			"math": smath.Module,
+		}, nil
+	},
 	"struct": func() (starlark.StringDict, error) {
 		return starlark.StringDict{
 			"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
@@ -28,16 +42,6 @@ var allBuiltinModules = ModuleLoaderMap{
 	"time": func() (starlark.StringDict, error) {
 		return starlark.StringDict{
 			"time": stime.Module,
-		}, nil
-	},
-	"math": func() (starlark.StringDict, error) {
-		return starlark.StringDict{
-			"math": smath.Module,
-		}, nil
-	},
-	"json": func() (starlark.StringDict, error) {
-		return starlark.StringDict{
-			"json": sjson.Module,
 		}, nil
 	},
 }
@@ -119,7 +123,7 @@ func (m ModuleLoaderMap) GetLazyLoader() NamedModuleLoader {
 		if !ok {
 			return nil, nil
 		} else if ld == nil {
-			return nil, fmt.Errorf("starlet: nil module loader %q", s)
+			return nil, fmt.Errorf("nil module loader %q", s)
 		}
 		return ld()
 	}
@@ -149,4 +153,65 @@ func MakeBuiltinModuleLoaderMap(names []string) (ModuleLoaderMap, error) {
 		}
 	}
 	return ld, nil
+}
+
+// ModuleLoaderFromString creates a module loader from the given source code.
+func ModuleLoaderFromString(name, source string, predeclared starlark.StringDict) ModuleLoader {
+	return func() (starlark.StringDict, error) {
+		if name == "" {
+			name = "load.star"
+		}
+		return starlark.ExecFile(&starlark.Thread{}, name, source, predeclared)
+	}
+}
+
+// ModuleLoaderFromReader creates a module loader from the given IO reader.
+func ModuleLoaderFromReader(name string, rd io.Reader, predeclared starlark.StringDict) ModuleLoader {
+	return func() (starlark.StringDict, error) {
+		if name == "" {
+			name = "load.star"
+		}
+		return starlark.ExecFile(&starlark.Thread{}, name, rd, predeclared)
+	}
+}
+
+// ModuleLoaderFromFile creates a module loader from the given file.
+func ModuleLoaderFromFile(name string, fileSys fs.FS, predeclared starlark.StringDict) ModuleLoader {
+	return func() (starlark.StringDict, error) {
+		// read file content
+		b, err := readScriptFile(name, fileSys)
+		if err != nil {
+			return nil, err
+		}
+		// execute file
+		return starlark.ExecFile(&starlark.Thread{}, name, b, predeclared)
+	}
+}
+
+// readScriptFile reads a script file from the given file system.
+func readScriptFile(name string, fileSys fs.FS) ([]byte, error) {
+	// precondition checks
+	if name == "" {
+		return nil, errors.New("no file name given")
+	}
+	if fileSys == nil {
+		return nil, errors.New("no file system given")
+	}
+
+	// if file name does not end with ".star", append it
+	if !strings.HasSuffix(name, ".star") {
+		name += ".star"
+	}
+
+	// open file
+	f, err := fileSys.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = f.Close()
+	}()
+
+	// read
+	return io.ReadAll(f)
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 
 	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
@@ -100,16 +99,5 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 
 // readScriptFile reads the given filename from the given file system.
 func (m *Machine) readScriptFile(filename string) ([]byte, error) {
-	if m.scriptFS == nil {
-		return nil, fmt.Errorf("no file system given")
-	}
-	rd, err := m.scriptFS.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	return ioutil.ReadAll(rd)
+	return readScriptFile(filename, m.scriptFS)
 }
-
-// TODO: Multiple FS for script and modules
-// TODO: Reset machine
-// TODO: run with existing threads (global and module preset)
