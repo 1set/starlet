@@ -101,7 +101,3 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 func (m *Machine) readScriptFile(filename string) ([]byte, error) {
 	return readScriptFile(filename, m.scriptFS)
 }
-
-// TODO: Multiple FS for script and modules
-// TODO: Reset machine
-// TODO: run with existing threads (global and module preset)
