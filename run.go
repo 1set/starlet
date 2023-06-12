@@ -50,16 +50,15 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 	}
 
 	// for the first run
+	var err error
 	if m.thread == nil {
 		// preset globals + preload modules -> predeclared
-		predeclared, err := convert.MakeStringDict(m.globals)
-		if err != nil {
+		if m.predeclared, err = convert.MakeStringDict(m.globals); err != nil {
 			return nil, fmt.Errorf("starlet: convert: %w", err)
 		}
-		if err = m.preloadMods.LoadAll(predeclared); err != nil {
+		if err = m.preloadMods.LoadAll(m.predeclared); err != nil {
 			return nil, err
 		}
-		m.predeclared = predeclared
 
 		// cache load + printFunc -> thread
 		m.loadCache = &cache{
@@ -68,7 +67,7 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 			readFile: func(name string) ([]byte, error) {
 				return readScriptFile(name, m.scriptFS)
 			},
-			globals: predeclared,
+			globals: m.predeclared,
 		}
 		m.thread = &starlark.Thread{
 			Print: m.printFunc,
@@ -98,7 +97,6 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 	m.runTimes++
 	var (
 		res starlark.StringDict
-		err error
 	)
 	switch srcType {
 	case sourceCodeTypeContent:
