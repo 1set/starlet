@@ -134,9 +134,11 @@ func Test_DefaultMachine_Run_LoadNonExist(t *testing.T) {
 }
 
 func Test_Machine_Run_Globals(t *testing.T) {
+	sm := starlark.NewDict(1)
+	_ = sm.SetKey(starlark.String("bee"), starlark.MakeInt(2))
 	m := starlet.NewWithNames(map[string]interface{}{
 		"a": 2,
-		"c": "hello",
+		"c": sm,
 	}, nil, nil)
 	// set code
 	code := `
