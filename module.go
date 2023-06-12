@@ -26,16 +26,12 @@ var allBuiltinModules = ModuleLoaderMap{
 		}, nil
 	},
 	"json": func() (starlark.StringDict, error) {
-		// TODO: fix import struct
-		return starlark.StringDict{
-			"json": sjson.Module,
-		}, nil
+		return sjson.Module.Members, nil
 	},
 	"math": func() (starlark.StringDict, error) {
 		return smath.Module.Members, nil
 	},
 	"struct": func() (starlark.StringDict, error) {
-		// TODO: fix import struct
 		return starlark.StringDict{
 			"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
 		}, nil
