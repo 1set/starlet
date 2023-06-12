@@ -879,15 +879,21 @@ val = number + n3
 
 func Test_Machine_RunAgain_Normal(t *testing.T) {
 	code1 := `
-x = 10
-y = 20
+x = 2
+y = 10
+
+load("math", "pow")
+z = pow(x, y)
+print("z =", z)
 `
 	code2 := `
-z = 30
+t = x + y + z
 `
 	// prepare machine
 	m := starlet.NewDefault()
 	m.SetPrintFunc(getLogPrintFunc(t))
+	m.SetPreloadModules(starlet.ModuleLoaderList{starlet.GetBuiltinModule("json")})
+	m.SetLazyloadModules(starlet.ModuleLoaderMap{"math": starlet.GetBuiltinModule("math")})
 
 	// run first time
 	m.SetScript("test.star", []byte(code1), nil)
