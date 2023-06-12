@@ -119,3 +119,12 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 	}
 	return convert.FromStringDict(res), nil
 }
+
+// Reset resets the machine to initial state before the first run.
+func (m *Machine) Reset() {
+	m.runTimes = 0
+	m.lastResult = nil
+	m.thread = nil
+	m.loadCache = nil
+	m.predeclared = nil
+}
