@@ -416,6 +416,7 @@ func Test_ModuleLoaderFromReader(t *testing.T) {
 
 func Test_ModuleLoaderFromFile(t *testing.T) {
 	testFS := os.DirFS("testdata")
+	nonExistFS := os.DirFS("nonexistent")
 	tests := []struct {
 		name        string
 		fileName    string
@@ -442,6 +443,14 @@ func Test_ModuleLoaderFromFile(t *testing.T) {
 			name:        "nonexistent file",
 			fileName:    "nonexistent.star",
 			fileSys:     testFS,
+			predeclared: map[string]starlark.Value{"b": starlark.MakeInt(2)},
+			wantKeys:    []string{},
+			wantErr:     "open ",
+		},
+		{
+			name:        "nonexistent file system",
+			fileName:    "test.star",
+			fileSys:     nonExistFS,
 			predeclared: map[string]starlark.Value{"b": starlark.MakeInt(2)},
 			wantKeys:    []string{},
 			wantErr:     "open ",

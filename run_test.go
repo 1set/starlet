@@ -450,6 +450,7 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 }
 
 func Test_Machine_Run_Loaders(t *testing.T) {
+	// the following tests tests the combination of preload and lazyload modules, and validate the override behavior.
 	var (
 		testFS                 = os.DirFS("testdata")
 		failName, failLoader   = getErrorModuleLoader()
