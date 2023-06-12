@@ -52,7 +52,7 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 	// for the first run
 	if m.thread == nil {
 		// preset globals + preload modules -> predeclared
-		predeclared, err := convert.MakeStringDict(m.globals.Clone())
+		predeclared, err := convert.MakeStringDict(m.globals)
 		if err != nil {
 			return nil, fmt.Errorf("starlet: convert: %w", err)
 		}
@@ -70,13 +70,12 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 			},
 			globals: predeclared,
 		}
-		thread := &starlark.Thread{
+		m.thread = &starlark.Thread{
 			Print: m.printFunc,
 			Load: func(thread *starlark.Thread, module string) (starlark.StringDict, error) {
 				return m.loadCache.Load(module)
 			},
 		}
-		m.thread = thread
 	} else {
 		// for the following runs
 		if m.lastResult != nil {
