@@ -20,7 +20,7 @@ func Test_DefaultMachine_Run_NoCode(t *testing.T) {
 
 func Test_DefaultMachine_Run_NoSpecificFile(t *testing.T) {
 	m := starlet.NewDefault()
-	m.SetScript("", nil, os.DirFS("example"))
+	m.SetScript("", nil, os.DirFS("testdata"))
 	// run with no specific file name
 	_, err := m.Run(context.Background())
 	expectErr(t, err, `starlet: run: no specific file`)
@@ -64,7 +64,7 @@ func Test_DefaultMachine_Run_LocalFile(t *testing.T) {
 	printFunc, cmpFunc := getPrintCompareFunc(t)
 	m.SetPrintFunc(printFunc)
 	// set code
-	m.SetScript("aloha.star", nil, os.DirFS("example"))
+	m.SetScript("aloha.star", nil, os.DirFS("testdata"))
 	// run
 	_, err := m.Run(context.Background())
 	if err != nil {
@@ -77,7 +77,7 @@ func Test_DefaultMachine_Run_LocalFile(t *testing.T) {
 func Test_DefaultMachine_Run_LocalFileNonExist(t *testing.T) {
 	m := starlet.NewDefault()
 	// set code
-	m.SetScript("notfound.star", nil, os.DirFS("example"))
+	m.SetScript("notfound.star", nil, os.DirFS("testdata"))
 	// run
 	_, err := m.Run(context.Background())
 	if isOnWindows {
@@ -104,7 +104,7 @@ func Test_DefaultMachine_Run_LoadFunc(t *testing.T) {
 	m := starlet.NewDefault()
 	// set code
 	code := `load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]`
-	m.SetScript("test.star", []byte(code), os.DirFS("example"))
+	m.SetScript("test.star", []byte(code), os.DirFS("testdata"))
 	// run
 	out, err := m.Run(context.Background())
 	if err != nil {
@@ -122,7 +122,7 @@ func Test_DefaultMachine_Run_LoadNonExist(t *testing.T) {
 	m := starlet.NewDefault()
 	// set code
 	code := `load("nonexist.star", "a")`
-	m.SetScript("test.star", []byte(code), os.DirFS("example"))
+	m.SetScript("test.star", []byte(code), os.DirFS("testdata"))
 	// run
 	_, err := m.Run(context.Background())
 	// check result
@@ -157,7 +157,7 @@ func Test_Machine_Run_File_Globals(t *testing.T) {
 		"magic_number": 30,
 	}, nil, nil)
 	// set code
-	m.SetScript("magic.star", nil, os.DirFS("example"))
+	m.SetScript("magic.star", nil, os.DirFS("testdata"))
 	// run
 	out, err := m.Run(context.Background())
 	if err != nil {
@@ -187,7 +187,7 @@ func Test_Machine_Run_Load_Use_Globals(t *testing.T) {
 	}, nil, nil)
 	// set code
 	code := `load("magic.star", "custom"); val = custom()`
-	m.SetScript("dummy.star", []byte(code), os.DirFS("example"))
+	m.SetScript("dummy.star", []byte(code), os.DirFS("testdata"))
 	// run
 	out, err := m.Run(context.Background())
 	if err != nil {
@@ -207,7 +207,7 @@ func Test_Machine_Run_File_Missing_Globals(t *testing.T) {
 		"other_number": 30,
 	}, nil, nil)
 	// set code
-	m.SetScript("magic.star", nil, os.DirFS("example"))
+	m.SetScript("magic.star", nil, os.DirFS("testdata"))
 	// run
 	_, err := m.Run(context.Background())
 	expectErr(t, err, `starlet: exec: magic.star:5:32: undefined: magic_number`)
@@ -266,7 +266,7 @@ load("fibonacci.star", fib="fibonacci")
 y = fibonacci(10)[-1]
 z = fib(10)[-1]
 `
-	m.SetScript("test.star", []byte(code), os.DirFS("example"))
+	m.SetScript("test.star", []byte(code), os.DirFS("testdata"))
 	// run
 	out, err := m.Run(context.Background())
 	if err != nil {
@@ -291,7 +291,7 @@ load("fibonacci.star", fib="fibonacci")
 y = fibonacci(num)[-1]
 z = fib(num)[-1]
 `
-	m.SetScript("test.star", []byte(code), os.DirFS("example"))
+	m.SetScript("test.star", []byte(code), os.DirFS("testdata"))
 	// run
 	out, err := m.Run(context.Background())
 	if err != nil {
@@ -306,7 +306,8 @@ z = fib(num)[-1]
 }
 
 func Test_Machine_Run_LoadErrors(t *testing.T) {
-	testFS := os.DirFS("example")
+	testFS := os.DirFS("testdata")
+	nonExistFS := os.DirFS("nonexist")
 	testCases := []struct {
 		name          string
 		globals       map[string]interface{}
@@ -395,13 +396,19 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 			expectedErr: `starlet: exec: cannot load nonexist.star: open`,
 		},
 		{
+			name:        "NonExist File System",
+			code:        `load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]`,
+			modFS:       nonExistFS,
+			expectedErr: `starlet: exec: cannot load fibonacci.star: open`,
+		},
+		{
 			name:        "NonExist Function in User Modules",
 			code:        `load("fibonacci.star", "fake"); val = fake(10)[-1]`,
 			modFS:       testFS,
 			expectedErr: `starlet: exec: load: name fake not found in module fibonacci.star`,
 		},
 		{
-			name:        "Existing and NonExist Function in User Modules",
+			name:        "Existing and NonExist Functions in User Modules",
 			code:        `load("fibonacci.star", "fibonacci", "fake"); val = fibonacci(10)[-1]`,
 			modFS:       testFS,
 			expectedErr: `starlet: exec: load: name fake not found in module fibonacci.star`,
@@ -442,9 +449,179 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 	}
 }
 
-func Test_Machine_Run_Loaders(t *testing.T) {
+func Test_Machine_Run_FileLoaders(t *testing.T) {
+	// the following tests tests the combination of preload and lazyload modules loaded via file.
 	var (
-		testFS                 = os.DirFS("example")
+		testFS     = os.DirFS("testdata")
+		nonExistFS = os.DirFS("nonexist")
+	)
+	testCases := []struct {
+		name        string
+		globals     map[string]interface{}
+		preList     starlet.ModuleLoaderList
+		lazyMap     starlet.ModuleLoaderMap
+		code        string
+		modFS       fs.FS
+		expectedErr string
+		cmpResult   func(val interface{}) bool
+	}{
+		// for preload with fs
+		{
+			name:        "No FS for Preload Modules",
+			preList:     starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("fibonacci.star", nil, nil)},
+			code:        `val = fibonacci(10)[-1]`,
+			expectedErr: "starlet: failed to load module: no file system given",
+		},
+		{
+			name:        "NonExist file system for Preload Modules",
+			preList:     starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("fibonacci.star", nonExistFS, nil)},
+			code:        `val = fibonacci(10)[-1]`,
+			expectedErr: "starlet: failed to load module: open ",
+		},
+		{
+			name:        "NonExist file for Preload Modules",
+			preList:     starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("nonexist.star", testFS, nil)},
+			code:        `val = fibonacci(10)[-1]`,
+			expectedErr: "starlet: failed to load module: open ",
+		},
+		{
+			name:    "Single File for Preload Modules",
+			preList: starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("fibonacci.star", testFS, nil)},
+			code:    `val = fibonacci(10)[-1]`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == int64(55)
+			},
+		},
+		{
+			name:    "Duplicate Files for Preload Modules",
+			preList: starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("fibonacci.star", testFS, nil), starlet.MakeModuleLoaderFromFile("fibonacci.star", testFS, nil)},
+			code:    `val = fibonacci(10)[-1]`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == int64(55)
+			},
+		},
+		{
+			name:    "Multiple Files for Preload Modules",
+			preList: starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("fibonacci.star", testFS, nil), starlet.MakeModuleLoaderFromFile("factorial.star", testFS, nil)},
+			code:    `val = fibonacci(10)[-1] + factorial(10)`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == int64(3628855)
+			},
+		},
+		// for lazyload with fs
+		{
+			name:        "Missing Lazyload Modules",
+			lazyMap:     starlet.ModuleLoaderMap{},
+			code:        `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
+			expectedErr: `starlet: exec: cannot load fib: no file system given`,
+		},
+		{
+			name:        "Missing Lazyload Modules with Invalid FS",
+			lazyMap:     starlet.ModuleLoaderMap{},
+			modFS:       nonExistFS,
+			code:        `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
+			expectedErr: `starlet: exec: cannot load fib: open `,
+		},
+		{
+			name:        "Missing Lazyload Modules with Valid FS",
+			lazyMap:     starlet.ModuleLoaderMap{},
+			modFS:       testFS,
+			code:        `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
+			expectedErr: `starlet: exec: cannot load fib: open `,
+		},
+		{
+			name:        "No FS for Lazyload Modules",
+			lazyMap:     starlet.ModuleLoaderMap{"fib": starlet.MakeModuleLoaderFromFile("fibonacci.star", nil, nil)},
+			code:        `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
+			expectedErr: `starlet: exec: cannot load fib: no file system given`,
+		},
+		{
+			name:        "NonExist file system for Lazyload Modules",
+			lazyMap:     starlet.ModuleLoaderMap{"fib": starlet.MakeModuleLoaderFromFile("fibonacci.star", nonExistFS, nil)},
+			code:        `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
+			expectedErr: `starlet: exec: cannot load fib: open `,
+		},
+		{
+			name:        "NonExist file for Lazyload Modules",
+			lazyMap:     starlet.ModuleLoaderMap{"fib": starlet.MakeModuleLoaderFromFile("nonexist.star", testFS, nil)},
+			code:        `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
+			expectedErr: `starlet: exec: cannot load fib: open `,
+		},
+		{
+			name:    "Single File for Lazyload Modules",
+			lazyMap: starlet.ModuleLoaderMap{"fib": starlet.MakeModuleLoaderFromFile("fibonacci.star", testFS, nil)},
+			code:    `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == int64(55)
+			},
+		},
+		{
+			name:        "Duplicate Files for Lazyload Modules",
+			lazyMap:     starlet.ModuleLoaderMap{"fib": starlet.MakeModuleLoaderFromFile("fibonacci.star", testFS, nil), "fib2": starlet.MakeModuleLoaderFromFile("fibonacci.star", testFS, nil)},
+			code:        `load("fib", "fibonacci"); load("fib2", "fibonacci"); val = fibonacci(10)[-1]`,
+			expectedErr: `starlet: exec: test.star:1:41: cannot reassign top-level fibonacci`,
+		},
+		{
+			name:    "Multiple Files for Lazyload Modules",
+			lazyMap: starlet.ModuleLoaderMap{"fib": starlet.MakeModuleLoaderFromFile("fibonacci.star", testFS, nil), "fac": starlet.MakeModuleLoaderFromFile("factorial.star", testFS, nil)},
+			code:    `load("fib", "fibonacci"); load("fac", "factorial"); val = fibonacci(10)[-1] + factorial(10)`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == int64(3628855)
+			},
+		},
+		// both preload and lazyload
+		{
+			name:    "Duplicate Files for Preload and Lazyload Modules",
+			preList: starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("fibonacci.star", testFS, nil)},
+			lazyMap: starlet.ModuleLoaderMap{"fib": starlet.MakeModuleLoaderFromFile("fibonacci.star", testFS, nil)},
+			code:    `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == int64(55)
+			},
+		},
+		{
+			name:    "Multiple Files for Preload and Lazyload Modules",
+			preList: starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("fibonacci.star", testFS, nil)},
+			lazyMap: starlet.ModuleLoaderMap{"fac": starlet.MakeModuleLoaderFromFile("factorial.star", testFS, nil)},
+			code:    `load("fac", "factorial"); val = fibonacci(10)[-1] + factorial(10)`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == int64(3628855)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := starlet.NewWithLoaders(tc.globals, tc.preList, tc.lazyMap)
+			m.SetPrintFunc(getLogPrintFunc(t))
+			m.SetScript("test.star", []byte(tc.code), tc.modFS)
+			out, err := m.Run(context.Background())
+
+			// check result
+			if tc.expectedErr != "" {
+				expectErr(t, err, tc.expectedErr)
+				return
+			} else if err != nil {
+				t.Errorf("Expected no errors, got error: %v", err)
+			}
+
+			if tc.cmpResult != nil {
+				if out == nil {
+					t.Errorf("Unexpected empty result: %v", out)
+				} else if v, ok := out["val"]; !ok {
+					t.Errorf("Unexpected missing result: %v", out)
+				} else if !tc.cmpResult(v) {
+					t.Errorf("Unexpected result: %v", out)
+				}
+			}
+		})
+	}
+}
+
+func Test_Machine_Run_CodeLoaders(t *testing.T) {
+	// the following tests tests the combination of direct preload and lazyload modules in code, and validate the override behavior.
+	var (
+		testFS                 = os.DirFS("testdata")
 		failName, failLoader   = getErrorModuleLoader()
 		appleName, appleLoader = getAppleModuleLoader()
 		berryName, berryLoader = getBlueberryModuleLoader()
