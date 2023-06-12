@@ -1,6 +1,7 @@
 package starlet
 
 import (
+	"fmt"
 	"io/fs"
 	"sync"
 
@@ -33,6 +34,15 @@ type Machine struct {
 	thread      *starlark.Thread
 	predeclared starlark.StringDict
 	lastResult  starlark.StringDict
+}
+
+func (m *Machine) String() string {
+	steps := uint64(0)
+	if m.thread != nil {
+		steps = m.thread.Steps
+	}
+	return fmt.Sprintf("🌠Machine{run:%d,step:%d,script:%q,len:%d,fs:%v}",
+		m.runTimes, steps, m.scriptName, len(m.scriptContent), m.scriptFS)
 }
 
 // NewDefault creates a new Starlark runtime environment.
