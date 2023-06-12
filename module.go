@@ -21,6 +21,7 @@ var allBuiltinModules = ModuleLoaderMap{
 			"true":  starlark.True,
 			"false": starlark.False,
 			"nil":   starlark.None,
+			//"sleep": starlark.NewBuiltin("sleep", sleep),
 			//"exit":  starlark.NewBuiltin("exit", exit),
 		}, nil
 	},
@@ -40,10 +41,7 @@ var allBuiltinModules = ModuleLoaderMap{
 		}, nil
 	},
 	"time": func() (starlark.StringDict, error) {
-		// TODO: fix import struct
-		return starlark.StringDict{
-			"time": stime.Module,
-		}, nil
+		return stime.Module.Members, nil
 	},
 }
 

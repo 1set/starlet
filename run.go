@@ -49,9 +49,9 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 		return nil, fmt.Errorf("starlet: run: %w", ErrNoScriptSourceToRun)
 	}
 
-	// for the first run
 	var err error
 	if m.thread == nil {
+		// prepare thread for the first run
 		// preset globals + preload modules -> predeclared
 		if m.predeclared, err = convert.MakeStringDict(m.globals); err != nil {
 			return nil, fmt.Errorf("starlet: convert: %w", err)
@@ -93,11 +93,17 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 	m.thread.SetLocal("context", ctx)
 
 	// TODO: run script with context and thread
-	// run for various source code types
 	m.runTimes++
-	var (
-		res starlark.StringDict
-	)
+	if ctx != nil {
+		go func() {
+			<-ctx.Done()
+			m.thread.Cancel("context cancelled")
+			// TODO: should Uncancel() be called for next run?
+		}()
+	}
+
+	// run for various source code types
+	var res starlark.StringDict
 	switch srcType {
 	case sourceCodeTypeContent:
 		res, err = starlark.ExecFile(m.thread, scriptName, m.scriptContent, m.predeclared)
@@ -111,10 +117,11 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 
 	// handle result and convert
 	m.lastResult = res
+	out := convert.FromStringDict(res)
 	if err != nil {
-		return nil, fmt.Errorf("starlet: exec: %w", err)
+		return out, fmt.Errorf("starlet: exec: %w", err)
 	}
-	return convert.FromStringDict(res), nil
+	return out, nil
 }
 
 // Reset resets the machine to initial state before the first run.
