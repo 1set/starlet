@@ -86,8 +86,11 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 			m.loadCache.globals = m.predeclared
 		}
 		// set printFunc for thread anyway
-		m.thread.Print = m.printFunc
 	}
+
+	// for each run commons
+	m.thread.Print = m.printFunc
+	m.thread.SetLocal("context", ctx)
 
 	// TODO: run script with context and thread
 	// run for various source code types
