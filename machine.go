@@ -28,9 +28,11 @@ type Machine struct {
 	scriptContent []byte
 	scriptFS      fs.FS
 	// runtime core
-	runTimes  uint
-	thread    *starlark.Thread
-	loadCache *cache
+	runTimes    uint
+	loadCache   *cache
+	thread      *starlark.Thread
+	predeclared starlark.StringDict
+	lastResult  starlark.StringDict
 }
 
 // NewDefault creates a new Starlark runtime environment.
@@ -73,6 +75,7 @@ func NewWithNames(globals DataStore, preloads []string, lazyloads []string) *Mac
 }
 
 // SetGlobals sets the globals of the Starlark runtime environment.
+// It only works before the first run.
 func (m *Machine) SetGlobals(globals DataStore) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -81,6 +84,7 @@ func (m *Machine) SetGlobals(globals DataStore) {
 }
 
 // AddGlobals adds the globals of the Starlark runtime environment.
+// It only works before the first run.
 func (m *Machine) AddGlobals(globals DataStore) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -102,6 +106,7 @@ func (m *Machine) GetGlobals() DataStore {
 }
 
 // SetPreloadModules sets the preload modules of the Starlark runtime environment.
+// It only works before the first run.
 func (m *Machine) SetPreloadModules(mods ModuleLoaderList) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

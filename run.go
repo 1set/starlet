@@ -49,106 +49,73 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 		return nil, fmt.Errorf("starlet: run: %w", ErrNoScriptSourceToRun)
 	}
 
-	// TODO: Assume: it's the first run -- for rerun, we need to reset the cache
+	// for the first run
+	if m.thread == nil {
+		// preset globals + preload modules -> predeclared
+		predeclared, err := convert.MakeStringDict(m.globals.Clone())
+		if err != nil {
+			return nil, fmt.Errorf("starlet: convert: %w", err)
+		}
+		if err = m.preloadMods.LoadAll(predeclared); err != nil {
+			return nil, err
+		}
+		m.predeclared = predeclared
 
-	// preset globals + preload modules -> predeclared
-	predeclared, err := convert.MakeStringDict(m.globals.Clone())
-	if err != nil {
-		return nil, fmt.Errorf("starlet: convert: %w", err)
+		// cache load + printFunc -> thread
+		m.loadCache = &cache{
+			cache:   make(map[string]*entry),
+			loadMod: m.lazyloadMods.GetLazyLoader(),
+			readFile: func(name string) ([]byte, error) {
+				return readScriptFile(name, m.scriptFS)
+			},
+			globals: predeclared,
+		}
+		thread := &starlark.Thread{
+			Print: m.printFunc,
+			Load: func(thread *starlark.Thread, module string) (starlark.StringDict, error) {
+				return m.loadCache.Load(module)
+			},
+		}
+		m.thread = thread
+	} else {
+		// for the following runs
+		if m.lastResult != nil {
+			// merge last result as globals
+			for k, v := range m.lastResult {
+				m.predeclared[k] = v
+			}
+			// set globals for cache
+			m.loadCache.globals = m.predeclared
+		} else {
+			// reset globals
+			m.predeclared = starlark.StringDict{}
+		}
+		// set printFunc for thread anyway
+		m.thread.Print = m.printFunc
 	}
-	if err = m.preloadMods.LoadAll(predeclared); err != nil {
-		return nil, err
-	}
-
-	// TODO: save or reuse thread
-	// cache load + printFunc -> thread
-	m.loadCache = &cache{
-		cache:    make(map[string]*entry),
-		loadMod:  m.lazyloadMods.GetLazyLoader(),
-		readFile: m.readScriptFile,
-		globals:  predeclared,
-	}
-	thread := &starlark.Thread{
-		Print: m.printFunc,
-		Load: func(thread *starlark.Thread, module string) (starlark.StringDict, error) {
-			return m.loadCache.Load(module)
-		},
-	}
-	m.thread = thread
 
 	// TODO: run script with context and thread
 	// run
 	m.runTimes++
-	var res starlark.StringDict
-	switch srcType {
-	case sourceCodeTypeContent:
-		res, err = starlark.ExecFile(thread, scriptName, m.scriptContent, predeclared)
-	case sourceCodeTypeFSName:
-		rd, e := m.scriptFS.Open(scriptName)
-		if e != nil {
-			return nil, fmt.Errorf("starlet: open: %w", e)
-		}
-		res, err = starlark.ExecFile(thread, scriptName, rd, predeclared)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("starlet: exec: %w", err)
-	}
-
-	// convert result to DataStore
-	return convert.FromStringDict(res), nil
-}
-
-// readScriptFile reads the given filename from the given file system.
-func (m *Machine) readScriptFile(filename string) ([]byte, error) {
-	return readScriptFile(filename, m.scriptFS)
-}
-
-func (m *Machine) RunAgain(ctx context.Context) (DataStore, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if m.thread == nil {
-		return nil, fmt.Errorf("starlet: run: no thread")
-	}
-
-	// maybe we predeclared for globals to be set again?
-
-	// either script content or name and FS must be set
 	var (
-		scriptName = m.scriptName
-		srcType    sourceCodeType
-		err        error
+		res starlark.StringDict
+		err error
 	)
-	if m.scriptContent != nil {
-		srcType = sourceCodeTypeContent
-		if scriptName == "" {
-			scriptName = "eval.star"
-		}
-	} else if m.scriptFS != nil {
-		srcType = sourceCodeTypeFSName
-		if scriptName == "" {
-			return nil, fmt.Errorf("starlet: run: %w", ErrNoFileToRun)
-		}
-	} else {
-		return nil, fmt.Errorf("starlet: run: %w", ErrNoScriptSourceToRun)
-	}
-
-	m.runTimes++
-	var res starlark.StringDict
 	switch srcType {
 	case sourceCodeTypeContent:
-		res, err = starlark.ExecFile(m.thread, scriptName, m.scriptContent, nil)
+		res, err = starlark.ExecFile(m.thread, scriptName, m.scriptContent, m.predeclared)
 	case sourceCodeTypeFSName:
 		rd, e := m.scriptFS.Open(scriptName)
 		if e != nil {
 			return nil, fmt.Errorf("starlet: open: %w", e)
 		}
-		res, err = starlark.ExecFile(m.thread, scriptName, rd, nil)
+		res, err = starlark.ExecFile(m.thread, scriptName, rd, m.predeclared)
 	}
+
+	// handle result and convert
+	m.lastResult = res
 	if err != nil {
 		return nil, fmt.Errorf("starlet: exec: %w", err)
 	}
-
-	// convert result to DataStore
 	return convert.FromStringDict(res), nil
 }

@@ -1090,7 +1090,7 @@ print("m =", m)
 
 	// run second time
 	m.SetScript("test.star", []byte(code2), nil)
-	out, err = m.RunAgain(context.Background())
+	out, err = m.Run(context.Background())
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
 	}
