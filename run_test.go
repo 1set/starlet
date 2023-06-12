@@ -29,7 +29,7 @@ func Test_DefaultMachine_Run_NoSpecificFile(t *testing.T) {
 func Test_DefaultMachine_Run_APlusB(t *testing.T) {
 	m := starlet.NewDefault()
 	code := `a = 1 + 2`
-	m.SetScript("a_plus_b.star", []byte(code), nil)
+	m.SetScript("", []byte(code), nil)
 	out, err := m.Run(context.Background())
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
