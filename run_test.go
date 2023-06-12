@@ -876,3 +876,42 @@ val = number + n3
 		})
 	}
 }
+
+func Test_Machine_RunAgain_Normal(t *testing.T) {
+	code1 := `
+x = 10
+y = 20
+`
+	code2 := `
+z = 30
+`
+	// prepare machine
+	m := starlet.NewDefault()
+	m.SetPrintFunc(getLogPrintFunc(t))
+
+	// run first time
+	m.SetScript("test.star", []byte(code1), nil)
+	out, err := m.Run(context.Background())
+	if err != nil {
+		t.Errorf("Expected no errors, got error: %v", err)
+	}
+	if out == nil {
+		t.Errorf("Unexpected empty result: %v", out)
+	} else if len(out) != 2 {
+		t.Errorf("Unexpected result: %v", out)
+	} else {
+		t.Logf("Result for the frist run: %v", out)
+	}
+
+	// run second time
+	m.SetScript("test.star", []byte(code2), nil)
+	out, err = m.RunAgain(context.Background())
+	if err != nil {
+		t.Errorf("Expected no errors, got error: %v", err)
+	}
+	if out == nil {
+		t.Errorf("Unexpected empty result: %v", out)
+	} else {
+		t.Logf("Result for the second run: %v", out)
+	}
+}
