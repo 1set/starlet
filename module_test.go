@@ -415,7 +415,7 @@ func Test_ModuleLoaderFromReader(t *testing.T) {
 }
 
 func Test_ModuleLoaderFromFile(t *testing.T) {
-	testFS := os.DirFS("example")
+	testFS := os.DirFS("testdata")
 	tests := []struct {
 		name        string
 		fileName    string

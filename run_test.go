@@ -20,7 +20,7 @@ func Test_DefaultMachine_Run_NoCode(t *testing.T) {
 
 func Test_DefaultMachine_Run_NoSpecificFile(t *testing.T) {
 	m := starlet.NewDefault()
-	m.SetScript("", nil, os.DirFS("example"))
+	m.SetScript("", nil, os.DirFS("testdata"))
 	// run with no specific file name
 	_, err := m.Run(context.Background())
 	expectErr(t, err, `starlet: run: no specific file`)
@@ -64,7 +64,7 @@ func Test_DefaultMachine_Run_LocalFile(t *testing.T) {
 	printFunc, cmpFunc := getPrintCompareFunc(t)
 	m.SetPrintFunc(printFunc)
 	// set code
-	m.SetScript("aloha.star", nil, os.DirFS("example"))
+	m.SetScript("aloha.star", nil, os.DirFS("testdata"))
 	// run
 	_, err := m.Run(context.Background())
 	if err != nil {
@@ -77,7 +77,7 @@ func Test_DefaultMachine_Run_LocalFile(t *testing.T) {
 func Test_DefaultMachine_Run_LocalFileNonExist(t *testing.T) {
 	m := starlet.NewDefault()
 	// set code
-	m.SetScript("notfound.star", nil, os.DirFS("example"))
+	m.SetScript("notfound.star", nil, os.DirFS("testdata"))
 	// run
 	_, err := m.Run(context.Background())
 	if isOnWindows {
@@ -104,7 +104,7 @@ func Test_DefaultMachine_Run_LoadFunc(t *testing.T) {
 	m := starlet.NewDefault()
 	// set code
 	code := `load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]`
-	m.SetScript("test.star", []byte(code), os.DirFS("example"))
+	m.SetScript("test.star", []byte(code), os.DirFS("testdata"))
 	// run
 	out, err := m.Run(context.Background())
 	if err != nil {
@@ -122,7 +122,7 @@ func Test_DefaultMachine_Run_LoadNonExist(t *testing.T) {
 	m := starlet.NewDefault()
 	// set code
 	code := `load("nonexist.star", "a")`
-	m.SetScript("test.star", []byte(code), os.DirFS("example"))
+	m.SetScript("test.star", []byte(code), os.DirFS("testdata"))
 	// run
 	_, err := m.Run(context.Background())
 	// check result
@@ -157,7 +157,7 @@ func Test_Machine_Run_File_Globals(t *testing.T) {
 		"magic_number": 30,
 	}, nil, nil)
 	// set code
-	m.SetScript("magic.star", nil, os.DirFS("example"))
+	m.SetScript("magic.star", nil, os.DirFS("testdata"))
 	// run
 	out, err := m.Run(context.Background())
 	if err != nil {
@@ -187,7 +187,7 @@ func Test_Machine_Run_Load_Use_Globals(t *testing.T) {
 	}, nil, nil)
 	// set code
 	code := `load("magic.star", "custom"); val = custom()`
-	m.SetScript("dummy.star", []byte(code), os.DirFS("example"))
+	m.SetScript("dummy.star", []byte(code), os.DirFS("testdata"))
 	// run
 	out, err := m.Run(context.Background())
 	if err != nil {
@@ -207,7 +207,7 @@ func Test_Machine_Run_File_Missing_Globals(t *testing.T) {
 		"other_number": 30,
 	}, nil, nil)
 	// set code
-	m.SetScript("magic.star", nil, os.DirFS("example"))
+	m.SetScript("magic.star", nil, os.DirFS("testdata"))
 	// run
 	_, err := m.Run(context.Background())
 	expectErr(t, err, `starlet: exec: magic.star:5:32: undefined: magic_number`)
@@ -266,7 +266,7 @@ load("fibonacci.star", fib="fibonacci")
 y = fibonacci(10)[-1]
 z = fib(10)[-1]
 `
-	m.SetScript("test.star", []byte(code), os.DirFS("example"))
+	m.SetScript("test.star", []byte(code), os.DirFS("testdata"))
 	// run
 	out, err := m.Run(context.Background())
 	if err != nil {
@@ -291,7 +291,7 @@ load("fibonacci.star", fib="fibonacci")
 y = fibonacci(num)[-1]
 z = fib(num)[-1]
 `
-	m.SetScript("test.star", []byte(code), os.DirFS("example"))
+	m.SetScript("test.star", []byte(code), os.DirFS("testdata"))
 	// run
 	out, err := m.Run(context.Background())
 	if err != nil {
@@ -306,7 +306,7 @@ z = fib(num)[-1]
 }
 
 func Test_Machine_Run_LoadErrors(t *testing.T) {
-	testFS := os.DirFS("example")
+	testFS := os.DirFS("testdata")
 	testCases := []struct {
 		name          string
 		globals       map[string]interface{}
@@ -444,7 +444,7 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 
 func Test_Machine_Run_Loaders(t *testing.T) {
 	var (
-		testFS                 = os.DirFS("example")
+		testFS                 = os.DirFS("testdata")
 		failName, failLoader   = getErrorModuleLoader()
 		appleName, appleLoader = getAppleModuleLoader()
 		berryName, berryLoader = getBlueberryModuleLoader()
