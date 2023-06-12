@@ -342,6 +342,9 @@ coins = 50
 }
 
 func Test_Machine_Run_LoadErrors(t *testing.T) {
+	mm := starlark.NewDict(1)
+	_ = mm.SetKey(starlark.String("quarter"), starlark.MakeInt(100))
+	_ = mm.SetKey(starlark.String("dime"), starlark.MakeInt(10))
 	testFS := os.DirFS("testdata")
 	nonExistFS := os.DirFS("nonexist")
 	testCases := []struct {
@@ -372,6 +375,16 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 			globals:     map[string]interface{}{"a": 2},
 			code:        `b = a + "10"`,
 			expectedErr: `starlet: exec: unknown binary op: int + string`,
+		},
+		{
+			name:    "Fails to Override Globals Variable",
+			globals: map[string]interface{}{"coins": mm},
+			code: `
+num = 100
+x = num * 5 + coins['quarter']
+coins = 50
+`,
+			expectedErr: `starlet: exec: global variable coins referenced before assignment`,
 		},
 		// for preload modules
 		{
