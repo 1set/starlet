@@ -508,6 +508,67 @@ func Test_Machine_Run_FileLoaders(t *testing.T) {
 				return val.(int64) == int64(3628855)
 			},
 		},
+		// for lazyload with fs
+		{
+			name:        "Missing Lazyload Modules",
+			lazyMap:     starlet.ModuleLoaderMap{},
+			code:        `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
+			expectedErr: `starlet: exec: cannot load fib: no file system given`,
+		},
+		{
+			name:        "Missing Lazyload Modules with Invalid FS",
+			lazyMap:     starlet.ModuleLoaderMap{},
+			modFS:       nonExistFS,
+			code:        `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
+			expectedErr: `starlet: exec: cannot load fib: open `,
+		},
+		{
+			name:        "Missing Lazyload Modules with Valid FS",
+			lazyMap:     starlet.ModuleLoaderMap{},
+			modFS:       testFS,
+			code:        `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
+			expectedErr: `starlet: exec: cannot load fib: open `,
+		},
+		{
+			name:        "No FS for Lazyload Modules",
+			lazyMap:     starlet.ModuleLoaderMap{"fib": starlet.MakeModuleLoaderFromFile("fibonacci.star", nil, nil)},
+			code:        `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
+			expectedErr: `starlet: exec: cannot load fib: no file system given`,
+		},
+		{
+			name:        "NonExist file system for Lazyload Modules",
+			lazyMap:     starlet.ModuleLoaderMap{"fib": starlet.MakeModuleLoaderFromFile("fibonacci.star", nonExistFS, nil)},
+			code:        `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
+			expectedErr: `starlet: exec: cannot load fib: open `,
+		},
+		{
+			name:        "NonExist file for Lazyload Modules",
+			lazyMap:     starlet.ModuleLoaderMap{"fib": starlet.MakeModuleLoaderFromFile("nonexist.star", testFS, nil)},
+			code:        `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
+			expectedErr: `starlet: exec: cannot load fib: open `,
+		},
+		{
+			name:    "Single File for Lazyload Modules",
+			lazyMap: starlet.ModuleLoaderMap{"fib": starlet.MakeModuleLoaderFromFile("fibonacci.star", testFS, nil)},
+			code:    `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == int64(55)
+			},
+		},
+		{
+			name:        "Duplicate Files for Lazyload Modules",
+			lazyMap:     starlet.ModuleLoaderMap{"fib": starlet.MakeModuleLoaderFromFile("fibonacci.star", testFS, nil), "fib2": starlet.MakeModuleLoaderFromFile("fibonacci.star", testFS, nil)},
+			code:        `load("fib", "fibonacci"); load("fib2", "fibonacci"); val = fibonacci(10)[-1]`,
+			expectedErr: `starlet: exec: test.star:1:41: cannot reassign top-level fibonacci`,
+		},
+		{
+			name:    "Multiple Files for Lazyload Modules",
+			lazyMap: starlet.ModuleLoaderMap{"fib": starlet.MakeModuleLoaderFromFile("fibonacci.star", testFS, nil), "fac": starlet.MakeModuleLoaderFromFile("factorial.star", testFS, nil)},
+			code:    `load("fib", "fibonacci"); load("fac", "factorial"); val = fibonacci(10)[-1] + factorial(10)`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == int64(3628855)
+			},
+		},
 	}
 
 	for _, tc := range testCases {
