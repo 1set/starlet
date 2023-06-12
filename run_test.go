@@ -1099,5 +1099,4 @@ print("m =", m)
 	} else {
 		t.Logf("Result for the second run: %v", out)
 	}
-	t.Logf("Machine: %v", m)
 }

@@ -1,6 +1,7 @@
 package starlet_test
 
 import (
+	"context"
 	"io"
 	"io/fs"
 	"os"
@@ -505,5 +506,51 @@ func Test_ModuleLoaderFromFile(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestAllBuiltinModules(t *testing.T) {
+	ml := []string{"go_idiomatic", "json", "math", "struct", "time"}
+	m := starlet.NewWithNames(map[string]interface{}{}, ml, nil)
+	m.SetPrintFunc(getLogPrintFunc(t))
+	// set code
+	code := `
+def assert(cond, msg=None):
+	if not cond:
+		fail(msg)
+
+assert(true != false, "true is not false")
+assert(nil == None, "nil is None")
+
+s = struct(name="test", age=10, tags=["a", "b", "c"])
+print(s, type(s))
+
+sj = encode(s)
+print(sj, type(sj))
+
+sd = decode(sj)
+print(sd, type(sd))
+
+f = sqrt(2)
+print(f, type(f))
+
+t1 = now()
+print("now", t1, type(t1))
+t2 = time(year=2023, month=5, day=20)
+print("birth", t2, type(t2))
+d = t1 - t2
+print("dh", d.hours, type(d))
+`
+	m.SetScript("test.star", []byte(code), nil)
+	// run
+	out, err := m.Run(context.Background())
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if out == nil {
+		t.Errorf("unexpected nil output")
+	} else {
+		t.Logf("output: %v", out)
+		t.Logf("machine: %v", m)
 	}
 }
