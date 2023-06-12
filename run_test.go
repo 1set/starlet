@@ -254,7 +254,7 @@ a = nil == None
 	}
 }
 
-func Test_Machine_Run_Load_Shadow_Globals(t *testing.T) {
+func Test_Machine_Run_LazyLoad_Override_Globals(t *testing.T) {
 	// enable global reassign only for this test, if it's not enabled, it will fail for: local variable fibonacci referenced before assignment
 	starlet.EnableGlobalReassign()
 	defer func() {
@@ -284,7 +284,7 @@ z = fib(10)[-1]
 	}
 }
 
-func Test_Machine_Run_Load_With_Globals(t *testing.T) {
+func Test_Machine_Run_Override_Globals(t *testing.T) {
 	// create machine
 	m := starlet.NewWithNames(map[string]interface{}{"num": 10}, nil, nil)
 	// set code
@@ -305,6 +305,36 @@ z = fib(num)[-1]
 	if out == nil {
 		t.Errorf("unexpected nil output")
 	} else if out["x"] != int64(20) || out["y"] != int64(55) || out["z"] != int64(55) {
+		t.Errorf("unexpected output: %v", out)
+	}
+}
+
+func Test_Machine_Run_PreLoad_Override_Globals(t *testing.T) {
+	// enable global reassign only for this test, if it's not enabled, it will fail for: local variable coins referenced before assignment
+	starlet.EnableGlobalReassign()
+	defer func() {
+		starlet.DisableGlobalReassign()
+	}()
+	// create machine
+	m := starlet.NewWithLoaders(map[string]interface{}{"num": 10}, starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("coins.star", os.DirFS("testdata"), nil)}, nil)
+	// set code
+	code := `
+num = 100
+x = num * 5 + coins['quarter']
+coins = 50
+`
+	m.SetScript("test.star", []byte(code), os.DirFS("testdata"))
+	// run
+	out, err := m.Run(context.Background())
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	// check result
+	if out == nil {
+		t.Errorf("unexpected nil output")
+	} else if len(out) != 3 {
+		t.Errorf("unexpected output: %v", out)
+	} else if out["x"] != int64(525) || out["num"] != int64(100) || out["coins"] != int64(50) {
 		t.Errorf("unexpected output: %v", out)
 	}
 }
@@ -530,6 +560,29 @@ func Test_Machine_Run_FileLoaders(t *testing.T) {
 			preList:   starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("one.star", testFS, map[string]starlark.Value{"input": starlark.MakeInt(5)})},
 			code:      `val = number`,
 			cmpResult: func(val interface{}) bool { return val.(int64) == int64(500) },
+		},
+		{
+			name:    "Override Global Variables",
+			globals: map[string]interface{}{"num": 10},
+			preList: starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("coins.star", testFS, nil)},
+			code: `
+num = 100
+val = num * 5 + coins['quarter']
+`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == int64(525)
+			},
+		},
+		{
+			name:    "Fails to Override Preload Modules",
+			globals: map[string]interface{}{"num": 10},
+			preList: starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("coins.star", testFS, nil)},
+			code: `
+num = 100
+x = num * 5 + coins['quarter']
+coins = 50
+`,
+			expectedErr: `starlet: exec: global variable coins referenced before assignment`,
 		},
 		// for lazyload with fs
 		{
