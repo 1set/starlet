@@ -569,6 +569,25 @@ func Test_Machine_Run_FileLoaders(t *testing.T) {
 				return val.(int64) == int64(3628855)
 			},
 		},
+		// both preload and lazyload
+		{
+			name:    "Duplicate Files for Preload and Lazyload Modules",
+			preList: starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("fibonacci.star", testFS, nil)},
+			lazyMap: starlet.ModuleLoaderMap{"fib": starlet.MakeModuleLoaderFromFile("fibonacci.star", testFS, nil)},
+			code:    `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == int64(55)
+			},
+		},
+		{
+			name:    "Multiple Files for Preload and Lazyload Modules",
+			preList: starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("fibonacci.star", testFS, nil)},
+			lazyMap: starlet.ModuleLoaderMap{"fac": starlet.MakeModuleLoaderFromFile("factorial.star", testFS, nil)},
+			code:    `load("fac", "factorial"); val = fibonacci(10)[-1] + factorial(10)`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == int64(3628855)
+			},
+		},
 	}
 
 	for _, tc := range testCases {
