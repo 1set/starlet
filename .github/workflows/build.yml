@@ -56,8 +56,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.txt
       - name: Upload Coverage Reports to Codacy
-        # if: ${{ fromJSON(env.CI_REPORT) }}
-        if: ${{ false }}
+        if: ${{ fromJSON(env.CI_REPORT) }}
         env:
           CODACY_PROJECT_TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}
         run:
