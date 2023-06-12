@@ -1055,14 +1055,14 @@ x = 2
 y = 10
 
 load("math", "pow")
-z = pow(x, y)
+z = int(pow(x, y))
 print("z =", z)
 `
 	code2 := `
 pow = 10
 load("math", p2="pow")
 t = p2(2, 5) + pow
-print("t =", t)
+print("t =", t, "{}-{}-{}".format(x,y,z))
 
 load("math", "mod")
 m = mod(11, 3)
