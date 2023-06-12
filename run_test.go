@@ -828,7 +828,7 @@ func Test_Machine_Run_CodeLoaders(t *testing.T) {
 			},
 		},
 		{
-			name:    "Override Global Variables",
+			name:    "Override Global Variables With Preload Modules",
 			globals: map[string]interface{}{"num": 10},
 			preList: starlet.ModuleLoaderList{appleLoader, berryLoader, cocoLoader},
 			code: `
@@ -905,6 +905,33 @@ number = 10
 val = number * 10
 `,
 			expectedErr: `starlet: exec: test.star:3:1: cannot reassign local number declared at test.star:2:21`,
+		},
+		{
+			name:    "Override Global Variables With Lazyload Modules",
+			globals: map[string]interface{}{"num": 10},
+			lazyMap: starlet.ModuleLoaderMap{appleName: appleLoader, berryName: berryLoader},
+			code: `
+num = 100
+load("mock_apple", "number")
+val = num * 5 + number
+`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == int64(510)
+			},
+		},
+		{
+			name:    "Override Global Variables And Lazyload Modules",
+			globals: map[string]interface{}{"num": 10},
+			lazyMap: starlet.ModuleLoaderMap{appleName: appleLoader, berryName: berryLoader},
+			code: `
+num = 100
+number = 500
+load("mock_apple", "number")
+val = num * 5 + number
+`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == int64(510)
+			},
 		},
 		// both pre and lazy loaders
 		{
