@@ -827,6 +827,29 @@ func Test_Machine_Run_CodeLoaders(t *testing.T) {
 				return val.(int64) == 40
 			},
 		},
+		{
+			name:    "Override Global Variables",
+			globals: map[string]interface{}{"num": 10},
+			preList: starlet.ModuleLoaderList{appleLoader, berryLoader, cocoLoader},
+			code: `
+num = 100
+val = num * 5 + number
+`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == int64(540)
+			},
+		},
+		{
+			name:    "Fails to Override Preload Modules",
+			globals: map[string]interface{}{"num": 10},
+			preList: starlet.ModuleLoaderList{appleLoader, berryLoader, cocoLoader},
+			code: `
+num = 100
+val = num * 5 + number
+number = 500
+`,
+			expectedErr: `starlet: exec: global variable number referenced before assignment`,
+		},
 		// only lazy loaders
 		{
 			name:    "LazyLoad Module: Go",
