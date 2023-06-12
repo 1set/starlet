@@ -155,8 +155,8 @@ func MakeBuiltinModuleLoaderMap(names []string) (ModuleLoaderMap, error) {
 	return ld, nil
 }
 
-// ModuleLoaderFromString creates a module loader from the given source code.
-func ModuleLoaderFromString(name, source string, predeclared starlark.StringDict) ModuleLoader {
+// MakeModuleLoaderFromString creates a module loader from the given source code.
+func MakeModuleLoaderFromString(name, source string, predeclared starlark.StringDict) ModuleLoader {
 	return func() (starlark.StringDict, error) {
 		if name == "" {
 			name = "load.star"
@@ -165,8 +165,8 @@ func ModuleLoaderFromString(name, source string, predeclared starlark.StringDict
 	}
 }
 
-// ModuleLoaderFromReader creates a module loader from the given IO reader.
-func ModuleLoaderFromReader(name string, rd io.Reader, predeclared starlark.StringDict) ModuleLoader {
+// MakeModuleLoaderFromReader creates a module loader from the given IO reader.
+func MakeModuleLoaderFromReader(name string, rd io.Reader, predeclared starlark.StringDict) ModuleLoader {
 	return func() (starlark.StringDict, error) {
 		if name == "" {
 			name = "load.star"
@@ -175,8 +175,8 @@ func ModuleLoaderFromReader(name string, rd io.Reader, predeclared starlark.Stri
 	}
 }
 
-// ModuleLoaderFromFile creates a module loader from the given file.
-func ModuleLoaderFromFile(name string, fileSys fs.FS, predeclared starlark.StringDict) ModuleLoader {
+// MakeModuleLoaderFromFile creates a module loader from the given file.
+func MakeModuleLoaderFromFile(name string, fileSys fs.FS, predeclared starlark.StringDict) ModuleLoader {
 	return func() (starlark.StringDict, error) {
 		// read file content
 		b, err := readScriptFile(name, fileSys)

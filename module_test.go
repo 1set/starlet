@@ -317,7 +317,7 @@ val = 3
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// make and run the module
-			loader := starlet.ModuleLoaderFromString(tt.fileName, tt.source, tt.predeclared)
+			loader := starlet.MakeModuleLoaderFromString(tt.fileName, tt.source, tt.predeclared)
 			mod, err := loader()
 			if tt.wantErr != "" {
 				expectErr(t, err, tt.wantErr)
@@ -387,7 +387,7 @@ func Test_ModuleLoaderFromReader(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// make and run the module
-			loader := starlet.ModuleLoaderFromReader(tt.fileName, tt.source, tt.predeclared)
+			loader := starlet.MakeModuleLoaderFromReader(tt.fileName, tt.source, tt.predeclared)
 			mod, err := loader()
 			if tt.wantErr != "" {
 				expectErr(t, err, tt.wantErr)
@@ -481,7 +481,7 @@ func Test_ModuleLoaderFromFile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// make and run the module
-			loader := starlet.ModuleLoaderFromFile(tt.fileName, tt.fileSys, tt.predeclared)
+			loader := starlet.MakeModuleLoaderFromFile(tt.fileName, tt.fileSys, tt.predeclared)
 			mod, err := loader()
 			if tt.wantErr != "" {
 				expectErr(t, err, tt.wantErr)
