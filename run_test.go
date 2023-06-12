@@ -449,8 +449,73 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 	}
 }
 
-func Test_Machine_Run_Loaders(t *testing.T) {
-	// the following tests tests the combination of preload and lazyload modules, and validate the override behavior.
+func Test_Machine_Run_FileLoaders(t *testing.T) {
+	// the following tests tests the combination of preload and lazyload modules loaded via file.
+	var (
+		testFS     = os.DirFS("testdata")
+		nonExistFS = os.DirFS("nonexist")
+	)
+	testCases := []struct {
+		name        string
+		globals     map[string]interface{}
+		preList     starlet.ModuleLoaderList
+		lazyMap     starlet.ModuleLoaderMap
+		code        string
+		modFS       fs.FS
+		expectedErr string
+		cmpResult   func(val interface{}) bool
+	}{
+		// for preload with fs
+		{
+			name:        "No FS for Preload Modules",
+			preList:     starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("fibonacci.star", nil, nil)},
+			code:        `val = fibonacci(10)[-1]`,
+			expectedErr: "starlet: failed to load module: no file system given",
+		},
+		{
+			name:        "NonExist file system for Preload Modules",
+			preList:     starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("fibonacci.star", nonExistFS, nil)},
+			code:        `val = fibonacci(10)[-1]`,
+			expectedErr: "starlet: failed to load module: open ",
+		},
+		{
+			name:        "NonExist file for Preload Modules",
+			preList:     starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("nonexist.star", testFS, nil)},
+			code:        `val = fibonacci(10)[-1]`,
+			expectedErr: "starlet: failed to load module: open ",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := starlet.NewWithLoaders(tc.globals, tc.preList, tc.lazyMap)
+			m.SetPrintFunc(getLogPrintFunc(t))
+			m.SetScript("test.star", []byte(tc.code), tc.modFS)
+			out, err := m.Run(context.Background())
+
+			// check result
+			if tc.expectedErr != "" {
+				expectErr(t, err, tc.expectedErr)
+				return
+			} else if err != nil {
+				t.Errorf("Expected no errors, got error: %v", err)
+			}
+
+			if tc.cmpResult != nil {
+				if out == nil {
+					t.Errorf("Unexpected empty result: %v", out)
+				} else if v, ok := out["val"]; !ok {
+					t.Errorf("Unexpected missing result: %v", out)
+				} else if !tc.cmpResult(v) {
+					t.Errorf("Unexpected result: %v", out)
+				}
+			}
+		})
+	}
+}
+
+func Test_Machine_Run_CodeLoaders(t *testing.T) {
+	// the following tests tests the combination of direct preload and lazyload modules in code, and validate the override behavior.
 	var (
 		testFS                 = os.DirFS("testdata")
 		failName, failLoader   = getErrorModuleLoader()
