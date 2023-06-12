@@ -84,16 +84,13 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 			}
 			// set globals for cache
 			m.loadCache.globals = m.predeclared
-		} else {
-			// reset globals
-			m.predeclared = starlark.StringDict{}
 		}
 		// set printFunc for thread anyway
 		m.thread.Print = m.printFunc
 	}
 
 	// TODO: run script with context and thread
-	// run
+	// run for various source code types
 	m.runTimes++
 	var (
 		res starlark.StringDict
