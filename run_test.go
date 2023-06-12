@@ -136,9 +136,13 @@ func Test_DefaultMachine_Run_LoadNonExist(t *testing.T) {
 func Test_Machine_Run_Globals(t *testing.T) {
 	m := starlet.NewWithNames(map[string]interface{}{
 		"a": 2,
+		"c": "hello",
 	}, nil, nil)
 	// set code
-	code := `b = a * 10`
+	code := `
+c = 100
+b = a * 10 + c
+`
 	m.SetScript("test.star", []byte(code), nil)
 	// run
 	out, err := m.Run(context.Background())
@@ -147,7 +151,7 @@ func Test_Machine_Run_Globals(t *testing.T) {
 	}
 	if out == nil {
 		t.Errorf("unexpected nil output")
-	} else if out["b"].(int64) != int64(20) {
+	} else if out["b"].(int64) != int64(120) {
 		t.Errorf("unexpected output: %v", out)
 	}
 }
@@ -320,7 +324,7 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 	}{
 		// for globals
 		{
-			name:        "Unsupport Globals Type",
+			name:        "Unsupported Globals Type",
 			globals:     map[string]interface{}{"a": make(chan int)},
 			code:        `b = a`,
 			expectedErr: `starlet: convert: type chan int is not a supported starlark type`,
@@ -508,6 +512,19 @@ func Test_Machine_Run_FileLoaders(t *testing.T) {
 				return val.(int64) == int64(3628855)
 			},
 		},
+		{
+			name:        "Preload Modules Requires External Value",
+			globals:     map[string]interface{}{"input": 10},
+			preList:     starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("one.star", testFS, nil)},
+			code:        `val = number`,
+			expectedErr: `starlet: failed to load module: one.star:1:10: undefined: input`,
+		},
+		{
+			name:      "Preload Modules With External Value",
+			preList:   starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("one.star", testFS, map[string]starlark.Value{"input": starlark.MakeInt(5)})},
+			code:      `val = number`,
+			cmpResult: func(val interface{}) bool { return val.(int64) == int64(500) },
+		},
 		// for lazyload with fs
 		{
 			name:        "Missing Lazyload Modules",
@@ -567,6 +584,27 @@ func Test_Machine_Run_FileLoaders(t *testing.T) {
 			code:    `load("fib", "fibonacci"); load("fac", "factorial"); val = fibonacci(10)[-1] + factorial(10)`,
 			cmpResult: func(val interface{}) bool {
 				return val.(int64) == int64(3628855)
+			},
+		},
+		{
+			name:        "Lazyload Modules Requires External Value",
+			globals:     map[string]interface{}{"input": 10},
+			lazyMap:     starlet.ModuleLoaderMap{"one": starlet.MakeModuleLoaderFromFile("one.star", testFS, nil)},
+			code:        `load("one", "number"); val = number`,
+			expectedErr: `starlet: exec: cannot load one: one.star:1:10: undefined: input`,
+		},
+		{
+			name:        "Lazyload Modules Misplaced External Value",
+			lazyMap:     starlet.ModuleLoaderMap{"one": starlet.MakeModuleLoaderFromFile("one.star", testFS, nil)},
+			code:        `input = 10; load("one", "number"); val = number`,
+			expectedErr: `starlet: exec: cannot load one: one.star:1:10: undefined: input`,
+		},
+		{
+			name:    "Lazyload Modules With External Value",
+			lazyMap: starlet.ModuleLoaderMap{"one": starlet.MakeModuleLoaderFromFile("one.star", testFS, map[string]starlark.Value{"input": starlark.MakeInt(10)})},
+			code:    `load("one", "number"); val = number`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == int64(1000)
 			},
 		},
 		// both preload and lazyload
@@ -776,6 +814,16 @@ val = number
 `,
 			expectedErr: `starlet: exec: test.star:3:25: cannot reassign top-level number`,
 		},
+		{
+			name:    "Override LazyLoad Modules",
+			lazyMap: starlet.ModuleLoaderMap{appleName: appleLoader, berryName: berryLoader},
+			code: `
+load("mock_apple", "number")
+number = 10
+val = number * 10
+`,
+			expectedErr: `starlet: exec: test.star:3:1: cannot reassign local number declared at test.star:2:21`,
+		},
 		// both pre and lazy loaders
 		{
 			name:    "Preload and LazyLoad Same Modules for Same Variable",
@@ -887,9 +935,14 @@ z = pow(x, y)
 print("z =", z)
 `
 	code2 := `
-load("math", "pow")
-t = pow(2, 5)
+pow = 10
+load("math", p2="pow")
+t = p2(2, 5) + pow
 print("t =", t)
+
+load("math", "mod")
+m = mod(11, 3)
+print("m =", m)
 `
 	// prepare machine
 	m := starlet.NewDefault()
@@ -917,7 +970,7 @@ print("t =", t)
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
 	}
-	if len(out) != 1 {
+	if len(out) != 3 {
 		t.Errorf("Unexpected result: %v", out)
 	} else {
 		t.Logf("Result for the second run: %v", out)
