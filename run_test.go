@@ -887,7 +887,9 @@ z = pow(x, y)
 print("z =", z)
 `
 	code2 := `
-t = x + y + z
+load("math", "pow")
+t = pow(2, 5)
+print("t =", t)
 `
 	// prepare machine
 	m := starlet.NewDefault()
@@ -903,7 +905,7 @@ t = x + y + z
 	}
 	if out == nil {
 		t.Errorf("Unexpected empty result: %v", out)
-	} else if len(out) != 2 {
+	} else if len(out) != 3 {
 		t.Errorf("Unexpected result: %v", out)
 	} else {
 		t.Logf("Result for the frist run: %v", out)
@@ -915,8 +917,8 @@ t = x + y + z
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
 	}
-	if out == nil {
-		t.Errorf("Unexpected empty result: %v", out)
+	if len(out) != 1 {
+		t.Errorf("Unexpected result: %v", out)
 	} else {
 		t.Logf("Result for the second run: %v", out)
 	}
