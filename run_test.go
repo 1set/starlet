@@ -419,7 +419,13 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 		},
 		// for globals + user modules
 		{
-			name:        "User Modules Override Globals",
+			name:    "User Modules Override Globals",
+			globals: map[string]interface{}{"fibonacci": 2},
+			code:    `load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]; print(x, val)`,
+			modFS:   testFS,
+		},
+		{
+			name:        "User Modules Fail to Override Globals",
 			globals:     map[string]interface{}{"fibonacci": 2},
 			code:        `x = fibonacci * 10; load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]; print(x, val)`,
 			modFS:       testFS,
