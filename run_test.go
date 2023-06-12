@@ -484,6 +484,30 @@ func Test_Machine_Run_FileLoaders(t *testing.T) {
 			code:        `val = fibonacci(10)[-1]`,
 			expectedErr: "starlet: failed to load module: open ",
 		},
+		{
+			name:    "Single File for Preload Modules",
+			preList: starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("fibonacci.star", testFS, nil)},
+			code:    `val = fibonacci(10)[-1]`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == int64(55)
+			},
+		},
+		{
+			name:    "Duplicate Files for Preload Modules",
+			preList: starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("fibonacci.star", testFS, nil), starlet.MakeModuleLoaderFromFile("fibonacci.star", testFS, nil)},
+			code:    `val = fibonacci(10)[-1]`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == int64(55)
+			},
+		},
+		{
+			name:    "Multiple Files for Preload Modules",
+			preList: starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("fibonacci.star", testFS, nil), starlet.MakeModuleLoaderFromFile("factorial.star", testFS, nil)},
+			code:    `val = fibonacci(10)[-1] + factorial(10)`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == int64(3628855)
+			},
+		},
 	}
 
 	for _, tc := range testCases {
