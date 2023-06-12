@@ -51,7 +51,7 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 
 	var err error
 	if m.thread == nil {
-		// prepare thread for the first run
+		// -- prepare thread for the first run
 		// preset globals + preload modules -> predeclared
 		if m.predeclared, err = convert.MakeStringDict(m.globals); err != nil {
 			return nil, fmt.Errorf("starlet: convert: %w", err)
@@ -75,17 +75,14 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 				return m.loadCache.Load(module)
 			},
 		}
-	} else {
-		// for the following runs
-		if m.lastResult != nil {
-			// merge last result as globals
-			for k, v := range m.lastResult {
-				m.predeclared[k] = v
-			}
-			// set globals for cache
-			m.loadCache.globals = m.predeclared
+	} else if m.lastResult != nil {
+		// -- for the following runs
+		// merge last result as globals
+		for k, v := range m.lastResult {
+			m.predeclared[k] = v
 		}
-		// set printFunc for thread anyway
+		// set globals for cache
+		m.loadCache.globals = m.predeclared
 	}
 
 	// for each run commons
