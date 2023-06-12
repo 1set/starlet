@@ -307,6 +307,7 @@ z = fib(num)[-1]
 
 func Test_Machine_Run_LoadErrors(t *testing.T) {
 	testFS := os.DirFS("testdata")
+	nonExistFS := os.DirFS("nonexist")
 	testCases := []struct {
 		name          string
 		globals       map[string]interface{}
@@ -395,13 +396,19 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 			expectedErr: `starlet: exec: cannot load nonexist.star: open`,
 		},
 		{
+			name:        "NonExist File System",
+			code:        `load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]`,
+			modFS:       nonExistFS,
+			expectedErr: `starlet: exec: cannot load fibonacci.star: open`,
+		},
+		{
 			name:        "NonExist Function in User Modules",
 			code:        `load("fibonacci.star", "fake"); val = fake(10)[-1]`,
 			modFS:       testFS,
 			expectedErr: `starlet: exec: load: name fake not found in module fibonacci.star`,
 		},
 		{
-			name:        "Existing and NonExist Function in User Modules",
+			name:        "Existing and NonExist Functions in User Modules",
 			code:        `load("fibonacci.star", "fibonacci", "fake"); val = fibonacci(10)[-1]`,
 			modFS:       testFS,
 			expectedErr: `starlet: exec: load: name fake not found in module fibonacci.star`,
