@@ -1110,14 +1110,14 @@ func Test_Machine_Run_With_Context(t *testing.T) {
 	m.SetPrintFunc(getLogPrintFunc(t))
 	m.SetPreloadModules(starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic")})
 
-	// run first time with context
+	// first run with no context
 	m.SetScript("timer.star", []byte(`
 x = 1
 sleep(1)
 y = 2
 `), nil)
 	ts := time.Now()
-	out, err := m.Run(context.Background())
+	out, err := m.Run(nil)
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
 		return
@@ -1127,7 +1127,7 @@ y = 2
 	}
 	t.Logf("got result after run #1: %v", out)
 
-	// run second time with timeout
+	// second run with timeout
 	m.SetScript("timer.star", []byte(`
 z = y << 5
 sleep(1)
@@ -1142,7 +1142,7 @@ t = 4
 	}
 	t.Logf("got result after run #2: %v", out)
 
-	// run third time without timeout
+	// third run without timeout
 	m.SetScript("timer.star", []byte(`
 z = y << 5
 sleep(0.5)
@@ -1159,4 +1159,62 @@ t = 4
 		return
 	}
 	t.Logf("got result after run #3: %v", out)
+}
+
+func Test_Machine_Run_With_Reset(t *testing.T) {
+	// prepare machine
+	m := starlet.NewDefault()
+	m.SetPrintFunc(getLogPrintFunc(t))
+	m.SetPreloadModules(starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic")})
+
+	// first run with no context
+	m.SetScript("run.star", []byte(`x = 100`), nil)
+	out, err := m.Run(context.Background())
+	if err != nil {
+		t.Errorf("Expected no errors, got error: %v", err)
+		return
+	}
+	if out == nil {
+		t.Errorf("Unexpected empty result: %v", out)
+	} else if n := out["x"]; n != int64(100) {
+		t.Errorf("Unexpected result: %v", out)
+	} else {
+		t.Logf("got result after run #1: %v", out)
+	}
+
+	// without reset, the value can be reused
+	m.SetScript("run.star", []byte(`y = x * 10`), nil)
+	out, err = m.Run(context.Background())
+	if err != nil {
+		t.Errorf("Expected no errors, got error: %v", err)
+		return
+	}
+	if out == nil {
+		t.Errorf("Unexpected empty result: %v", out)
+	} else if n := out["y"]; n != int64(1000) {
+		t.Errorf("Unexpected result: %v", out)
+	} else {
+		t.Logf("got result after run #2: %v", out)
+	}
+
+	// without reset, all the old values are still there
+	m.SetScript("run.star", []byte(`z = x + y`), nil)
+	out, err = m.Run(context.Background())
+	if err != nil {
+		t.Errorf("Expected no errors, got error: %v", err)
+		return
+	}
+	if out == nil {
+		t.Errorf("Unexpected empty result: %v", out)
+	} else if n := out["z"]; n != int64(1100) {
+		t.Errorf("Unexpected result: %v", out)
+	} else {
+		t.Logf("got result after run #3: %v", out)
+	}
+
+	// with reset, the value is cleared
+	m.Reset()
+	m.SetScript("run.star", []byte(`w = x + z`), nil)
+	_, err = m.Run(context.Background())
+	expectErr(t, err, `starlet: exec: run.star:1:5: undefined: x`)
 }
