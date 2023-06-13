@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/1set/starlet/lib/goidiomatic"
 	sjson "go.starlark.net/lib/json"
 	smath "go.starlark.net/lib/math"
 	stime "go.starlark.net/lib/time"
@@ -16,13 +17,8 @@ import (
 )
 
 var allBuiltinModules = ModuleLoaderMap{
-	"go_idiomatic": func() (starlark.StringDict, error) {
-		return starlark.StringDict{
-			"true":  starlark.True,
-			"false": starlark.False,
-			"nil":   starlark.None,
-			//"exit":  starlark.NewBuiltin("exit", exit),
-		}, nil
+	goidiomatic.ModuleName: func() (starlark.StringDict, error) {
+		return goidiomatic.LoadModule()
 	},
 	"json": func() (starlark.StringDict, error) {
 		return starlark.StringDict{
@@ -116,16 +112,36 @@ func (m ModuleLoaderMap) Clone() map[string]ModuleLoader {
 // Otherwise, the first return value is nil if the module is not found.
 func (m ModuleLoaderMap) GetLazyLoader() NamedModuleLoader {
 	return func(s string) (starlark.StringDict, error) {
-		if m == nil {
+		// if the map or the name is empty, just return nil to indicate not found
+		if m == nil || s == "" {
 			return nil, nil
 		}
+		// attempt to find the module
 		ld, ok := m[s]
 		if !ok {
+			// not found
 			return nil, nil
 		} else if ld == nil {
+			// found but nil
 			return nil, fmt.Errorf("nil module loader %q", s)
 		}
-		return ld()
+		// try to load it
+		d, err := ld()
+		if err != nil {
+			// failed to load
+			return nil, err
+		}
+		// extract members of module from dict like `{name: module}`
+		if len(d) == 1 {
+			m, found := d[s]
+			if found {
+				if md, ok := m.(*starlarkstruct.Module); ok && md != nil {
+					return md.Members, nil
+				}
+			}
+		}
+		// otherwise, just return the dict
+		return d, nil
 	}
 }
 

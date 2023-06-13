@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"starlet"
 	"testing"
+	"time"
 
+	"github.com/1set/starlet"
 	"go.starlark.net/starlark"
 )
 
@@ -29,7 +30,7 @@ func Test_DefaultMachine_Run_NoSpecificFile(t *testing.T) {
 func Test_DefaultMachine_Run_APlusB(t *testing.T) {
 	m := starlet.NewDefault()
 	code := `a = 1 + 2`
-	m.SetScript("a_plus_b.star", []byte(code), nil)
+	m.SetScript("", []byte(code), nil)
 	out, err := m.Run(context.Background())
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -134,11 +135,17 @@ func Test_DefaultMachine_Run_LoadNonExist(t *testing.T) {
 }
 
 func Test_Machine_Run_Globals(t *testing.T) {
+	sm := starlark.NewDict(1)
+	_ = sm.SetKey(starlark.String("bee"), starlark.MakeInt(2))
 	m := starlet.NewWithNames(map[string]interface{}{
 		"a": 2,
+		"c": sm,
 	}, nil, nil)
 	// set code
-	code := `b = a * 10`
+	code := `
+c = 100
+b = a * 10 + c
+`
 	m.SetScript("test.star", []byte(code), nil)
 	// run
 	out, err := m.Run(context.Background())
@@ -147,7 +154,7 @@ func Test_Machine_Run_Globals(t *testing.T) {
 	}
 	if out == nil {
 		t.Errorf("unexpected nil output")
-	} else if out["b"].(int64) != int64(20) {
+	} else if out["b"].(int64) != int64(120) {
 		t.Errorf("unexpected output: %v", out)
 	}
 }
@@ -231,10 +238,11 @@ func Test_Machine_Run_PreloadModules(t *testing.T) {
 }
 
 func Test_Machine_Run_LazyloadModules(t *testing.T) {
-	m := starlet.NewWithNames(nil, nil, []string{"go_idiomatic"})
+	m := starlet.NewWithNames(nil, nil, []string{"go_idiomatic", "json"})
 	// set code
 	code := `
 load("go_idiomatic", "nil")
+load("json", "encode")
 a = nil == None
 `
 	m.SetScript("test.star", []byte(code), nil)
@@ -250,7 +258,7 @@ a = nil == None
 	}
 }
 
-func Test_Machine_Run_Load_Shadow_Globals(t *testing.T) {
+func Test_Machine_Run_LazyLoad_Override_Globals(t *testing.T) {
 	// enable global reassign only for this test, if it's not enabled, it will fail for: local variable fibonacci referenced before assignment
 	starlet.EnableGlobalReassign()
 	defer func() {
@@ -280,7 +288,7 @@ z = fib(10)[-1]
 	}
 }
 
-func Test_Machine_Run_Load_With_Globals(t *testing.T) {
+func Test_Machine_Run_Override_Globals(t *testing.T) {
 	// create machine
 	m := starlet.NewWithNames(map[string]interface{}{"num": 10}, nil, nil)
 	// set code
@@ -305,7 +313,40 @@ z = fib(num)[-1]
 	}
 }
 
+func Test_Machine_Run_PreLoad_Override_Globals(t *testing.T) {
+	// enable global reassign only for this test, if it's not enabled, it will fail for: local variable coins referenced before assignment
+	starlet.EnableGlobalReassign()
+	defer func() {
+		starlet.DisableGlobalReassign()
+	}()
+	// create machine
+	m := starlet.NewWithLoaders(map[string]interface{}{"num": 10}, starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("coins.star", os.DirFS("testdata"), nil)}, nil)
+	// set code
+	code := `
+num = 100
+x = num * 5 + coins['quarter']
+coins = 50
+`
+	m.SetScript("test.star", []byte(code), os.DirFS("testdata"))
+	// run
+	out, err := m.Run(context.Background())
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	// check result
+	if out == nil {
+		t.Errorf("unexpected nil output")
+	} else if len(out) != 3 {
+		t.Errorf("unexpected output: %v", out)
+	} else if out["x"] != int64(525) || out["num"] != int64(100) || out["coins"] != int64(50) {
+		t.Errorf("unexpected output: %v", out)
+	}
+}
+
 func Test_Machine_Run_LoadErrors(t *testing.T) {
+	mm := starlark.NewDict(1)
+	_ = mm.SetKey(starlark.String("quarter"), starlark.MakeInt(100))
+	_ = mm.SetKey(starlark.String("dime"), starlark.MakeInt(10))
 	testFS := os.DirFS("testdata")
 	nonExistFS := os.DirFS("nonexist")
 	testCases := []struct {
@@ -320,7 +361,7 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 	}{
 		// for globals
 		{
-			name:        "Unsupport Globals Type",
+			name:        "Unsupported Globals Type",
 			globals:     map[string]interface{}{"a": make(chan int)},
 			code:        `b = a`,
 			expectedErr: `starlet: convert: type chan int is not a supported starlark type`,
@@ -336,6 +377,16 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 			globals:     map[string]interface{}{"a": 2},
 			code:        `b = a + "10"`,
 			expectedErr: `starlet: exec: unknown binary op: int + string`,
+		},
+		{
+			name:    "Fails to Override Globals Variable",
+			globals: map[string]interface{}{"coins": mm},
+			code: `
+num = 100
+x = num * 5 + coins['quarter']
+coins = 50
+`,
+			expectedErr: `starlet: exec: global variable coins referenced before assignment`,
 		},
 		// for preload modules
 		{
@@ -415,7 +466,13 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 		},
 		// for globals + user modules
 		{
-			name:        "User Modules Override Globals",
+			name:    "User Modules Override Globals",
+			globals: map[string]interface{}{"fibonacci": 2},
+			code:    `load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]; print(x, val)`,
+			modFS:   testFS,
+		},
+		{
+			name:        "User Modules Fail to Override Globals",
 			globals:     map[string]interface{}{"fibonacci": 2},
 			code:        `x = fibonacci * 10; load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]; print(x, val)`,
 			modFS:       testFS,
@@ -508,6 +565,42 @@ func Test_Machine_Run_FileLoaders(t *testing.T) {
 				return val.(int64) == int64(3628855)
 			},
 		},
+		{
+			name:        "Preload Modules Requires External Value",
+			globals:     map[string]interface{}{"input": 10},
+			preList:     starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("one.star", testFS, nil)},
+			code:        `val = number`,
+			expectedErr: `starlet: failed to load module: one.star:1:10: undefined: input`,
+		},
+		{
+			name:      "Preload Modules With External Value",
+			preList:   starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("one.star", testFS, map[string]starlark.Value{"input": starlark.MakeInt(5)})},
+			code:      `val = number`,
+			cmpResult: func(val interface{}) bool { return val.(int64) == int64(500) },
+		},
+		{
+			name:    "Override Global Variables",
+			globals: map[string]interface{}{"num": 10},
+			preList: starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("coins.star", testFS, nil)},
+			code: `
+num = 100
+val = num * 5 + coins['quarter']
+`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == int64(525)
+			},
+		},
+		{
+			name:    "Fails to Override Preload Modules",
+			globals: map[string]interface{}{"num": 10},
+			preList: starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("coins.star", testFS, nil)},
+			code: `
+num = 100
+x = num * 5 + coins['quarter']
+coins = 50
+`,
+			expectedErr: `starlet: exec: global variable coins referenced before assignment`,
+		},
 		// for lazyload with fs
 		{
 			name:        "Missing Lazyload Modules",
@@ -567,6 +660,27 @@ func Test_Machine_Run_FileLoaders(t *testing.T) {
 			code:    `load("fib", "fibonacci"); load("fac", "factorial"); val = fibonacci(10)[-1] + factorial(10)`,
 			cmpResult: func(val interface{}) bool {
 				return val.(int64) == int64(3628855)
+			},
+		},
+		{
+			name:        "Lazyload Modules Requires External Value",
+			globals:     map[string]interface{}{"input": 10},
+			lazyMap:     starlet.ModuleLoaderMap{"one": starlet.MakeModuleLoaderFromFile("one.star", testFS, nil)},
+			code:        `load("one", "number"); val = number`,
+			expectedErr: `starlet: exec: cannot load one: one.star:1:10: undefined: input`,
+		},
+		{
+			name:        "Lazyload Modules Misplaced External Value",
+			lazyMap:     starlet.ModuleLoaderMap{"one": starlet.MakeModuleLoaderFromFile("one.star", testFS, nil)},
+			code:        `input = 10; load("one", "number"); val = number`,
+			expectedErr: `starlet: exec: cannot load one: one.star:1:10: undefined: input`,
+		},
+		{
+			name:    "Lazyload Modules With External Value",
+			lazyMap: starlet.ModuleLoaderMap{"one": starlet.MakeModuleLoaderFromFile("one.star", testFS, map[string]starlark.Value{"input": starlark.MakeInt(10)})},
+			code:    `load("one", "number"); val = number`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == int64(1000)
 			},
 		},
 		// both preload and lazyload
@@ -730,6 +844,29 @@ func Test_Machine_Run_CodeLoaders(t *testing.T) {
 				return val.(int64) == 40
 			},
 		},
+		{
+			name:    "Override Global Variables With Preload Modules",
+			globals: map[string]interface{}{"num": 10},
+			preList: starlet.ModuleLoaderList{appleLoader, berryLoader, cocoLoader},
+			code: `
+num = 100
+val = num * 5 + number
+`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == int64(540)
+			},
+		},
+		{
+			name:    "Fails to Override Preload Modules",
+			globals: map[string]interface{}{"num": 10},
+			preList: starlet.ModuleLoaderList{appleLoader, berryLoader, cocoLoader},
+			code: `
+num = 100
+val = num * 5 + number
+number = 500
+`,
+			expectedErr: `starlet: exec: global variable number referenced before assignment`,
+		},
 		// only lazy loaders
 		{
 			name:    "LazyLoad Module: Go",
@@ -775,6 +912,43 @@ load("mock_blueberry", "number")
 val = number
 `,
 			expectedErr: `starlet: exec: test.star:3:25: cannot reassign top-level number`,
+		},
+		{
+			name:    "Override LazyLoad Modules",
+			lazyMap: starlet.ModuleLoaderMap{appleName: appleLoader, berryName: berryLoader},
+			code: `
+load("mock_apple", "number")
+number = 10
+val = number * 10
+`,
+			expectedErr: `starlet: exec: test.star:3:1: cannot reassign local number declared at test.star:2:21`,
+		},
+		{
+			name:    "Override Global Variables With Lazyload Modules",
+			globals: map[string]interface{}{"num": 10},
+			lazyMap: starlet.ModuleLoaderMap{appleName: appleLoader, berryName: berryLoader},
+			code: `
+num = 100
+load("mock_apple", "number")
+val = num * 5 + number
+`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == int64(510)
+			},
+		},
+		{
+			name:    "Override Global Variables And Lazyload Modules",
+			globals: map[string]interface{}{"num": 10},
+			lazyMap: starlet.ModuleLoaderMap{appleName: appleLoader, berryName: berryLoader},
+			code: `
+num = 100
+number = 500
+load("mock_apple", "number")
+val = num * 5 + number
+`,
+			cmpResult: func(val interface{}) bool {
+				return val.(int64) == int64(510)
+			},
 		},
 		// both pre and lazy loaders
 		{
@@ -875,4 +1049,172 @@ val = number + n3
 			}
 		})
 	}
+}
+
+func Test_Machine_RunAgain_Normal(t *testing.T) {
+	code1 := `
+x = 2
+y = 10
+
+load("math", "pow")
+z = int(pow(x, y))
+print("z =", z)
+`
+	code2 := `
+pow = 10
+load("math", p2="pow")
+t = p2(2, 5) + pow
+print("t =", t, "{}-{}-{}".format(x,y,z))
+
+load("math", "mod")
+m = mod(11, 3)
+print("m =", m)
+`
+	// prepare machine
+	m := starlet.NewDefault()
+	m.SetPrintFunc(getLogPrintFunc(t))
+	m.SetPreloadModules(starlet.ModuleLoaderList{starlet.GetBuiltinModule("json")})
+	m.SetLazyloadModules(starlet.ModuleLoaderMap{"math": starlet.GetBuiltinModule("math")})
+
+	// run first time
+	m.SetScript("test.star", []byte(code1), nil)
+	out, err := m.Run(context.Background())
+	if err != nil {
+		t.Errorf("Expected no errors, got error: %v", err)
+	}
+	if out == nil {
+		t.Errorf("Unexpected empty result: %v", out)
+	} else if len(out) != 3 {
+		t.Errorf("Unexpected result: %v", out)
+	} else {
+		t.Logf("Result for the frist run: %v", out)
+	}
+
+	// run second time
+	m.SetScript("test.star", []byte(code2), nil)
+	out, err = m.Run(context.Background())
+	if err != nil {
+		t.Errorf("Expected no errors, got error: %v", err)
+		return
+	}
+	if len(out) != 3 {
+		t.Errorf("Unexpected result: %v", out)
+	} else {
+		t.Logf("Result for the second run: %v", out)
+	}
+}
+
+func Test_Machine_Run_With_Context(t *testing.T) {
+	// prepare machine
+	m := starlet.NewDefault()
+	m.SetPrintFunc(getLogPrintFunc(t))
+	m.SetPreloadModules(starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic")})
+
+	// first run with no context
+	m.SetScript("timer.star", []byte(`
+x = 1
+sleep(1)
+y = 2
+`), nil)
+	ts := time.Now()
+	out, err := m.Run(nil)
+	if err != nil {
+		t.Errorf("Expected no errors, got error: %v", err)
+		return
+	}
+	if !expectSameDuration(t, time.Since(ts), 1*time.Second) {
+		return
+	}
+	t.Logf("got result after run #1: %v", out)
+
+	// second run with timeout
+	m.SetScript("timer.star", []byte(`
+z = y << 5
+sleep(1)
+t = 4
+`), nil)
+	ts = time.Now()
+	ctx, _ := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	out, err = m.Run(ctx)
+	expectErr(t, err, "starlet: exec: context deadline exceeded")
+	if !expectSameDuration(t, time.Since(ts), 500*time.Millisecond) {
+		return
+	}
+	t.Logf("got result after run #2: %v", out)
+
+	// third run without timeout
+	m.SetScript("timer.star", []byte(`
+z = y << 5
+sleep(0.5)
+t = 4
+`), nil)
+	ts = time.Now()
+	ctx, _ = context.WithTimeout(context.Background(), 1*time.Second)
+	out, err = m.Run(ctx)
+	if err != nil {
+		t.Errorf("Expected no errors, got error: %v", err)
+		return
+	}
+	if !expectSameDuration(t, time.Since(ts), 500*time.Millisecond) {
+		return
+	}
+	t.Logf("got result after run #3: %v", out)
+}
+
+func Test_Machine_Run_With_Reset(t *testing.T) {
+	// prepare machine
+	m := starlet.NewDefault()
+	m.SetPrintFunc(getLogPrintFunc(t))
+	m.SetPreloadModules(starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic")})
+
+	// first run with no context
+	m.SetScript("run.star", []byte(`x = 100`), nil)
+	out, err := m.Run(context.Background())
+	if err != nil {
+		t.Errorf("Expected no errors, got error: %v", err)
+		return
+	}
+	if out == nil {
+		t.Errorf("Unexpected empty result: %v", out)
+	} else if n := out["x"]; n != int64(100) {
+		t.Errorf("Unexpected result: %v", out)
+	} else {
+		t.Logf("got result after run #1: %v", out)
+	}
+
+	// without reset, the value can be reused
+	m.SetScript("run.star", []byte(`y = x * 10`), nil)
+	out, err = m.Run(context.Background())
+	if err != nil {
+		t.Errorf("Expected no errors, got error: %v", err)
+		return
+	}
+	if out == nil {
+		t.Errorf("Unexpected empty result: %v", out)
+	} else if n := out["y"]; n != int64(1000) {
+		t.Errorf("Unexpected result: %v", out)
+	} else {
+		t.Logf("got result after run #2: %v", out)
+	}
+
+	// without reset, all the old values are still there
+	m.SetScript("run.star", []byte(`z = x + y`), nil)
+	out, err = m.Run(context.Background())
+	if err != nil {
+		t.Errorf("Expected no errors, got error: %v", err)
+		return
+	}
+	if out == nil {
+		t.Errorf("Unexpected empty result: %v", out)
+	} else if n := out["z"]; n != int64(1100) {
+		t.Errorf("Unexpected result: %v", out)
+	} else {
+		t.Logf("got result after run #3: %v", out)
+	}
+
+	// with reset, the value is cleared
+	m.Reset()
+	m.SetScript("run.star", []byte(`w = x + z`), nil)
+	_, err = m.Run(context.Background())
+	expectErr(t, err, `starlet: exec: run.star:1:5: undefined: x`)
 }

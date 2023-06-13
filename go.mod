@@ -1,4 +1,4 @@
-module starlet
+module github.com/1set/starlet
 
 go 1.16
 
