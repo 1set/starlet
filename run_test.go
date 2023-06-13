@@ -1104,7 +1104,7 @@ print("m =", m)
 	}
 }
 
-func Test_Machine_Run_With_Timeout(t *testing.T) {
+func Test_Machine_Run_With_Context(t *testing.T) {
 	// prepare machine
 	m := starlet.NewDefault()
 	m.SetPrintFunc(getLogPrintFunc(t))

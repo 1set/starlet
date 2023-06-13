@@ -4,9 +4,9 @@ package goidiomatic
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
+	itn "github.com/1set/starlet/lib/internal"
 	"go.starlark.net/starlark"
 )
 
@@ -23,10 +23,15 @@ func LoadModule() (starlark.StringDict, error) {
 	}, nil
 }
 
+// for convenience
+var (
+	none = starlark.None
+)
+
 // sleep sleeps for the given number of seconds.
 func sleep(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// get the duration
-	var sec floatOrInt
+	var sec itn.FloatOrInt
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "secs", &sec); err != nil {
 		return none, err
 	}
@@ -50,23 +55,4 @@ func sleep(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kw
 	case <-ctx.Done():
 		return none, ctx.Err()
 	}
-}
-
-var (
-	none = starlark.None
-)
-
-// floatOrInt is an Unpacker that converts a Starlark int or float to Go's float64.
-type floatOrInt float64
-
-func (p *floatOrInt) Unpack(v starlark.Value) error {
-	switch v := v.(type) {
-	case starlark.Int:
-		*p = floatOrInt(v.Float())
-		return nil
-	case starlark.Float:
-		*p = floatOrInt(v)
-		return nil
-	}
-	return fmt.Errorf("got %s, want float or int", v.Type())
 }
