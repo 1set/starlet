@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/1set/starlet"
 	"go.starlark.net/starlark"
@@ -1094,10 +1095,68 @@ print("m =", m)
 	out, err = m.Run(context.Background())
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
+		return
 	}
 	if len(out) != 3 {
 		t.Errorf("Unexpected result: %v", out)
 	} else {
 		t.Logf("Result for the second run: %v", out)
 	}
+}
+
+func Test_Machine_Run_With_Timeout(t *testing.T) {
+	// prepare machine
+	m := starlet.NewDefault()
+	m.SetPrintFunc(getLogPrintFunc(t))
+	m.SetPreloadModules(starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic")})
+
+	// run first time with context
+	m.SetScript("timer.star", []byte(`
+x = 1
+sleep(1)
+y = 2
+`), nil)
+	ts := time.Now()
+	out, err := m.Run(context.Background())
+	if err != nil {
+		t.Errorf("Expected no errors, got error: %v", err)
+		return
+	}
+	if !expectSameDuration(t, time.Since(ts), 1*time.Second) {
+		return
+	}
+	t.Logf("got result after run #1: %v", out)
+
+	// run second time with timeout
+	m.SetScript("timer.star", []byte(`
+z = y << 5
+sleep(1)
+t = 4
+`), nil)
+	ts = time.Now()
+	ctx, _ := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	out, err = m.Run(ctx)
+	expectErr(t, err, "starlet: exec: context deadline exceeded")
+	if !expectSameDuration(t, time.Since(ts), 300*time.Millisecond) {
+		return
+	}
+	t.Logf("got result after run #2: %v", out)
+
+	// run third time without timeout
+	m.SetScript("timer.star", []byte(`
+z = y << 5
+sleep(0.5)
+t = 4
+`), nil)
+	ts = time.Now()
+	ctx, _ = context.WithTimeout(context.Background(), 1*time.Second)
+	out, err = m.Run(ctx)
+	if err != nil {
+		t.Errorf("Expected no errors, got error: %v", err)
+		return
+	}
+	if !expectSameDuration(t, time.Since(ts), 500*time.Millisecond) {
+		return
+	}
+	t.Logf("got result after run #3: %v", out)
 }
