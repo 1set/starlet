@@ -3,11 +3,13 @@ package starlet_test
 import (
 	"errors"
 	"fmt"
+	"math"
 	"runtime"
-	"starlet"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/1set/starlet"
 	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 )
@@ -67,7 +69,7 @@ func getPrintCompareFunc(t *testing.T) (starlet.PrintFunc, func(s string)) {
 // getLogPrintFunc returns a print function that logs to testing.T.
 func getLogPrintFunc(t *testing.T) starlet.PrintFunc {
 	return func(thread *starlark.Thread, msg string) {
-		t.Logf("[⭐ Log] %s", msg)
+		t.Logf("[⭐Log] %s", msg)
 	}
 }
 
@@ -118,6 +120,17 @@ func getCoconutModuleLoader() (string, starlet.ModuleLoader) {
 			}),
 		}, nil
 	}
+}
+
+// expectSameDuration checks if the actual duration is within 5% of the expected duration.
+func expectSameDuration(t *testing.T, act, exp time.Duration) bool {
+	r := float64(act) / float64(exp)
+	d := math.Abs(r - 1)
+	same := d < 0.05
+	if !same {
+		t.Errorf("expected same duration, got diff: actual = %v, expected = %v", act, exp)
+	}
+	return same
 }
 
 // errorReader is a reader that reads that fails at the given point.

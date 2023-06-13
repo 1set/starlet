@@ -49,55 +49,83 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 		return nil, fmt.Errorf("starlet: run: %w", ErrNoScriptSourceToRun)
 	}
 
-	// TODO: Assume: it's the first run -- for rerun, we need to reset the cache
+	var err error
+	if m.thread == nil {
+		// -- prepare thread for the first run
+		// preset globals + preload modules -> predeclared
+		if m.predeclared, err = convert.MakeStringDict(m.globals); err != nil {
+			return nil, fmt.Errorf("starlet: convert: %w", err)
+		}
+		if err = m.preloadMods.LoadAll(m.predeclared); err != nil {
+			return nil, err
+		}
 
-	// preset globals + preload modules -> predeclared
-	predeclared, err := convert.MakeStringDict(m.globals.Clone())
-	if err != nil {
-		return nil, fmt.Errorf("starlet: convert: %w", err)
-	}
-	if err = m.preloadMods.LoadAll(predeclared); err != nil {
-		return nil, err
+		// cache load + printFunc -> thread
+		m.loadCache = &cache{
+			cache:   make(map[string]*entry),
+			loadMod: m.lazyloadMods.GetLazyLoader(),
+			readFile: func(name string) ([]byte, error) {
+				return readScriptFile(name, m.scriptFS)
+			},
+			globals: m.predeclared,
+		}
+		m.thread = &starlark.Thread{
+			Print: m.printFunc,
+			Load: func(thread *starlark.Thread, module string) (starlark.StringDict, error) {
+				return m.loadCache.Load(module)
+			},
+		}
+	} else if m.lastResult != nil {
+		// -- for the second and following runs
+		m.thread.Uncancel()
+		// merge last result as globals
+		for k, v := range m.lastResult {
+			m.predeclared[k] = v
+		}
+		// set globals for cache
+		m.loadCache.globals = m.predeclared
 	}
 
-	// TODO: save or reuse thread
-	// cache load + printFunc -> thread
-	m.loadCache = &cache{
-		cache:    make(map[string]*entry),
-		loadMod:  m.lazyloadMods.GetLazyLoader(),
-		readFile: m.readScriptFile,
-		globals:  predeclared,
-	}
-	thread := &starlark.Thread{
-		Print: m.printFunc,
-		Load: func(thread *starlark.Thread, module string) (starlark.StringDict, error) {
-			return m.loadCache.Load(module)
-		},
-	}
+	// reset for each run
+	m.thread.Print = m.printFunc
+	m.thread.SetLocal("context", ctx)
 
-	// TODO: run script with context and thread
-	// run
+	// cancel thread when context cancelled
 	m.runTimes++
+	if ctx != nil {
+		go func() {
+			<-ctx.Done()
+			m.thread.Cancel("context cancelled")
+		}()
+	}
+
+	// run for various source code types
 	var res starlark.StringDict
 	switch srcType {
 	case sourceCodeTypeContent:
-		res, err = starlark.ExecFile(thread, scriptName, m.scriptContent, predeclared)
+		res, err = starlark.ExecFile(m.thread, scriptName, m.scriptContent, m.predeclared)
 	case sourceCodeTypeFSName:
 		rd, e := m.scriptFS.Open(scriptName)
 		if e != nil {
 			return nil, fmt.Errorf("starlet: open: %w", e)
 		}
-		res, err = starlark.ExecFile(thread, scriptName, rd, predeclared)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("starlet: exec: %w", err)
+		res, err = starlark.ExecFile(m.thread, scriptName, rd, m.predeclared)
 	}
 
-	// convert result to DataStore
-	return convert.FromStringDict(res), nil
+	// handle result and convert
+	m.lastResult = res
+	out := convert.FromStringDict(res)
+	if err != nil {
+		return out, fmt.Errorf("starlet: exec: %w", err)
+	}
+	return out, nil
 }
 
-// readScriptFile reads the given filename from the given file system.
-func (m *Machine) readScriptFile(filename string) ([]byte, error) {
-	return readScriptFile(filename, m.scriptFS)
+// Reset resets the machine to initial state before the first run.
+func (m *Machine) Reset() {
+	m.runTimes = 0
+	m.lastResult = nil
+	m.thread = nil
+	m.loadCache = nil
+	m.predeclared = nil
 }

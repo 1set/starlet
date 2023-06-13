@@ -1,6 +1,7 @@
 package starlet
 
 import (
+	"fmt"
 	"io/fs"
 	"sync"
 
@@ -28,9 +29,20 @@ type Machine struct {
 	scriptContent []byte
 	scriptFS      fs.FS
 	// runtime core
-	runTimes  uint
-	thread    *starlark.Thread
-	loadCache *cache
+	runTimes    uint
+	loadCache   *cache
+	thread      *starlark.Thread
+	predeclared starlark.StringDict
+	lastResult  starlark.StringDict
+}
+
+func (m *Machine) String() string {
+	steps := uint64(0)
+	if m.thread != nil {
+		steps = m.thread.Steps
+	}
+	return fmt.Sprintf("🌠Machine{run:%d,step:%d,script:%q,len:%d,fs:%v}",
+		m.runTimes, steps, m.scriptName, len(m.scriptContent), m.scriptFS)
 }
 
 // NewDefault creates a new Starlark runtime environment.
@@ -38,14 +50,14 @@ func NewDefault() *Machine {
 	return &Machine{}
 }
 
-// NewWithGlobals creates a new Starlark runtime environment with given globals.
+// NewWithGlobals creates a new Starlark runtime environment with given global variables.
 func NewWithGlobals(globals DataStore) *Machine {
 	return &Machine{
 		globals: globals,
 	}
 }
 
-// NewWithLoaders creates a new Starlark runtime environment with given globals and preload module loaders.
+// NewWithLoaders creates a new Starlark runtime environment with given global variables and preload module loaders.
 func NewWithLoaders(globals DataStore, preload ModuleLoaderList, lazyload ModuleLoaderMap) *Machine {
 	return &Machine{
 		globals:      globals,
@@ -54,7 +66,7 @@ func NewWithLoaders(globals DataStore, preload ModuleLoaderList, lazyload Module
 	}
 }
 
-// NewWithNames creates a new Starlark runtime environment with given globals, preload and lazyload module names.
+// NewWithNames creates a new Starlark runtime environment with given global variables, preload and lazyload module names.
 // It panics if any of the given module fails to load.
 func NewWithNames(globals DataStore, preloads []string, lazyloads []string) *Machine {
 	pre, err := MakeBuiltinModuleLoaderList(preloads)
@@ -73,6 +85,7 @@ func NewWithNames(globals DataStore, preloads []string, lazyloads []string) *Mac
 }
 
 // SetGlobals sets the globals of the Starlark runtime environment.
+// It only works before the first run.
 func (m *Machine) SetGlobals(globals DataStore) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -81,6 +94,7 @@ func (m *Machine) SetGlobals(globals DataStore) {
 }
 
 // AddGlobals adds the globals of the Starlark runtime environment.
+// It only works before the first run.
 func (m *Machine) AddGlobals(globals DataStore) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -102,6 +116,7 @@ func (m *Machine) GetGlobals() DataStore {
 }
 
 // SetPreloadModules sets the preload modules of the Starlark runtime environment.
+// It only works before the first run.
 func (m *Machine) SetPreloadModules(mods ModuleLoaderList) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

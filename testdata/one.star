@@ -1,0 +1,1 @@
+number = input * 100
