@@ -1160,7 +1160,7 @@ t = 4
 	}
 	t.Logf("got result after run #3: %v", out)
 
-	// fourth run with fail
+	// fourth run with old values
 	m.SetScript("timer.star", []byte(`
 z = y << 5
 fail("oops")
@@ -1168,8 +1168,21 @@ fail("oops")
 	ts = time.Now()
 	out, err = m.Run(context.Background())
 	expectErr(t, err, "starlet: exec: fail: oops")
+	t.Logf("got result after run #4: %v", out)
 
-	// fifth run with old values
+	// fifth run to fail in def
+	m.SetScript("timer.star", []byte(`
+def foo():
+	fail("a bar")
+
+zz = z * 2
+foo()
+`), nil)
+	out, err = m.Run(context.Background())
+	expectErr(t, err, `starlet: exec: fail: a bar`)
+	t.Logf("got result after run #5: %v", out)
+
+	// sixth run with old values
 	m.SetScript("timer.star", []byte(`
 zoo = z + 100
 `), nil)
@@ -1184,7 +1197,7 @@ zoo = z + 100
 	} else if n := out["zoo"]; n != int64(164) {
 		t.Errorf("Unexpected result: %v", out)
 	} else {
-		t.Logf("got result after run #5: %v", out)
+		t.Logf("got result after run #6: %v", out)
 	}
 }
 
