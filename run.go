@@ -77,6 +77,7 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 		}
 	} else if m.lastResult != nil {
 		// -- for the following runs
+		m.thread.Uncancel()
 		// merge last result as globals
 		for k, v := range m.lastResult {
 			m.predeclared[k] = v

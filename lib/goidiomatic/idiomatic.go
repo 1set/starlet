@@ -33,7 +33,7 @@ func sleep(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kw
 	if sec < 0 {
 		return none, errors.New("secs must be non-negative")
 	}
-	dur := time.Duration(sec) * time.Second
+	dur := time.Duration(float64(sec) * float64(time.Second))
 	// get the context
 	ctx := context.TODO()
 	if c := thread.Local("context"); c != nil {

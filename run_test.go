@@ -1134,10 +1134,10 @@ sleep(1)
 t = 4
 `), nil)
 	ts = time.Now()
-	ctx, _ := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	ctx, _ := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	out, err = m.Run(ctx)
 	expectErr(t, err, "starlet: exec: context deadline exceeded")
-	if !expectSameDuration(t, time.Since(ts), 300*time.Millisecond) {
+	if !expectSameDuration(t, time.Since(ts), 500*time.Millisecond) {
 		return
 	}
 	t.Logf("got result after run #2: %v", out)
