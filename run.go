@@ -62,12 +62,10 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 
 		// cache load + printFunc -> thread
 		m.loadCache = &cache{
-			cache:   make(map[string]*entry),
-			loadMod: m.lazyloadMods.GetLazyLoader(),
-			readFile: func(name string) ([]byte, error) {
-				return readScriptFile(name, m.scriptFS)
-			},
-			globals: m.predeclared,
+			cache:    make(map[string]*entry),
+			loadMod:  m.lazyloadMods.GetLazyLoader(),
+			readFile: m.readFSFile,
+			globals:  m.predeclared,
 		}
 		m.thread = &starlark.Thread{
 			Print: m.printFunc,
@@ -83,6 +81,7 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 			m.predeclared[k] = v
 		}
 		// set globals for cache
+		m.loadCache.loadMod = m.lazyloadMods.GetLazyLoader()
 		m.loadCache.globals = m.predeclared
 	}
 
@@ -128,4 +127,8 @@ func (m *Machine) Reset() {
 	m.thread = nil
 	m.loadCache = nil
 	m.predeclared = nil
+}
+
+func (m *Machine) readFSFile(name string) ([]byte, error) {
+	return readScriptFile(name, m.scriptFS)
 }

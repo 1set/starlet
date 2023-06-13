@@ -1051,7 +1051,7 @@ val = number + n3
 	}
 }
 
-func Test_Machine_RunAgain_Normal(t *testing.T) {
+func Test_Machine_RunAgain(t *testing.T) {
 	code1 := `
 x = 2
 y = 10
@@ -1069,6 +1069,9 @@ print("t =", t, "{}-{}-{}".format(x,y,z))
 load("math", "mod")
 m = mod(11, 3)
 print("m =", m)
+
+load("go", "sleep")
+print(type(sleep))
 `
 	// prepare machine
 	m := starlet.NewDefault()
@@ -1091,7 +1094,8 @@ print("m =", m)
 	}
 
 	// run second time
-	m.SetScript("test.star", []byte(code2), nil)
+	m.SetLazyloadModules(starlet.ModuleLoaderMap{"math": starlet.GetBuiltinModule("math"), "go": starlet.GetBuiltinModule("go_idiomatic")})
+	m.SetScript("test.star", []byte(code2), os.DirFS("testdata"))
 	out, err = m.Run(context.Background())
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
@@ -1257,4 +1261,41 @@ func Test_Machine_Run_With_Reset(t *testing.T) {
 	m.SetScript("run.star", []byte(`w = x + z`), nil)
 	_, err = m.Run(context.Background())
 	expectErr(t, err, `starlet: exec: run.star:1:5: undefined: x`)
+}
+
+func Test_Machine_Run_Panic(t *testing.T) {
+	// prepare machine
+	m := starlet.NewDefault()
+	m.SetPrintFunc(getLogPrintFunc(t))
+	m.SetPreloadModules(starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic")})
+
+	// first run with error
+	m.SetScript("panic.star", []byte(`
+def foo():
+	fail("oops")
+foo = 123
+`), nil)
+	out, err := m.Run(context.Background())
+	expectErr(t, err, `starlet: exec: panic.star:4:1: cannot reassign global foo declared at panic.star:2:5`)
+	t.Logf("got result after run #1: %v", out)
+
+	// second run smoothly
+	m.SetScript("panic.star", []byte(`
+a = 123
+b = str(a)
+`), nil)
+	out, err = m.Run(context.Background())
+	if err != nil {
+		t.Errorf("Expected no errors, got error: %v", err)
+		return
+	}
+	if out == nil {
+		t.Errorf("Unexpected empty result: %v", out)
+	} else if n := out["b"]; n != "123" {
+		t.Errorf("Unexpected result: %v", out)
+	} else {
+		t.Logf("got result after run #2: %v", out)
+	}
+
+	// third run with panic
 }
