@@ -24,11 +24,14 @@ const (
 )
 
 // Run runs the preset script with given globals and returns the result.
-func (m *Machine) Run(ctx context.Context) (DataStore, error) {
+func (m *Machine) Run(ctx context.Context) (out DataStore, err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-
-	// TODO: handle panic, what about other defers?
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("starlet: panic: %v", r)
+		}
+	}()
 
 	// either script content or name and FS must be set
 	var (
@@ -49,9 +52,9 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 		return nil, fmt.Errorf("starlet: run: %w", ErrNoScriptSourceToRun)
 	}
 
-	var err error
+	// prepare thread
 	if m.thread == nil {
-		// -- prepare thread for the first run
+		// -- for the first run
 		// preset globals + preload modules -> predeclared
 		if m.predeclared, err = convert.MakeStringDict(m.globals); err != nil {
 			return nil, fmt.Errorf("starlet: convert: %w", err)
@@ -113,8 +116,7 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 
 	// handle result and convert
 	m.lastResult = res
-	out := convert.FromStringDict(res)
-	if err != nil {
+	if out = convert.FromStringDict(res); err != nil {
 		return out, fmt.Errorf("starlet: exec: %w", err)
 	}
 	return out, nil

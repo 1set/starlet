@@ -1342,5 +1342,22 @@ ans = foo * 2
 panic("ohohoh")
 `), nil)
 	out, err = m.Run(context.Background())
-	expectErr(t, err, `starlet: exec: panic.star:5:1: ohohoh`)
+	expectErr(t, err, `starlet: panic: ohohoh`)
+	t.Logf("got result after run #4: %v", out)
+
+	// fifth run normally
+	m.SetScript("panic.star", []byte(`
+res = ans % 100
+`), nil)
+	out, err = m.Run(context.Background())
+	if err != nil {
+		t.Errorf("Expected no errors, got error: %v", err)
+		return
+	}
+	if out == nil {
+		t.Errorf("Unexpected empty result: %v", out)
+	} else if n := out["res"]; n != int64(46) {
+		t.Errorf("Unexpected result: %v", out)
+	}
+	t.Logf("got result after run #5: %v", out)
 }
