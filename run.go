@@ -60,10 +60,11 @@ func (m *Machine) Run(ctx context.Context) (out DataStore, err error) {
 			return nil, fmt.Errorf("starlet: convert: %w", err)
 		}
 		if err = m.preloadMods.LoadAll(m.predeclared); err != nil {
+			// TODO: wrap the errors
 			return nil, err
 		}
 
-		// cache load + printFunc -> thread
+		// cache load&read + printf -> thread
 		m.loadCache = &cache{
 			cache:    make(map[string]*entry),
 			loadMod:  m.lazyloadMods.GetLazyLoader(),
@@ -113,10 +114,12 @@ func (m *Machine) Run(ctx context.Context) (out DataStore, err error) {
 		}
 		res, err = starlark.ExecFile(m.thread, scriptName, rd, m.predeclared)
 	}
+	// TODO: merge back into code above
 
 	// handle result and convert
 	m.lastResult = res
 	if out = convert.FromStringDict(res); err != nil {
+		// TODO: call it convert error? maybe better error solutions
 		return out, fmt.Errorf("starlet: exec: %w", err)
 	}
 	return out, nil
