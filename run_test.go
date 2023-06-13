@@ -1149,7 +1149,7 @@ sleep(0.5)
 t = 4
 `), nil)
 	ts = time.Now()
-	ctx, _ = context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, _ = context.WithTimeout(context.Background(), 2*time.Second)
 	out, err = m.Run(ctx)
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
@@ -1159,6 +1159,33 @@ t = 4
 		return
 	}
 	t.Logf("got result after run #3: %v", out)
+
+	// fourth run with fail
+	m.SetScript("timer.star", []byte(`
+z = y << 5
+fail("oops")
+`), nil)
+	ts = time.Now()
+	out, err = m.Run(context.Background())
+	expectErr(t, err, "starlet: exec: fail: oops")
+
+	// fifth run with old values
+	m.SetScript("timer.star", []byte(`
+zoo = z + 100
+`), nil)
+	ts = time.Now()
+	out, err = m.Run(context.Background())
+	if err != nil {
+		t.Errorf("Expected no errors, got error: %v", err)
+		return
+	}
+	if out == nil {
+		t.Errorf("Unexpected empty result: %v", out)
+	} else if n := out["zoo"]; n != int64(164) {
+		t.Errorf("Unexpected result: %v", out)
+	} else {
+		t.Logf("got result after run #5: %v", out)
+	}
 }
 
 func Test_Machine_Run_With_Reset(t *testing.T) {
