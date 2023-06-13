@@ -6,10 +6,10 @@ import (
 	"io/fs"
 	"os"
 	"reflect"
-	"starlet"
 	"strings"
 	"testing"
 
+	"github.com/1set/starlet"
 	"go.starlark.net/starlark"
 )
 

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"starlet"
 	"testing"
 
+	"github.com/1set/starlet"
 	"go.starlark.net/starlark"
 )
 

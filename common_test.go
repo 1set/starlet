@@ -4,10 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
-	"starlet"
 	"strings"
 	"testing"
 
+	"github.com/1set/starlet"
 	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 )

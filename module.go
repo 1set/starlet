@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/1set/starlet/lib/goidiomatic"
 	sjson "go.starlark.net/lib/json"
 	smath "go.starlark.net/lib/math"
 	stime "go.starlark.net/lib/time"
@@ -16,14 +17,8 @@ import (
 )
 
 var allBuiltinModules = ModuleLoaderMap{
-	"go_idiomatic": func() (starlark.StringDict, error) {
-		return starlark.StringDict{
-			"true":  starlark.True,
-			"false": starlark.False,
-			"nil":   starlark.None,
-			//"sleep": starlark.NewBuiltin("sleep", sleep),
-			//"exit":  starlark.NewBuiltin("exit", exit),
-		}, nil
+	goidiomatic.ModuleName: func() (starlark.StringDict, error) {
+		return goidiomatic.LoadModule()
 	},
 	"json": func() (starlark.StringDict, error) {
 		return starlark.StringDict{
