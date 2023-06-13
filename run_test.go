@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/1set/starlight/convert"
+
 	"github.com/1set/starlet"
 	"go.starlark.net/starlark"
 )
@@ -1293,9 +1295,52 @@ b = str(a)
 		t.Errorf("Unexpected empty result: %v", out)
 	} else if n := out["b"]; n != "123" {
 		t.Errorf("Unexpected result: %v", out)
-	} else {
-		t.Logf("got result after run #2: %v", out)
 	}
+	t.Logf("got result after run #2: %v", out)
 
-	// third run with panic
+	// third run with panic and recovered in starlight
+	lazyMap := func() (starlark.StringDict, error) {
+		return convert.MakeStringDict(map[string]interface{}{
+			"foo": 123,
+			"bar": func() {
+				panic("oops")
+			},
+		})
+	}
+	m.SetLazyloadModules(starlet.ModuleLoaderMap{"lucy": lazyMap})
+	m.SetScript("panic.star", []byte(`
+load("lucy", "foo", "bar")
+ans = foo * 2
+bar()
+`), nil)
+	out, err = m.Run(context.Background())
+	expectErr(t, err, `starlet: exec: panic in func fn: oops`)
+	if out == nil {
+		t.Errorf("Unexpected empty result: %v", out)
+	} else if n := out["ans"]; n != int64(246) {
+		t.Errorf("Unexpected result: %v", out)
+	}
+	t.Logf("got result after run #3: %v", out)
+
+	// fourth run with panic
+	lazyMap = func() (starlark.StringDict, error) {
+		return convert.MakeStringDict(map[string]interface{}{
+			"foo": 500,
+			"panic": starlark.NewBuiltin("panic", func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+				var s string
+				if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &s); err != nil {
+					return starlark.None, err
+				}
+				panic(s)
+			}),
+		})
+	}
+	m.SetLazyloadModules(starlet.ModuleLoaderMap{"lucky": lazyMap})
+	m.SetScript("panic.star", []byte(`
+load("lucky", "foo", "panic")
+ans = foo * 2
+panic("ohohoh")
+`), nil)
+	out, err = m.Run(context.Background())
+	expectErr(t, err, `starlet: exec: panic.star:5:1: ohohoh`)
 }
