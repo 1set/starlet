@@ -237,10 +237,11 @@ func Test_Machine_Run_PreloadModules(t *testing.T) {
 }
 
 func Test_Machine_Run_LazyloadModules(t *testing.T) {
-	m := starlet.NewWithNames(nil, nil, []string{"go_idiomatic"})
+	m := starlet.NewWithNames(nil, nil, []string{"go_idiomatic", "json"})
 	// set code
 	code := `
 load("go_idiomatic", "nil")
+load("json", "encode")
 a = nil == None
 `
 	m.SetScript("test.star", []byte(code), nil)

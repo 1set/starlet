@@ -26,10 +26,14 @@ var allBuiltinModules = ModuleLoaderMap{
 		}, nil
 	},
 	"json": func() (starlark.StringDict, error) {
-		return sjson.Module.Members, nil
+		return starlark.StringDict{
+			"json": sjson.Module,
+		}, nil
 	},
 	"math": func() (starlark.StringDict, error) {
-		return smath.Module.Members, nil
+		return starlark.StringDict{
+			"math": smath.Module,
+		}, nil
 	},
 	"struct": func() (starlark.StringDict, error) {
 		return starlark.StringDict{
@@ -37,7 +41,9 @@ var allBuiltinModules = ModuleLoaderMap{
 		}, nil
 	},
 	"time": func() (starlark.StringDict, error) {
-		return stime.Module.Members, nil
+		return starlark.StringDict{
+			"time": stime.Module,
+		}, nil
 	},
 }
 
@@ -111,16 +117,36 @@ func (m ModuleLoaderMap) Clone() map[string]ModuleLoader {
 // Otherwise, the first return value is nil if the module is not found.
 func (m ModuleLoaderMap) GetLazyLoader() NamedModuleLoader {
 	return func(s string) (starlark.StringDict, error) {
-		if m == nil {
+		// if the map or the name is empty, just return nil to indicate not found
+		if m == nil || s == "" {
 			return nil, nil
 		}
+		// attempt to find the module
 		ld, ok := m[s]
 		if !ok {
+			// not found
 			return nil, nil
 		} else if ld == nil {
+			// found but nil
 			return nil, fmt.Errorf("nil module loader %q", s)
 		}
-		return ld()
+		// try to load it
+		d, err := ld()
+		if err != nil {
+			// failed to load
+			return nil, err
+		}
+		// extract members of module from dict like `{name: module}`
+		if len(d) == 1 {
+			m, found := d[s]
+			if found {
+				if md, ok := m.(*starlarkstruct.Module); ok && md != nil {
+					return md.Members, nil
+				}
+			}
+		}
+		// otherwise, just return the dict
+		return d, nil
 	}
 }
 

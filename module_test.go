@@ -525,18 +525,18 @@ assert(nil == None, "nil is None")
 s = struct(name="test", age=10, tags=["a", "b", "c"])
 print(s, type(s))
 
-sj = encode(s)
+sj = json.encode(s)
 print(sj, type(sj))
 
-sd = decode(sj)
+sd = json.decode(sj)
 print(sd, type(sd))
 
-f = sqrt(2)
+f = math.sqrt(2)
 print(f, type(f))
 
-t1 = now()
+t1 = time.now()
 print("now", t1, type(t1))
-t2 = time(year=2023, month=5, day=20)
+t2 = time.time(year=2023, month=5, day=20)
 print("birth", t2, type(t2))
 d = t1 - t2
 print("dh", d.hours, type(d))
