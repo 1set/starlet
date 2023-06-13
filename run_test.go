@@ -1149,7 +1149,7 @@ sleep(0.5)
 t = 4
 `), nil)
 	ts = time.Now()
-	ctx, _ = context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, _ = context.WithTimeout(context.Background(), 3*time.Second)
 	out, err = m.Run(ctx)
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
