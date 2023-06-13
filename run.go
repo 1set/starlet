@@ -76,7 +76,7 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 			},
 		}
 	} else if m.lastResult != nil {
-		// -- for the following runs
+		// -- for the second and following runs
 		m.thread.Uncancel()
 		// merge last result as globals
 		for k, v := range m.lastResult {
@@ -86,17 +86,16 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 		m.loadCache.globals = m.predeclared
 	}
 
-	// for each run commons
+	// reset for each run
 	m.thread.Print = m.printFunc
 	m.thread.SetLocal("context", ctx)
 
-	// TODO: run script with context and thread
+	// cancel thread when context cancelled
 	m.runTimes++
 	if ctx != nil {
 		go func() {
 			<-ctx.Done()
 			m.thread.Cancel("context cancelled")
-			// TODO: should Uncancel() be called for next run?
 		}()
 	}
 
