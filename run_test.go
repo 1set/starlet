@@ -103,6 +103,19 @@ func Test_DefaultMachine_Run_FSNonExist(t *testing.T) {
 	}
 }
 
+func Test_DefaultMachine_Run_InvalidGlobals(t *testing.T) {
+	m := starlet.NewDefault()
+	// set invalid globals
+	m.SetGlobals(map[string]interface{}{
+		"a": make(chan int),
+	})
+	// set code
+	m.SetScript("test.star", []byte(`a = 1`), nil)
+	// run
+	_, err := m.Run(context.Background())
+	expectErr(t, err, `starlet: convert: type chan int is not a supported starlark type`)
+}
+
 func Test_DefaultMachine_Run_LoadFunc(t *testing.T) {
 	m := starlet.NewDefault()
 	// set code
