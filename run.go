@@ -9,6 +9,14 @@ import (
 	"go.starlark.net/starlark"
 )
 
+// PrintFunc is a function that tells Starlark how to print messages.
+// If nil, the default `fmt.Fprintln(os.Stderr, msg)` will be used instead.
+type PrintFunc func(thread *starlark.Thread, msg string)
+
+// LoadFunc is a function that tells Starlark how to find and load other scripts
+// using the load() function. If you don't use load() in your scripts, you can pass in nil.
+type LoadFunc func(thread *starlark.Thread, module string) (starlark.StringDict, error)
+
 var (
 	ErrNoFileToRun         = errors.New("no specific file")
 	ErrNoScriptSourceToRun = errors.New("no script to execute")
