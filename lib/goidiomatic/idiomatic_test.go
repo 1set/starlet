@@ -127,9 +127,9 @@ quit()
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res, err := itn.ExecModuleTestScript(t, goidiomatic.ModuleName, goidiomatic.LoadModule, header+"\n"+tt.script, tt.wantErr)
+			res, err := itn.ExecModuleWithErrorTest(t, goidiomatic.ModuleName, goidiomatic.LoadModule, header+"\n"+tt.script, tt.wantErr)
 			if (err != nil) != (tt.wantErr != nil) {
-				t.Errorf("ExecModuleTestScript(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
+				t.Errorf("go_idiomatic(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
 				return
 			}
 		})

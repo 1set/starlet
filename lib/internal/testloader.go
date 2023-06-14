@@ -16,8 +16,8 @@ type ModuleLoadFunc func() (starlark.StringDict, error)
 // ThreadLoadFunc is a function that loads a Starlark module by name, usually used by the Starlark thread.
 type ThreadLoadFunc func(thread *starlark.Thread, module string) (starlark.StringDict, error)
 
-// NewTestLoader creates a Starlark thread loader that loads a module by name or asserts.star for testing.
-func NewTestLoader(moduleName string, loader ModuleLoadFunc) ThreadLoadFunc {
+// NewAssertLoader creates a Starlark thread loader that loads a module by name or asserts.star for testing.
+func NewAssertLoader(moduleName string, loader ModuleLoadFunc) ThreadLoadFunc {
 	return func(thread *starlark.Thread, module string) (starlark.StringDict, error) {
 		switch module {
 		case moduleName:
@@ -37,11 +37,10 @@ func NewTestLoader(moduleName string, loader ModuleLoadFunc) ThreadLoadFunc {
 	}
 }
 
-// ExecModuleTestScript executes a Starlark script with a module loader and returns the script's string dict.
-func ExecModuleTestScript(t *testing.T, name string, loader ModuleLoadFunc, script string, wantErr error) (starlark.StringDict, error) {
-	thread := &starlark.Thread{Load: NewTestLoader(name, loader)}
+// ExecModuleWithErrorTest executes a Starlark script with a module loader and compares the error with the expected error.
+func ExecModuleWithErrorTest(t *testing.T, name string, loader ModuleLoadFunc, script string, wantErr error) (starlark.StringDict, error) {
+	thread := &starlark.Thread{Load: NewAssertLoader(name, loader)}
 	starlarktest.SetReporter(thread, t)
-
 	out, err := starlark.ExecFile(thread, name+"_test.star", []byte(script), nil)
 	if err != nil {
 		if wantErr == nil {

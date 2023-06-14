@@ -130,7 +130,7 @@ func (m *Machine) Run(ctx context.Context) (out DataStore, err error) {
 	if err != nil {
 		// for exit code
 		if err.Error() == `starlet runtime system exit` {
-			var exitCode uint8 = 0
+			var exitCode uint8
 			if c := m.thread.Local("exit_code"); c != nil {
 				if co, ok := c.(uint8); ok {
 					exitCode = co
