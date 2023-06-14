@@ -174,6 +174,79 @@ b = a * 10 + c
 	}
 }
 
+func Test_Machine_Run_Exit_Quit(t *testing.T) {
+	m := starlet.NewDefault()
+	m.SetPreloadModules(starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic")})
+
+	// test exit()
+	m.SetScript("test.star", []byte(`
+a = 1
+exit()
+b = 2
+`), nil)
+	out, err := m.Run(context.Background())
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if out == nil {
+		t.Errorf("unexpected nil output")
+	} else if out["a"].(int64) != int64(1) {
+		t.Errorf("unexpected output: %v", out)
+	} else if _, ok := out["b"]; ok {
+		t.Errorf("unexpected output: %v", out)
+	}
+
+	// test quit()
+	m.SetScript("test.star", []byte(`
+c = 3
+quit()
+d = 4
+`), nil)
+	out, err = m.Run(context.Background())
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if out == nil {
+		t.Errorf("unexpected nil output")
+	} else if out["c"].(int64) != int64(3) {
+		t.Errorf("unexpected output: %v", out)
+	} else if _, ok := out["d"]; ok {
+		t.Errorf("unexpected output: %v", out)
+	}
+
+	// test exit(1)
+	m.SetScript("test.star", []byte(`
+e = 5
+exit(1)
+f = 6
+`), nil)
+	out, err = m.Run(context.Background())
+	expectErr(t, err, `starlet: exit code: 1`)
+	if out == nil {
+		t.Errorf("unexpected nil output")
+	} else if out["e"].(int64) != int64(5) {
+		t.Errorf("unexpected output: %v", out)
+	} else if _, ok := out["f"]; ok {
+		t.Errorf("unexpected output: %v", out)
+	}
+
+	// test quit(2)
+	m.SetScript("test.star", []byte(`
+g = 7
+quit(2)
+h = 8
+`), nil)
+	out, err = m.Run(context.Background())
+	expectErr(t, err, `starlet: exit code: 2`)
+	if out == nil {
+		t.Errorf("unexpected nil output")
+	} else if out["g"].(int64) != int64(7) {
+		t.Errorf("unexpected output: %v", out)
+	} else if _, ok := out["h"]; ok {
+		t.Errorf("unexpected output: %v", out)
+	}
+}
+
 func Test_Machine_Run_File_Globals(t *testing.T) {
 	m := starlet.NewWithNames(map[string]interface{}{
 		"magic_number": 30,

@@ -118,9 +118,29 @@ func (m *Machine) Run(ctx context.Context) (out DataStore, err error) {
 
 	// handle result and convert
 	m.lastResult = res
-	if out = convert.FromStringDict(res); err != nil {
+	out = convert.FromStringDict(res)
+	if err != nil {
+		// for exit code
+		if err.Error() == `starlet runtime system exit` {
+			var exitCode uint8 = 0
+			if c := m.thread.Local("exit_code"); c != nil {
+				if co, ok := c.(uint8); ok {
+					exitCode = co
+				}
+			}
+			// exit code 0 means success
+			if exitCode == 0 {
+				err = nil
+			} else {
+				err = fmt.Errorf("starlet: exit code: %d", exitCode)
+			}
+		} else {
+			// wrap other errors
+			err = fmt.Errorf("starlet: exec: %w", err)
+		}
+
 		// TODO: call it convert error? maybe better error solutions
-		return out, fmt.Errorf("starlet: exec: %w", err)
+		return out, err
 	}
 	return out, nil
 }
