@@ -8,9 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/1set/starlight/convert"
-
 	"github.com/1set/starlet"
+	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 )
 

@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
+	"time"
 
 	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
@@ -27,13 +29,47 @@ var (
 func (m *Machine) Run() (DataStore, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	return m.internalRun(context.Background(), nil)
+}
+
+// RunScript runs the given script content and returns the result.
+func (m *Machine) RunScript(content []byte, extras map[string]interface{}) (DataStore, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.scriptName = "direct.star"
+	m.scriptContent = content
+	m.scriptFS = nil
+	return m.internalRun(context.Background(), extras)
+}
+
+// RunFile runs the given script file in file system and returns the result.
+func (m *Machine) RunFile(name string, fileSys fs.FS, extras map[string]interface{}) (DataStore, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.scriptName = name
+	m.scriptContent = nil
+	m.scriptFS = fileSys
+	return m.internalRun(context.Background(), extras)
+}
+
+// RunWithTimeout runs the preset script with given timeout and returns the result.
+func (m *Machine) RunWithTimeout(timeout time.Duration, extras map[string]interface{}) (DataStore, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return m.internalRun(ctx, extras)
 }
 
 // RunWithContext runs the preset script with given context and extra variables and returns the result.
 func (m *Machine) RunWithContext(ctx context.Context, extras map[string]interface{}) (DataStore, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	return m.internalRun(ctx, extras)
 }
 
