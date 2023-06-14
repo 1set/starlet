@@ -543,7 +543,7 @@ print("dh", d.hours, type(d))
 `
 	m.SetScript("test.star", []byte(code), nil)
 	// run
-	out, err := m.Run(context.Background())
+	out, err := m.Run(context.Background(), nil)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}

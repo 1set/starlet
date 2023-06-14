@@ -24,14 +24,14 @@ var (
 )
 
 // Run runs the preset script with given globals and returns the result.
-func (m *Machine) Run(ctx context.Context) (out DataStore, err error) {
+func (m *Machine) Run(ctx context.Context, extras map[string]interface{}) (out DataStore, err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	return m.runSet(ctx, nil)
+	return m.internalRun(ctx, extras)
 }
 
-func (m *Machine) runSet(ctx context.Context, extras map[string]interface{}) (out DataStore, err error) {
+func (m *Machine) internalRun(ctx context.Context, extras map[string]interface{}) (out DataStore, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("starlet: panic: %v", r)
@@ -75,12 +75,13 @@ func (m *Machine) runSet(ctx context.Context, extras map[string]interface{}) (ou
 			// TODO: wrap the errors
 			return nil, err
 		}
-		if esd, err := convert.MakeStringDict(extras); err != nil {
+		esd, err := convert.MakeStringDict(extras)
+		if err != nil {
+			// TODO: test it
 			return nil, fmt.Errorf("starlet: convert extras: %w", err)
-		} else {
-			for k, v := range esd {
-				m.predeclared[k] = v
-			}
+		}
+		for k, v := range esd {
+			m.predeclared[k] = v
 		}
 
 		// cache load&read + printf -> thread

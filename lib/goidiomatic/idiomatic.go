@@ -10,7 +10,7 @@ import (
 	"go.starlark.net/starlark"
 )
 
-// ModuleName defines the expected name for this Module when used in starlark's load() function, eg: load('go_idiomatic', 'nil')
+// ModuleName defines the expected name for this Module when used in Starlark's load() function, eg: load('go_idiomatic', 'nil')
 const ModuleName = "go_idiomatic"
 
 // LoadModule loads the Go idiomatic module.
