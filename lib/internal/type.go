@@ -1,3 +1,4 @@
+// Package internal contains types and utilities that are not part of the public API, and may change without notice.
 package internal
 
 import (
@@ -9,6 +10,7 @@ import (
 // FloatOrInt is an Unpacker that converts a Starlark int or float to Go's float64.
 type FloatOrInt float64
 
+// Unpack implements Unpacker.
 func (p *FloatOrInt) Unpack(v starlark.Value) error {
 	switch v := v.(type) {
 	case starlark.Int:
