@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/1set/starlight/convert"
+
 	"github.com/1set/starlet"
 	"go.starlark.net/starlark"
 )
@@ -101,6 +103,19 @@ func Test_DefaultMachine_Run_FSNonExist(t *testing.T) {
 	}
 }
 
+func Test_DefaultMachine_Run_InvalidGlobals(t *testing.T) {
+	m := starlet.NewDefault()
+	// set invalid globals
+	m.SetGlobals(map[string]interface{}{
+		"a": make(chan int),
+	})
+	// set code
+	m.SetScript("test.star", []byte(`a = 1`), nil)
+	// run
+	_, err := m.Run(context.Background())
+	expectErr(t, err, `starlet: convert: type chan int is not a supported starlark type`)
+}
+
 func Test_DefaultMachine_Run_LoadFunc(t *testing.T) {
 	m := starlet.NewDefault()
 	// set code
@@ -155,6 +170,79 @@ b = a * 10 + c
 	if out == nil {
 		t.Errorf("unexpected nil output")
 	} else if out["b"].(int64) != int64(120) {
+		t.Errorf("unexpected output: %v", out)
+	}
+}
+
+func Test_Machine_Run_Exit_Quit(t *testing.T) {
+	m := starlet.NewDefault()
+	m.SetPreloadModules(starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic")})
+
+	// test exit()
+	m.SetScript("test.star", []byte(`
+a = 1
+exit()
+b = 2
+`), nil)
+	out, err := m.Run(context.Background())
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if out == nil {
+		t.Errorf("unexpected nil output")
+	} else if out["a"].(int64) != int64(1) {
+		t.Errorf("unexpected output: %v", out)
+	} else if _, ok := out["b"]; ok {
+		t.Errorf("unexpected output: %v", out)
+	}
+
+	// test quit()
+	m.SetScript("test.star", []byte(`
+c = 3
+quit()
+d = 4
+`), nil)
+	out, err = m.Run(context.Background())
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if out == nil {
+		t.Errorf("unexpected nil output")
+	} else if out["c"].(int64) != int64(3) {
+		t.Errorf("unexpected output: %v", out)
+	} else if _, ok := out["d"]; ok {
+		t.Errorf("unexpected output: %v", out)
+	}
+
+	// test exit(1)
+	m.SetScript("test.star", []byte(`
+e = 5
+exit(1)
+f = 6
+`), nil)
+	out, err = m.Run(context.Background())
+	expectErr(t, err, `starlet: exit code: 1`)
+	if out == nil {
+		t.Errorf("unexpected nil output")
+	} else if out["e"].(int64) != int64(5) {
+		t.Errorf("unexpected output: %v", out)
+	} else if _, ok := out["f"]; ok {
+		t.Errorf("unexpected output: %v", out)
+	}
+
+	// test quit(2)
+	m.SetScript("test.star", []byte(`
+g = 7
+quit(2)
+h = 8
+`), nil)
+	out, err = m.Run(context.Background())
+	expectErr(t, err, `starlet: exit code: 2`)
+	if out == nil {
+		t.Errorf("unexpected nil output")
+	} else if out["g"].(int64) != int64(7) {
+		t.Errorf("unexpected output: %v", out)
+	} else if _, ok := out["h"]; ok {
 		t.Errorf("unexpected output: %v", out)
 	}
 }
@@ -1051,7 +1139,7 @@ val = number + n3
 	}
 }
 
-func Test_Machine_RunAgain_Normal(t *testing.T) {
+func Test_Machine_RunAgain(t *testing.T) {
 	code1 := `
 x = 2
 y = 10
@@ -1069,6 +1157,9 @@ print("t =", t, "{}-{}-{}".format(x,y,z))
 load("math", "mod")
 m = mod(11, 3)
 print("m =", m)
+
+load("go", "sleep")
+print(type(sleep))
 `
 	// prepare machine
 	m := starlet.NewDefault()
@@ -1091,7 +1182,8 @@ print("m =", m)
 	}
 
 	// run second time
-	m.SetScript("test.star", []byte(code2), nil)
+	m.SetLazyloadModules(starlet.ModuleLoaderMap{"math": starlet.GetBuiltinModule("math"), "go": starlet.GetBuiltinModule("go_idiomatic")})
+	m.SetScript("test.star", []byte(code2), os.DirFS("testdata"))
 	out, err = m.Run(context.Background())
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
@@ -1102,6 +1194,42 @@ print("m =", m)
 	} else {
 		t.Logf("Result for the second run: %v", out)
 	}
+}
+
+func Test_Machine_Run_With_Timeout(t *testing.T) {
+	interval := 1000 * time.Millisecond
+
+	// prepare machine
+	m := starlet.NewDefault()
+	m.SetPrintFunc(getLogPrintFunc(t))
+	m.SetGlobals(map[string]interface{}{
+		"sleep": time.Sleep,
+		"itn":   interval,
+	})
+
+	// first run with no timeout
+	m.SetScript("time.star", []byte(`a = 1; sleep(itn); b = 2`), nil)
+	ts := time.Now()
+	out, err := m.Run(nil)
+	if err != nil {
+		t.Errorf("Expected no errors, got error: %v", err)
+		return
+	}
+	if !expectSameDuration(t, time.Since(ts), interval) {
+		return
+	}
+	t.Logf("got result after run #1: %v", out)
+
+	// second run with timeout
+	m.SetScript("time.star", []byte(`c = 3; sleep(itn); d = 4`), nil)
+	ts = time.Now()
+	ctx, _ := context.WithTimeout(context.Background(), interval/2)
+	out, err = m.Run(ctx)
+	expectErr(t, err, "starlet: exec: Starlark computation cancelled: context cancelled")
+	if !expectSameDuration(t, time.Since(ts), interval) {
+		return
+	}
+	t.Logf("got result after run #2: %v", out)
 }
 
 func Test_Machine_Run_With_Context(t *testing.T) {
@@ -1149,7 +1277,7 @@ sleep(0.5)
 t = 4
 `), nil)
 	ts = time.Now()
-	ctx, _ = context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, _ = context.WithTimeout(context.Background(), 3*time.Second)
 	out, err = m.Run(ctx)
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
@@ -1159,6 +1287,46 @@ t = 4
 		return
 	}
 	t.Logf("got result after run #3: %v", out)
+
+	// fourth run with old values
+	m.SetScript("timer.star", []byte(`
+z = y << 5
+fail("oops")
+`), nil)
+	ts = time.Now()
+	out, err = m.Run(context.Background())
+	expectErr(t, err, "starlet: exec: fail: oops")
+	t.Logf("got result after run #4: %v", out)
+
+	// fifth run to fail in def
+	m.SetScript("timer.star", []byte(`
+def foo():
+	fail("a bar")
+
+zz = z * 2
+foo()
+`), nil)
+	out, err = m.Run(context.Background())
+	expectErr(t, err, `starlet: exec: fail: a bar`)
+	t.Logf("got result after run #5: %v", out)
+
+	// sixth run with old values
+	m.SetScript("timer.star", []byte(`
+zoo = z + 100
+`), nil)
+	ts = time.Now()
+	out, err = m.Run(context.Background())
+	if err != nil {
+		t.Errorf("Expected no errors, got error: %v", err)
+		return
+	}
+	if out == nil {
+		t.Errorf("Unexpected empty result: %v", out)
+	} else if n := out["zoo"]; n != int64(164) {
+		t.Errorf("Unexpected result: %v", out)
+	} else {
+		t.Logf("got result after run #6: %v", out)
+	}
 }
 
 func Test_Machine_Run_With_Reset(t *testing.T) {
@@ -1217,4 +1385,101 @@ func Test_Machine_Run_With_Reset(t *testing.T) {
 	m.SetScript("run.star", []byte(`w = x + z`), nil)
 	_, err = m.Run(context.Background())
 	expectErr(t, err, `starlet: exec: run.star:1:5: undefined: x`)
+}
+
+func Test_Machine_Run_Panic(t *testing.T) {
+	// prepare machine
+	m := starlet.NewDefault()
+	m.SetPrintFunc(getLogPrintFunc(t))
+	m.SetPreloadModules(starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic")})
+
+	// first run with error
+	m.SetScript("panic.star", []byte(`
+def foo():
+	fail("oops")
+foo = 123
+`), nil)
+	out, err := m.Run(context.Background())
+	expectErr(t, err, `starlet: exec: panic.star:4:1: cannot reassign global foo declared at panic.star:2:5`)
+	t.Logf("got result after run #1: %v", out)
+
+	// second run smoothly
+	m.SetScript("panic.star", []byte(`
+a = 123
+b = str(a)
+`), nil)
+	out, err = m.Run(context.Background())
+	if err != nil {
+		t.Errorf("Expected no errors, got error: %v", err)
+		return
+	}
+	if out == nil {
+		t.Errorf("Unexpected empty result: %v", out)
+	} else if n := out["b"]; n != "123" {
+		t.Errorf("Unexpected result: %v", out)
+	}
+	t.Logf("got result after run #2: %v", out)
+
+	// third run with panic and recovered in starlight
+	lazyMap := func() (starlark.StringDict, error) {
+		return convert.MakeStringDict(map[string]interface{}{
+			"foo": 123,
+			"bar": func() {
+				panic("oops")
+			},
+		})
+	}
+	m.SetLazyloadModules(starlet.ModuleLoaderMap{"lucy": lazyMap})
+	m.SetScript("panic.star", []byte(`
+load("lucy", "foo", "bar")
+ans = foo * 2
+bar()
+`), nil)
+	out, err = m.Run(context.Background())
+	expectErr(t, err, `starlet: exec: panic in func fn: oops`)
+	if out == nil {
+		t.Errorf("Unexpected empty result: %v", out)
+	} else if n := out["ans"]; n != int64(246) {
+		t.Errorf("Unexpected result: %v", out)
+	}
+	t.Logf("got result after run #3: %v", out)
+
+	// fourth run with panic
+	lazyMap = func() (starlark.StringDict, error) {
+		return convert.MakeStringDict(map[string]interface{}{
+			"foo": 500,
+			"panic": starlark.NewBuiltin("panic", func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+				var s string
+				if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &s); err != nil {
+					return starlark.None, err
+				}
+				panic(s)
+			}),
+		})
+	}
+	m.SetLazyloadModules(starlet.ModuleLoaderMap{"lucky": lazyMap})
+	m.SetScript("panic.star", []byte(`
+load("lucky", "foo", "panic")
+ans = foo * 2
+panic("ohohoh")
+`), nil)
+	out, err = m.Run(context.Background())
+	expectErr(t, err, `starlet: panic: ohohoh`)
+	t.Logf("got result after run #4: %v", out)
+
+	// fifth run normally
+	m.SetScript("panic.star", []byte(`
+res = ans % 100
+`), nil)
+	out, err = m.Run(context.Background())
+	if err != nil {
+		t.Errorf("Expected no errors, got error: %v", err)
+		return
+	}
+	if out == nil {
+		t.Errorf("Unexpected empty result: %v", out)
+	} else if n := out["res"]; n != int64(46) {
+		t.Errorf("Unexpected result: %v", out)
+	}
+	t.Logf("got result after run #5: %v", out)
 }

@@ -20,6 +20,8 @@ func LoadModule() (starlark.StringDict, error) {
 		"false": starlark.False,
 		"nil":   starlark.None,
 		"sleep": starlark.NewBuiltin("sleep", sleep),
+		"exit":  starlark.NewBuiltin("exit", exit),
+		"quit":  starlark.NewBuiltin("quit", exit), // alias for exit
 	}, nil
 }
 
@@ -42,8 +44,8 @@ func sleep(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kw
 	// get the context
 	ctx := context.TODO()
 	if c := thread.Local("context"); c != nil {
-		if c, ok := c.(context.Context); ok {
-			ctx = c
+		if co, ok := c.(context.Context); ok {
+			ctx = co
 		}
 	}
 	// sleep
@@ -55,4 +57,14 @@ func sleep(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kw
 	case <-ctx.Done():
 		return none, ctx.Err()
 	}
+}
+
+// exit exits the program with the given exit code.
+func exit(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var code uint8
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "code?", &code); err != nil {
+		return none, err
+	}
+	thread.SetLocal("exit_code", code)
+	return none, errors.New(`starlet runtime system exit`)
 }

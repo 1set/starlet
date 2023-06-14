@@ -9,6 +9,14 @@ import (
 	"go.starlark.net/starlark"
 )
 
+// PrintFunc is a function that tells Starlark how to print messages.
+// If nil, the default `fmt.Fprintln(os.Stderr, msg)` will be used instead.
+type PrintFunc func(thread *starlark.Thread, msg string)
+
+// LoadFunc is a function that tells Starlark how to find and load other scripts
+// using the load() function. If you don't use load() in your scripts, you can pass in nil.
+type LoadFunc func(thread *starlark.Thread, module string) (starlark.StringDict, error)
+
 var (
 	ErrNoFileToRun         = errors.New("no specific file")
 	ErrNoScriptSourceToRun = errors.New("no script to execute")
@@ -24,11 +32,14 @@ const (
 )
 
 // Run runs the preset script with given globals and returns the result.
-func (m *Machine) Run(ctx context.Context) (DataStore, error) {
+func (m *Machine) Run(ctx context.Context) (out DataStore, err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-
-	// TODO: handle panic, what about other defers?
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("starlet: panic: %v", r)
+		}
+	}()
 
 	// either script content or name and FS must be set
 	var (
@@ -49,25 +60,24 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 		return nil, fmt.Errorf("starlet: run: %w", ErrNoScriptSourceToRun)
 	}
 
-	var err error
+	// prepare thread
 	if m.thread == nil {
-		// -- prepare thread for the first run
+		// -- for the first run
 		// preset globals + preload modules -> predeclared
 		if m.predeclared, err = convert.MakeStringDict(m.globals); err != nil {
 			return nil, fmt.Errorf("starlet: convert: %w", err)
 		}
 		if err = m.preloadMods.LoadAll(m.predeclared); err != nil {
+			// TODO: wrap the errors
 			return nil, err
 		}
 
-		// cache load + printFunc -> thread
+		// cache load&read + printf -> thread
 		m.loadCache = &cache{
-			cache:   make(map[string]*entry),
-			loadMod: m.lazyloadMods.GetLazyLoader(),
-			readFile: func(name string) ([]byte, error) {
-				return readScriptFile(name, m.scriptFS)
-			},
-			globals: m.predeclared,
+			cache:    make(map[string]*entry),
+			loadMod:  m.lazyloadMods.GetLazyLoader(),
+			readFile: m.readFSFile,
+			globals:  m.predeclared,
 		}
 		m.thread = &starlark.Thread{
 			Print: m.printFunc,
@@ -83,6 +93,7 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 			m.predeclared[k] = v
 		}
 		// set globals for cache
+		m.loadCache.loadMod = m.lazyloadMods.GetLazyLoader()
 		m.loadCache.globals = m.predeclared
 	}
 
@@ -111,12 +122,33 @@ func (m *Machine) Run(ctx context.Context) (DataStore, error) {
 		}
 		res, err = starlark.ExecFile(m.thread, scriptName, rd, m.predeclared)
 	}
+	// TODO: merge back into code above
 
 	// handle result and convert
 	m.lastResult = res
-	out := convert.FromStringDict(res)
+	out = convert.FromStringDict(res)
 	if err != nil {
-		return out, fmt.Errorf("starlet: exec: %w", err)
+		// for exit code
+		if err.Error() == `starlet runtime system exit` {
+			var exitCode uint8
+			if c := m.thread.Local("exit_code"); c != nil {
+				if co, ok := c.(uint8); ok {
+					exitCode = co
+				}
+			}
+			// exit code 0 means success
+			if exitCode == 0 {
+				err = nil
+			} else {
+				err = fmt.Errorf("starlet: exit code: %d", exitCode)
+			}
+		} else {
+			// wrap other errors
+			err = fmt.Errorf("starlet: exec: %w", err)
+		}
+
+		// TODO: call it convert error? maybe better error solutions
+		return out, err
 	}
 	return out, nil
 }
@@ -128,4 +160,8 @@ func (m *Machine) Reset() {
 	m.thread = nil
 	m.loadCache = nil
 	m.predeclared = nil
+}
+
+func (m *Machine) readFSFile(name string) ([]byte, error) {
+	return readScriptFile(name, m.scriptFS)
 }
