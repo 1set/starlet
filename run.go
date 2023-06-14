@@ -23,14 +23,6 @@ var (
 	ErrModuleNotFound      = errors.New("module not found")
 )
 
-type sourceCodeType uint8
-
-const (
-	sourceCodeTypeUnknown sourceCodeType = iota
-	sourceCodeTypeContent
-	sourceCodeTypeFSName
-)
-
 // Run runs the preset script with given globals and returns the result.
 func (m *Machine) Run(ctx context.Context) (out DataStore, err error) {
 	m.mu.Lock()
@@ -44,18 +36,25 @@ func (m *Machine) Run(ctx context.Context) (out DataStore, err error) {
 	// either script content or name and FS must be set
 	var (
 		scriptName = m.scriptName
-		srcType    sourceCodeType
+		source     interface{}
 	)
 	if m.scriptContent != nil {
-		srcType = sourceCodeTypeContent
 		if scriptName == "" {
+			// for default name
 			scriptName = "eval.star"
 		}
+		source = m.scriptContent
 	} else if m.scriptFS != nil {
-		srcType = sourceCodeTypeFSName
 		if scriptName == "" {
+			// if no name, cannot load
 			return nil, fmt.Errorf("starlet: run: %w", ErrNoFileToRun)
 		}
+		// load script from FS
+		rd, e := m.scriptFS.Open(scriptName)
+		if e != nil {
+			return nil, fmt.Errorf("starlet: open: %w", e)
+		}
+		source = rd
 	} else {
 		return nil, fmt.Errorf("starlet: run: %w", ErrNoScriptSourceToRun)
 	}
@@ -110,19 +109,8 @@ func (m *Machine) Run(ctx context.Context) (out DataStore, err error) {
 		}()
 	}
 
-	// run for various source code types
-	var res starlark.StringDict
-	switch srcType {
-	case sourceCodeTypeContent:
-		res, err = starlark.ExecFile(m.thread, scriptName, m.scriptContent, m.predeclared)
-	case sourceCodeTypeFSName:
-		rd, e := m.scriptFS.Open(scriptName)
-		if e != nil {
-			return nil, fmt.Errorf("starlet: open: %w", e)
-		}
-		res, err = starlark.ExecFile(m.thread, scriptName, rd, m.predeclared)
-	}
-	// TODO: merge back into code above
+	// run with everything prepared
+	res, err := starlark.ExecFile(m.thread, scriptName, source, m.predeclared)
 
 	// handle result and convert
 	m.lastResult = res
