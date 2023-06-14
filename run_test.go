@@ -113,7 +113,7 @@ func Test_DefaultMachine_Run_InvalidGlobals(t *testing.T) {
 	m.SetScript("test.star", []byte(`a = 1`), nil)
 	// run
 	_, err := m.Run(context.Background())
-	expectErr(t, err, `starlet: convert: type chan int is not a supported starlark type`)
+	expectErr(t, err, `starlet: convert globals: type chan int is not a supported starlark type`)
 }
 
 func Test_DefaultMachine_Run_LoadFunc(t *testing.T) {
@@ -452,7 +452,7 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 			name:        "Unsupported Globals Type",
 			globals:     map[string]interface{}{"a": make(chan int)},
 			code:        `b = a`,
-			expectedErr: `starlet: convert: type chan int is not a supported starlark type`,
+			expectedErr: `starlet: convert globals: type chan int is not a supported starlark type`,
 		},
 		{
 			name:        "Missed Globals Variable",

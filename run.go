@@ -27,6 +27,11 @@ var (
 func (m *Machine) Run(ctx context.Context) (out DataStore, err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	return m.runSet(ctx, nil)
+}
+
+func (m *Machine) runSet(ctx context.Context, extras map[string]interface{}) (out DataStore, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("starlet: panic: %v", r)
@@ -62,13 +67,20 @@ func (m *Machine) Run(ctx context.Context) (out DataStore, err error) {
 	// prepare thread
 	if m.thread == nil {
 		// -- for the first run
-		// preset globals + preload modules -> predeclared
+		// preset globals + preload modules + extras -> predeclared
 		if m.predeclared, err = convert.MakeStringDict(m.globals); err != nil {
-			return nil, fmt.Errorf("starlet: convert: %w", err)
+			return nil, fmt.Errorf("starlet: convert globals: %w", err)
 		}
 		if err = m.preloadMods.LoadAll(m.predeclared); err != nil {
 			// TODO: wrap the errors
 			return nil, err
+		}
+		if esd, err := convert.MakeStringDict(extras); err != nil {
+			return nil, fmt.Errorf("starlet: convert extras: %w", err)
+		} else {
+			for k, v := range esd {
+				m.predeclared[k] = v
+			}
 		}
 
 		// cache load&read + printf -> thread
