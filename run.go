@@ -23,11 +23,17 @@ var (
 	ErrModuleNotFound      = errors.New("module not found")
 )
 
-// Run runs the preset script with given globals and returns the result.
-func (m *Machine) Run(ctx context.Context, extras map[string]interface{}) (out DataStore, err error) {
+// Run runs the preset script and returns the result.
+func (m *Machine) Run() (DataStore, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	return m.internalRun(context.Background(), nil)
+}
 
+// RunWithContext runs the preset script with given context and extra variables and returns the result.
+func (m *Machine) RunWithContext(ctx context.Context, extras map[string]interface{}) (DataStore, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	return m.internalRun(ctx, extras)
 }
 
