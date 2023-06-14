@@ -1123,6 +1123,42 @@ print(type(sleep))
 	}
 }
 
+func Test_Machine_Run_With_Timeout(t *testing.T) {
+	interval := 1000 * time.Millisecond
+
+	// prepare machine
+	m := starlet.NewDefault()
+	m.SetPrintFunc(getLogPrintFunc(t))
+	m.SetGlobals(map[string]interface{}{
+		"sleep": time.Sleep,
+		"itn":   interval,
+	})
+
+	// first run with no timeout
+	m.SetScript("time.star", []byte(`a = 1; sleep(itn); b = 2`), nil)
+	ts := time.Now()
+	out, err := m.Run(nil)
+	if err != nil {
+		t.Errorf("Expected no errors, got error: %v", err)
+		return
+	}
+	if !expectSameDuration(t, time.Since(ts), interval) {
+		return
+	}
+	t.Logf("got result after run #1: %v", out)
+
+	// second run with timeout
+	m.SetScript("time.star", []byte(`c = 3; sleep(itn); d = 4`), nil)
+	ts = time.Now()
+	ctx, _ := context.WithTimeout(context.Background(), interval/2)
+	out, err = m.Run(ctx)
+	expectErr(t, err, "starlet: exec: Starlark computation cancelled: context cancelled")
+	if !expectSameDuration(t, time.Since(ts), interval) {
+		return
+	}
+	t.Logf("got result after run #2: %v", out)
+}
+
 func Test_Machine_Run_With_Context(t *testing.T) {
 	// prepare machine
 	m := starlet.NewDefault()
