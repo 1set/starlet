@@ -60,6 +60,37 @@ func Test_DefaultMachine_Run_HelloWorld(t *testing.T) {
 	cmpFunc("Aloha, Honua!\n")
 }
 
+func Test_DefaultMachine_Run_File(t *testing.T) {
+	m := starlet.NewDefault()
+	// set print function
+	printFunc, cmpFunc := getPrintCompareFunc(t)
+	m.SetPrintFunc(printFunc)
+	// run
+	_, err := m.RunFile("aloha.star", os.DirFS("testdata"), nil)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	// compare
+	cmpFunc("Aloha, Honua!\n")
+}
+
+func Test_DefaultMachine_Run_Script(t *testing.T) {
+	m := starlet.NewDefault()
+	// set print function
+	printFunc, cmpFunc := getPrintCompareFunc(t)
+	m.SetPrintFunc(printFunc)
+	// run
+	code := `
+print(text)
+`
+	_, err := m.RunScript([]byte(code), map[string]interface{}{"text": "Hello, World!"})
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	// compare
+	cmpFunc("Hello, World!\n")
+}
+
 func Test_DefaultMachine_Run_LocalFile(t *testing.T) {
 	m := starlet.NewDefault()
 	// set print function
@@ -1245,6 +1276,26 @@ func Test_Machine_Run_With_Timeout(t *testing.T) {
 	expectSameDuration(t, time.Since(ts), interval)
 	expectErr(t, err, "starlet: exec: context deadline exceeded")
 	t.Logf("got result after run #4: %v", out)
+}
+
+func Test_Machine_Run_With_CancelledContext(t *testing.T) {
+	// prepare machine
+	m := starlet.NewDefault()
+	m.SetPrintFunc(getLogPrintFunc(t))
+	m.SetPreloadModules(starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic")})
+
+	// prepare context
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	// run script
+	m.SetScript("timer.star", []byte(`a = 1; b = 2`), nil)
+	out, err := m.RunWithContext(ctx, nil)
+	expectErr(t, err, "starlet: exec: Starlark computation cancelled: context cancelled")
+	if len(out) != 0 {
+		t.Errorf("Expected empty result, got %v", out)
+		return
+	}
 }
 
 func Test_Machine_Run_With_Context(t *testing.T) {
