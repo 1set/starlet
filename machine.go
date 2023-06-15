@@ -12,7 +12,7 @@ import (
 type Machine struct {
 	mu sync.RWMutex
 	// set variables
-	globals      DataStore
+	globals      StringAny
 	preloadMods  ModuleLoaderList
 	lazyloadMods ModuleLoaderMap
 	printFunc    PrintFunc
@@ -43,14 +43,14 @@ func NewDefault() *Machine {
 }
 
 // NewWithGlobals creates a new Starlark runtime environment with given global variables.
-func NewWithGlobals(globals DataStore) *Machine {
+func NewWithGlobals(globals StringAny) *Machine {
 	return &Machine{
 		globals: globals,
 	}
 }
 
 // NewWithLoaders creates a new Starlark runtime environment with given global variables and preload module loaders.
-func NewWithLoaders(globals DataStore, preload ModuleLoaderList, lazyload ModuleLoaderMap) *Machine {
+func NewWithLoaders(globals StringAny, preload ModuleLoaderList, lazyload ModuleLoaderMap) *Machine {
 	return &Machine{
 		globals:      globals,
 		preloadMods:  preload,
@@ -60,7 +60,7 @@ func NewWithLoaders(globals DataStore, preload ModuleLoaderList, lazyload Module
 
 // NewWithNames creates a new Starlark runtime environment with given global variables, preload and lazyload module names.
 // The modules should be built-in modules, and it panics if any of the given modules fails to load.
-func NewWithNames(globals DataStore, preloads []string, lazyloads []string) *Machine {
+func NewWithNames(globals StringAny, preloads []string, lazyloads []string) *Machine {
 	pre, err := MakeBuiltinModuleLoaderList(preloads)
 	if err != nil {
 		panic(err)
@@ -78,7 +78,7 @@ func NewWithNames(globals DataStore, preloads []string, lazyloads []string) *Mac
 
 // SetGlobals sets global variables in the Starlark runtime environment.
 // These variables only take effect before the first run or after a reset.
-func (m *Machine) SetGlobals(globals DataStore) {
+func (m *Machine) SetGlobals(globals StringAny) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -87,12 +87,12 @@ func (m *Machine) SetGlobals(globals DataStore) {
 
 // AddGlobals adds the globals of the Starlark runtime environment.
 // These variables only take effect before the first run or after a reset.
-func (m *Machine) AddGlobals(globals DataStore) {
+func (m *Machine) AddGlobals(globals StringAny) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if m.globals == nil {
-		m.globals = make(DataStore)
+		m.globals = make(StringAny)
 	}
 	for k, v := range globals {
 		m.globals[k] = v
@@ -100,7 +100,7 @@ func (m *Machine) AddGlobals(globals DataStore) {
 }
 
 // GetGlobals gets the globals of the Starlark runtime environment.
-func (m *Machine) GetGlobals() DataStore {
+func (m *Machine) GetGlobals() StringAny {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -156,4 +156,37 @@ func (m *Machine) SetScript(name string, content []byte, fileSys fs.FS) {
 	m.scriptName = name
 	m.scriptContent = content
 	m.scriptFS = fileSys
+}
+
+// StringAny is a map of string to interface{} (i.e. any).
+// It is used to store global variables like StringDict of Starlark, but not a Starlark type.
+type StringAny map[string]interface{}
+
+// Clone returns a copy of the data store.
+func (d StringAny) Clone() StringAny {
+	clone := make(StringAny)
+	for k, v := range d {
+		clone[k] = v
+	}
+	return clone
+}
+
+// Merge merges the given data store into the current data store.
+func (d StringAny) Merge(other StringAny) {
+	if d == nil {
+		return
+	}
+	for k, v := range other {
+		d[k] = v
+	}
+}
+
+// MergeDict merges the given string dict into the current data store.
+func (d StringAny) MergeDict(other starlark.StringDict) {
+	if d == nil {
+		return
+	}
+	for k, v := range other {
+		d[k] = v
+	}
 }

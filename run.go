@@ -26,7 +26,7 @@ var (
 )
 
 // Run runs the preset script and returns the result.
-func (m *Machine) Run() (DataStore, error) {
+func (m *Machine) Run() (StringAny, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -34,7 +34,7 @@ func (m *Machine) Run() (DataStore, error) {
 }
 
 // RunScript runs the given script content and returns the result.
-func (m *Machine) RunScript(content []byte, extras map[string]interface{}) (DataStore, error) {
+func (m *Machine) RunScript(content []byte, extras map[string]interface{}) (StringAny, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -45,7 +45,7 @@ func (m *Machine) RunScript(content []byte, extras map[string]interface{}) (Data
 }
 
 // RunFile runs the given script file in file system and returns the result.
-func (m *Machine) RunFile(name string, fileSys fs.FS, extras map[string]interface{}) (DataStore, error) {
+func (m *Machine) RunFile(name string, fileSys fs.FS, extras map[string]interface{}) (StringAny, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -56,7 +56,7 @@ func (m *Machine) RunFile(name string, fileSys fs.FS, extras map[string]interfac
 }
 
 // RunWithTimeout runs the preset script with given timeout and returns the result.
-func (m *Machine) RunWithTimeout(timeout time.Duration, extras map[string]interface{}) (DataStore, error) {
+func (m *Machine) RunWithTimeout(timeout time.Duration, extras map[string]interface{}) (StringAny, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -66,14 +66,14 @@ func (m *Machine) RunWithTimeout(timeout time.Duration, extras map[string]interf
 }
 
 // RunWithContext runs the preset script with given context and extra variables and returns the result.
-func (m *Machine) RunWithContext(ctx context.Context, extras map[string]interface{}) (DataStore, error) {
+func (m *Machine) RunWithContext(ctx context.Context, extras map[string]interface{}) (StringAny, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	return m.internalRun(ctx, extras)
 }
 
-func (m *Machine) internalRun(ctx context.Context, extras map[string]interface{}) (out DataStore, err error) {
+func (m *Machine) internalRun(ctx context.Context, extras map[string]interface{}) (out StringAny, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("starlet: panic: %v", r)
