@@ -205,6 +205,20 @@ b = a * 10 + c
 }
 
 func Test_Machine_Run_Override(t *testing.T) {
+	getValLoadList := func(x int64) starlet.ModuleLoaderList {
+		return starlet.ModuleLoaderList{
+			starlet.MakeModuleLoaderFromMap(map[string]interface{}{
+				"x": x,
+			}),
+		}
+	}
+	getValLoadMap := func(x int64) starlet.ModuleLoaderMap {
+		return starlet.ModuleLoaderMap{
+			"number": starlet.MakeModuleLoaderFromMap(map[string]interface{}{
+				"x": x,
+			}),
+		}
+	}
 	testCases := []struct {
 		name      string
 		setFunc   func(m *starlet.Machine)
@@ -216,6 +230,52 @@ func Test_Machine_Run_Override(t *testing.T) {
 			name:      "Runtime",
 			code:      `val = 100`,
 			expectVal: 100,
+		},
+		{
+			name: "Globals",
+			setFunc: func(m *starlet.Machine) {
+				m.SetGlobals(map[string]interface{}{
+					"x": 200,
+				})
+			},
+			code:      `val = x`,
+			expectVal: 200,
+		},
+		{
+			name: "Globals and Preload",
+			setFunc: func(m *starlet.Machine) {
+				m.SetGlobals(map[string]interface{}{
+					"x": 200,
+				})
+				m.SetPreloadModules(getValLoadList(300))
+			},
+			code:      `val = x`,
+			expectVal: 300,
+		},
+		{
+			name: "Globals and Preload and Extras",
+			setFunc: func(m *starlet.Machine) {
+				m.SetGlobals(map[string]interface{}{
+					"x": 200,
+				})
+				m.SetPreloadModules(getValLoadList(300))
+			},
+			extras:    map[string]interface{}{"x": 400},
+			code:      `val = x`,
+			expectVal: 400,
+		},
+		{
+			name: "Globals and Preload and Extras and LazyLoad",
+			setFunc: func(m *starlet.Machine) {
+				m.SetGlobals(map[string]interface{}{
+					"x": 200,
+				})
+				m.SetPreloadModules(getValLoadList(300))
+				m.SetLazyloadModules(getValLoadMap(500))
+			},
+			extras:    map[string]interface{}{"x": 400},
+			code:      `load("number", "x"); val = x`,
+			expectVal: 500,
 		},
 	}
 
