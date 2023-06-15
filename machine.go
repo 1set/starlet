@@ -76,8 +76,8 @@ func NewWithNames(globals DataStore, preloads []string, lazyloads []string) *Mac
 	}
 }
 
-// SetGlobals sets the globals of the Starlark runtime environment.
-// It only works before the first run.
+// SetGlobals sets global variables in the Starlark runtime environment.
+// These variables only take effect before the first run or after a reset.
 func (m *Machine) SetGlobals(globals DataStore) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -86,7 +86,7 @@ func (m *Machine) SetGlobals(globals DataStore) {
 }
 
 // AddGlobals adds the globals of the Starlark runtime environment.
-// It only works before the first run.
+// These variables only take effect before the first run or after a reset.
 func (m *Machine) AddGlobals(globals DataStore) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -108,7 +108,7 @@ func (m *Machine) GetGlobals() DataStore {
 }
 
 // SetPreloadModules sets the preload modules of the Starlark runtime environment.
-// It only works before the first run.
+// These modules only take effect before the first run or after a reset.
 func (m *Machine) SetPreloadModules(mods ModuleLoaderList) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
