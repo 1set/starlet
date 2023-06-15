@@ -1,7 +1,6 @@
 package starlet_test
 
 import (
-	"context"
 	"io"
 	"io/fs"
 	"os"
@@ -541,9 +540,8 @@ print("birth", t2, type(t2))
 d = t1 - t2
 print("dh", d.hours, type(d))
 `
-	m.SetScript("test.star", []byte(code), nil)
 	// run
-	out, err := m.RunWithContext(context.Background(), nil)
+	out, err := m.RunScript([]byte(code), nil)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}

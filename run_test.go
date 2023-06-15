@@ -16,7 +16,7 @@ import (
 func Test_DefaultMachine_Run_NoCode(t *testing.T) {
 	m := starlet.NewDefault()
 	// run with empty script
-	_, err := m.RunWithContext(context.Background(), nil)
+	_, err := m.Run()
 	expectErr(t, err, `starlet: run: no script to execute`)
 }
 
@@ -24,7 +24,7 @@ func Test_DefaultMachine_Run_NoSpecificFile(t *testing.T) {
 	m := starlet.NewDefault()
 	m.SetScript("", nil, os.DirFS("testdata"))
 	// run with no specific file name
-	_, err := m.RunWithContext(context.Background(), nil)
+	_, err := m.Run()
 	expectErr(t, err, `starlet: run: no specific file`)
 }
 
@@ -32,7 +32,7 @@ func Test_DefaultMachine_Run_APlusB(t *testing.T) {
 	m := starlet.NewDefault()
 	code := `a = 1 + 2`
 	m.SetScript("", []byte(code), nil)
-	out, err := m.RunWithContext(context.Background(), nil)
+	out, err := m.Run()
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -52,7 +52,7 @@ func Test_DefaultMachine_Run_HelloWorld(t *testing.T) {
 	code := `print("Aloha, Honua!")`
 	m.SetScript("aloha.star", []byte(code), nil)
 	// run
-	_, err := m.RunWithContext(context.Background(), nil)
+	_, err := m.Run()
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -68,7 +68,7 @@ func Test_DefaultMachine_Run_LocalFile(t *testing.T) {
 	// set code
 	m.SetScript("aloha.star", nil, os.DirFS("testdata"))
 	// run
-	_, err := m.RunWithContext(context.Background(), nil)
+	_, err := m.Run()
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -81,7 +81,7 @@ func Test_DefaultMachine_Run_LocalFileNonExist(t *testing.T) {
 	// set code
 	m.SetScript("notfound.star", nil, os.DirFS("testdata"))
 	// run
-	_, err := m.RunWithContext(context.Background(), nil)
+	_, err := m.Run()
 	if isOnWindows {
 		expectErr(t, err, `starlet: open: open`, `The system cannot find the file specified.`)
 	} else {
@@ -94,7 +94,7 @@ func Test_DefaultMachine_Run_FSNonExist(t *testing.T) {
 	// set code
 	m.SetScript("aloha.star", nil, os.DirFS("not-found-dir"))
 	// run
-	_, err := m.RunWithContext(context.Background(), nil)
+	_, err := m.Run()
 	if isOnWindows {
 		expectErr(t, err, `starlet: open: open`, `The system cannot find the path specified.`)
 	} else {
@@ -111,7 +111,7 @@ func Test_DefaultMachine_Run_InvalidGlobals(t *testing.T) {
 	// set code
 	m.SetScript("test.star", []byte(`a = 1`), nil)
 	// run
-	_, err := m.RunWithContext(context.Background(), nil)
+	_, err := m.Run()
 	expectErr(t, err, `starlet: convert globals: type chan int is not a supported starlark type`)
 }
 
@@ -121,7 +121,7 @@ func Test_DefaultMachine_Run_LoadFunc(t *testing.T) {
 	code := `load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]`
 	m.SetScript("test.star", []byte(code), os.DirFS("testdata"))
 	// run
-	out, err := m.RunWithContext(context.Background(), nil)
+	out, err := m.Run()
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -139,7 +139,7 @@ func Test_DefaultMachine_Run_LoadNonExist(t *testing.T) {
 	code := `load("nonexist.star", "a")`
 	m.SetScript("test.star", []byte(code), os.DirFS("testdata"))
 	// run
-	_, err := m.RunWithContext(context.Background(), nil)
+	_, err := m.Run()
 	// check result
 	if isOnWindows {
 		expectErr(t, err, `starlet: exec: cannot load nonexist.star: open`, `The system cannot find the file specified.`)
@@ -162,7 +162,7 @@ b = a * 10 + c
 `
 	m.SetScript("test.star", []byte(code), nil)
 	// run
-	out, err := m.RunWithContext(context.Background(), nil)
+	out, err := m.Run()
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -183,7 +183,7 @@ a = 1
 exit()
 b = 2
 `), nil)
-	out, err := m.RunWithContext(context.Background(), nil)
+	out, err := m.Run()
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -201,7 +201,7 @@ c = 3
 quit()
 d = 4
 `), nil)
-	out, err = m.RunWithContext(context.Background(), nil)
+	out, err = m.Run()
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -219,7 +219,7 @@ e = 5
 exit(1)
 f = 6
 `), nil)
-	out, err = m.RunWithContext(context.Background(), nil)
+	out, err = m.Run()
 	expectErr(t, err, `starlet: exit code: 1`)
 	if out == nil {
 		t.Errorf("unexpected nil output")
@@ -235,7 +235,7 @@ g = 7
 quit(2)
 h = 8
 `), nil)
-	out, err = m.RunWithContext(context.Background(), nil)
+	out, err = m.Run()
 	expectErr(t, err, `starlet: exit code: 2`)
 	if out == nil {
 		t.Errorf("unexpected nil output")
@@ -253,7 +253,7 @@ func Test_Machine_Run_File_Globals(t *testing.T) {
 	// set code
 	m.SetScript("magic.star", nil, os.DirFS("testdata"))
 	// run
-	out, err := m.RunWithContext(context.Background(), nil)
+	out, err := m.Run()
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -283,7 +283,7 @@ func Test_Machine_Run_Load_Use_Globals(t *testing.T) {
 	code := `load("magic.star", "custom"); val = custom()`
 	m.SetScript("dummy.star", []byte(code), os.DirFS("testdata"))
 	// run
-	out, err := m.RunWithContext(context.Background(), nil)
+	out, err := m.Run()
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -303,7 +303,7 @@ func Test_Machine_Run_File_Missing_Globals(t *testing.T) {
 	// set code
 	m.SetScript("magic.star", nil, os.DirFS("testdata"))
 	// run
-	_, err := m.RunWithContext(context.Background(), nil)
+	_, err := m.Run()
 	expectErr(t, err, `starlet: exec: magic.star:5:32: undefined: magic_number`)
 }
 
@@ -313,7 +313,7 @@ func Test_Machine_Run_PreloadModules(t *testing.T) {
 	code := `a = nil == None`
 	m.SetScript("test.star", []byte(code), nil)
 	// run
-	out, err := m.RunWithContext(context.Background(), nil)
+	out, err := m.Run()
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -334,7 +334,7 @@ a = nil == None
 `
 	m.SetScript("test.star", []byte(code), nil)
 	// run
-	out, err := m.RunWithContext(context.Background(), nil)
+	out, err := m.Run()
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -363,7 +363,7 @@ z = fib(10)[-1]
 `
 	m.SetScript("test.star", []byte(code), os.DirFS("testdata"))
 	// run
-	out, err := m.RunWithContext(context.Background(), nil)
+	out, err := m.Run()
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -388,7 +388,7 @@ z = fib(num)[-1]
 `
 	m.SetScript("test.star", []byte(code), os.DirFS("testdata"))
 	// run
-	out, err := m.RunWithContext(context.Background(), nil)
+	out, err := m.Run()
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -416,7 +416,7 @@ coins = 50
 `
 	m.SetScript("test.star", []byte(code), os.DirFS("testdata"))
 	// run
-	out, err := m.RunWithContext(context.Background(), nil)
+	out, err := m.Run()
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -587,7 +587,7 @@ coins = 50
 			m := starlet.NewWithNames(tc.globals, tc.preloadMods, tc.lazyMods)
 			m.SetPrintFunc(getLogPrintFunc(t))
 			m.SetScript("test.star", []byte(tc.code), tc.modFS)
-			_, err := m.RunWithContext(context.Background(), nil)
+			_, err := m.Run()
 			expectErr(t, err, tc.expectedErr)
 		})
 	}
@@ -796,7 +796,7 @@ coins = 50
 			m := starlet.NewWithLoaders(tc.globals, tc.preList, tc.lazyMap)
 			m.SetPrintFunc(getLogPrintFunc(t))
 			m.SetScript("test.star", []byte(tc.code), tc.modFS)
-			out, err := m.RunWithContext(context.Background(), nil)
+			out, err := m.Run()
 
 			// check result
 			if tc.expectedErr != "" {
@@ -1115,7 +1115,7 @@ val = number + n3
 			m := starlet.NewWithLoaders(tc.globals, tc.preList, tc.lazyMap)
 			m.SetPrintFunc(getLogPrintFunc(t))
 			m.SetScript("test.star", []byte(tc.code), tc.modFS)
-			out, err := m.RunWithContext(context.Background(), nil)
+			out, err := m.Run()
 
 			// check result
 			if tc.expectedErr != "" {
@@ -1168,7 +1168,7 @@ print(type(sleep))
 
 	// run first time
 	m.SetScript("test.star", []byte(code1), nil)
-	out, err := m.RunWithContext(context.Background(), nil)
+	out, err := m.Run()
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
 	}
@@ -1183,7 +1183,7 @@ print(type(sleep))
 	// run second time
 	m.SetLazyloadModules(starlet.ModuleLoaderMap{"math": starlet.GetBuiltinModule("math"), "go": starlet.GetBuiltinModule("go_idiomatic")})
 	m.SetScript("test.star", []byte(code2), os.DirFS("testdata"))
-	out, err = m.RunWithContext(context.Background(), nil)
+	out, err = m.Run()
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
 		return
@@ -1283,7 +1283,7 @@ z = y << 5
 fail("oops")
 `), nil)
 	ts = time.Now()
-	out, err = m.RunWithContext(context.Background(), nil)
+	out, err = m.Run()
 	expectErr(t, err, "starlet: exec: fail: oops")
 	t.Logf("got result after run #4: %v", out)
 
@@ -1295,7 +1295,7 @@ def foo():
 zz = z * 2
 foo()
 `), nil)
-	out, err = m.RunWithContext(context.Background(), nil)
+	out, err = m.Run()
 	expectErr(t, err, `starlet: exec: fail: a bar`)
 	t.Logf("got result after run #5: %v", out)
 
@@ -1304,7 +1304,7 @@ foo()
 zoo = z + 100
 `), nil)
 	ts = time.Now()
-	out, err = m.RunWithContext(context.Background(), nil)
+	out, err = m.Run()
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
 		return
@@ -1326,7 +1326,7 @@ func Test_Machine_Run_With_Reset(t *testing.T) {
 
 	// first run with no context
 	m.SetScript("run.star", []byte(`x = 100`), nil)
-	out, err := m.RunWithContext(context.Background(), nil)
+	out, err := m.Run()
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
 		return
@@ -1341,7 +1341,7 @@ func Test_Machine_Run_With_Reset(t *testing.T) {
 
 	// without reset, the value can be reused
 	m.SetScript("run.star", []byte(`y = x * 10`), nil)
-	out, err = m.RunWithContext(context.Background(), nil)
+	out, err = m.Run()
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
 		return
@@ -1356,7 +1356,7 @@ func Test_Machine_Run_With_Reset(t *testing.T) {
 
 	// without reset, all the old values are still there
 	m.SetScript("run.star", []byte(`z = x + y`), nil)
-	out, err = m.RunWithContext(context.Background(), nil)
+	out, err = m.Run()
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
 		return
@@ -1372,7 +1372,7 @@ func Test_Machine_Run_With_Reset(t *testing.T) {
 	// with reset, the value is cleared
 	m.Reset()
 	m.SetScript("run.star", []byte(`w = x + z`), nil)
-	_, err = m.RunWithContext(context.Background(), nil)
+	_, err = m.Run()
 	expectErr(t, err, `starlet: exec: run.star:1:5: undefined: x`)
 }
 
@@ -1388,7 +1388,7 @@ def foo():
 	fail("oops")
 foo = 123
 `), nil)
-	out, err := m.RunWithContext(context.Background(), nil)
+	out, err := m.Run()
 	expectErr(t, err, `starlet: exec: panic.star:4:1: cannot reassign global foo declared at panic.star:2:5`)
 	t.Logf("got result after run #1: %v", out)
 
@@ -1397,7 +1397,7 @@ foo = 123
 a = 123
 b = str(a)
 `), nil)
-	out, err = m.RunWithContext(context.Background(), nil)
+	out, err = m.Run()
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
 		return
@@ -1424,7 +1424,7 @@ load("lucy", "foo", "bar")
 ans = foo * 2
 bar()
 `), nil)
-	out, err = m.RunWithContext(context.Background(), nil)
+	out, err = m.Run()
 	expectErr(t, err, `starlet: exec: panic in func fn: oops`)
 	if out == nil {
 		t.Errorf("Unexpected empty result: %v", out)
@@ -1452,7 +1452,7 @@ load("lucky", "foo", "panic")
 ans = foo * 2
 panic("ohohoh")
 `), nil)
-	out, err = m.RunWithContext(context.Background(), nil)
+	out, err = m.Run()
 	expectErr(t, err, `starlet: panic: ohohoh`)
 	t.Logf("got result after run #4: %v", out)
 
@@ -1460,7 +1460,7 @@ panic("ohohoh")
 	m.SetScript("panic.star", []byte(`
 res = ans % 100
 `), nil)
-	out, err = m.RunWithContext(context.Background(), nil)
+	out, err = m.Run()
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
 		return
