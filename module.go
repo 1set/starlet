@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"strings"
 
+	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
@@ -123,6 +124,24 @@ func MakeBuiltinModuleLoaderMap(names []string) (ModuleLoaderMap, error) {
 		}
 	}
 	return ld, nil
+}
+
+// MakeModuleLoaderFromStringDict creates a module loader from the given string dict.
+func MakeModuleLoaderFromStringDict(d starlark.StringDict) ModuleLoader {
+	return func() (starlark.StringDict, error) {
+		return d, nil
+	}
+}
+
+// MakeModuleLoaderFromMap creates a module loader from the given map, it converts the map to a string dict when loading.
+func MakeModuleLoaderFromMap(m map[string]interface{}) ModuleLoader {
+	return func() (starlark.StringDict, error) {
+		dict, err := convert.MakeStringDict(m)
+		if err != nil {
+			return nil, err
+		}
+		return dict, nil
+	}
 }
 
 // MakeModuleLoaderFromString creates a module loader from the given source code.
