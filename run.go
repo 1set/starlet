@@ -154,7 +154,8 @@ func (m *Machine) internalRun(ctx context.Context, extras map[string]interface{}
 	}
 
 	// cancel thread when context cancelled
-	if ctx == nil {
+	if ctx == nil || ctx.Err() != nil {
+		// for nil context, or context already cancelled, use a new one
 		ctx = context.TODO()
 	}
 	m.thread.SetLocal("context", ctx)
