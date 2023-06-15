@@ -149,23 +149,30 @@ func (m *Machine) internalRun(ctx context.Context, extras map[string]interface{}
 		// set globals for cache
 		m.loadCache.loadMod = m.lazyloadMods.GetLazyLoader()
 		m.loadCache.globals = m.predeclared
+		// reset for each run
+		m.thread.Print = m.printFunc
 	}
-
-	// reset for each run
-	m.thread.Print = m.printFunc
-	m.thread.SetLocal("context", ctx)
 
 	// cancel thread when context cancelled
-	m.runTimes++
-	if ctx != nil {
-		go func() {
-			<-ctx.Done()
-			m.thread.Cancel("context cancelled")
-		}()
+	if ctx == nil {
+		ctx = context.TODO()
 	}
+	m.thread.SetLocal("context", ctx)
+
+	done := make(chan struct{}, 1)
+	go func() {
+		select {
+		case <-ctx.Done():
+			m.thread.Cancel("context cancelled")
+		case <-done:
+			// No action if the script has finished
+		}
+	}()
 
 	// run with everything prepared
+	m.runTimes++
 	res, err := starlark.ExecFile(m.thread, scriptName, source, m.predeclared)
+	done <- struct{}{}
 
 	// handle result and convert
 	m.lastResult = res
