@@ -1210,24 +1210,20 @@ func Test_Machine_Run_With_Timeout(t *testing.T) {
 	m.SetScript("time.star", []byte(`a = 1; sleep(itn); b = 2`), nil)
 	ts := time.Now()
 	out, err := m.RunWithContext(nil, nil)
+	expectSameDuration(t, time.Since(ts), interval)
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
 		return
 	}
-	if !expectSameDuration(t, time.Since(ts), interval) {
-		return
-	}
 	t.Logf("got result after run #1: %v", out)
 
-	// second run with timeout
+	// second run with timeout, but context is not handled in builtin sleep
 	m.SetScript("time.star", []byte(`c = 3; sleep(itn); d = 4`), nil)
 	ts = time.Now()
 	ctx, _ := context.WithTimeout(context.Background(), interval/2)
 	out, err = m.RunWithContext(ctx, nil)
+	expectSameDuration(t, time.Since(ts), interval)
 	expectErr(t, err, "starlet: exec: Starlark computation cancelled: context cancelled")
-	if !expectSameDuration(t, time.Since(ts), interval) {
-		return
-	}
 	t.Logf("got result after run #2: %v", out)
 }
 
@@ -1245,11 +1241,9 @@ y = 2
 `), nil)
 	ts := time.Now()
 	out, err := m.RunWithContext(nil, nil)
+	expectSameDuration(t, time.Since(ts), 1*time.Second)
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
-		return
-	}
-	if !expectSameDuration(t, time.Since(ts), 1*time.Second) {
 		return
 	}
 	t.Logf("got result after run #1: %v", out)
@@ -1263,10 +1257,8 @@ t = 4
 	ts = time.Now()
 	ctx, _ := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	out, err = m.RunWithContext(ctx, nil)
+	expectSameDuration(t, time.Since(ts), 500*time.Millisecond)
 	expectErr(t, err, "starlet: exec: context deadline exceeded")
-	if !expectSameDuration(t, time.Since(ts), 500*time.Millisecond) {
-		return
-	}
 	t.Logf("got result after run #2: %v", out)
 
 	// third run without timeout
@@ -1278,11 +1270,9 @@ t = 4
 	ts = time.Now()
 	ctx, _ = context.WithTimeout(context.Background(), 3*time.Second)
 	out, err = m.RunWithContext(ctx, nil)
+	expectSameDuration(t, time.Since(ts), 500*time.Millisecond)
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
-		return
-	}
-	if !expectSameDuration(t, time.Since(ts), 500*time.Millisecond) {
 		return
 	}
 	t.Logf("got result after run #3: %v", out)
