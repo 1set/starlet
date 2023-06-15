@@ -1268,7 +1268,7 @@ sleep(0.5)
 t = 4
 `), nil)
 	ts = time.Now()
-	ctx, _ = context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, _ = context.WithTimeout(context.Background(), 600*time.Millisecond)
 	out, err = m.RunWithContext(ctx, nil)
 	expectSameDuration(t, time.Since(ts), 500*time.Millisecond)
 	if err != nil {
