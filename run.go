@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
+	"time"
 
 	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
@@ -23,18 +25,55 @@ var (
 	ErrModuleNotFound      = errors.New("module not found")
 )
 
-type sourceCodeType uint8
-
-const (
-	sourceCodeTypeUnknown sourceCodeType = iota
-	sourceCodeTypeContent
-	sourceCodeTypeFSName
-)
-
-// Run runs the preset script with given globals and returns the result.
-func (m *Machine) Run(ctx context.Context) (out DataStore, err error) {
+// Run runs the preset script and returns the result.
+func (m *Machine) Run() (DataStore, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	return m.internalRun(context.Background(), nil)
+}
+
+// RunScript runs the given script content and returns the result.
+func (m *Machine) RunScript(content []byte, extras map[string]interface{}) (DataStore, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.scriptName = "direct.star"
+	m.scriptContent = content
+	m.scriptFS = nil
+	return m.internalRun(context.Background(), extras)
+}
+
+// RunFile runs the given script file in file system and returns the result.
+func (m *Machine) RunFile(name string, fileSys fs.FS, extras map[string]interface{}) (DataStore, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.scriptName = name
+	m.scriptContent = nil
+	m.scriptFS = fileSys
+	return m.internalRun(context.Background(), extras)
+}
+
+// RunWithTimeout runs the preset script with given timeout and returns the result.
+func (m *Machine) RunWithTimeout(timeout time.Duration, extras map[string]interface{}) (DataStore, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return m.internalRun(ctx, extras)
+}
+
+// RunWithContext runs the preset script with given context and extra variables and returns the result.
+func (m *Machine) RunWithContext(ctx context.Context, extras map[string]interface{}) (DataStore, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	return m.internalRun(ctx, extras)
+}
+
+func (m *Machine) internalRun(ctx context.Context, extras map[string]interface{}) (out DataStore, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("starlet: panic: %v", r)
@@ -44,18 +83,25 @@ func (m *Machine) Run(ctx context.Context) (out DataStore, err error) {
 	// either script content or name and FS must be set
 	var (
 		scriptName = m.scriptName
-		srcType    sourceCodeType
+		source     interface{}
 	)
 	if m.scriptContent != nil {
-		srcType = sourceCodeTypeContent
 		if scriptName == "" {
+			// for default name
 			scriptName = "eval.star"
 		}
+		source = m.scriptContent
 	} else if m.scriptFS != nil {
-		srcType = sourceCodeTypeFSName
 		if scriptName == "" {
+			// if no name, cannot load
 			return nil, fmt.Errorf("starlet: run: %w", ErrNoFileToRun)
 		}
+		// load script from FS
+		rd, e := m.scriptFS.Open(scriptName)
+		if e != nil {
+			return nil, fmt.Errorf("starlet: open: %w", e)
+		}
+		source = rd
 	} else {
 		return nil, fmt.Errorf("starlet: run: %w", ErrNoScriptSourceToRun)
 	}
@@ -63,13 +109,21 @@ func (m *Machine) Run(ctx context.Context) (out DataStore, err error) {
 	// prepare thread
 	if m.thread == nil {
 		// -- for the first run
-		// preset globals + preload modules -> predeclared
+		// preset globals + preload modules + extras -> predeclared
 		if m.predeclared, err = convert.MakeStringDict(m.globals); err != nil {
-			return nil, fmt.Errorf("starlet: convert: %w", err)
+			return nil, fmt.Errorf("starlet: convert globals: %w", err)
 		}
 		if err = m.preloadMods.LoadAll(m.predeclared); err != nil {
 			// TODO: wrap the errors
 			return nil, err
+		}
+		esd, err := convert.MakeStringDict(extras)
+		if err != nil {
+			// TODO: test it
+			return nil, fmt.Errorf("starlet: convert extras: %w", err)
+		}
+		for k, v := range esd {
+			m.predeclared[k] = v
 		}
 
 		// cache load&read + printf -> thread
@@ -95,34 +149,31 @@ func (m *Machine) Run(ctx context.Context) (out DataStore, err error) {
 		// set globals for cache
 		m.loadCache.loadMod = m.lazyloadMods.GetLazyLoader()
 		m.loadCache.globals = m.predeclared
+		// reset for each run
+		m.thread.Print = m.printFunc
 	}
-
-	// reset for each run
-	m.thread.Print = m.printFunc
-	m.thread.SetLocal("context", ctx)
 
 	// cancel thread when context cancelled
-	m.runTimes++
-	if ctx != nil {
-		go func() {
-			<-ctx.Done()
-			m.thread.Cancel("context cancelled")
-		}()
+	if ctx == nil || ctx.Err() != nil {
+		// for nil context, or context already cancelled, use a new one
+		ctx = context.TODO()
 	}
+	m.thread.SetLocal("context", ctx)
 
-	// run for various source code types
-	var res starlark.StringDict
-	switch srcType {
-	case sourceCodeTypeContent:
-		res, err = starlark.ExecFile(m.thread, scriptName, m.scriptContent, m.predeclared)
-	case sourceCodeTypeFSName:
-		rd, e := m.scriptFS.Open(scriptName)
-		if e != nil {
-			return nil, fmt.Errorf("starlet: open: %w", e)
+	done := make(chan struct{}, 1)
+	go func() {
+		select {
+		case <-ctx.Done():
+			m.thread.Cancel("context cancelled")
+		case <-done:
+			// No action if the script has finished
 		}
-		res, err = starlark.ExecFile(m.thread, scriptName, rd, m.predeclared)
-	}
-	// TODO: merge back into code above
+	}()
+
+	// run with everything prepared
+	m.runTimes++
+	res, err := starlark.ExecFile(m.thread, scriptName, source, m.predeclared)
+	done <- struct{}{}
 
 	// handle result and convert
 	m.lastResult = res
