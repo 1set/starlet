@@ -3,6 +3,7 @@ package starlet
 import "go.starlark.net/starlark"
 
 // DataStore is a map of string to interface{}.
+// It is used to store global variables like StringDict of Starlark, but not a Starlark type.
 type DataStore map[string]interface{}
 
 // Clone returns a copy of the data store.
