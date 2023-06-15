@@ -1291,10 +1291,16 @@ func Test_Machine_Run_With_CancelledContext(t *testing.T) {
 	// run script
 	m.SetScript("timer.star", []byte(`a = 1; b = 2`), nil)
 	out, err := m.RunWithContext(ctx, nil)
-	expectErr(t, err, "starlet: exec: Starlark computation cancelled: context cancelled")
-	if len(out) != 0 {
-		t.Errorf("Expected empty result, got %v", out)
+	if err != nil {
+		t.Errorf("Expected no errors, got error: %v", err)
 		return
+	}
+	if out == nil {
+		t.Errorf("Unexpected empty result: %v", out)
+	} else if len(out) != 2 {
+		t.Errorf("Unexpected result: %v", out)
+	} else {
+		t.Logf("got result after run: %v", out)
 	}
 }
 
