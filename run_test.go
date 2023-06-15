@@ -204,6 +204,47 @@ b = a * 10 + c
 	}
 }
 
+func Test_Machine_Run_Override(t *testing.T) {
+	testCases := []struct {
+		name      string
+		setFunc   func(m *starlet.Machine)
+		extras    starlet.StringAny
+		code      string
+		expectVal int64
+	}{
+		{
+			name:      "Runtime",
+			code:      `val = 100`,
+			expectVal: 100,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// prepare machine
+			m := starlet.NewDefault()
+			m.SetPrintFunc(getLogPrintFunc(t))
+			if tc.setFunc != nil {
+				tc.setFunc(m)
+			}
+
+			// run script
+			out, err := m.RunScript([]byte(tc.code), tc.extras)
+
+			// check result
+			if err != nil {
+				t.Errorf("unexpected error for %s: %v", tc.name, err)
+				return
+			}
+			if out == nil {
+				t.Errorf("unexpected nil output for %s", tc.name)
+			} else if out["val"].(int64) != tc.expectVal {
+				t.Errorf("unexpected output for %s: %v, want: %d", tc.name, out, tc.expectVal)
+			}
+		})
+	}
+}
+
 func Test_Machine_Run_Exit_Quit(t *testing.T) {
 	m := starlet.NewDefault()
 	m.SetPreloadModules(starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic")})
