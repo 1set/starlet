@@ -1,3 +1,7 @@
+// Package starlet provides powerful extensions and enriched wrappers for Starlark scripting.
+// Its goal is to enhance the user's scripting experience by combining simplicity and functionality.
+// It offers robust, thread-safe types such as Machine, which serves as a wrapper for Starlark runtime environments.
+// With Starlet, users can easily manage global variables, load modules, and control the script execution flow.
 package starlet
 
 import (
@@ -8,7 +12,24 @@ import (
 	"go.starlark.net/starlark"
 )
 
-// Machine is a wrapper of Starlark runtime environments.
+// Machine is a thread-safe type that wraps Starlark runtime environments. Machine ensures thread safety by using a sync.RWMutex to control access to the environment's state.
+//
+// The Machine struct stores the state of the environment, including scripts, modules, and global variables. It provides methods for setting and getting these values, and for running the script. A Machine instance can be configured to preload modules and global variables before running a script or after resetting the environment. It can also lazyload modules right before running the script, the lazyload modules are defined in a list of module loaders and are invoked when the script is run.
+//
+// The global variables and preload modules can be set before the first run of the script or after resetting the environment. Additionally, extra variables can be set for each run of the script.
+//
+// Modules are divided into two types: preload and lazyload. Preload modules are loaded before the script is run, while lazyload modules are loaded as and when they are required during the script execution.
+//
+// The order of precedence for overriding is as follows: global variables, preload modules, and then extra variables before the run, while lazyload modules have the highest precedence during the run.
+//
+// Setting a print function allows the script to output text to the console or another output stream.
+//
+// The script to be run is defined by its name and content, and potentially a filesystem (fs.FS) if the script is to be loaded from a file.
+//
+// The result of each run is cached and written back to the environment, so that it can be used in the next run of the script.
+//
+// The environment can be reset, allowing the script to be run again with a fresh set of variables and modules.
+//
 type Machine struct {
 	mu sync.RWMutex
 	// set variables
@@ -158,8 +179,7 @@ func (m *Machine) SetScript(name string, content []byte, fileSys fs.FS) {
 	m.scriptFS = fileSys
 }
 
-// StringAny is a map of string to interface{} (i.e. any).
-// It is used to store global variables like StringDict of Starlark, but not a Starlark type.
+// StringAny type is a map of string to interface{} and is used to store global variables like StringDict of Starlark, but not a Starlark type.
 type StringAny map[string]interface{}
 
 // Clone returns a copy of the data store.
