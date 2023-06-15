@@ -1138,7 +1138,7 @@ val = number + n3
 	}
 }
 
-func Test_Machine_RunAgain(t *testing.T) {
+func Test_Machine_Run_Twice(t *testing.T) {
 	code1 := `
 x = 2
 y = 10
@@ -1202,12 +1202,13 @@ func Test_Machine_Run_With_Timeout(t *testing.T) {
 	m := starlet.NewDefault()
 	m.SetPrintFunc(getLogPrintFunc(t))
 	m.SetGlobals(map[string]interface{}{
-		"sleep": time.Sleep,
-		"itn":   interval,
+		"sleep_go": time.Sleep,
+		"itn":      interval,
 	})
+	m.SetLazyloadModules(starlet.ModuleLoaderMap{"go": starlet.GetBuiltinModule("go_idiomatic")})
 
 	// first run with no timeout
-	m.SetScript("time.star", []byte(`a = 1; sleep(itn); b = 2`), nil)
+	m.SetScript("time.star", []byte(`a = 1; sleep_go(itn); b = 2`), nil)
 	ts := time.Now()
 	out, err := m.RunWithContext(nil, nil)
 	expectSameDuration(t, time.Since(ts), interval)
@@ -1218,13 +1219,32 @@ func Test_Machine_Run_With_Timeout(t *testing.T) {
 	t.Logf("got result after run #1: %v", out)
 
 	// second run with timeout, but context is not handled in builtin sleep
-	m.SetScript("time.star", []byte(`c = 3; sleep(itn); d = 4`), nil)
+	m.SetScript("time.star", []byte(`c = 3; sleep_go(itn); d = 4`), nil)
 	ts = time.Now()
 	ctx, _ := context.WithTimeout(context.Background(), interval/2)
 	out, err = m.RunWithContext(ctx, nil)
 	expectSameDuration(t, time.Since(ts), interval)
 	expectErr(t, err, "starlet: exec: Starlark computation cancelled: context cancelled")
 	t.Logf("got result after run #2: %v", out)
+
+	// third run with timeout helper -- it's not timeout
+	m.SetScript("time.star", []byte(`load("go", "sleep"); e = 5; sleep(0.5); f = 6`), nil)
+	ts = time.Now()
+	out, err = m.RunWithTimeout(interval, nil)
+	expectSameDuration(t, time.Since(ts), interval/2)
+	if err != nil {
+		t.Errorf("Expected no errors, got error: %v", err)
+		return
+	}
+	t.Logf("got result after run #3: %v", out)
+
+	// fourth run with timeout helper -- it's timeout indeed
+	m.SetScript("time.star", []byte(`load("go", "sleep"); g = 7; sleep(1.5); h = 8`), nil)
+	ts = time.Now()
+	out, err = m.RunWithTimeout(interval, nil)
+	expectSameDuration(t, time.Since(ts), interval)
+	expectErr(t, err, "starlet: exec: context deadline exceeded")
+	t.Logf("got result after run #4: %v", out)
 }
 
 func Test_Machine_Run_With_Context(t *testing.T) {
