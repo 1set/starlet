@@ -5,57 +5,12 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"sort"
 	"strings"
 
-	"github.com/1set/starlet/lib/goidiomatic"
-	sjson "go.starlark.net/lib/json"
-	smath "go.starlark.net/lib/math"
-	stime "go.starlark.net/lib/time"
+	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
-
-var allBuiltinModules = ModuleLoaderMap{
-	goidiomatic.ModuleName: func() (starlark.StringDict, error) {
-		return goidiomatic.LoadModule()
-	},
-	"json": func() (starlark.StringDict, error) {
-		return starlark.StringDict{
-			"json": sjson.Module,
-		}, nil
-	},
-	"math": func() (starlark.StringDict, error) {
-		return starlark.StringDict{
-			"math": smath.Module,
-		}, nil
-	},
-	"struct": func() (starlark.StringDict, error) {
-		return starlark.StringDict{
-			"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
-		}, nil
-	},
-	"time": func() (starlark.StringDict, error) {
-		return starlark.StringDict{
-			"time": stime.Module,
-		}, nil
-	},
-}
-
-// ListBuiltinModules returns a list of all builtin modules.
-func ListBuiltinModules() []string {
-	modules := make([]string, 0, len(allBuiltinModules))
-	for k := range allBuiltinModules {
-		modules = append(modules, k)
-	}
-	sort.Strings(modules)
-	return modules
-}
-
-// GetBuiltinModule returns the builtin module with the given name.
-func GetBuiltinModule(name string) ModuleLoader {
-	return allBuiltinModules[name]
-}
 
 // ModuleLoader is a function that loads a Starlark module and returns the module's string dict.
 type ModuleLoader func() (starlark.StringDict, error)
@@ -95,6 +50,19 @@ func (l ModuleLoaderList) LoadAll(d starlark.StringDict) error {
 	return nil
 }
 
+// MakeBuiltinModuleLoaderList creates a list of module loaders from a list of module names.
+// It returns an error as second return value if any module is not found.
+func MakeBuiltinModuleLoaderList(names []string) (ModuleLoaderList, error) {
+	ld := make(ModuleLoaderList, len(names))
+	for i, name := range names {
+		ld[i] = allBuiltinModules[name]
+		if ld[i] == nil {
+			return ld, fmt.Errorf("starlet: module %q: %w", name, ErrModuleNotFound)
+		}
+	}
+	return ld, nil
+}
+
 // ModuleLoaderMap is a map of Starlark module loaders, usually used to load a map of modules by name.
 type ModuleLoaderMap map[string]ModuleLoader
 
@@ -131,7 +99,7 @@ func (m ModuleLoaderMap) GetLazyLoader() NamedModuleLoader {
 			// failed to load
 			return nil, err
 		}
-		// extract members of module from dict like `{name: module}`
+		// extract all members of module from dict like `{name: module}`
 		if len(d) == 1 {
 			m, found := d[s]
 			if found {
@@ -145,19 +113,6 @@ func (m ModuleLoaderMap) GetLazyLoader() NamedModuleLoader {
 	}
 }
 
-// MakeBuiltinModuleLoaderList creates a list of module loaders from a list of module names.
-// It returns an error as second return value if any module is not found.
-func MakeBuiltinModuleLoaderList(names []string) (ModuleLoaderList, error) {
-	ld := make(ModuleLoaderList, len(names))
-	for i, name := range names {
-		ld[i] = allBuiltinModules[name]
-		if ld[i] == nil {
-			return ld, fmt.Errorf("starlet: module %q: %w", name, ErrModuleNotFound)
-		}
-	}
-	return ld, nil
-}
-
 // MakeBuiltinModuleLoaderMap creates a map of module loaders from a list of module names.
 // It returns an error as second return value if any module is not found.
 func MakeBuiltinModuleLoaderMap(names []string) (ModuleLoaderMap, error) {
@@ -169,6 +124,24 @@ func MakeBuiltinModuleLoaderMap(names []string) (ModuleLoaderMap, error) {
 		}
 	}
 	return ld, nil
+}
+
+// MakeModuleLoaderFromStringDict creates a module loader from the given string dict.
+func MakeModuleLoaderFromStringDict(d starlark.StringDict) ModuleLoader {
+	return func() (starlark.StringDict, error) {
+		return d, nil
+	}
+}
+
+// MakeModuleLoaderFromMap creates a module loader from the given map, it converts the map to a string dict when loading.
+func MakeModuleLoaderFromMap(m StringAnyMap) ModuleLoader {
+	return func() (starlark.StringDict, error) {
+		dict, err := convert.MakeStringDict(m)
+		if err != nil {
+			return nil, err
+		}
+		return dict, nil
+	}
 }
 
 // MakeModuleLoaderFromString creates a module loader from the given source code.

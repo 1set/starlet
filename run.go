@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"sync"
 	"time"
 
 	"github.com/1set/starlight/convert"
@@ -25,16 +26,16 @@ var (
 	ErrModuleNotFound      = errors.New("module not found")
 )
 
-// Run runs the preset script and returns the result.
-func (m *Machine) Run() (DataStore, error) {
+// Run executes a preset script and returns the output.
+func (m *Machine) Run() (StringAnyMap, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	return m.internalRun(context.Background(), nil)
 }
 
-// RunScript runs the given script content and returns the result.
-func (m *Machine) RunScript(content []byte, extras map[string]interface{}) (DataStore, error) {
+// RunScript executes a script with additional variables, which take precedence over global variables and modules, returns the result.
+func (m *Machine) RunScript(content []byte, extras StringAnyMap) (StringAnyMap, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -44,8 +45,8 @@ func (m *Machine) RunScript(content []byte, extras map[string]interface{}) (Data
 	return m.internalRun(context.Background(), extras)
 }
 
-// RunFile runs the given script file in file system and returns the result.
-func (m *Machine) RunFile(name string, fileSys fs.FS, extras map[string]interface{}) (DataStore, error) {
+// RunFile executes a script from a file with additional variables, which take precedence over global variables and modules, returns the result.
+func (m *Machine) RunFile(name string, fileSys fs.FS, extras StringAnyMap) (StringAnyMap, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -55,8 +56,8 @@ func (m *Machine) RunFile(name string, fileSys fs.FS, extras map[string]interfac
 	return m.internalRun(context.Background(), extras)
 }
 
-// RunWithTimeout runs the preset script with given timeout and returns the result.
-func (m *Machine) RunWithTimeout(timeout time.Duration, extras map[string]interface{}) (DataStore, error) {
+// RunWithTimeout executes a preset script with a timeout and additional variables, which take precedence over global variables and modules, returns the result.
+func (m *Machine) RunWithTimeout(timeout time.Duration, extras StringAnyMap) (StringAnyMap, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -65,15 +66,15 @@ func (m *Machine) RunWithTimeout(timeout time.Duration, extras map[string]interf
 	return m.internalRun(ctx, extras)
 }
 
-// RunWithContext runs the preset script with given context and extra variables and returns the result.
-func (m *Machine) RunWithContext(ctx context.Context, extras map[string]interface{}) (DataStore, error) {
+// RunWithContext executes a preset script within a specified context and additional variables, which take precedence over global variables and modules, returns the result.
+func (m *Machine) RunWithContext(ctx context.Context, extras StringAnyMap) (StringAnyMap, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	return m.internalRun(ctx, extras)
 }
 
-func (m *Machine) internalRun(ctx context.Context, extras map[string]interface{}) (out DataStore, err error) {
+func (m *Machine) internalRun(ctx context.Context, extras StringAnyMap) (out StringAnyMap, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("starlet: panic: %v", r)
@@ -141,7 +142,6 @@ func (m *Machine) internalRun(ctx context.Context, extras map[string]interface{}
 		}
 	} else if m.lastResult != nil {
 		// -- for the second and following runs
-		m.thread.Uncancel()
 		// merge last result as globals
 		for k, v := range m.lastResult {
 			m.predeclared[k] = v
@@ -159,9 +159,19 @@ func (m *Machine) internalRun(ctx context.Context, extras map[string]interface{}
 		ctx = context.TODO()
 	}
 	m.thread.SetLocal("context", ctx)
+	m.thread.Uncancel()
 
+	// wait for the routine to finish, or cancel it when context cancelled
+	var wg sync.WaitGroup
+	defer wg.Wait()
+	wg.Add(1)
+
+	// if context is not cancelled, cancel the routine when execution is done, or panic
 	done := make(chan struct{}, 1)
+	defer close(done)
+
 	go func() {
+		defer wg.Done()
 		select {
 		case <-ctx.Done():
 			m.thread.Cancel("context cancelled")

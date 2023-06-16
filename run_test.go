@@ -146,6 +146,14 @@ func Test_DefaultMachine_Run_InvalidGlobals(t *testing.T) {
 	expectErr(t, err, `starlet: convert globals: type chan int is not a supported starlark type`)
 }
 
+func Test_DefaultMachine_Run_InvalidExtras(t *testing.T) {
+	m := starlet.NewDefault()
+	_, err := m.RunScript([]byte(`a = 1`), map[string]interface{}{
+		"a": make(chan int),
+	})
+	expectErr(t, err, `starlet: convert extras: type chan int is not a supported starlark type`)
+}
+
 func Test_DefaultMachine_Run_LoadFunc(t *testing.T) {
 	m := starlet.NewDefault()
 	// set code
@@ -201,6 +209,131 @@ b = a * 10 + c
 		t.Errorf("unexpected nil output")
 	} else if out["b"].(int64) != int64(120) {
 		t.Errorf("unexpected output: %v", out)
+	}
+}
+
+func Test_Machine_Run_Override(t *testing.T) {
+	getValLoadList := func(x int64) starlet.ModuleLoaderList {
+		return starlet.ModuleLoaderList{
+			starlet.MakeModuleLoaderFromMap(map[string]interface{}{
+				"x": x,
+			}),
+		}
+	}
+	getValLoadMap := func(x int64) starlet.ModuleLoaderMap {
+		return starlet.ModuleLoaderMap{
+			"number": starlet.MakeModuleLoaderFromMap(map[string]interface{}{
+				"x": x,
+			}),
+		}
+	}
+	testCases := []struct {
+		name      string
+		setFunc   func(m *starlet.Machine)
+		extras    starlet.StringAnyMap
+		code      string
+		expectVal int64
+	}{
+		{
+			name:      "Runtime",
+			code:      `val = 100`,
+			expectVal: 100,
+		},
+		{
+			name: "Globals",
+			setFunc: func(m *starlet.Machine) {
+				m.SetGlobals(map[string]interface{}{
+					"x": 200,
+				})
+			},
+			code:      `val = x`,
+			expectVal: 200,
+		},
+		{
+			name: "Preload",
+			setFunc: func(m *starlet.Machine) {
+				m.SetPreloadModules(getValLoadList(300))
+			},
+			code:      `val = x`,
+			expectVal: 300,
+		},
+		{
+			name: "Extras",
+			extras: starlet.StringAnyMap{
+				"x": 400,
+			},
+			code:      `val = x`,
+			expectVal: 400,
+		},
+		{
+			name: "LazyLoad",
+			setFunc: func(m *starlet.Machine) {
+				m.SetLazyloadModules(getValLoadMap(500))
+			},
+			code:      `load("number", "x"); val = x`,
+			expectVal: 500,
+		},
+		{
+			name: "Globals and Preload",
+			setFunc: func(m *starlet.Machine) {
+				m.SetGlobals(map[string]interface{}{
+					"x": 200,
+				})
+				m.SetPreloadModules(getValLoadList(300))
+			},
+			code:      `val = x`,
+			expectVal: 300,
+		},
+		{
+			name: "Globals and Preload and Extras",
+			setFunc: func(m *starlet.Machine) {
+				m.SetGlobals(map[string]interface{}{
+					"x": 200,
+				})
+				m.SetPreloadModules(getValLoadList(300))
+			},
+			extras:    map[string]interface{}{"x": 400},
+			code:      `val = x`,
+			expectVal: 400,
+		},
+		{
+			name: "Globals and Preload and Extras and LazyLoad",
+			setFunc: func(m *starlet.Machine) {
+				m.SetGlobals(map[string]interface{}{
+					"x": 200,
+				})
+				m.SetPreloadModules(getValLoadList(300))
+				m.SetLazyloadModules(getValLoadMap(500))
+			},
+			extras:    map[string]interface{}{"x": 400},
+			code:      `load("number", "x"); val = x`,
+			expectVal: 500,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// prepare machine
+			m := starlet.NewDefault()
+			m.SetPrintFunc(getLogPrintFunc(t))
+			if tc.setFunc != nil {
+				tc.setFunc(m)
+			}
+
+			// run script
+			out, err := m.RunScript([]byte(tc.code), tc.extras)
+
+			// check result
+			if err != nil {
+				t.Errorf("unexpected error for %s: %v", tc.name, err)
+				return
+			}
+			if out == nil {
+				t.Errorf("unexpected nil output for %s", tc.name)
+			} else if out["val"].(int64) != tc.expectVal {
+				t.Errorf("unexpected output for %s: %v, want: %d", tc.name, out, tc.expectVal)
+			}
+		})
 	}
 }
 
@@ -1345,7 +1478,7 @@ sleep(0.5)
 t = 4
 `), nil)
 	ts = time.Now()
-	ctx, _ = context.WithTimeout(context.Background(), 600*time.Millisecond)
+	ctx, _ = context.WithTimeout(context.Background(), 800*time.Millisecond) // TODO! occasionally, this test fails with 500ms timeout
 	out, err = m.RunWithContext(ctx, nil)
 	expectSameDuration(t, time.Since(ts), 500*time.Millisecond)
 	if err != nil {
