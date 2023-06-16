@@ -141,7 +141,6 @@ func (m *Machine) internalRun(ctx context.Context, extras StringAnyMap) (out Str
 		}
 	} else if m.lastResult != nil {
 		// -- for the second and following runs
-		m.thread.Uncancel()
 		// merge last result as globals
 		for k, v := range m.lastResult {
 			m.predeclared[k] = v
@@ -159,7 +158,7 @@ func (m *Machine) internalRun(ctx context.Context, extras StringAnyMap) (out Str
 		ctx = context.TODO()
 	}
 	m.thread.SetLocal("context", ctx)
-
+	m.thread.Uncancel()
 	done := make(chan struct{}, 1)
 	go func() {
 		select {

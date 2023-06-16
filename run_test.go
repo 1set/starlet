@@ -242,6 +242,30 @@ func Test_Machine_Run_Override(t *testing.T) {
 			expectVal: 200,
 		},
 		{
+			name: "Preload",
+			setFunc: func(m *starlet.Machine) {
+				m.SetPreloadModules(getValLoadList(300))
+			},
+			code:      `val = x`,
+			expectVal: 300,
+		},
+		{
+			name: "Extras",
+			extras: starlet.StringAnyMap{
+				"x": 400,
+			},
+			code:      `val = x`,
+			expectVal: 400,
+		},
+		{
+			name: "LazyLoad",
+			setFunc: func(m *starlet.Machine) {
+				m.SetLazyloadModules(getValLoadMap(500))
+			},
+			code:      `load("number", "x"); val = x`,
+			expectVal: 500,
+		},
+		{
 			name: "Globals and Preload",
 			setFunc: func(m *starlet.Machine) {
 				m.SetGlobals(map[string]interface{}{
@@ -1446,7 +1470,7 @@ sleep(0.5)
 t = 4
 `), nil)
 	ts = time.Now()
-	ctx, _ = context.WithTimeout(context.Background(), 800*time.Millisecond)
+	ctx, _ = context.WithTimeout(context.Background(), 800*time.Millisecond) // TODO! occasionally, this test fails with 500ms timeout
 	out, err = m.RunWithContext(ctx, nil)
 	expectSameDuration(t, time.Since(ts), 500*time.Millisecond)
 	if err != nil {
