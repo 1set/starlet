@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"sync"
 	"time"
 
 	"github.com/1set/starlight/convert"
@@ -159,8 +160,18 @@ func (m *Machine) internalRun(ctx context.Context, extras StringAnyMap) (out Str
 	}
 	m.thread.SetLocal("context", ctx)
 	m.thread.Uncancel()
+
+	// wait for the routine to finish, or cancel it when context cancelled
+	var wg sync.WaitGroup
+	defer wg.Wait()
+	wg.Add(1)
+
+	// if context is not cancelled, cancel the routine when execution is done, or panic
 	done := make(chan struct{}, 1)
+	defer close(done)
+
 	go func() {
+		defer wg.Done()
 		select {
 		case <-ctx.Done():
 			m.thread.Cancel("context cancelled")
