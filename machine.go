@@ -1,3 +1,8 @@
+// Package starlet provides powerful extensions and enriched wrappers for Starlark scripting.
+//
+// Its goal is to enhance the user's scripting experience by combining simplicity and functionality.
+// It offers robust, thread-safe types such as Machine, which serves as a wrapper for Starlark runtime environments.
+// With Starlet, users can easily manage global variables, load modules, and control the script execution flow.
 package starlet
 
 import (
@@ -8,11 +13,28 @@ import (
 	"go.starlark.net/starlark"
 )
 
-// Machine is a wrapper of Starlark runtime environments.
+// Machine is a thread-safe type that wraps Starlark runtime environments. Machine ensures thread safety by using a sync.RWMutex to control access to the environment's state.
+//
+// The Machine struct stores the state of the environment, including scripts, modules, and global variables. It provides methods for setting and getting these values, and for running the script. A Machine instance can be configured to preload modules and global variables before running a script or after resetting the environment. It can also lazyload modules right before running the script, the lazyload modules are defined in a list of module loaders and are invoked when the script is run.
+//
+// The global variables and preload modules can be set before the first run of the script or after resetting the environment. Additionally, extra variables can be set for each run of the script.
+//
+// Modules are divided into two types: preload and lazyload. Preload modules are loaded before the script is run, while lazyload modules are loaded as and when they are required during the script execution.
+//
+// The order of precedence for overriding is as follows: global variables, preload modules, and then extra variables before the run, while lazyload modules have the highest precedence during the run.
+//
+// Setting a print function allows the script to output text to the console or another output stream.
+//
+// The script to be run is defined by its name and content, and potentially a filesystem (fs.FS) if the script is to be loaded from a file.
+//
+// The result of each run is cached and written back to the environment, so that it can be used in the next run of the script.
+//
+// The environment can be reset, allowing the script to be run again with a fresh set of variables and modules.
+//
 type Machine struct {
 	mu sync.RWMutex
 	// set variables
-	globals      DataStore
+	globals      StringAnyMap
 	preloadMods  ModuleLoaderList
 	lazyloadMods ModuleLoaderMap
 	printFunc    PrintFunc
@@ -43,14 +65,14 @@ func NewDefault() *Machine {
 }
 
 // NewWithGlobals creates a new Starlark runtime environment with given global variables.
-func NewWithGlobals(globals DataStore) *Machine {
+func NewWithGlobals(globals StringAnyMap) *Machine {
 	return &Machine{
 		globals: globals,
 	}
 }
 
 // NewWithLoaders creates a new Starlark runtime environment with given global variables and preload module loaders.
-func NewWithLoaders(globals DataStore, preload ModuleLoaderList, lazyload ModuleLoaderMap) *Machine {
+func NewWithLoaders(globals StringAnyMap, preload ModuleLoaderList, lazyload ModuleLoaderMap) *Machine {
 	return &Machine{
 		globals:      globals,
 		preloadMods:  preload,
@@ -59,8 +81,8 @@ func NewWithLoaders(globals DataStore, preload ModuleLoaderList, lazyload Module
 }
 
 // NewWithNames creates a new Starlark runtime environment with given global variables, preload and lazyload module names.
-// It panics if any of the given module fails to load.
-func NewWithNames(globals DataStore, preloads []string, lazyloads []string) *Machine {
+// The modules should be built-in modules, and it panics if any of the given modules fails to load.
+func NewWithNames(globals StringAnyMap, preloads []string, lazyloads []string) *Machine {
 	pre, err := MakeBuiltinModuleLoaderList(preloads)
 	if err != nil {
 		panic(err)
@@ -76,9 +98,9 @@ func NewWithNames(globals DataStore, preloads []string, lazyloads []string) *Mac
 	}
 }
 
-// SetGlobals sets the globals of the Starlark runtime environment.
-// It only works before the first run.
-func (m *Machine) SetGlobals(globals DataStore) {
+// SetGlobals sets global variables in the Starlark runtime environment.
+// These variables only take effect before the first run or after a reset.
+func (m *Machine) SetGlobals(globals StringAnyMap) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -86,13 +108,13 @@ func (m *Machine) SetGlobals(globals DataStore) {
 }
 
 // AddGlobals adds the globals of the Starlark runtime environment.
-// It only works before the first run.
-func (m *Machine) AddGlobals(globals DataStore) {
+// These variables only take effect before the first run or after a reset.
+func (m *Machine) AddGlobals(globals StringAnyMap) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if m.globals == nil {
-		m.globals = make(DataStore)
+		m.globals = make(StringAnyMap)
 	}
 	for k, v := range globals {
 		m.globals[k] = v
@@ -100,7 +122,7 @@ func (m *Machine) AddGlobals(globals DataStore) {
 }
 
 // GetGlobals gets the globals of the Starlark runtime environment.
-func (m *Machine) GetGlobals() DataStore {
+func (m *Machine) GetGlobals() StringAnyMap {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -108,7 +130,7 @@ func (m *Machine) GetGlobals() DataStore {
 }
 
 // SetPreloadModules sets the preload modules of the Starlark runtime environment.
-// It only works before the first run.
+// These modules only take effect before the first run or after a reset.
 func (m *Machine) SetPreloadModules(mods ModuleLoaderList) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -156,4 +178,36 @@ func (m *Machine) SetScript(name string, content []byte, fileSys fs.FS) {
 	m.scriptName = name
 	m.scriptContent = content
 	m.scriptFS = fileSys
+}
+
+// StringAnyMap type is a map of string to interface{} and is used to store global variables like StringDict of Starlark, but not a Starlark type.
+type StringAnyMap map[string]interface{}
+
+// Clone returns a copy of the data store.
+func (d StringAnyMap) Clone() StringAnyMap {
+	clone := make(StringAnyMap)
+	for k, v := range d {
+		clone[k] = v
+	}
+	return clone
+}
+
+// Merge merges the given data store into the current data store.
+func (d StringAnyMap) Merge(other StringAnyMap) {
+	if d == nil {
+		return
+	}
+	for k, v := range other {
+		d[k] = v
+	}
+}
+
+// MergeDict merges the given string dict into the current data store.
+func (d StringAnyMap) MergeDict(other starlark.StringDict) {
+	if d == nil {
+		return
+	}
+	for k, v := range other {
+		d[k] = v
+	}
 }
