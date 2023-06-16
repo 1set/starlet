@@ -146,6 +146,14 @@ func Test_DefaultMachine_Run_InvalidGlobals(t *testing.T) {
 	expectErr(t, err, `starlet: convert globals: type chan int is not a supported starlark type`)
 }
 
+func Test_DefaultMachine_Run_InvalidExtras(t *testing.T) {
+	m := starlet.NewDefault()
+	_, err := m.RunScript([]byte(`a = 1`), map[string]interface{}{
+		"a": make(chan int),
+	})
+	expectErr(t, err, `starlet: convert extras: type chan int is not a supported starlark type`)
+}
+
 func Test_DefaultMachine_Run_LoadFunc(t *testing.T) {
 	m := starlet.NewDefault()
 	// set code

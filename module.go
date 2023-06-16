@@ -99,7 +99,7 @@ func (m ModuleLoaderMap) GetLazyLoader() NamedModuleLoader {
 			// failed to load
 			return nil, err
 		}
-		// extract members of module from dict like `{name: module}`
+		// extract all members of module from dict like `{name: module}`
 		if len(d) == 1 {
 			m, found := d[s]
 			if found {
