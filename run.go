@@ -26,7 +26,7 @@ var (
 )
 
 // Run executes a preset script and returns the output.
-func (m *Machine) Run() (StringAny, error) {
+func (m *Machine) Run() (StringAnyMap, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -34,7 +34,7 @@ func (m *Machine) Run() (StringAny, error) {
 }
 
 // RunScript executes a script with additional variables, which take precedence over global variables and modules, returns the result.
-func (m *Machine) RunScript(content []byte, extras StringAny) (StringAny, error) {
+func (m *Machine) RunScript(content []byte, extras StringAnyMap) (StringAnyMap, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -45,7 +45,7 @@ func (m *Machine) RunScript(content []byte, extras StringAny) (StringAny, error)
 }
 
 // RunFile executes a script from a file with additional variables, which take precedence over global variables and modules, returns the result.
-func (m *Machine) RunFile(name string, fileSys fs.FS, extras StringAny) (StringAny, error) {
+func (m *Machine) RunFile(name string, fileSys fs.FS, extras StringAnyMap) (StringAnyMap, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -56,7 +56,7 @@ func (m *Machine) RunFile(name string, fileSys fs.FS, extras StringAny) (StringA
 }
 
 // RunWithTimeout executes a preset script with a timeout and additional variables, which take precedence over global variables and modules, returns the result.
-func (m *Machine) RunWithTimeout(timeout time.Duration, extras StringAny) (StringAny, error) {
+func (m *Machine) RunWithTimeout(timeout time.Duration, extras StringAnyMap) (StringAnyMap, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -66,14 +66,14 @@ func (m *Machine) RunWithTimeout(timeout time.Duration, extras StringAny) (Strin
 }
 
 // RunWithContext executes a preset script within a specified context and additional variables, which take precedence over global variables and modules, returns the result.
-func (m *Machine) RunWithContext(ctx context.Context, extras StringAny) (StringAny, error) {
+func (m *Machine) RunWithContext(ctx context.Context, extras StringAnyMap) (StringAnyMap, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	return m.internalRun(ctx, extras)
 }
 
-func (m *Machine) internalRun(ctx context.Context, extras StringAny) (out StringAny, err error) {
+func (m *Machine) internalRun(ctx context.Context, extras StringAnyMap) (out StringAnyMap, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("starlet: panic: %v", r)

@@ -222,7 +222,7 @@ func Test_Machine_Run_Override(t *testing.T) {
 	testCases := []struct {
 		name      string
 		setFunc   func(m *starlet.Machine)
-		extras    starlet.StringAny
+		extras    starlet.StringAnyMap
 		code      string
 		expectVal int64
 	}{

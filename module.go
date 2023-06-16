@@ -134,7 +134,7 @@ func MakeModuleLoaderFromStringDict(d starlark.StringDict) ModuleLoader {
 }
 
 // MakeModuleLoaderFromMap creates a module loader from the given map, it converts the map to a string dict when loading.
-func MakeModuleLoaderFromMap(m StringAny) ModuleLoader {
+func MakeModuleLoaderFromMap(m StringAnyMap) ModuleLoader {
 	return func() (starlark.StringDict, error) {
 		dict, err := convert.MakeStringDict(m)
 		if err != nil {
