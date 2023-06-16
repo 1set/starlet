@@ -508,6 +508,120 @@ func Test_ModuleLoaderFromFile(t *testing.T) {
 	}
 }
 
+func TestMakeModuleLoaderFromStringDict(t *testing.T) {
+	tests := []struct {
+		name     string
+		dict     starlark.StringDict
+		wantKeys []string
+	}{
+		{
+			name:     "nil dict",
+			dict:     nil,
+			wantKeys: []string{},
+		},
+		{
+			name:     "empty dict",
+			dict:     map[string]starlark.Value{},
+			wantKeys: []string{},
+		},
+		{
+			name:     "non-empty dict",
+			dict:     map[string]starlark.Value{"a": starlark.MakeInt(1), "b": starlark.MakeInt(2)},
+			wantKeys: []string{"a", "b"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			loader := starlet.MakeModuleLoaderFromStringDict(tt.dict)
+			mod, err := loader()
+			if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+				return
+			}
+			// check the module result
+			la := len(mod)
+			le := len(tt.wantKeys)
+			if la != le {
+				t.Errorf("Expected module has %d keys, got %d", le, la)
+				return
+			}
+			if len(tt.wantKeys) != 0 {
+				for _, key := range tt.wantKeys {
+					if _, ok := mod[key]; !ok {
+						t.Errorf("Expected module to contain key %q, got: %v", key, mod)
+						return
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestMakeModuleLoaderFromMap(t *testing.T) {
+	tests := []struct {
+		name     string
+		dict     map[string]interface{}
+		wantKeys []string
+		wantErr  bool
+	}{
+		{
+			name:     "nil dict",
+			dict:     nil,
+			wantKeys: []string{},
+		},
+		{
+			name:     "empty dict",
+			dict:     map[string]interface{}{},
+			wantKeys: []string{},
+		},
+		{
+			name:     "non-empty dict",
+			dict:     map[string]interface{}{"a": 1, "b": 2},
+			wantKeys: []string{"a", "b"},
+		},
+		{
+			name:    "invalid dict",
+			dict:    map[string]interface{}{"a": 1, "b": 2, "c": make(chan int)},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			loader := starlet.MakeModuleLoaderFromMap(tt.dict)
+			mod, err := loader()
+			// check errors
+			if err != nil && !tt.wantErr {
+				t.Errorf("Unexpected error: %v", err)
+				return
+			}
+			if err == nil && tt.wantErr {
+				t.Errorf("Expected error, got nil")
+				return
+			}
+			if tt.wantErr {
+				return
+			}
+			// check the module result
+			la := len(mod)
+			le := len(tt.wantKeys)
+			if la != le {
+				t.Errorf("Expected module has %d keys, got %d", le, la)
+				return
+			}
+			if len(tt.wantKeys) != 0 {
+				for _, key := range tt.wantKeys {
+					if _, ok := mod[key]; !ok {
+						t.Errorf("Expected module to contain key %q, got: %v", key, mod)
+						return
+					}
+				}
+			}
+		})
+	}
+}
+
 func TestAllBuiltinModules(t *testing.T) {
 	ml := []string{"go_idiomatic", "json", "math", "struct", "time"}
 	m := starlet.NewWithNames(map[string]interface{}{}, ml, nil)
