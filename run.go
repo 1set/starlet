@@ -140,17 +140,14 @@ func (m *Machine) internalRun(ctx context.Context, extras StringAnyMap) (out Str
 				return m.loadCache.Load(module)
 			},
 		}
-	} else if m.lastResult != nil {
+	} else {
 		// -- for the second and following runs
-		// merge last result as globals
-		for k, v := range m.lastResult {
-			m.predeclared[k] = v
-		}
 		// set globals for cache
 		m.loadCache.loadMod = m.lazyloadMods.GetLazyLoader()
 		m.loadCache.globals = m.predeclared
 		// reset for each run
 		m.thread.Print = m.printFunc
+		m.thread.Uncancel()
 	}
 
 	// cancel thread when context cancelled
@@ -159,7 +156,6 @@ func (m *Machine) internalRun(ctx context.Context, extras StringAnyMap) (out Str
 		ctx = context.TODO()
 	}
 	m.thread.SetLocal("context", ctx)
-	m.thread.Uncancel()
 
 	// wait for the routine to finish, or cancel it when context cancelled
 	var wg sync.WaitGroup
@@ -185,8 +181,12 @@ func (m *Machine) internalRun(ctx context.Context, extras StringAnyMap) (out Str
 	res, err := starlark.ExecFile(m.thread, scriptName, source, m.predeclared)
 	done <- struct{}{}
 
+	// merge result as predeclared for next run
+	for k, v := range res {
+		m.predeclared[k] = v
+	}
+
 	// handle result and convert
-	m.lastResult = res
 	out = convert.FromStringDict(res)
 	if err != nil {
 		// for exit code
@@ -217,7 +217,6 @@ func (m *Machine) internalRun(ctx context.Context, extras StringAnyMap) (out Str
 // Reset resets the machine to initial state before the first run.
 func (m *Machine) Reset() {
 	m.runTimes = 0
-	m.lastResult = nil
 	m.thread = nil
 	m.loadCache = nil
 	m.predeclared = nil
