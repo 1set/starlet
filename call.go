@@ -1,6 +1,7 @@
 package starlet
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -23,7 +24,7 @@ func (m *Machine) Call(name string, args ...interface{}) (out interface{}, err e
 		return nil, errors.New("mistyped function")
 	}
 
-	// convert args
+	// convert arguments
 	sl := starlark.Tuple{}
 	for _, arg := range args {
 		sv, err := convert.ToValue(arg)
@@ -33,7 +34,11 @@ func (m *Machine) Call(name string, args ...interface{}) (out interface{}, err e
 		sl = append(sl, sv)
 	}
 
-	// call
+	// reset thread
+	m.thread.Uncancel()
+	m.thread.SetLocal("context", context.TODO())
+
+	// call and convert result
 	res, err := starlark.Call(m.thread, starFunc, sl, nil)
 	out = convert.FromValue(res)
 	if err != nil {
