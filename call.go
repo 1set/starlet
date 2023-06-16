@@ -20,9 +20,9 @@ func (m *Machine) Call(name string, args ...interface{}) (out interface{}, err e
 	}
 	var starFunc *starlark.Function
 	if rf, ok := m.predeclared[name]; !ok {
-		return nil, errors.New("function not found")
+		return nil, fmt.Errorf("no such function: %s", name)
 	} else if starFunc, ok = rf.(*starlark.Function); !ok {
-		return nil, errors.New("mistyped function")
+		return nil, fmt.Errorf("mistyped function: %s", name)
 	}
 
 	// convert arguments
@@ -30,7 +30,7 @@ func (m *Machine) Call(name string, args ...interface{}) (out interface{}, err e
 	for _, arg := range args {
 		sv, err := convert.ToValue(arg)
 		if err != nil {
-			return nil, fmt.Errorf("starlet: convert arg: %w", err)
+			return nil, fmt.Errorf("convert arg: %w", err)
 		}
 		sl = append(sl, sv)
 	}
@@ -43,7 +43,7 @@ func (m *Machine) Call(name string, args ...interface{}) (out interface{}, err e
 	res, err := starlark.Call(m.thread, starFunc, sl, nil)
 	out = convert.FromValue(res)
 	if err != nil {
-		return out, fmt.Errorf("starlet: call: %w", err)
+		return out, fmt.Errorf("call: %w", err)
 	}
 	return out, nil
 }
