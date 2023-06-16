@@ -1,4 +1,5 @@
 // Package starlet provides powerful extensions and enriched wrappers for Starlark scripting.
+//
 // Its goal is to enhance the user's scripting experience by combining simplicity and functionality.
 // It offers robust, thread-safe types such as Machine, which serves as a wrapper for Starlark runtime environments.
 // With Starlet, users can easily manage global variables, load modules, and control the script execution flow.

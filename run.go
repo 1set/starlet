@@ -33,7 +33,8 @@ func (m *Machine) Run() (StringAny, error) {
 	return m.internalRun(context.Background(), nil)
 }
 
-// RunScript runs the given script content and returns the result.
+// RunScript runs the given script content and extra variables, and then returns the result.
+// Extra variables can be set for each run of the script, and will override the global variables and preload modules.
 func (m *Machine) RunScript(content []byte, extras StringAny) (StringAny, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -44,7 +45,8 @@ func (m *Machine) RunScript(content []byte, extras StringAny) (StringAny, error)
 	return m.internalRun(context.Background(), extras)
 }
 
-// RunFile runs the given script file in file system and returns the result.
+// RunFile runs the given script file in file system and extra variables, and then returns the result.
+// Extra variables can be set for each run of the script, and will override the global variables and preload modules.
 func (m *Machine) RunFile(name string, fileSys fs.FS, extras StringAny) (StringAny, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -55,7 +57,8 @@ func (m *Machine) RunFile(name string, fileSys fs.FS, extras StringAny) (StringA
 	return m.internalRun(context.Background(), extras)
 }
 
-// RunWithTimeout runs the preset script with given timeout and returns the result.
+// RunWithTimeout runs the preset script with given timeout and extra variables, and then returns the result.
+// Extra variables can be set for each run of the script, and will override the global variables and preload modules.
 func (m *Machine) RunWithTimeout(timeout time.Duration, extras StringAny) (StringAny, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -65,7 +68,8 @@ func (m *Machine) RunWithTimeout(timeout time.Duration, extras StringAny) (Strin
 	return m.internalRun(ctx, extras)
 }
 
-// RunWithContext runs the preset script with given context and extra variables and returns the result.
+// RunWithContext runs the preset script with given context and extra variables, and then returns the result.
+// Extra variables can be set for each run of the script, and will override the global variables and preload modules.
 func (m *Machine) RunWithContext(ctx context.Context, extras StringAny) (StringAny, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
