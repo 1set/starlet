@@ -46,9 +46,10 @@ jobs:
           git status
           go version
           go mod download
+          make --version
       - name: Test
         run: |
-          go test -v -race -cover -covermode=atomic -coverprofile=coverage.txt -count 1 ./...
+          make ci
       - name: Upload Coverage Reports to Codecov
         if: ${{ fromJSON(env.CI_REPORT) }}
         uses: codecov/codecov-action@v3
