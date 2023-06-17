@@ -61,6 +61,23 @@ def work():
 `,
 			want: nil,
 		},
+		{
+			name: "no args but return",
+			code: `
+def work():
+	return 1
+`,
+			want: int64(1),
+		},
+		{
+			name: "args but no return",
+			code: `
+def work(x, y):
+	pass
+`,
+			args: []interface{}{1, 2},
+			want: nil,
+		},
 	}
 
 	for _, tt := range tests {
@@ -82,7 +99,7 @@ def work():
 					expectErr(t, err, tt.wantErr)
 				}
 			} else if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("expected %v, got %v", tt.want, got)
+				t.Errorf("expected %v (%T), got %v (%T)", tt.want, tt.want, got, got)
 			}
 		})
 	}
