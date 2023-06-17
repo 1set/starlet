@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/1set/starlet"
+	"go.starlark.net/starlark"
 )
 
 func TestMachine_Call_Preconditions(t *testing.T) {
@@ -78,13 +79,97 @@ def work(x, y):
 			args: []interface{}{1, 2},
 			want: nil,
 		},
+		{
+			name: "args and return",
+			code: `
+def work(x, y):
+	return x + y
+`,
+			args: []interface{}{1, 2},
+			want: int64(3),
+		},
+		{
+			name: "lambda",
+			code: `
+work = lambda x, y: x * y
+`,
+			args: []interface{}{2, 3},
+			want: int64(6),
+		},
+		{
+			name: "multiple return",
+			code: `
+def work(x, y):
+	return x + 1, y + 2
+`,
+			args: []interface{}{1, 2},
+			want: []interface{}{int64(2), int64(4)},
+		},
+		{
+			name: "multiple return with tuple",
+			code: `
+def work(x, y):
+	return (x + 1, y + 2)
+`,
+			args: []interface{}{1, 2},
+			want: []interface{}{int64(2), int64(4)},
+		},
+		{
+			name: "multiple return with list",
+			code: `
+def work(x, y):
+	return [x + 1, y + 2]
+`,
+			args: []interface{}{1, 2},
+			want: []interface{}{int64(2), int64(4)},
+		},
+		{
+			name: "convert args fail",
+			code: `
+def work(x, y):
+	return x + y
+`,
+			args:    []interface{}{1, make(chan int64)},
+			wantErr: `convert arg: type chan int64 is not a supported starlark type`,
+		},
+		{
+			name: "invalid args",
+			code: `
+def work(x, y):
+	return x + y
+`,
+			args:    []interface{}{1, "two"},
+			wantErr: `call: unknown binary op: int + string`,
+		},
+		{
+			name: "func runtime error",
+			code: `
+def work(x, y):
+	fail("oops")
+`,
+			args:    []interface{}{1, 2},
+			wantErr: `call: fail: oops`,
+		},
+		{
+			name: "func runtime panic",
+			code: `
+def work(x, y):
+	panic("outside starlark")
+`,
+			args:    []interface{}{1, 2},
+			wantErr: `call: panic: as expected`,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// prepare to load
 			m := starlet.NewDefault()
-			_, err := m.RunScript([]byte(tt.code), nil)
+			_, err := m.RunScript([]byte(tt.code), map[string]interface{}{
+				"panic": starlark.NewBuiltin("panic", func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+					panic("as expected")
+				}),
+			})
 			if err != nil {
 				t.Errorf("expected no error, got %v", err)
 				return

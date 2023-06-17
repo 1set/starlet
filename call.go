@@ -11,6 +11,12 @@ import (
 
 // Call executes a Starlark function defined via def or lambda saved in the thread and returns the result.
 func (m *Machine) Call(name string, args ...interface{}) (out interface{}, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("call: panic: %v", r)
+		}
+	}()
+
 	// preconditions
 	if name == "" {
 		return nil, errors.New("no function name")
