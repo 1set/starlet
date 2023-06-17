@@ -30,7 +30,7 @@ export PACK=main
 export FLAGS="-s -w -X '$(PACK).AppName=$(BINARY)' -X '$(PACK).BuildDate=`date '+%Y-%m-%dT%T%z'`' -X '$(PACK).BuildHost=`hostname`' -X '$(PACK).GoVersion=`go version`' -X '$(PACK).GitBranch=`git symbolic-ref -q --short HEAD`' -X '$(PACK).GitCommit=`git rev-parse --short HEAD`' -X '$(PACK).GitSummary=`git describe --tags --dirty --always`' -X '$(PACK).CIBuildNum=${BUILD_NUM}'"
 
 # commands
-.PHONY: default test
+.PHONY: default test test_loop
 default:
 	@echo "build target is required for $(BINARY)"
 	@exit 1
@@ -38,3 +38,11 @@ default:
 # basic commands
 test:
 	$(GOTEST) -v -race -cover -covermode=atomic -count 1 ./...
+
+test_loop:
+	while true; do \
+		$(GOTEST) -v -race -cover -covermode=atomic -count 1 ./...; \
+		if [[ $$? -ne 0 ]]; then \
+			break; \
+		fi; \
+	done
