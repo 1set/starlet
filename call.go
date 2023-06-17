@@ -9,7 +9,7 @@ import (
 	"go.starlark.net/starlark"
 )
 
-// Call executes a Starlark function and returns the result.
+// Call executes a Starlark function defined via def or lambda saved in the thread and returns the result.
 func (m *Machine) Call(name string, args ...interface{}) (out interface{}, err error) {
 	// preconditions
 	if name == "" {
