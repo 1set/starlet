@@ -135,6 +135,7 @@ func (m *Machine) internalRun(ctx context.Context, extras StringAnyMap) (out Str
 			globals:  m.predeclared,
 		}
 		m.thread = &starlark.Thread{
+			Name:  "starlet",
 			Print: m.printFunc,
 			Load: func(thread *starlark.Thread, module string) (starlark.StringDict, error) {
 				return m.loadCache.Load(module)
