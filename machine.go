@@ -47,7 +47,6 @@ type Machine struct {
 	loadCache   *cache
 	thread      *starlark.Thread
 	predeclared starlark.StringDict
-	lastResult  starlark.StringDict
 }
 
 func (m *Machine) String() string {

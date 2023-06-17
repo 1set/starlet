@@ -17,111 +17,111 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 	}{
 		{
 			name: `boolean`,
-			script: `
-load('go_idiomatic', 'true', 'false')
-assert.eq(true, True)
-assert.eq(false, False)
-`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'true', 'false')
+				assert.eq(true, True)
+				assert.eq(false, False)
+			`),
 		},
 		{
 			name: `nil`,
-			script: `
-load('go_idiomatic', 'nil')
-assert.eq(nil, None)
-`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'nil')
+				assert.eq(nil, None)
+			`),
 		},
 		{
 			name: `sleep`,
-			script: `
-load('go_idiomatic', 'sleep')
-sleep()
-`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sleep')
+				sleep()
+			`),
 			wantErr: errors.New(`sleep: missing argument for secs`),
 		},
 		{
 			name: `sleep 0`,
-			script: `
-load('go_idiomatic', 'sleep')
-sleep(0)
-`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sleep')
+				sleep(0)
+			`),
 		},
 		{
 			name: `sleep 10ms`,
-			script: `
-load('go_idiomatic', 'sleep')
-sleep(0.01)
-`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sleep')
+				sleep(0.01)
+			`),
 		},
 		{
 			name: `sleep negative`,
-			script: `
-load('go_idiomatic', 'sleep')
-sleep(-1)
-`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sleep')
+				sleep(-1)
+			`),
 			wantErr: errors.New(`secs must be non-negative`),
 		},
 		{
 			name: `sleep hello`,
-			script: `
-load('go_idiomatic', 'sleep')
-sleep('hello')
-`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sleep')
+				sleep('hello')
+			`),
 			wantErr: errors.New(`sleep: for parameter secs: got string, want float or int`),
 		},
 		{
 			name: `sleep none`,
-			script: `
-load('go_idiomatic', 'sleep')
-sleep(None)
-`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sleep')
+				sleep(None)
+			`),
 			wantErr: errors.New(`sleep: for parameter secs: got NoneType, want float or int`),
 		},
 		{
 			name: `exit`,
-			script: `
-load('go_idiomatic', 'exit')
-exit()
-`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'exit')
+				exit()
+			`),
 			wantErr: errors.New(`starlet runtime system exit`),
 		},
 		{
 			name: `exit 0`,
-			script: `
-load('go_idiomatic', 'exit')
-exit(0)
-`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'exit')
+				exit(0)
+			`),
 			wantErr: errors.New(`starlet runtime system exit`),
 		},
 		{
 			name: `exit 1`,
-			script: `
-load('go_idiomatic', 'exit')
-exit(1)
-`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'exit')
+				exit(1)
+			`),
 			wantErr: errors.New(`starlet runtime system exit`),
 		},
 		{
 			name: `exit -1`,
-			script: `
-load('go_idiomatic', 'exit')
-exit(-1)
-`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'exit')
+				exit(-1)
+			`),
 			wantErr: errors.New(`exit: for parameter code: -1 out of range (want value in unsigned 8-bit range)`),
 		},
 		{
 			name: `exit hello`,
-			script: `
-load('go_idiomatic', 'exit')
-exit('hello')
-`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'exit')
+				exit('hello')
+			`),
 			wantErr: errors.New(`exit: for parameter code: got string, want int`),
 		},
 		{
 			name: `quit`,
-			script: `
-load('go_idiomatic', 'quit')
-quit()
-`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'quit')
+				quit()
+			`),
 			wantErr: errors.New(`starlet runtime system exit`),
 		},
 	}
