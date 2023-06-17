@@ -2,11 +2,13 @@ package starlet_test
 
 import (
 	"fmt"
-	"github.com/1set/starlet"
+	"reflect"
 	"testing"
+
+	"github.com/1set/starlet"
 )
 
-func TestMachine_Call_Precondition(t *testing.T) {
+func TestMachine_Call_Preconditions(t *testing.T) {
 	m := starlet.NewDefault()
 
 	// test: if name == ""
@@ -41,4 +43,47 @@ func TestMachine_Call_Precondition(t *testing.T) {
 	// test: if builtin function
 	_, err = m.Call("println")
 	expectErr(t, err, "mistyped function: println")
+}
+
+func TestMachine_Call_Functions(t *testing.T) {
+	tests := []struct {
+		name    string
+		code    string
+		args    []interface{}
+		want    interface{}
+		wantErr string
+	}{
+		{
+			name: "no args nor return",
+			code: `
+def work():
+	pass
+`,
+			want: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// prepare to load
+			m := starlet.NewDefault()
+			_, err := m.RunScript([]byte(tt.code), nil)
+			if err != nil {
+				t.Errorf("expected no error, got %v", err)
+				return
+			}
+
+			// call and check
+			got, err := m.Call("work", tt.args...)
+			if err != nil {
+				if tt.wantErr == "" {
+					t.Errorf("expected no error, got %v", err)
+				} else {
+					expectErr(t, err, tt.wantErr)
+				}
+			} else if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("expected %v, got %v", tt.want, got)
+			}
+		})
+	}
 }
