@@ -42,8 +42,10 @@ func TestMachine_Call_Preconditions(t *testing.T) {
 	expectErr(t, err, "mistyped function: y")
 
 	// test: if builtin function
-	_, err = m.Call("println")
-	expectErr(t, err, "mistyped function: println")
+	_, err = m.Call("println", "hello")
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
 }
 
 func TestMachine_Call_Functions(t *testing.T) {
