@@ -31,7 +31,7 @@ func (m *Machine) Run() (StringAnyMap, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	return m.internalRun(context.Background(), nil)
+	return m.runInternal(context.Background(), nil)
 }
 
 // RunScript executes a script with additional variables, which take precedence over global variables and modules, returns the result.
@@ -42,7 +42,7 @@ func (m *Machine) RunScript(content []byte, extras StringAnyMap) (StringAnyMap, 
 	m.scriptName = "direct.star"
 	m.scriptContent = content
 	m.scriptFS = nil
-	return m.internalRun(context.Background(), extras)
+	return m.runInternal(context.Background(), extras)
 }
 
 // RunFile executes a script from a file with additional variables, which take precedence over global variables and modules, returns the result.
@@ -53,7 +53,7 @@ func (m *Machine) RunFile(name string, fileSys fs.FS, extras StringAnyMap) (Stri
 	m.scriptName = name
 	m.scriptContent = nil
 	m.scriptFS = fileSys
-	return m.internalRun(context.Background(), extras)
+	return m.runInternal(context.Background(), extras)
 }
 
 // RunWithTimeout executes a preset script with a timeout and additional variables, which take precedence over global variables and modules, returns the result.
@@ -63,7 +63,7 @@ func (m *Machine) RunWithTimeout(timeout time.Duration, extras StringAnyMap) (St
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	return m.internalRun(ctx, extras)
+	return m.runInternal(ctx, extras)
 }
 
 // RunWithContext executes a preset script within a specified context and additional variables, which take precedence over global variables and modules, returns the result.
@@ -71,10 +71,10 @@ func (m *Machine) RunWithContext(ctx context.Context, extras StringAnyMap) (Stri
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	return m.internalRun(ctx, extras)
+	return m.runInternal(ctx, extras)
 }
 
-func (m *Machine) internalRun(ctx context.Context, extras StringAnyMap) (out StringAnyMap, err error) {
+func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap) (out StringAnyMap, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("starlet: panic: %v", r)
