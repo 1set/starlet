@@ -9,6 +9,8 @@ import (
 	"github.com/1set/gut/ystring"
 	"github.com/1set/starlet"
 	flag "github.com/spf13/pflag"
+	"go.starlark.net/starlark"
+	"golang.org/x/term"
 )
 
 var (
@@ -35,7 +37,6 @@ func init() {
 
 	// fix for Windows terminal output
 	winornot.EnableANSIControl()
-	displayBuildInfo() // TODO: move inside
 }
 
 func main() {
@@ -61,13 +62,33 @@ func processArgs() int {
 	hasCode := ystring.IsNotBlank(codeContent)
 	switch {
 	case nargs == 0 && hasCode:
-		// run code from command line
+		// run code string from argument
+		mac.SetScript("direct.star", []byte(codeContent), incFS)
+		_, err := mac.Run()
+		if err != nil {
+			PrintError(err)
+			return 1
+		}
 	case nargs == 0 && !hasCode:
 		// run REPL
+		stdinIsTerminal := term.IsTerminal(int(os.Stdin.Fd()))
+		if stdinIsTerminal {
+			displayBuildInfo()
+		}
 		mac.SetScript("repl", nil, incFS)
 		mac.REPL()
+		if stdinIsTerminal {
+			fmt.Println()
+		}
 	case nargs == 1:
-	// run code from file
+		// run code from file
+		fileName := flag.Arg(0)
+		mac.SetScript(fileName, nil, incFS)
+		_, err := mac.Run()
+		if err != nil {
+			PrintError(err)
+			return 1
+		}
 	case nargs > 1:
 		fmt.Println(`want at most one Starlark file name`)
 		return 1
@@ -76,4 +97,14 @@ func processArgs() int {
 		return 1
 	}
 	return 0
+}
+
+// PrintError prints the error to stderr,
+// or its backtrace if it is a Starlark evaluation error.
+func PrintError(err error) {
+	if evalErr, ok := err.(*starlark.EvalError); ok {
+		fmt.Fprintln(os.Stderr, evalErr.Backtrace())
+	} else {
+		fmt.Fprintln(os.Stderr, err)
+	}
 }
