@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/1set/starlet/lib/goidiomatic"
 	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 )
@@ -152,7 +153,7 @@ func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap) (out Str
 	out = convert.FromStringDict(res)
 	if err != nil {
 		// for exit code
-		if err.Error() == `starlet runtime system exit` {
+		if err.Error() == goidiomatic.ErrSystemExit.Error() {
 			var exitCode uint8
 			if c := m.thread.Local("exit_code"); c != nil {
 				if co, ok := c.(uint8); ok {
