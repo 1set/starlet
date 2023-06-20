@@ -82,7 +82,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'exit')
 				exit()
 			`),
-			wantErr: errors.New(`starlet runtime system exit`),
+			wantErr: errors.New(`starlet runtime system exit (Use Ctrl-D in REPL to exit)`),
 		},
 		{
 			name: `exit 0`,
@@ -90,7 +90,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'exit')
 				exit(0)
 			`),
-			wantErr: errors.New(`starlet runtime system exit`),
+			wantErr: errors.New(`starlet runtime system exit (Use Ctrl-D in REPL to exit)`),
 		},
 		{
 			name: `exit 1`,
@@ -98,7 +98,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'exit')
 				exit(1)
 			`),
-			wantErr: errors.New(`starlet runtime system exit`),
+			wantErr: errors.New(`starlet runtime system exit (Use Ctrl-D in REPL to exit)`),
 		},
 		{
 			name: `exit -1`,
@@ -122,7 +122,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'quit')
 				quit()
 			`),
-			wantErr: errors.New(`starlet runtime system exit`),
+			wantErr: errors.New(`starlet runtime system exit (Use Ctrl-D in REPL to exit)`),
 		},
 	}
 	for _, tt := range tests {

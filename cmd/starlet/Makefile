@@ -30,27 +30,22 @@ export PACK=main
 export FLAGS="-s -w -X '$(PACK).AppName=$(BINARY)' -X '$(PACK).BuildDate=`date '+%Y-%m-%dT%T%z'`' -X '$(PACK).BuildHost=`hostname`' -X '$(PACK).GoVersion=`go version`' -X '$(PACK).GitBranch=`git symbolic-ref -q --short HEAD`' -X '$(PACK).GitCommit=`git rev-parse --short HEAD`' -X '$(PACK).GitSummary=`git describe --tags --dirty --always`' -X '$(PACK).CIBuildNum=${BUILD_NUM}'"
 
 # commands
-.PHONY: default ci test test_loop bench build
+.PHONY: default build build_linux build_mac build_windows run
 default:
 	@echo "build target is required for $(BINARY)"
 	@exit 1
 
-ci:
-	$(GOTEST) -v -race -cover -covermode=atomic -coverprofile=coverage.txt -count 1 ./...
-
 build:
-	make -C cmd/starlet build
+	$(GOBUILD) -v -ldflags $(FLAGS) -trimpath -o $(BINARY) .
 
-test:
-	$(GOTEST) -v -race -cover -covermode=atomic -count 1 ./...
+build_linux:
+	GOOS=linux GOARCH=amd64 $(GOBUILD) -v -ldflags $(FLAGS) -trimpath -o $(BINARY) .
 
-test_loop:
-	while true; do \
-		$(GOTEST) -v -race -cover -covermode=atomic -count 1 ./...; \
-		if [[ $$? -ne 0 ]]; then \
-			break; \
-		fi; \
-	done
+build_mac:
+	GOOS=darwin GOARCH=amd64 $(GOBUILD) -v -ldflags $(FLAGS) -trimpath -o $(BINARY) .
 
-bench:
-	$(GOTEST) -parallel=4 -run="none" -benchtime="2s" -benchmem -bench=./...
+build_windows:
+	GOOS=windows GOARCH=amd64 $(GOBUILD) -v -ldflags $(FLAGS) -trimpath -o $(BINARY).exe .
+
+run: build
+	./$(BINARY)
