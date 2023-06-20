@@ -66,5 +66,10 @@ func exit(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwa
 		return none, err
 	}
 	thread.SetLocal("exit_code", code)
-	return none, errors.New(`starlet runtime system exit`)
+	return none, ErrSystemExit
 }
+
+var (
+	// ErrSystemExit is returned by exit() to indicate the program should exit.
+	ErrSystemExit = errors.New(`starlet runtime system exit (Use Ctrl-D in REPL to exit)`)
+)

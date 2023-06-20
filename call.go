@@ -9,7 +9,7 @@ import (
 	"go.starlark.net/starlark"
 )
 
-// Call executes a Starlark function defined via def or lambda saved in the thread and returns the result.
+// Call executes a Starlark function or builtin saved in the thread and returns the result.
 func (m *Machine) Call(name string, args ...interface{}) (out interface{}, err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -24,10 +24,14 @@ func (m *Machine) Call(name string, args ...interface{}) (out interface{}, err e
 	if m.predeclared == nil || m.thread == nil {
 		return nil, errors.New("no function loaded")
 	}
-	var starFunc *starlark.Function
+	var callFunc starlark.Callable
 	if rf, ok := m.predeclared[name]; !ok {
 		return nil, fmt.Errorf("no such function: %s", name)
-	} else if starFunc, ok = rf.(*starlark.Function); !ok {
+	} else if sf, ok := rf.(*starlark.Function); ok {
+		callFunc = sf
+	} else if sb, ok := rf.(*starlark.Builtin); ok {
+		callFunc = sb
+	} else {
 		return nil, fmt.Errorf("mistyped function: %s", name)
 	}
 
@@ -46,7 +50,7 @@ func (m *Machine) Call(name string, args ...interface{}) (out interface{}, err e
 	m.thread.SetLocal("context", context.TODO())
 
 	// call and convert result
-	res, err := starlark.Call(m.thread, starFunc, sl, nil)
+	res, err := starlark.Call(m.thread, callFunc, sl, nil)
 	out = convert.FromValue(res)
 	if err != nil {
 		return out, fmt.Errorf("call: %w", err)
