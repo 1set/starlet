@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"bitbucket.org/neiku/winornot"
+	"github.com/1set/gut/ystring"
 	flag "github.com/spf13/pflag"
 )
 
@@ -35,6 +37,20 @@ func main() {
 }
 
 func processArgs() int {
+	nargs := flag.NArg()
+	hasCode := ystring.IsNotBlank(codeContent)
+	switch {
+	case nargs == 0 && hasCode:
+	// run code from command line
+	case nargs == 0 && !hasCode:
+		// run REPL
+	case nargs == 1:
+	// run code from file
+	case nargs > 1:
+		fmt.Println(`want at most one Starlark file name`)
+	default:
+		flag.Usage()
+	}
 
 	return 0
 }

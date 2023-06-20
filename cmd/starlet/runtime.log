@@ -1,0 +1,3 @@
+{"level":"debug","time":"2023-06-20T16:09:56.930+0800","caller":"coreapi/profile.go:53","msg":"retrieved user profile from github","pid":73553,"token":"wD7K1x","target_id":"","act":"get_user_profile","login":"PlusYoung","name":""}
+{"level":"debug","time":"2023-06-20T16:09:57.948+0800","caller":"coreapi/utils.go:46","msg":"got page list from github","pid":73553,"token":"wD7K1x","current_page":0,"current_count":2,"has_next_page":false,"early_quit":false,"quota_total":5000,"quota_remain":4994,"quota_reset":"2023-06-20T17:06:30.000+0800"}
+{"level":"debug","time":"2023-06-20T16:09:57.949+0800","caller":"coreapi/profile.go:178","msg":"retrieved email list from github","pid":73553,"token":"wD7K1x","act":"list_email","count":2}
