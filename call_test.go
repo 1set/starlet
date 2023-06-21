@@ -1,6 +1,7 @@
 package starlet_test
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"testing"
@@ -169,7 +170,7 @@ def work(x, y):
 			m := starlet.NewDefault()
 			_, err := m.RunScript([]byte(tt.code), map[string]interface{}{
 				"panic": starlark.NewBuiltin("panic", func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-					panic("as expected")
+					panic(errors.New("as expected"))
 				}),
 			})
 			if err != nil {

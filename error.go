@@ -16,17 +16,15 @@ func (e ExecError) Unwrap() error {
 
 // Error returns the error message.
 func (e ExecError) Error() string {
-	//if e.cause != nil {
-	//	return fmt.Sprintf("%s: %s: %v", e.source, e.message, e.cause)
-	//}
+	if e.cause != nil {
+		return fmt.Sprintf("%s: %s: %v", e.source, e.message, e.cause)
+	}
 	return fmt.Sprintf("%s: %s", e.source, e.message)
 }
 
 func errorStarlarkPanic(v interface{}) ExecError {
-	ie, _ := v.(error)
 	return ExecError{
 		source:  `starlark`,
 		message: fmt.Sprintf("panic: %v", v),
-		cause:   ie,
 	}
 }
