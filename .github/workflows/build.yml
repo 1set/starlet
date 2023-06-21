@@ -50,6 +50,7 @@ jobs:
       - name: Test
         run: |
           make ci
+          make build
       - name: Upload Coverage Reports to Codecov
         if: ${{ fromJSON(env.CI_REPORT) }}
         uses: codecov/codecov-action@v3
