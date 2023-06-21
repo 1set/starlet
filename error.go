@@ -22,6 +22,9 @@ func (e ExecError) Error() string {
 	return fmt.Sprintf("%s: %s", e.source, e.message)
 }
 
+// helper functions
+
+// errorStarlarkPanic creates an ExecError from a recovered panic value.
 func errorStarlarkPanic(v interface{}) ExecError {
 	return ExecError{
 		source:  `starlark`,
@@ -29,9 +32,28 @@ func errorStarlarkPanic(v interface{}) ExecError {
 	}
 }
 
+// errorStarlarkError creates an ExecError from a Starlark error and an related action.
+func errorStarlarkError(action string, err error) ExecError {
+	return ExecError{
+		source:  `starlark`,
+		message: action,
+		cause:   err,
+	}
+}
+
+// errorStarlarkErrorf creates an ExecError for starlet with a formatted message.
 func errorStarletErrorf(format string, args ...interface{}) ExecError {
 	return ExecError{
 		source:  `starlet`,
 		message: fmt.Sprintf(format, args...),
+	}
+}
+
+// errorStarlightConvert creates an ExecError for starlight data conversion.
+func errorStarlightConvert(name string, err error) ExecError {
+	return ExecError{
+		source:  `starlight`,
+		message: fmt.Sprintf("convert %s", name),
+		cause:   err,
 	}
 }

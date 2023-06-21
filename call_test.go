@@ -133,7 +133,7 @@ def work(x, y):
 	return x + y
 `,
 			args:    []interface{}{1, make(chan int64)},
-			wantErr: `convert arg: type chan int64 is not a supported starlark type`,
+			wantErr: `starlight: convert args: type chan int64 is not a supported starlark type`,
 		},
 		{
 			name: "invalid args",
@@ -142,7 +142,7 @@ def work(x, y):
 	return x + y
 `,
 			args:    []interface{}{1, "two"},
-			wantErr: `call: unknown binary op: int + string`,
+			wantErr: `starlark: call: unknown binary op: int + string`,
 		},
 		{
 			name: "func runtime error",
@@ -151,7 +151,7 @@ def work(x, y):
 	fail("oops")
 `,
 			args:    []interface{}{1, 2},
-			wantErr: `call: fail: oops`,
+			wantErr: `starlark: call: fail: oops`,
 		},
 		{
 			name: "func runtime panic",

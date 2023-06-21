@@ -2,8 +2,6 @@ package starlet
 
 import (
 	"context"
-	"fmt"
-
 	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 )
@@ -39,7 +37,7 @@ func (m *Machine) Call(name string, args ...interface{}) (out interface{}, err e
 	for _, arg := range args {
 		sv, err := convert.ToValue(arg)
 		if err != nil {
-			return nil, fmt.Errorf("convert arg: %w", err)
+			return nil, errorStarlightConvert("args", err)
 		}
 		sl = append(sl, sv)
 	}
@@ -52,7 +50,7 @@ func (m *Machine) Call(name string, args ...interface{}) (out interface{}, err e
 	res, err := starlark.Call(m.thread, callFunc, sl, nil)
 	out = convert.FromValue(res)
 	if err != nil {
-		return out, fmt.Errorf("call: %w", err)
+		return out, errorStarlarkError("call", err)
 	}
 	return out, nil
 }
