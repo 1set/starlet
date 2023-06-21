@@ -1,7 +1,7 @@
 bitbucket.org/ai69/colorlogo v0.1.1 h1:5XChDTGcnO7g7Poomv8sD2KR6mtEjNQzI0QE10Nia+Q=
 bitbucket.org/ai69/colorlogo v0.1.1/go.mod h1:opCygeOoMcE5aPB2AQenx2dEh6BgYD1WmmlJ3vbOTio=
-bitbucket.org/neiku/winornot v0.0.3 h1:2BvE4JzKs1m8eN+V3KaGfF62Cu9tMOk/JDJIOrf+b2I=
-bitbucket.org/neiku/winornot v0.0.3/go.mod h1:8dyzJW6kxJkIvplhr6elCR3EKyhIPq713Op9cyAvje0=
+bitbucket.org/neiku/winornot v0.0.4 h1:I3XCWgA5DP93Cy4Mip5UmUlboymnFvb18q9UU7gl9lo=
+bitbucket.org/neiku/winornot v0.0.4/go.mod h1:xzKlwxkpGIumHbxwUrB41kFIra8gz/ZZgJzltE3TArA=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 github.com/1set/gut v0.0.0-20201117175203-a82363231997 h1:za2jSkE1Rx56hTzBko3ZZ4gA/nq+rA/jVovWuAF4jyo=
 github.com/1set/gut v0.0.0-20201117175203-a82363231997/go.mod h1:DpCCAL0dgBMQdiqPUIIRpdU9zNcIZwJjW+L/8Mb30mw=
@@ -76,8 +76,8 @@ golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a/go.mod h1:STP8DvDyc/dI5b8T5h
 golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
-golang.org/x/sys v0.4.0 h1:Zr2JFtRQNX3BCZ8YtxRE9hNJYC8J6I1MVbMg6owUp18=
-golang.org/x/sys v0.4.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.0.0-20220908164124-27713097b956 h1:XeJjHH1KiLpKGb6lvMiksZ9l0fVUh+AmGcm0nOMEBOY=
+golang.org/x/sys v0.0.0-20220908164124-27713097b956/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/term v0.0.0-20220526004731-065cf7ba2467 h1:CBpWXWQpIRjzmkkA+M7q9Fqnwd2mZr3AFqexg8YTfoM=
 golang.org/x/term v0.0.0-20220526004731-065cf7ba2467/go.mod h1:jbD1KX2456YbFQfuXm/mYQcufACuNUgVhRMnK/tPxf8=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
