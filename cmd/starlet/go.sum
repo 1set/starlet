@@ -5,10 +5,10 @@ bitbucket.org/neiku/winornot v0.0.3/go.mod h1:8dyzJW6kxJkIvplhr6elCR3EKyhIPq713O
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 github.com/1set/gut v0.0.0-20201117175203-a82363231997 h1:za2jSkE1Rx56hTzBko3ZZ4gA/nq+rA/jVovWuAF4jyo=
 github.com/1set/gut v0.0.0-20201117175203-a82363231997/go.mod h1:DpCCAL0dgBMQdiqPUIIRpdU9zNcIZwJjW+L/8Mb30mw=
-github.com/1set/starlet v0.0.0-20230617170942-d65f72a474f5 h1:A0qdZ1HmMgbqbMRCLvwVd1CffzdJhGRo65te+vk72Sw=
-github.com/1set/starlet v0.0.0-20230617170942-d65f72a474f5/go.mod h1:P8RYw49H4sh3CaBqmc46C6X001WDNc8zEbvyD6+oIMU=
-github.com/1set/starlight v0.0.1 h1:jSeVSm1LontTwbaU5VkdU9o4z61I3OSSjHKl7cF8P6U=
-github.com/1set/starlight v0.0.1/go.mod h1:rxOFKKg4pLJLq92zq8hkdeXKSOpePYx6qLo3zlbZBDc=
+github.com/1set/starlet v0.0.0-20230621082133-7d4a5538bc44 h1:QbNs6ZqYWp2C4BQCLYzHlfS9X+eWxNfEgoMasgsAy6Q=
+github.com/1set/starlet v0.0.0-20230621082133-7d4a5538bc44/go.mod h1:YqAlp938q46GhOTZNz+fkJolEsTUCsZEdFzx7MdpLOA=
+github.com/1set/starlight v0.0.2 h1:SeBCIv4VdjF61Fh6P4hmDqE4oOKMuqCnG7tfVv+OQuk=
+github.com/1set/starlight v0.0.2/go.mod h1:xwY+rrC/P9U2qj6ADrwKgqPaVlvcKl3PE3u1zJVYunE=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/aymanbagabas/go-osc52 v1.0.3 h1:DTwqENW7X9arYimJrPeGZcV0ln14sGMt3pHZspWD+Mg=
 github.com/aymanbagabas/go-osc52 v1.0.3/go.mod h1:zT8H+Rk4VSabYN90pWyugflM3ZhpTZNC7cASDfUCdT4=
@@ -56,9 +56,8 @@ github.com/rodolfoag/gow32 v0.0.0-20160917004320-d95ff468acf8 h1:p7tJTb+Rqvp8dS8
 github.com/rodolfoag/gow32 v0.0.0-20160917004320-d95ff468acf8/go.mod h1:w/ebPUfAcyZMYjstwPIWTEGSahChHx5R3Y+xElrvxDc=
 github.com/spf13/pflag v1.0.5 h1:iy+VFUOCP1a+8yFto/drg2CJ5u0yRoB7fZw3DKv/JXA=
 github.com/spf13/pflag v1.0.5/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An2Bg=
-go.starlark.net v0.0.0-20230302034142-4b1e35fe2254/go.mod h1:jxU+3+j+71eXOW14274+SmmuW82qJzl6iZSeqEtTGds=
-go.starlark.net v0.0.0-20230525235612-a134d8f9ddca h1:VdD38733bfYv5tUZwEIskMM93VanwNIi5bIKnDrJdEY=
-go.starlark.net v0.0.0-20230525235612-a134d8f9ddca/go.mod h1:jxU+3+j+71eXOW14274+SmmuW82qJzl6iZSeqEtTGds=
+go.starlark.net v0.0.0-20230612165344-9532f5667272 h1:2/wtqS591wZyD2OsClsVBKRPEvBsQt/Js+fsCiYhwu8=
+go.starlark.net v0.0.0-20230612165344-9532f5667272/go.mod h1:jxU+3+j+71eXOW14274+SmmuW82qJzl6iZSeqEtTGds=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/exp v0.0.0-20190121172915-509febef88a4/go.mod h1:CJ0aWSM057203Lf6IL+f9T1iT9GByDxfZKAQTCR3kQA=
 golang.org/x/lint v0.0.0-20181026193005-c67002cb31c3/go.mod h1:UVdnD1Gm6xHRNCYTkRU2/jEulfH38KcIWyp/GAMgvoE=
