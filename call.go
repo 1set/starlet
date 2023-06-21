@@ -13,7 +13,7 @@ import (
 func (m *Machine) Call(name string, args ...interface{}) (out interface{}, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("call: panic: %v", r)
+			err = errorStarlarkPanic(r)
 		}
 	}()
 

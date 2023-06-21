@@ -159,7 +159,7 @@ def work(x, y):
 	panic("outside starlark")
 `,
 			args:    []interface{}{1, 2},
-			wantErr: `call: panic: as expected`,
+			wantErr: `starlark: panic: as expected`,
 		},
 	}
 
