@@ -2,7 +2,6 @@ package starlet
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/1set/starlight/convert"
@@ -19,20 +18,20 @@ func (m *Machine) Call(name string, args ...interface{}) (out interface{}, err e
 
 	// preconditions
 	if name == "" {
-		return nil, errors.New("no function name")
+		return nil, errorStarletErrorf("no function name")
 	}
 	if m.predeclared == nil || m.thread == nil {
-		return nil, errors.New("no function loaded")
+		return nil, errorStarletErrorf("no function loaded")
 	}
 	var callFunc starlark.Callable
 	if rf, ok := m.predeclared[name]; !ok {
-		return nil, fmt.Errorf("no such function: %s", name)
+		return nil, errorStarletErrorf("no such function: %s", name)
 	} else if sf, ok := rf.(*starlark.Function); ok {
 		callFunc = sf
 	} else if sb, ok := rf.(*starlark.Builtin); ok {
 		callFunc = sb
 	} else {
-		return nil, fmt.Errorf("mistyped function: %s", name)
+		return nil, errorStarletErrorf("mistyped function: %s", name)
 	}
 
 	// convert arguments

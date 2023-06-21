@@ -28,3 +28,10 @@ func errorStarlarkPanic(v interface{}) ExecError {
 		message: fmt.Sprintf("panic: %v", v),
 	}
 }
+
+func errorStarletErrorf(format string, args ...interface{}) ExecError {
+	return ExecError{
+		source:  `starlet`,
+		message: fmt.Sprintf(format, args...),
+	}
+}
