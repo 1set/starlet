@@ -42,6 +42,9 @@ func TestMachine_Call_Preconditions(t *testing.T) {
 	_, err = m.Call("y")
 	expectErr(t, err, "starlet: call: mistyped function: y")
 
+	ei := err.(starlet.ExecError).Unwrap()
+	expectErr(t, ei, "mistyped function: y")
+
 	// test: if builtin function
 	_, err = m.Call("println", "hello")
 	if err != nil {
