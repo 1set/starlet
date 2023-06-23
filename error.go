@@ -32,6 +32,10 @@ func errorStarlarkPanic(action string, v interface{}) ExecError {
 
 // errorStarlarkError creates an ExecError from a Starlark error and an related action.
 func errorStarlarkError(action string, err error) ExecError {
+	// don't wrap if the error is already an ExecError
+	if e, ok := err.(ExecError); ok {
+		return e
+	}
 	return ExecError{
 		pkg:   `starlark`,
 		act:   action,
@@ -41,6 +45,10 @@ func errorStarlarkError(action string, err error) ExecError {
 
 // errorStarletError creates an ExecError for starlet.
 func errorStarletError(action string, err error) ExecError {
+	// don't wrap if the error is already an ExecError
+	if e, ok := err.(ExecError); ok {
+		return e
+	}
 	return ExecError{
 		pkg:   `starlet`,
 		act:   action,
@@ -59,6 +67,10 @@ func errorStarletErrorf(action string, format string, args ...interface{}) ExecE
 
 // errorStarlightConvert creates an ExecError for starlight data conversion.
 func errorStarlightConvert(target string, err error) ExecError {
+	// don't wrap if the error is already an ExecError
+	if e, ok := err.(ExecError); ok {
+		return e
+	}
 	return ExecError{
 		pkg:   `starlight`,
 		act:   fmt.Sprintf("convert %s", target),
