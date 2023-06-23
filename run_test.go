@@ -594,6 +594,18 @@ coins = 50
 	}
 }
 
+func Test_Machine_Run_LoadCycle(t *testing.T) {
+	m := starlet.NewDefault()
+	// set code1
+	m.SetScript("circle1.star", nil, os.DirFS("testdata"))
+	_, err := m.Run()
+	expectErr(t, err, `starlark: exec: cannot load circle2.star: cannot load circle1.star: cannot load circle2.star: cycle in load graph`)
+	// set code2
+	m.SetScript("circle2.star", nil, os.DirFS("testdata"))
+	_, err = m.Run()
+	expectErr(t, err, `starlark: exec: cannot load circle1.star: cannot load circle2.star: cycle in load graph`)
+}
+
 func Test_Machine_Run_LoadErrors(t *testing.T) {
 	mm := starlark.NewDict(1)
 	_ = mm.SetKey(starlark.String("quarter"), starlark.MakeInt(100))
