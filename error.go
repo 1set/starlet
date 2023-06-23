@@ -42,7 +42,16 @@ func errorStarlarkError(action string, err error) ExecError {
 	}
 }
 
-// errorStarlarkErrorf creates an ExecError for starlet with a formatted message.
+// errorStarletError creates an ExecError for starlet.
+func errorStarletError(action string, err error) ExecError {
+	return ExecError{
+		pkg:   `starlet`,
+		act:   action,
+		cause: err,
+	}
+}
+
+// errorStarletErrorf creates an ExecError for starlet with a formatted message.
 func errorStarletErrorf(action string, format string, args ...interface{}) ExecError {
 	return ExecError{
 		pkg:   `starlet`,
@@ -52,10 +61,10 @@ func errorStarletErrorf(action string, format string, args ...interface{}) ExecE
 }
 
 // errorStarlightConvert creates an ExecError for starlight data conversion.
-func errorStarlightConvert(name string, err error) ExecError {
+func errorStarlightConvert(target string, err error) ExecError {
 	return ExecError{
 		pkg:   `starlight`,
-		act:   fmt.Sprintf("convert %s", name),
+		act:   fmt.Sprintf("convert %s", target),
 		cause: err,
 	}
 }

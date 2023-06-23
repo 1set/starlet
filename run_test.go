@@ -25,7 +25,7 @@ func Test_DefaultMachine_Run_NoSpecificFile(t *testing.T) {
 	m.SetScript("", nil, os.DirFS("testdata"))
 	// run with no specific file name
 	_, err := m.Run()
-	expectErr(t, err, `starlet: run: no specific file`)
+	expectErr(t, err, `starlet: run: no script name`)
 }
 
 func Test_DefaultMachine_Run_APlusB(t *testing.T) {
@@ -114,9 +114,9 @@ func Test_DefaultMachine_Run_LocalFileNonExist(t *testing.T) {
 	// run
 	_, err := m.Run()
 	if isOnWindows {
-		expectErr(t, err, `starlet: open: open`, `The system cannot find the file specified.`)
+		expectErr(t, err, `starlet: run: open`, `The system cannot find the file specified.`)
 	} else {
-		expectErr(t, err, `starlet: open: open`, `: no such file or directory`)
+		expectErr(t, err, `starlet: run: open`, `: no such file or directory`)
 	}
 }
 
@@ -127,9 +127,9 @@ func Test_DefaultMachine_Run_FSNonExist(t *testing.T) {
 	// run
 	_, err := m.Run()
 	if isOnWindows {
-		expectErr(t, err, `starlet: open: open`, `The system cannot find the path specified.`)
+		expectErr(t, err, `starlet: run: open`, `The system cannot find the path specified.`)
 	} else {
-		expectErr(t, err, `starlet: open: open`, `: no such file or directory`)
+		expectErr(t, err, `starlet: run: open`, `: no such file or directory`)
 	}
 }
 

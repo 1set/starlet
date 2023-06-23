@@ -96,16 +96,16 @@ func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap) (out Str
 	} else if m.scriptFS != nil {
 		if scriptName == "" {
 			// if no name, cannot load
-			return nil, fmt.Errorf("starlet: run: %w", ErrNoFileToRun)
+			return nil, errorStarletErrorf("run", "no script name")
 		}
 		// load script from FS
 		rd, e := m.scriptFS.Open(scriptName)
 		if e != nil {
-			return nil, fmt.Errorf("starlet: open: %w", e)
+			return nil, errorStarletError("run", e)
 		}
 		source = rd
 	} else {
-		return nil, fmt.Errorf("starlet: run: %w", ErrNoScriptSourceToRun)
+		return nil, errorStarletErrorf("run", "no script to execute")
 	}
 
 	// prepare thread
