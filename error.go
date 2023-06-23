@@ -43,10 +43,11 @@ func errorStarlarkError(action string, err error) ExecError {
 }
 
 // errorStarlarkErrorf creates an ExecError for starlet with a formatted message.
-func errorStarletErrorf(format string, args ...interface{}) ExecError {
+func errorStarletErrorf(action string, format string, args ...interface{}) ExecError {
 	return ExecError{
-		pkg: `starlet`,
-		act: fmt.Sprintf(format, args...),
+		pkg:   `starlet`,
+		act:   action,
+		cause: fmt.Errorf(format, args...),
 	}
 }
 
