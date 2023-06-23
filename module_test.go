@@ -146,7 +146,7 @@ func Test_ModuleLoaderMap_GetLazyLoader(t *testing.T) {
 			name:          "nil module",
 			moduleLoaders: starlet.ModuleLoaderMap{"unknown": nil},
 			moduleName:    "unknown",
-			wantErr:       `nil module loader "unknown"`,
+			wantErr:       `nil module loader`,
 		},
 		{
 			name:          "valid module",

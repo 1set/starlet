@@ -77,6 +77,7 @@ func (m ModuleLoaderMap) Clone() map[string]ModuleLoader {
 // GetLazyLoader returns a lazy loader that loads the module with the given name.
 // It returns an error as second return value if the module is found but fails to load.
 // Otherwise, the first return value is nil if the module is not found.
+// Note that the loader is usually used by the Starlark thread, so that the errors should not be wrapped.
 func (m ModuleLoaderMap) GetLazyLoader() NamedModuleLoader {
 	return func(s string) (starlark.StringDict, error) {
 		// if the map or the name is empty, just return nil to indicate not found
@@ -90,13 +91,13 @@ func (m ModuleLoaderMap) GetLazyLoader() NamedModuleLoader {
 			return nil, nil
 		} else if ld == nil {
 			// found but nil
-			return nil, errorStarletErrorf(`load`, "nil module loader: %s", s)
+			return nil, errors.New("nil module loader")
 		}
 		// try to load it
 		d, err := ld()
 		if err != nil {
 			// failed to load
-			return nil, errorStarletError(`load`, err)
+			return nil, err
 		}
 		// extract all members of module from dict like `{name: module}`
 		if len(d) == 1 {
