@@ -181,7 +181,8 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 		// -- for the first run
 		// preset globals + preload modules + extras -> predeclared
 		if m.predeclared, err = convert.MakeStringDict(m.globals); err != nil {
-			return fmt.Errorf("starlet: convert globals: %w", err)
+			return errorStarlightConvert("globals", err)
+			// return fmt.Errorf("starlet: convert globals: %w", err)
 		}
 		if err = m.preloadMods.LoadAll(m.predeclared); err != nil {
 			// TODO: wrap the errors
@@ -189,8 +190,7 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 		}
 		esd, err := convert.MakeStringDict(extras)
 		if err != nil {
-			// TODO: test it
-			return fmt.Errorf("starlet: convert extras: %w", err)
+			return errorStarlightConvert("extras", err)
 		}
 		for k, v := range esd {
 			m.predeclared[k] = v
