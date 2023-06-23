@@ -1,6 +1,7 @@
 package starlet
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -148,7 +149,7 @@ func cycleCheck(e *entry, me *cycleChecker) error {
 			break
 		}
 		if cc == me {
-			return fmt.Errorf("cycle in load graph")
+			return errors.New("cycle in load graph")
 		}
 		e = (*entry)(atomic.LoadPointer(&cc.waitsFor))
 	}

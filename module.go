@@ -2,7 +2,6 @@ package starlet
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"io/fs"
 	"strings"
@@ -31,15 +30,15 @@ func (l ModuleLoaderList) Clone() []ModuleLoader {
 // It returns an error as second return value if any module fails to load.
 func (l ModuleLoaderList) LoadAll(d starlark.StringDict) error {
 	if d == nil {
-		return fmt.Errorf("starlet: cannot load modules into nil dict")
+		return errorStarletErrorf(`load`, "cannot load modules into nil dict")
 	}
 	for _, ld := range l {
 		if ld == nil {
-			return fmt.Errorf("starlet: nil module loader")
+			return errorStarletErrorf(`load`, "nil module loader")
 		}
 		m, err := ld()
 		if err != nil {
-			return fmt.Errorf("starlet: failed to load module: %w", err)
+			return errorStarletError(`load`, err)
 		}
 		if m != nil {
 			for k, v := range m {
@@ -57,7 +56,7 @@ func MakeBuiltinModuleLoaderList(names []string) (ModuleLoaderList, error) {
 	for i, name := range names {
 		ld[i] = allBuiltinModules[name]
 		if ld[i] == nil {
-			return ld, fmt.Errorf("starlet: module %q: %w", name, ErrModuleNotFound)
+			return ld, errorStarletErrorf(`make`, "module not found: %s", name)
 		}
 	}
 	return ld, nil
@@ -78,6 +77,7 @@ func (m ModuleLoaderMap) Clone() map[string]ModuleLoader {
 // GetLazyLoader returns a lazy loader that loads the module with the given name.
 // It returns an error as second return value if the module is found but fails to load.
 // Otherwise, the first return value is nil if the module is not found.
+// Note that the loader is usually used by the Starlark thread, so that the errors should not be wrapped.
 func (m ModuleLoaderMap) GetLazyLoader() NamedModuleLoader {
 	return func(s string) (starlark.StringDict, error) {
 		// if the map or the name is empty, just return nil to indicate not found
@@ -91,7 +91,7 @@ func (m ModuleLoaderMap) GetLazyLoader() NamedModuleLoader {
 			return nil, nil
 		} else if ld == nil {
 			// found but nil
-			return nil, fmt.Errorf("nil module loader %q", s)
+			return nil, errors.New("nil module loader")
 		}
 		// try to load it
 		d, err := ld()
@@ -120,7 +120,7 @@ func MakeBuiltinModuleLoaderMap(names []string) (ModuleLoaderMap, error) {
 	for _, name := range names {
 		ld[name] = allBuiltinModules[name]
 		if ld[name] == nil {
-			return ld, fmt.Errorf("starlet: module %q: %w", name, ErrModuleNotFound)
+			return ld, errorStarletErrorf(`make`, "module not found: %s", name)
 		}
 	}
 	return ld, nil
@@ -178,6 +178,7 @@ func MakeModuleLoaderFromFile(name string, fileSys fs.FS, predeclared starlark.S
 }
 
 // readScriptFile reads a script file from the given file system.
+// No need to wrap errors because they are usually used by the Starlark thread.
 func readScriptFile(name string, fileSys fs.FS) ([]byte, error) {
 	// precondition checks
 	if name == "" {

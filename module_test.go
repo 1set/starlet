@@ -83,19 +83,19 @@ func Test_ModuleLoaderList_LoadAll(t *testing.T) {
 			name:          "nil dict",
 			moduleLoaders: starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic"), starlet.GetBuiltinModule("struct")},
 			dict:          nil,
-			wantErr:       "starlet: cannot load modules into nil dict",
+			wantErr:       "starlet: load: cannot load modules into nil dict",
 		},
 		{
 			name:          "nil module loader",
 			moduleLoaders: starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic"), nil},
 			dict:          make(starlark.StringDict),
-			wantErr:       "starlet: nil module loader",
+			wantErr:       "starlet: load: nil module loader",
 		},
 		{
 			name:          "invalid module",
 			moduleLoaders: starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic"), failLoader},
 			dict:          make(starlark.StringDict),
-			wantErr:       "starlet: failed to load module: invalid module loader",
+			wantErr:       "starlet: load: invalid module loader",
 		},
 	}
 
@@ -146,7 +146,7 @@ func Test_ModuleLoaderMap_GetLazyLoader(t *testing.T) {
 			name:          "nil module",
 			moduleLoaders: starlet.ModuleLoaderMap{"unknown": nil},
 			moduleName:    "unknown",
-			wantErr:       `nil module loader "unknown"`,
+			wantErr:       `nil module loader`,
 		},
 		{
 			name:          "valid module",
@@ -195,7 +195,7 @@ func Test_MakeBuiltinModuleLoaderList(t *testing.T) {
 		{
 			name:         "non-existent module",
 			modules:      []string{"non_existent"},
-			wantErr:      "starlet: module \"non_existent\": module not found",
+			wantErr:      "starlet: make: module not found: non_existent",
 			expectedSize: 1,
 		},
 	}
@@ -230,7 +230,7 @@ func Test_MakeBuiltinModuleLoaderMap(t *testing.T) {
 		{
 			name:         "non-existent module",
 			modules:      []string{"non_existent"},
-			wantErr:      "starlet: module \"non_existent\": module not found",
+			wantErr:      "starlet: make: module not found: non_existent",
 			expectedSize: 1,
 		},
 	}
