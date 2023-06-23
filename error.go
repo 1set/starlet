@@ -25,10 +25,11 @@ func (e ExecError) Error() string {
 // helper functions
 
 // errorStarlarkPanic creates an ExecError from a recovered panic value.
-func errorStarlarkPanic(v interface{}) ExecError {
+func errorStarlarkPanic(action string, v interface{}) ExecError {
 	return ExecError{
-		pkg: `starlark`,
-		act: fmt.Sprintf("panic: %v", v),
+		pkg:   `starlark`,
+		act:   action,
+		cause: fmt.Errorf("panic: %v", v),
 	}
 }
 

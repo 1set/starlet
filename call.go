@@ -11,7 +11,7 @@ import (
 func (m *Machine) Call(name string, args ...interface{}) (out interface{}, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = errorStarlarkPanic(r)
+			err = errorStarlarkPanic("call", r)
 		}
 	}()
 

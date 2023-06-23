@@ -1663,7 +1663,7 @@ ans = foo * 2
 panic("ohohoh")
 `), nil)
 	out, err = m.Run()
-	expectErr(t, err, `starlark: panic: ohohoh`)
+	expectErr(t, err, `starlark: exec: panic: ohohoh`)
 	t.Logf("got result after run #4: %v", out)
 
 	// fifth run normally

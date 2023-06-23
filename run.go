@@ -78,7 +78,7 @@ func (m *Machine) RunWithContext(ctx context.Context, extras StringAnyMap) (Stri
 func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap) (out StringAnyMap, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = errorStarlarkPanic(r)
+			err = errorStarlarkPanic("exec", r)
 		}
 	}()
 
