@@ -778,19 +778,19 @@ func Test_Machine_Run_FileLoaders(t *testing.T) {
 			name:        "No FS for Preload Modules",
 			preList:     starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("fibonacci.star", nil, nil)},
 			code:        `val = fibonacci(10)[-1]`,
-			expectedErr: "starlet: failed to load module: no file system given",
+			expectedErr: "starlet: load: no file system given",
 		},
 		{
 			name:        "NonExist file system for Preload Modules",
 			preList:     starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("fibonacci.star", nonExistFS, nil)},
 			code:        `val = fibonacci(10)[-1]`,
-			expectedErr: "starlet: failed to load module: open ",
+			expectedErr: "starlet: load: open ",
 		},
 		{
 			name:        "NonExist file for Preload Modules",
 			preList:     starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("nonexist.star", testFS, nil)},
 			code:        `val = fibonacci(10)[-1]`,
-			expectedErr: "starlet: failed to load module: open ",
+			expectedErr: "starlet: load: open ",
 		},
 		{
 			name:    "Single File for Preload Modules",
@@ -821,7 +821,7 @@ func Test_Machine_Run_FileLoaders(t *testing.T) {
 			globals:     map[string]interface{}{"input": 10},
 			preList:     starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("one.star", testFS, nil)},
 			code:        `val = number`,
-			expectedErr: `starlet: failed to load module: one.star:1:10: undefined: input`,
+			expectedErr: `starlet: load: one.star:1:10: undefined: input`,
 		},
 		{
 			name:      "Preload Modules With External Value",
@@ -1030,7 +1030,7 @@ func Test_Machine_Run_CodeLoaders(t *testing.T) {
 			preList:     starlet.ModuleLoaderList{nil},
 			code:        `val = 4 + 5`,
 			modFS:       testFS,
-			expectedErr: `starlet: nil module loader`,
+			expectedErr: `starlet: load: nil module loader`,
 		},
 		{
 			name:        "Nil Loader Map Element",
@@ -1053,7 +1053,7 @@ func Test_Machine_Run_CodeLoaders(t *testing.T) {
 			preList:     starlet.ModuleLoaderList{failLoader},
 			code:        `val = 1 + 2`,
 			modFS:       testFS,
-			expectedErr: `starlet: failed to load module: invalid module loader`,
+			expectedErr: `starlet: load: invalid module loader`,
 		},
 		{
 			name:    "Preload Module Untouched",

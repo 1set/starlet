@@ -182,11 +182,9 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 		// preset globals + preload modules + extras -> predeclared
 		if m.predeclared, err = convert.MakeStringDict(m.globals); err != nil {
 			return errorStarlightConvert("globals", err)
-			// return fmt.Errorf("starlet: convert globals: %w", err)
 		}
 		if err = m.preloadMods.LoadAll(m.predeclared); err != nil {
-			// TODO: wrap the errors
-			return err
+			return errorStarletError("preload", err)
 		}
 		esd, err := convert.MakeStringDict(extras)
 		if err != nil {

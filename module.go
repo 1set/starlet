@@ -31,15 +31,15 @@ func (l ModuleLoaderList) Clone() []ModuleLoader {
 // It returns an error as second return value if any module fails to load.
 func (l ModuleLoaderList) LoadAll(d starlark.StringDict) error {
 	if d == nil {
-		return fmt.Errorf("starlet: cannot load modules into nil dict")
+		return errorStarletErrorf(`load`, "cannot load modules into nil dict")
 	}
 	for _, ld := range l {
 		if ld == nil {
-			return fmt.Errorf("starlet: nil module loader")
+			return errorStarletErrorf(`load`, "nil module loader")
 		}
 		m, err := ld()
 		if err != nil {
-			return fmt.Errorf("starlet: failed to load module: %w", err)
+			return errorStarletError(`load`, err)
 		}
 		if m != nil {
 			for k, v := range m {

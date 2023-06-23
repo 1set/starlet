@@ -83,19 +83,19 @@ func Test_ModuleLoaderList_LoadAll(t *testing.T) {
 			name:          "nil dict",
 			moduleLoaders: starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic"), starlet.GetBuiltinModule("struct")},
 			dict:          nil,
-			wantErr:       "starlet: cannot load modules into nil dict",
+			wantErr:       "starlet: load: cannot load modules into nil dict",
 		},
 		{
 			name:          "nil module loader",
 			moduleLoaders: starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic"), nil},
 			dict:          make(starlark.StringDict),
-			wantErr:       "starlet: nil module loader",
+			wantErr:       "starlet: load: nil module loader",
 		},
 		{
 			name:          "invalid module",
 			moduleLoaders: starlet.ModuleLoaderList{starlet.GetBuiltinModule("go_idiomatic"), failLoader},
 			dict:          make(starlark.StringDict),
-			wantErr:       "starlet: failed to load module: invalid module loader",
+			wantErr:       "starlet: load: invalid module loader",
 		},
 	}
 
