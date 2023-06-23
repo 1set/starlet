@@ -22,9 +22,7 @@ type PrintFunc func(thread *starlark.Thread, msg string)
 type LoadFunc func(thread *starlark.Thread, module string) (starlark.StringDict, error)
 
 var (
-	ErrNoFileToRun         = errors.New("no specific file")
-	ErrNoScriptSourceToRun = errors.New("no script to execute")
-	ErrModuleNotFound      = errors.New("module not found")
+	ErrModuleNotFound = errors.New("module not found")
 )
 
 // Run executes a preset script and returns the output.

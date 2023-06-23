@@ -16,10 +16,7 @@ func (e ExecError) Unwrap() error {
 
 // Error returns the error message.
 func (e ExecError) Error() string {
-	if e.cause != nil {
-		return fmt.Sprintf("%s: %s: %v", e.pkg, e.act, e.cause)
-	}
-	return fmt.Sprintf("%s: %s", e.pkg, e.act)
+	return fmt.Sprintf("%s: %s: %v", e.pkg, e.act, e.cause)
 }
 
 // helper functions
