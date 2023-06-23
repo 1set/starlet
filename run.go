@@ -2,8 +2,6 @@ package starlet
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"io/fs"
 	"sync"
 	"time"
@@ -20,10 +18,6 @@ type PrintFunc func(thread *starlark.Thread, msg string)
 // LoadFunc is a function that tells Starlark how to find and load other scripts
 // using the load() function. If you don't use load() in your scripts, you can pass in nil.
 type LoadFunc func(thread *starlark.Thread, module string) (starlark.StringDict, error)
-
-var (
-	ErrModuleNotFound = errors.New("module not found")
-)
 
 // Run executes a preset script and returns the output.
 func (m *Machine) Run() (StringAnyMap, error) {
@@ -162,11 +156,11 @@ func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap) (out Str
 			if exitCode == 0 {
 				err = nil
 			} else {
-				err = fmt.Errorf("starlet: exit code: %d", exitCode)
+				err = errorStarletErrorf("run", "exit code: %d", exitCode)
 			}
 		} else {
 			// wrap other errors
-			err = fmt.Errorf("starlet: exec: %w", err)
+			err = errorStarlarkError("exec", err)
 		}
 
 		// TODO: call it convert error? maybe better error solutions

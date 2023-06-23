@@ -2,7 +2,6 @@ package starlet
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"io/fs"
 	"strings"
@@ -91,13 +90,13 @@ func (m ModuleLoaderMap) GetLazyLoader() NamedModuleLoader {
 			return nil, nil
 		} else if ld == nil {
 			// found but nil
-			return nil, fmt.Errorf("nil module loader %q", s)
+			return nil, errorStarletErrorf(`load`, "nil module loader: %s", s)
 		}
 		// try to load it
 		d, err := ld()
 		if err != nil {
 			// failed to load
-			return nil, err
+			return nil, errorStarletError(`load`, err)
 		}
 		// extract all members of module from dict like `{name: module}`
 		if len(d) == 1 {
