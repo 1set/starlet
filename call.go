@@ -2,8 +2,6 @@ package starlet
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
@@ -13,26 +11,26 @@ import (
 func (m *Machine) Call(name string, args ...interface{}) (out interface{}, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("call: panic: %v", r)
+			err = errorStarlarkPanic("call", r)
 		}
 	}()
 
 	// preconditions
 	if name == "" {
-		return nil, errors.New("no function name")
+		return nil, errorStarletErrorf("call", "no function name")
 	}
 	if m.predeclared == nil || m.thread == nil {
-		return nil, errors.New("no function loaded")
+		return nil, errorStarletErrorf("call", "no function loaded")
 	}
 	var callFunc starlark.Callable
 	if rf, ok := m.predeclared[name]; !ok {
-		return nil, fmt.Errorf("no such function: %s", name)
+		return nil, errorStarletErrorf("call", "no such function: %s", name)
 	} else if sf, ok := rf.(*starlark.Function); ok {
 		callFunc = sf
 	} else if sb, ok := rf.(*starlark.Builtin); ok {
 		callFunc = sb
 	} else {
-		return nil, fmt.Errorf("mistyped function: %s", name)
+		return nil, errorStarletErrorf("call", "mistyped function: %s", name)
 	}
 
 	// convert arguments
@@ -40,7 +38,7 @@ func (m *Machine) Call(name string, args ...interface{}) (out interface{}, err e
 	for _, arg := range args {
 		sv, err := convert.ToValue(arg)
 		if err != nil {
-			return nil, fmt.Errorf("convert arg: %w", err)
+			return nil, errorStarlightConvert("args", err)
 		}
 		sl = append(sl, sv)
 	}
@@ -53,7 +51,7 @@ func (m *Machine) Call(name string, args ...interface{}) (out interface{}, err e
 	res, err := starlark.Call(m.thread, callFunc, sl, nil)
 	out = convert.FromValue(res)
 	if err != nil {
-		return out, fmt.Errorf("call: %w", err)
+		return out, errorStarlarkError("call", err)
 	}
 	return out, nil
 }

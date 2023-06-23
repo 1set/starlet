@@ -25,7 +25,7 @@ func Test_DefaultMachine_Run_NoSpecificFile(t *testing.T) {
 	m.SetScript("", nil, os.DirFS("testdata"))
 	// run with no specific file name
 	_, err := m.Run()
-	expectErr(t, err, `starlet: run: no specific file`)
+	expectErr(t, err, `starlet: run: no script name`)
 }
 
 func Test_DefaultMachine_Run_APlusB(t *testing.T) {
@@ -114,9 +114,9 @@ func Test_DefaultMachine_Run_LocalFileNonExist(t *testing.T) {
 	// run
 	_, err := m.Run()
 	if isOnWindows {
-		expectErr(t, err, `starlet: open: open`, `The system cannot find the file specified.`)
+		expectErr(t, err, `starlet: run: open`, `The system cannot find the file specified.`)
 	} else {
-		expectErr(t, err, `starlet: open: open`, `: no such file or directory`)
+		expectErr(t, err, `starlet: run: open`, `: no such file or directory`)
 	}
 }
 
@@ -127,9 +127,9 @@ func Test_DefaultMachine_Run_FSNonExist(t *testing.T) {
 	// run
 	_, err := m.Run()
 	if isOnWindows {
-		expectErr(t, err, `starlet: open: open`, `The system cannot find the path specified.`)
+		expectErr(t, err, `starlet: run: open`, `The system cannot find the path specified.`)
 	} else {
-		expectErr(t, err, `starlet: open: open`, `: no such file or directory`)
+		expectErr(t, err, `starlet: run: open`, `: no such file or directory`)
 	}
 }
 
@@ -143,7 +143,7 @@ func Test_DefaultMachine_Run_InvalidGlobals(t *testing.T) {
 	m.SetScript("test.star", []byte(`a = 1`), nil)
 	// run
 	_, err := m.Run()
-	expectErr(t, err, `starlet: convert globals: type chan int is not a supported starlark type`)
+	expectErr(t, err, `starlight: convert globals: type chan int is not a supported starlark type`)
 }
 
 func Test_DefaultMachine_Run_InvalidExtras(t *testing.T) {
@@ -151,7 +151,7 @@ func Test_DefaultMachine_Run_InvalidExtras(t *testing.T) {
 	_, err := m.RunScript([]byte(`a = 1`), map[string]interface{}{
 		"a": make(chan int),
 	})
-	expectErr(t, err, `starlet: convert extras: type chan int is not a supported starlark type`)
+	expectErr(t, err, `starlight: convert extras: type chan int is not a supported starlark type`)
 }
 
 func Test_DefaultMachine_Run_LoadFunc(t *testing.T) {
@@ -181,9 +181,9 @@ func Test_DefaultMachine_Run_LoadNonExist(t *testing.T) {
 	_, err := m.Run()
 	// check result
 	if isOnWindows {
-		expectErr(t, err, `starlet: exec: cannot load nonexist.star: open`, `The system cannot find the file specified.`)
+		expectErr(t, err, `starlark: exec: cannot load nonexist.star: open`, `The system cannot find the file specified.`)
 	} else {
-		expectErr(t, err, `starlet: exec: cannot load nonexist.star: open`, `: no such file or directory`)
+		expectErr(t, err, `starlark: exec: cannot load nonexist.star: open`, `: no such file or directory`)
 	}
 }
 
@@ -384,7 +384,7 @@ exit(1)
 f = 6
 `), nil)
 	out, err = m.Run()
-	expectErr(t, err, `starlet: exit code: 1`)
+	expectErr(t, err, `starlet: run: exit code: 1`)
 	if out == nil {
 		t.Errorf("unexpected nil output")
 	} else if out["e"].(int64) != int64(5) {
@@ -400,7 +400,7 @@ quit(2)
 h = 8
 `), nil)
 	out, err = m.Run()
-	expectErr(t, err, `starlet: exit code: 2`)
+	expectErr(t, err, `starlet: run: exit code: 2`)
 	if out == nil {
 		t.Errorf("unexpected nil output")
 	} else if out["g"].(int64) != int64(7) {
@@ -468,7 +468,7 @@ func Test_Machine_Run_File_Missing_Globals(t *testing.T) {
 	m.SetScript("magic.star", nil, os.DirFS("testdata"))
 	// run
 	_, err := m.Run()
-	expectErr(t, err, `starlet: exec: magic.star:5:32: undefined: magic_number`)
+	expectErr(t, err, `starlark: exec: magic.star:5:32: undefined: magic_number`)
 }
 
 func Test_Machine_Run_PreloadModules(t *testing.T) {
@@ -594,6 +594,18 @@ coins = 50
 	}
 }
 
+func Test_Machine_Run_LoadCycle(t *testing.T) {
+	m := starlet.NewDefault()
+	// set code1
+	m.SetScript("circle1.star", nil, os.DirFS("testdata"))
+	_, err := m.Run()
+	expectErr(t, err, `starlark: exec: cannot load circle2.star: cannot load circle1.star: cannot load circle2.star: cycle in load graph`)
+	// set code2
+	m.SetScript("circle2.star", nil, os.DirFS("testdata"))
+	_, err = m.Run()
+	expectErr(t, err, `starlark: exec: cannot load circle1.star: cannot load circle2.star: cycle in load graph`)
+}
+
 func Test_Machine_Run_LoadErrors(t *testing.T) {
 	mm := starlark.NewDict(1)
 	_ = mm.SetKey(starlark.String("quarter"), starlark.MakeInt(100))
@@ -615,19 +627,19 @@ func Test_Machine_Run_LoadErrors(t *testing.T) {
 			name:        "Unsupported Globals Type",
 			globals:     map[string]interface{}{"a": make(chan int)},
 			code:        `b = a`,
-			expectedErr: `starlet: convert globals: type chan int is not a supported starlark type`,
+			expectedErr: `starlight: convert globals: type chan int is not a supported starlark type`,
 		},
 		{
 			name:        "Missed Globals Variable",
 			globals:     map[string]interface{}{"a": 2},
 			code:        `b = c * 10`,
-			expectedErr: `starlet: exec: test.star:1:5: undefined: c`,
+			expectedErr: `starlark: exec: test.star:1:5: undefined: c`,
 		},
 		{
 			name:        "Wrong Type Globals Variable",
 			globals:     map[string]interface{}{"a": 2},
 			code:        `b = a + "10"`,
-			expectedErr: `starlet: exec: unknown binary op: int + string`,
+			expectedErr: `starlark: exec: unknown binary op: int + string`,
 		},
 		{
 			name:    "Fails to Override Globals Variable",
@@ -637,20 +649,20 @@ num = 100
 x = num * 5 + coins['quarter']
 coins = 50
 `,
-			expectedErr: `starlet: exec: global variable coins referenced before assignment`,
+			expectedErr: `starlark: exec: global variable coins referenced before assignment`,
 		},
 		// for preload modules
 		{
 			name:        "Missed Preload Modules",
 			preloadMods: []string{},
 			code:        `a = nil == None`,
-			expectedErr: `starlet: exec: test.star:1:5: undefined: nil`,
+			expectedErr: `starlark: exec: test.star:1:5: undefined: nil`,
 		},
 		{
 			name:          "NonExist Preload Modules",
 			preloadMods:   []string{"nonexist"},
 			code:          `a = nil == None`,
-			expectedErr:   `starlet: module "nonexist": module not found`,
+			expectedErr:   `starlet: make: module not found: nonexist`,
 			expectedPanic: true,
 		},
 		// for lazyload modules
@@ -658,62 +670,62 @@ coins = 50
 			name:        "Missed load() for LazyLoad Modules",
 			lazyMods:    []string{"go_idiomatic"},
 			code:        `a = nil == None`,
-			expectedErr: `starlet: exec: test.star:1:5: undefined: nil`,
+			expectedErr: `starlark: exec: test.star:1:5: undefined: nil`,
 		},
 		{
 			name:          "NonExist LazyLoad Modules",
 			lazyMods:      []string{"nonexist"},
 			code:          `load("nonexist", "nil"); a = nil == None`,
-			expectedErr:   `starlet: module "nonexist": module not found`,
+			expectedErr:   `starlet: make: module not found: nonexist`,
 			expectedPanic: true,
 		},
 		{
 			name:        "NonExist Function in LazyLoad Modules",
 			lazyMods:    []string{"go_idiomatic"},
 			code:        `load("go_idiomatic", "fake"); a = fake == None`,
-			expectedErr: `starlet: exec: load: name fake not found in module go_idiomatic`,
+			expectedErr: `starlark: exec: load: name fake not found in module go_idiomatic`,
 		},
 		// for load fs --- user modules
 		{
 			name:        "No FS for User Modules",
 			code:        `load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]`,
-			expectedErr: `starlet: exec: cannot load fibonacci.star: no file system given`,
+			expectedErr: `starlark: exec: cannot load fibonacci.star: no file system given`,
 		},
 		{
 			name:        "Missed load() for User Modules",
 			code:        `val = fibonacci(10)[-1]`,
 			modFS:       testFS,
-			expectedErr: `starlet: exec: test.star:1:7: undefined: fibonacci`,
+			expectedErr: `starlark: exec: test.star:1:7: undefined: fibonacci`,
 		},
 		{
 			name:        "Duplicate load() for User Modules",
 			code:        `load("fibonacci.star", "fibonacci"); load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]`,
 			modFS:       testFS,
-			expectedErr: `starlet: exec: test.star:1:62: cannot reassign top-level fibonacci`,
+			expectedErr: `starlark: exec: test.star:1:62: cannot reassign top-level fibonacci`,
 		},
 		{
 			name:        "NonExist User Modules",
 			code:        `load("nonexist.star", "fibonacci"); val = fibonacci(10)[-1]`,
 			modFS:       testFS,
-			expectedErr: `starlet: exec: cannot load nonexist.star: open`,
+			expectedErr: `starlark: exec: cannot load nonexist.star: open`,
 		},
 		{
 			name:        "NonExist File System",
 			code:        `load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]`,
 			modFS:       nonExistFS,
-			expectedErr: `starlet: exec: cannot load fibonacci.star: open`,
+			expectedErr: `starlark: exec: cannot load fibonacci.star: open`,
 		},
 		{
 			name:        "NonExist Function in User Modules",
 			code:        `load("fibonacci.star", "fake"); val = fake(10)[-1]`,
 			modFS:       testFS,
-			expectedErr: `starlet: exec: load: name fake not found in module fibonacci.star`,
+			expectedErr: `starlark: exec: load: name fake not found in module fibonacci.star`,
 		},
 		{
 			name:        "Existing and NonExist Functions in User Modules",
 			code:        `load("fibonacci.star", "fibonacci", "fake"); val = fibonacci(10)[-1]`,
 			modFS:       testFS,
-			expectedErr: `starlet: exec: load: name fake not found in module fibonacci.star`,
+			expectedErr: `starlark: exec: load: name fake not found in module fibonacci.star`,
 		},
 		// for globals + user modules
 		{
@@ -727,7 +739,7 @@ coins = 50
 			globals:     map[string]interface{}{"fibonacci": 2},
 			code:        `x = fibonacci * 10; load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]; print(x, val)`,
 			modFS:       testFS,
-			expectedErr: `starlet: exec: local variable fibonacci referenced before assignment`,
+			expectedErr: `starlark: exec: local variable fibonacci referenced before assignment`,
 			// NOTE: for this behavior: read the comments before `r.useToplevel(use)` in `func (r *resolver) use(id *syntax.Ident)` in file: go.starlark.net@v0.0.0-20230525235612-a134d8f9ddca/resolve/resolve.go
 		},
 	}
@@ -778,19 +790,19 @@ func Test_Machine_Run_FileLoaders(t *testing.T) {
 			name:        "No FS for Preload Modules",
 			preList:     starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("fibonacci.star", nil, nil)},
 			code:        `val = fibonacci(10)[-1]`,
-			expectedErr: "starlet: failed to load module: no file system given",
+			expectedErr: "starlet: load: no file system given",
 		},
 		{
 			name:        "NonExist file system for Preload Modules",
 			preList:     starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("fibonacci.star", nonExistFS, nil)},
 			code:        `val = fibonacci(10)[-1]`,
-			expectedErr: "starlet: failed to load module: open ",
+			expectedErr: "starlet: load: open ",
 		},
 		{
 			name:        "NonExist file for Preload Modules",
 			preList:     starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("nonexist.star", testFS, nil)},
 			code:        `val = fibonacci(10)[-1]`,
-			expectedErr: "starlet: failed to load module: open ",
+			expectedErr: "starlet: load: open ",
 		},
 		{
 			name:    "Single File for Preload Modules",
@@ -821,7 +833,7 @@ func Test_Machine_Run_FileLoaders(t *testing.T) {
 			globals:     map[string]interface{}{"input": 10},
 			preList:     starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("one.star", testFS, nil)},
 			code:        `val = number`,
-			expectedErr: `starlet: failed to load module: one.star:1:10: undefined: input`,
+			expectedErr: `starlet: load: one.star:1:10: undefined: input`,
 		},
 		{
 			name:      "Preload Modules With External Value",
@@ -850,46 +862,46 @@ num = 100
 x = num * 5 + coins['quarter']
 coins = 50
 `,
-			expectedErr: `starlet: exec: global variable coins referenced before assignment`,
+			expectedErr: `starlark: exec: global variable coins referenced before assignment`,
 		},
 		// for lazyload with fs
 		{
 			name:        "Missing Lazyload Modules",
 			lazyMap:     starlet.ModuleLoaderMap{},
 			code:        `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
-			expectedErr: `starlet: exec: cannot load fib: no file system given`,
+			expectedErr: `starlark: exec: cannot load fib: no file system given`,
 		},
 		{
 			name:        "Missing Lazyload Modules with Invalid FS",
 			lazyMap:     starlet.ModuleLoaderMap{},
 			modFS:       nonExistFS,
 			code:        `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
-			expectedErr: `starlet: exec: cannot load fib: open `,
+			expectedErr: `starlark: exec: cannot load fib: open `,
 		},
 		{
 			name:        "Missing Lazyload Modules with Valid FS",
 			lazyMap:     starlet.ModuleLoaderMap{},
 			modFS:       testFS,
 			code:        `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
-			expectedErr: `starlet: exec: cannot load fib: open `,
+			expectedErr: `starlark: exec: cannot load fib: open `,
 		},
 		{
 			name:        "No FS for Lazyload Modules",
 			lazyMap:     starlet.ModuleLoaderMap{"fib": starlet.MakeModuleLoaderFromFile("fibonacci.star", nil, nil)},
 			code:        `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
-			expectedErr: `starlet: exec: cannot load fib: no file system given`,
+			expectedErr: `starlark: exec: cannot load fib: no file system given`,
 		},
 		{
 			name:        "NonExist file system for Lazyload Modules",
 			lazyMap:     starlet.ModuleLoaderMap{"fib": starlet.MakeModuleLoaderFromFile("fibonacci.star", nonExistFS, nil)},
 			code:        `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
-			expectedErr: `starlet: exec: cannot load fib: open `,
+			expectedErr: `starlark: exec: cannot load fib: open `,
 		},
 		{
 			name:        "NonExist file for Lazyload Modules",
 			lazyMap:     starlet.ModuleLoaderMap{"fib": starlet.MakeModuleLoaderFromFile("nonexist.star", testFS, nil)},
 			code:        `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
-			expectedErr: `starlet: exec: cannot load fib: open `,
+			expectedErr: `starlark: exec: cannot load fib: open `,
 		},
 		{
 			name:    "Single File for Lazyload Modules",
@@ -903,7 +915,7 @@ coins = 50
 			name:        "Duplicate Files for Lazyload Modules",
 			lazyMap:     starlet.ModuleLoaderMap{"fib": starlet.MakeModuleLoaderFromFile("fibonacci.star", testFS, nil), "fib2": starlet.MakeModuleLoaderFromFile("fibonacci.star", testFS, nil)},
 			code:        `load("fib", "fibonacci"); load("fib2", "fibonacci"); val = fibonacci(10)[-1]`,
-			expectedErr: `starlet: exec: test.star:1:41: cannot reassign top-level fibonacci`,
+			expectedErr: `starlark: exec: test.star:1:41: cannot reassign top-level fibonacci`,
 		},
 		{
 			name:    "Multiple Files for Lazyload Modules",
@@ -918,13 +930,13 @@ coins = 50
 			globals:     map[string]interface{}{"input": 10},
 			lazyMap:     starlet.ModuleLoaderMap{"one": starlet.MakeModuleLoaderFromFile("one.star", testFS, nil)},
 			code:        `load("one", "number"); val = number`,
-			expectedErr: `starlet: exec: cannot load one: one.star:1:10: undefined: input`,
+			expectedErr: `starlark: exec: cannot load one: one.star:1:10: undefined: input`,
 		},
 		{
 			name:        "Lazyload Modules Misplaced External Value",
 			lazyMap:     starlet.ModuleLoaderMap{"one": starlet.MakeModuleLoaderFromFile("one.star", testFS, nil)},
 			code:        `input = 10; load("one", "number"); val = number`,
-			expectedErr: `starlet: exec: cannot load one: one.star:1:10: undefined: input`,
+			expectedErr: `starlark: exec: cannot load one: one.star:1:10: undefined: input`,
 		},
 		{
 			name:    "Lazyload Modules With External Value",
@@ -1030,14 +1042,14 @@ func Test_Machine_Run_CodeLoaders(t *testing.T) {
 			preList:     starlet.ModuleLoaderList{nil},
 			code:        `val = 4 + 5`,
 			modFS:       testFS,
-			expectedErr: `starlet: nil module loader`,
+			expectedErr: `starlet: load: nil module loader`,
 		},
 		{
 			name:        "Nil Loader Map Element",
 			lazyMap:     starlet.ModuleLoaderMap{"nil_loader": nil},
 			code:        `load("nil_loader", "num"); val = 5 + 6`,
 			modFS:       testFS,
-			expectedErr: `starlet: exec: cannot load nil_loader: nil module loader "nil_loader"`,
+			expectedErr: `starlark: exec: cannot load nil_loader: nil module loader`,
 		},
 		// only pre loaders
 		{
@@ -1053,7 +1065,7 @@ func Test_Machine_Run_CodeLoaders(t *testing.T) {
 			preList:     starlet.ModuleLoaderList{failLoader},
 			code:        `val = 1 + 2`,
 			modFS:       testFS,
-			expectedErr: `starlet: failed to load module: invalid module loader`,
+			expectedErr: `starlet: load: invalid module loader`,
 		},
 		{
 			name:    "Preload Module Untouched",
@@ -1116,7 +1128,7 @@ num = 100
 val = num * 5 + number
 number = 500
 `,
-			expectedErr: `starlet: exec: global variable number referenced before assignment`,
+			expectedErr: `starlark: exec: global variable number referenced before assignment`,
 		},
 		// only lazy loaders
 		{
@@ -1131,7 +1143,7 @@ number = 500
 			name:        "Invalid LazyLoad Module Fails",
 			lazyMap:     starlet.ModuleLoaderMap{failName: failLoader},
 			code:        fmt.Sprintf(`load(%q, "nil", "true"); val = nil != true`, failName),
-			expectedErr: fmt.Sprintf(`starlet: exec: cannot load %s: invalid module loader`, failName),
+			expectedErr: fmt.Sprintf(`starlark: exec: cannot load %s: invalid module loader`, failName),
 		},
 		{
 			name:    "Invalid LazyLoad Module Untouched",
@@ -1162,7 +1174,7 @@ load("mock_apple", "number")
 load("mock_blueberry", "number")
 val = number
 `,
-			expectedErr: `starlet: exec: test.star:3:25: cannot reassign top-level number`,
+			expectedErr: `starlark: exec: test.star:3:25: cannot reassign top-level number`,
 		},
 		{
 			name:    "Override LazyLoad Modules",
@@ -1172,7 +1184,7 @@ load("mock_apple", "number")
 number = 10
 val = number * 10
 `,
-			expectedErr: `starlet: exec: test.star:3:1: cannot reassign local number declared at test.star:2:21`,
+			expectedErr: `starlark: exec: test.star:3:1: cannot reassign local number declared at test.star:2:21`,
 		},
 		{
 			name:    "Override Global Variables With Lazyload Modules",
@@ -1388,7 +1400,7 @@ func Test_Machine_Run_With_Timeout(t *testing.T) {
 	ctx, _ := context.WithTimeout(context.Background(), interval/2)
 	out, err = m.RunWithContext(ctx, nil)
 	expectSameDuration(t, time.Since(ts), interval)
-	expectErr(t, err, "starlet: exec: Starlark computation cancelled: context cancelled")
+	expectErr(t, err, "starlark: exec: Starlark computation cancelled: context cancelled")
 	t.Logf("got result after run #2: %v", out)
 
 	// third run with timeout helper -- it's not timeout
@@ -1407,7 +1419,7 @@ func Test_Machine_Run_With_Timeout(t *testing.T) {
 	ts = time.Now()
 	out, err = m.RunWithTimeout(interval, nil)
 	expectSameDuration(t, time.Since(ts), interval)
-	expectErr(t, err, "starlet: exec: context deadline exceeded")
+	expectErr(t, err, "starlark: exec: context deadline exceeded")
 	t.Logf("got result after run #4: %v", out)
 }
 
@@ -1468,7 +1480,7 @@ t = 4
 	ctx, _ := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	out, err = m.RunWithContext(ctx, nil)
 	expectSameDuration(t, time.Since(ts), 500*time.Millisecond)
-	expectErr(t, err, "starlet: exec: context deadline exceeded")
+	expectErr(t, err, "starlark: exec: context deadline exceeded")
 	t.Logf("got result after run #2: %v", out)
 
 	// third run without timeout
@@ -1494,7 +1506,7 @@ fail("oops")
 `), nil)
 	ts = time.Now()
 	out, err = m.Run()
-	expectErr(t, err, "starlet: exec: fail: oops")
+	expectErr(t, err, "starlark: exec: fail: oops")
 	t.Logf("got result after run #4: %v", out)
 
 	// fifth run to fail in def
@@ -1506,7 +1518,7 @@ zz = z * 2
 foo()
 `), nil)
 	out, err = m.Run()
-	expectErr(t, err, `starlet: exec: fail: a bar`)
+	expectErr(t, err, `starlark: exec: fail: a bar`)
 	t.Logf("got result after run #5: %v", out)
 
 	// sixth run with old values
@@ -1583,7 +1595,7 @@ func Test_Machine_Run_With_Reset(t *testing.T) {
 	m.Reset()
 	m.SetScript("run.star", []byte(`w = x + z`), nil)
 	_, err = m.Run()
-	expectErr(t, err, `starlet: exec: run.star:1:5: undefined: x`)
+	expectErr(t, err, `starlark: exec: run.star:1:5: undefined: x`)
 }
 
 func Test_Machine_Run_Panic(t *testing.T) {
@@ -1599,7 +1611,7 @@ def foo():
 foo = 123
 `), nil)
 	out, err := m.Run()
-	expectErr(t, err, `starlet: exec: panic.star:4:1: cannot reassign global foo declared at panic.star:2:5`)
+	expectErr(t, err, `starlark: exec: panic.star:4:1: cannot reassign global foo declared at panic.star:2:5`)
 	t.Logf("got result after run #1: %v", out)
 
 	// second run smoothly
@@ -1635,7 +1647,7 @@ ans = foo * 2
 bar()
 `), nil)
 	out, err = m.Run()
-	expectErr(t, err, `starlet: exec: panic in func fn: oops`)
+	expectErr(t, err, `starlark: exec: panic in func fn: oops`)
 	if out == nil {
 		t.Errorf("Unexpected empty result: %v", out)
 	} else if n := out["ans"]; n != int64(246) {
@@ -1663,7 +1675,7 @@ ans = foo * 2
 panic("ohohoh")
 `), nil)
 	out, err = m.Run()
-	expectErr(t, err, `starlet: panic: ohohoh`)
+	expectErr(t, err, `starlark: exec: panic: ohohoh`)
 	t.Logf("got result after run #4: %v", out)
 
 	// fifth run normally

@@ -2,8 +2,6 @@ package starlet
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"io/fs"
 	"sync"
 	"time"
@@ -20,12 +18,6 @@ type PrintFunc func(thread *starlark.Thread, msg string)
 // LoadFunc is a function that tells Starlark how to find and load other scripts
 // using the load() function. If you don't use load() in your scripts, you can pass in nil.
 type LoadFunc func(thread *starlark.Thread, module string) (starlark.StringDict, error)
-
-var (
-	ErrNoFileToRun         = errors.New("no specific file")
-	ErrNoScriptSourceToRun = errors.New("no script to execute")
-	ErrModuleNotFound      = errors.New("module not found")
-)
 
 // Run executes a preset script and returns the output.
 func (m *Machine) Run() (StringAnyMap, error) {
@@ -78,7 +70,7 @@ func (m *Machine) RunWithContext(ctx context.Context, extras StringAnyMap) (Stri
 func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap) (out StringAnyMap, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("starlet: panic: %v", r)
+			err = errorStarlarkPanic("exec", r)
 		}
 	}()
 
@@ -96,16 +88,16 @@ func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap) (out Str
 	} else if m.scriptFS != nil {
 		if scriptName == "" {
 			// if no name, cannot load
-			return nil, fmt.Errorf("starlet: run: %w", ErrNoFileToRun)
+			return nil, errorStarletErrorf("run", "no script name")
 		}
 		// load script from FS
 		rd, e := m.scriptFS.Open(scriptName)
 		if e != nil {
-			return nil, fmt.Errorf("starlet: open: %w", e)
+			return nil, errorStarletError("run", e)
 		}
 		source = rd
 	} else {
-		return nil, fmt.Errorf("starlet: run: %w", ErrNoScriptSourceToRun)
+		return nil, errorStarletErrorf("run", "no script to execute")
 	}
 
 	// prepare thread
@@ -164,14 +156,12 @@ func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap) (out Str
 			if exitCode == 0 {
 				err = nil
 			} else {
-				err = fmt.Errorf("starlet: exit code: %d", exitCode)
+				err = errorStarletErrorf("run", "exit code: %d", exitCode)
 			}
 		} else {
-			// wrap other errors
-			err = fmt.Errorf("starlet: exec: %w", err)
+			// wrap starlark errors
+			err = errorStarlarkError("exec", err)
 		}
-
-		// TODO: call it convert error? maybe better error solutions
 		return out, err
 	}
 	return out, nil
@@ -183,16 +173,14 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 		// -- for the first run
 		// preset globals + preload modules + extras -> predeclared
 		if m.predeclared, err = convert.MakeStringDict(m.globals); err != nil {
-			return fmt.Errorf("starlet: convert globals: %w", err)
+			return errorStarlightConvert("globals", err)
 		}
 		if err = m.preloadMods.LoadAll(m.predeclared); err != nil {
-			// TODO: wrap the errors
-			return err
+			return errorStarletError("preload", err)
 		}
 		esd, err := convert.MakeStringDict(extras)
 		if err != nil {
-			// TODO: test it
-			return fmt.Errorf("starlet: convert extras: %w", err)
+			return errorStarlightConvert("extras", err)
 		}
 		for k, v := range esd {
 			m.predeclared[k] = v

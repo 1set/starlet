@@ -1,6 +1,7 @@
 package starlet_test
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"testing"
@@ -14,16 +15,16 @@ func TestMachine_Call_Preconditions(t *testing.T) {
 
 	// test: if name == ""
 	_, err := m.Call("")
-	expectErr(t, err, "no function name")
+	expectErr(t, err, "starlet: call: no function name")
 
 	// test: if m.thread == nil
 	_, err = m.Call("no_thread")
-	expectErr(t, err, "no function loaded")
+	expectErr(t, err, "starlet: call: no function loaded")
 
 	// test: if m.predeclared == nil
 	m.SetGlobals(map[string]interface{}{"x": 1})
 	_, err = m.Call("no_globals")
-	expectErr(t, err, "no function loaded")
+	expectErr(t, err, "starlet: call: no function loaded")
 
 	// prepare: run a script to load a function if exists
 	_, err = m.RunScript([]byte(`y = 2`), map[string]interface{}{
@@ -35,11 +36,14 @@ func TestMachine_Call_Preconditions(t *testing.T) {
 
 	// test: if no such function
 	_, err = m.Call("no_such_function")
-	expectErr(t, err, "no such function: no_such_function")
+	expectErr(t, err, "starlet: call: no such function: no_such_function")
 
 	// test: if mistyped function
 	_, err = m.Call("y")
-	expectErr(t, err, "mistyped function: y")
+	expectErr(t, err, "starlet: call: mistyped function: y")
+
+	ei := err.(starlet.ExecError).Unwrap()
+	expectErr(t, ei, "mistyped function: y")
 
 	// test: if builtin function
 	_, err = m.Call("println", "hello")
@@ -132,7 +136,7 @@ def work(x, y):
 	return x + y
 `,
 			args:    []interface{}{1, make(chan int64)},
-			wantErr: `convert arg: type chan int64 is not a supported starlark type`,
+			wantErr: `starlight: convert args: type chan int64 is not a supported starlark type`,
 		},
 		{
 			name: "invalid args",
@@ -141,7 +145,7 @@ def work(x, y):
 	return x + y
 `,
 			args:    []interface{}{1, "two"},
-			wantErr: `call: unknown binary op: int + string`,
+			wantErr: `starlark: call: unknown binary op: int + string`,
 		},
 		{
 			name: "func runtime error",
@@ -150,7 +154,7 @@ def work(x, y):
 	fail("oops")
 `,
 			args:    []interface{}{1, 2},
-			wantErr: `call: fail: oops`,
+			wantErr: `starlark: call: fail: oops`,
 		},
 		{
 			name: "func runtime panic",
@@ -159,7 +163,7 @@ def work(x, y):
 	panic("outside starlark")
 `,
 			args:    []interface{}{1, 2},
-			wantErr: `call: panic: as expected`,
+			wantErr: `starlark: call: panic: as expected`,
 		},
 	}
 
@@ -169,7 +173,7 @@ def work(x, y):
 			m := starlet.NewDefault()
 			_, err := m.RunScript([]byte(tt.code), map[string]interface{}{
 				"panic": starlark.NewBuiltin("panic", func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-					panic("as expected")
+					panic(errors.New("as expected"))
 				}),
 			})
 			if err != nil {
