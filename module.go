@@ -178,6 +178,7 @@ func MakeModuleLoaderFromFile(name string, fileSys fs.FS, predeclared starlark.S
 }
 
 // readScriptFile reads a script file from the given file system.
+// No need to wrap errors because they are usually used by the Starlark thread.
 func readScriptFile(name string, fileSys fs.FS) ([]byte, error) {
 	// precondition checks
 	if name == "" {

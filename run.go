@@ -159,11 +159,9 @@ func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap) (out Str
 				err = errorStarletErrorf("run", "exit code: %d", exitCode)
 			}
 		} else {
-			// wrap other errors
+			// wrap starlark errors
 			err = errorStarlarkError("exec", err)
 		}
-
-		// TODO: call it convert error? maybe better error solutions
 		return out, err
 	}
 	return out, nil
