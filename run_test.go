@@ -650,7 +650,7 @@ coins = 50
 			name:          "NonExist Preload Modules",
 			preloadMods:   []string{"nonexist"},
 			code:          `a = nil == None`,
-			expectedErr:   `starlet: module "nonexist": module not found`,
+			expectedErr:   `starlet: make: module not found: nonexist`,
 			expectedPanic: true,
 		},
 		// for lazyload modules
@@ -664,7 +664,7 @@ coins = 50
 			name:          "NonExist LazyLoad Modules",
 			lazyMods:      []string{"nonexist"},
 			code:          `load("nonexist", "nil"); a = nil == None`,
-			expectedErr:   `starlet: module "nonexist": module not found`,
+			expectedErr:   `starlet: make: module not found: nonexist`,
 			expectedPanic: true,
 		},
 		{

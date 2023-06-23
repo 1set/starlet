@@ -195,7 +195,7 @@ func Test_MakeBuiltinModuleLoaderList(t *testing.T) {
 		{
 			name:         "non-existent module",
 			modules:      []string{"non_existent"},
-			wantErr:      "starlet: module \"non_existent\": module not found",
+			wantErr:      "starlet: make: module not found: non_existent",
 			expectedSize: 1,
 		},
 	}
@@ -230,7 +230,7 @@ func Test_MakeBuiltinModuleLoaderMap(t *testing.T) {
 		{
 			name:         "non-existent module",
 			modules:      []string{"non_existent"},
-			wantErr:      "starlet: module \"non_existent\": module not found",
+			wantErr:      "starlet: make: module not found: non_existent",
 			expectedSize: 1,
 		},
 	}

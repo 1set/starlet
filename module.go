@@ -57,7 +57,7 @@ func MakeBuiltinModuleLoaderList(names []string) (ModuleLoaderList, error) {
 	for i, name := range names {
 		ld[i] = allBuiltinModules[name]
 		if ld[i] == nil {
-			return ld, fmt.Errorf("starlet: module %q: %w", name, ErrModuleNotFound)
+			return ld, errorStarletErrorf(`make`, "module not found: %s", name)
 		}
 	}
 	return ld, nil
@@ -120,7 +120,7 @@ func MakeBuiltinModuleLoaderMap(names []string) (ModuleLoaderMap, error) {
 	for _, name := range names {
 		ld[name] = allBuiltinModules[name]
 		if ld[name] == nil {
-			return ld, fmt.Errorf("starlet: module %q: %w", name, ErrModuleNotFound)
+			return ld, errorStarletErrorf(`make`, "module not found: %s", name)
 		}
 	}
 	return ld, nil
