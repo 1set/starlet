@@ -210,10 +210,12 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 
 		// cache load&read + printf -> thread
 		m.loadCache = &cache{
-			cache:    make(map[string]*entry),
-			loadMod:  m.lazyloadMods.GetLazyLoader(),
-			readFile: m.readFSFile,
-			globals:  m.predeclared,
+			cache:   make(map[string]*entry),
+			loadMod: m.lazyloadMods.GetLazyLoader(),
+			readFile: func(name string) ([]byte, error) {
+				return readScriptFile(name, m.scriptFS)
+			},
+			globals: m.predeclared,
 		}
 		m.thread = &starlark.Thread{
 			Name:  "starlet",
@@ -240,8 +242,4 @@ func (m *Machine) Reset() {
 	m.thread = nil
 	m.loadCache = nil
 	m.predeclared = nil
-}
-
-func (m *Machine) readFSFile(name string) ([]byte, error) {
-	return readScriptFile(name, m.scriptFS)
 }
