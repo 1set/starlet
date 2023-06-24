@@ -2,22 +2,22 @@ package starlet
 
 import "io/fs"
 
-// RunScript creates a new Machine, runs a script with additional variables, returns the machine and the result.
+// RunScript initiates a Machine, executes a script with extra variables, and returns the Machine and the execution result.
 func RunScript(content []byte, extras StringAnyMap) (*Machine, StringAnyMap, error) {
 	m := NewDefault()
 	res, err := m.RunScript(content, extras)
 	return m, res, err
 }
 
-// RunFile creates a new Machine, runs a script from a file with additional variables, returns the machine and the result.
+// RunFile initiates a Machine, executes a script from a file with extra variables, and returns the Machine and the execution result.
 func RunFile(name string, fileSys fs.FS, extras StringAnyMap) (*Machine, StringAnyMap, error) {
 	m := NewDefault()
 	res, err := m.RunFile(name, fileSys, extras)
 	return m, res, err
 }
 
-// RunTrustedScript creates a new Machine, runs a script with all builtin modules loaded and variables, which is unsafe, returns the machine and the result.
-// Warning: Loading all builtin modules can give the script access to the file system and network, making it unsafe.
+// RunTrustedScript initiates a Machine, executes a script with all builtin modules loaded and extra variables, returns the Machine and the result.
+// Use with caution as it allows script access to file system and network.
 func RunTrustedScript(content []byte, globals, extras StringAnyMap) (*Machine, StringAnyMap, error) {
 	ab := ListBuiltinModules()
 	m := NewWithNames(globals, ab, ab)
@@ -25,8 +25,8 @@ func RunTrustedScript(content []byte, globals, extras StringAnyMap) (*Machine, S
 	return m, res, err
 }
 
-// RunTrustedFile creates a new Machine, runs a script from a file with all builtin modules loaded and variables, which is unsafe, returns the machine and the result.
-// Warning: Loading all builtin modules can give the script access to the file system and network, making it unsafe.
+// RunTrustedFile initiates a Machine, executes a script from a file with all builtin modules loaded and extra variables, returns the Machine and the result.
+// Use with caution as it allows script access to file system and network.
 func RunTrustedFile(name string, fileSys fs.FS, globals, extras StringAnyMap) (*Machine, StringAnyMap, error) {
 	ab := ListBuiltinModules()
 	m := NewWithNames(globals, ab, ab)
