@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"sort"
 	"strings"
 
 	"github.com/1set/starlight/convert"
@@ -66,12 +67,39 @@ func MakeBuiltinModuleLoaderList(names []string) (ModuleLoaderList, error) {
 type ModuleLoaderMap map[string]ModuleLoader
 
 // Clone returns a copy of the map.
-func (m ModuleLoaderMap) Clone() map[string]ModuleLoader {
+func (m ModuleLoaderMap) Clone() ModuleLoaderMap {
 	clone := make(map[string]ModuleLoader, len(m))
 	for k, v := range m {
 		clone[k] = v
 	}
 	return clone
+}
+
+// Keys returns the keys of the map, sorted in ascending order of the keys.
+func (m ModuleLoaderMap) Keys() []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// Values returns the elements of the map, sorted in ascending order of the keys.
+func (m ModuleLoaderMap) Values() []ModuleLoader {
+	keys := m.Keys()
+	values := make([]ModuleLoader, 0, len(keys))
+	for _, k := range keys {
+		values = append(values, m[k])
+	}
+	return values
+}
+
+// Merge merges the given map into the map.
+func (m ModuleLoaderMap) Merge(other ModuleLoaderMap) {
+	for k := range other {
+		m[k] = other[k]
+	}
 }
 
 // GetLazyLoader returns a lazy loader that loads the module with the given name.

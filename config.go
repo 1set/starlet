@@ -1,8 +1,6 @@
 package starlet
 
 import (
-	"sort"
-
 	"github.com/1set/starlet/lib/goidiomatic"
 	sjson "go.starlark.net/lib/json"
 	smath "go.starlark.net/lib/math"
@@ -40,12 +38,7 @@ var allBuiltinModules = ModuleLoaderMap{
 
 // ListBuiltinModules returns a list of all builtin modules.
 func ListBuiltinModules() []string {
-	modules := make([]string, 0, len(allBuiltinModules))
-	for k := range allBuiltinModules {
-		modules = append(modules, k)
-	}
-	sort.Strings(modules)
-	return modules
+	return allBuiltinModules.Keys()
 }
 
 // GetBuiltinModule returns the builtin module with the given name.
