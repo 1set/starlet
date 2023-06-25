@@ -3,6 +3,7 @@ package starlet_test
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"math"
 	"reflect"
@@ -242,7 +243,7 @@ func (f *MemFile) Stat() (fs.FileInfo, error) {
 
 func (f *MemFile) Read(p []byte) (n int, err error) {
 	if f.pos >= len(f.data) {
-		return 0, fs.ErrClosed
+		return 0, io.EOF // Indicate end of file
 	}
 
 	n = copy(p, f.data[f.pos:])

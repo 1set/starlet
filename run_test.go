@@ -1788,6 +1788,18 @@ func TestRunFile(t *testing.T) {
 			wantErr:   true,
 		},
 		{
+			name:      "incorrect file name",
+			inputName: "a.star",
+			inputFS:   MemFS{"b.star": `a = 123`},
+			wantErr:   true,
+		},
+		{
+			name:      "empty file",
+			inputName: "a.star",
+			inputFS:   MemFS{"a.star": ``},
+			wantRes:   starlet.StringAnyMap{},
+		},
+		{
 			name:      "simple assignment",
 			inputName: "a.star",
 			inputFS:   MemFS{"a.star": `a = 123`},
