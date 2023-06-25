@@ -1,22 +1,24 @@
-package hash
+package hash_test
 
 import (
 	"testing"
 
-	"github.com/qri-io/starlib/testdata"
-	"go.starlark.net/resolve"
-	"go.starlark.net/starlark"
-	"go.starlark.net/starlarktest"
+	"github.com/1set/starlet/lib/hash"
+	itn "github.com/1set/starlet/lib/internal"
 )
 
-func TestFile(t *testing.T) {
-	resolve.AllowFloat = true
-	thread := &starlark.Thread{Load: testdata.NewLoader(LoadModule, ModuleName)}
-	starlarktest.SetReporter(thread, t)
+func TestLoadModule_Hash(t *testing.T) {
+	code := itn.HereDoc(`
+	load('hash', 'hash')
+	load('assert.star', 'assert')
 
-	// Execute test file
-	_, err := starlark.ExecFile(thread, "testdata/test.star", nil, nil)
+	assert.eq(hash.md5("helloworld"), "fc5e038d38a57032085441e7fe7010b0")
+	assert.eq(hash.sha1("helloworld"), "6adfb183a4a2c94a2f92dab5ade762a47889a5a1")
+	assert.eq(hash.sha256("helloworld"), "936a185caaa266bb9cbe981e9e05cb78cd732b0b3280eb944412bb6f8f8f07af")
+	`)
+
+	_, err := itn.ExecModuleWithErrorTest(t, hash.ModuleName, hash.LoadModule, code, nil)
 	if err != nil {
-		t.Error(err)
+		return
 	}
 }
