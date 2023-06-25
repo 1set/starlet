@@ -2,6 +2,7 @@ package starlet
 
 import (
 	"github.com/1set/starlet/lib/goidiomatic"
+	"github.com/1set/starlet/lib/hash"
 	sjson "go.starlark.net/lib/json"
 	smath "go.starlark.net/lib/math"
 	stime "go.starlark.net/lib/time"
@@ -34,6 +35,8 @@ var allBuiltinModules = ModuleLoaderMap{
 			"time": stime.Module,
 		}, nil
 	},
+	// add third-party modules
+	hash.ModuleName: hash.LoadModule,
 }
 
 // GetAllBuiltinModuleNames returns a list of all builtin module names.

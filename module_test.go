@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	builtinModules = []string{"go_idiomatic", "json", "math", "struct", "time"}
+	builtinModules = []string{"go_idiomatic", "hash", "json", "math", "struct", "time"}
 )
 
 func TestListBuiltinModules(t *testing.T) {
