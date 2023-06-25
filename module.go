@@ -95,8 +95,11 @@ func (m ModuleLoaderMap) Values() []ModuleLoader {
 	return values
 }
 
-// Merge merges the given map into the map.
+// Merge merges the given map into the map. It does nothing if the current map is nil.
 func (m ModuleLoaderMap) Merge(other ModuleLoaderMap) {
+	if m == nil {
+		return
+	}
 	for k := range other {
 		m[k] = other[k]
 	}

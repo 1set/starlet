@@ -165,6 +165,15 @@ func (m *Machine) GetPreloadModules() ModuleLoaderList {
 	return m.preloadMods.Clone()
 }
 
+// AddPreloadModules adds the preload modules of the Starlark runtime environment.
+// These modules only take effect before the first run or after a reset.
+func (m *Machine) AddPreloadModules(mods ModuleLoaderList) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.preloadMods = append(m.preloadMods, mods...)
+}
+
 // SetLazyloadModules sets the modules allowed to be loaded later of the Starlark runtime environment.
 func (m *Machine) SetLazyloadModules(mods ModuleLoaderMap) {
 	m.mu.Lock()
@@ -179,6 +188,17 @@ func (m *Machine) GetLazyloadModules() ModuleLoaderMap {
 	defer m.mu.RUnlock()
 
 	return m.lazyloadMods.Clone()
+}
+
+// AddLazyloadModules adds the modules allowed to be loaded later of the Starlark runtime environment.
+func (m *Machine) AddLazyloadModules(mods ModuleLoaderMap) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.lazyloadMods == nil {
+		m.lazyloadMods = make(ModuleLoaderMap)
+	}
+	m.lazyloadMods.Merge(mods)
 }
 
 // SetPrintFunc sets the print function of the Starlark runtime environment.
@@ -211,7 +231,7 @@ func (d StringAnyMap) Clone() StringAnyMap {
 	return clone
 }
 
-// Merge merges the given data store into the current data store.
+// Merge merges the given data store into the current data store. It does nothing if the current data store is nil.
 func (d StringAnyMap) Merge(other StringAnyMap) {
 	if d == nil {
 		return
