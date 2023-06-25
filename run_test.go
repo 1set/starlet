@@ -1836,3 +1836,75 @@ func TestRunFile(t *testing.T) {
 		})
 	}
 }
+
+func TestRunTrustedScript(t *testing.T) {
+	tests := []struct {
+		name    string
+		code    string
+		globals starlet.StringAnyMap
+		extras  starlet.StringAnyMap
+		wantRes starlet.StringAnyMap
+		wantErr bool
+	}{
+		{
+			name:    "no code",
+			wantRes: starlet.StringAnyMap{},
+		},
+		{
+			name:    "only extra",
+			extras:  starlet.StringAnyMap{"a": 123},
+			wantRes: starlet.StringAnyMap{},
+		},
+		{
+			name:    "only globals",
+			globals: starlet.StringAnyMap{"a": 123},
+			wantRes: starlet.StringAnyMap{},
+		},
+		{
+			name:    "simple assignment",
+			code:    `a = 123`,
+			wantRes: starlet.StringAnyMap{"a": int64(123)},
+		},
+		{
+			name:    "simple assignment with extra",
+			code:    `a = 123`,
+			extras:  starlet.StringAnyMap{"b": 456},
+			wantRes: starlet.StringAnyMap{"a": int64(123)},
+		},
+		{
+			name:    "simple assignment with globals",
+			code:    `a = 123`,
+			globals: starlet.StringAnyMap{"b": 456},
+			wantRes: starlet.StringAnyMap{"a": int64(123)},
+		},
+		{
+			name:    "assignment with extra and globals",
+			code:    `a = x + y`,
+			globals: starlet.StringAnyMap{"x": 100},
+			extras:  starlet.StringAnyMap{"y": 200},
+			wantRes: starlet.StringAnyMap{"a": int64(300)},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m, res, err := starlet.RunTrustedScript([]byte(tt.code), tt.globals, tt.extras)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("RunTrustedScript() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if m == nil {
+				t.Errorf("RunTrustedScript() got nil machine")
+				return
+			}
+			if !reflect.DeepEqual(res, tt.wantRes) {
+				t.Errorf("RunTrustedScript() got = %v, want %v", res, tt.wantRes)
+				return
+			}
+			if tt.wantErr && err == nil {
+				t.Errorf("RunTrustedScript() expected error, got nil")
+			} else if !tt.wantErr && err != nil {
+				t.Errorf("RunTrustedScript() expected no error, got %v", err)
+			}
+		})
+	}
+}
