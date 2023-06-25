@@ -1925,3 +1925,71 @@ func TestRunTrustedScript(t *testing.T) {
 		})
 	}
 }
+
+func TestRunTrustedFile(t *testing.T) {
+	tests := []struct {
+		name      string
+		inputName string
+		inputFS   fs.FS
+		globals   starlet.StringAnyMap
+		extras    starlet.StringAnyMap
+		wantRes   starlet.StringAnyMap
+		wantErr   bool
+	}{
+		{
+			name:    "no file",
+			inputFS: MemFS{},
+			wantRes: starlet.StringAnyMap{},
+			wantErr: true,
+		},
+		{
+			name:      "empty file",
+			inputName: "a.star",
+			inputFS:   MemFS{"a.star": ``},
+			wantRes:   starlet.StringAnyMap{},
+		},
+		{
+			name:      "simple assignment",
+			inputName: "a.star",
+			inputFS:   MemFS{"a.star": `a = 123`},
+			wantRes:   starlet.StringAnyMap{"a": int64(123)},
+		},
+		{
+			name:      "simple assignment with extra",
+			inputName: "a.star",
+			inputFS:   MemFS{"a.star": `a = b`},
+			extras:    starlet.StringAnyMap{"b": 456},
+			wantRes:   starlet.StringAnyMap{"a": int64(456)},
+		},
+		{
+			name:      "use of builtins",
+			inputName: "a.star",
+			inputFS:   MemFS{"a.star": `a = math.sqrt(x) + math.sqrt(y)`},
+			globals:   starlet.StringAnyMap{"x": 4},
+			extras:    starlet.StringAnyMap{"y": 9},
+			wantRes:   starlet.StringAnyMap{"a": 5.0},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m, res, err := starlet.RunTrustedFile(tt.inputName, tt.inputFS, tt.globals, tt.extras)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("RunTrustedFile() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			} else if err != nil {
+				return
+			}
+			if m == nil {
+				t.Errorf("RunTrustedFile() got nil machine")
+				return
+			}
+			if !reflect.DeepEqual(res, tt.wantRes) {
+				t.Errorf("RunTrustedFile() got = %v, want %v", res, tt.wantRes)
+				return
+			}
+			if tt.wantErr && err == nil {
+				t.Errorf("RunTrustedFile() expected error, got nil")
+			}
+		})
+	}
+}
