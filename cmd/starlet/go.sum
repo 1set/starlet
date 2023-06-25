@@ -5,8 +5,8 @@ bitbucket.org/neiku/winornot v0.0.4/go.mod h1:xzKlwxkpGIumHbxwUrB41kFIra8gz/ZZgJ
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 github.com/1set/gut v0.0.0-20201117175203-a82363231997 h1:za2jSkE1Rx56hTzBko3ZZ4gA/nq+rA/jVovWuAF4jyo=
 github.com/1set/gut v0.0.0-20201117175203-a82363231997/go.mod h1:DpCCAL0dgBMQdiqPUIIRpdU9zNcIZwJjW+L/8Mb30mw=
-github.com/1set/starlet v0.0.0-20230621082133-7d4a5538bc44 h1:QbNs6ZqYWp2C4BQCLYzHlfS9X+eWxNfEgoMasgsAy6Q=
-github.com/1set/starlet v0.0.0-20230621082133-7d4a5538bc44/go.mod h1:YqAlp938q46GhOTZNz+fkJolEsTUCsZEdFzx7MdpLOA=
+github.com/1set/starlet v0.0.1 h1:UrginJ0i/43e0rhbYv+7t1Sg0MUmjeJB6y8oLjviwZk=
+github.com/1set/starlet v0.0.1/go.mod h1:YqAlp938q46GhOTZNz+fkJolEsTUCsZEdFzx7MdpLOA=
 github.com/1set/starlight v0.0.2 h1:SeBCIv4VdjF61Fh6P4hmDqE4oOKMuqCnG7tfVv+OQuk=
 github.com/1set/starlight v0.0.2/go.mod h1:xwY+rrC/P9U2qj6ADrwKgqPaVlvcKl3PE3u1zJVYunE=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=

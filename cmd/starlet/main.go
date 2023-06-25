@@ -1,3 +1,4 @@
+// A simple example of using the Starlet REPL or running a script.
 package main
 
 import (
@@ -23,7 +24,7 @@ var (
 )
 
 var (
-	defaultPreloadModules = starlet.ListBuiltinModules()
+	defaultPreloadModules = starlet.GetAllBuiltinModuleNames()
 )
 
 func init() {
