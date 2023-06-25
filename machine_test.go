@@ -1,50 +1,47 @@
 package starlet_test
 
 import (
-	"github.com/1set/starlet"
-	"reflect"
 	"testing"
+
+	"github.com/1set/starlet"
 )
 
 func TestNewDefault(t *testing.T) {
-	t.Skip()
 	m := starlet.NewDefault()
 	if m == nil {
 		t.Errorf("expected not nil, got nil machine")
 	}
 	// check the rest of the fields
-	if g := m.GetGlobals(); g != nil {
-		t.Errorf("expected nil globals, got %v", g)
+	if gg := m.GetGlobals(); len(gg) != 0 {
+		t.Errorf("expected empty globals, got %v", gg)
 	}
-	if p := m.GetPreloadModules(); len(p) != 0 {
-		t.Errorf("expected empty preload modules, got %v", p)
+	if pp := m.GetPreloadModules(); len(pp) != 0 {
+		t.Errorf("expected empty preload modules, got %v", pp)
 	}
-	if l := m.GetLazyloadModules(); len(l) != 0 {
-		t.Errorf("expected empty lazyload modules, got %v", l)
+	if ll := m.GetLazyloadModules(); len(ll) != 0 {
+		t.Errorf("expected empty lazyload modules, got %v", ll)
 	}
 }
 
 func TestNewWithGlobals(t *testing.T) {
-	t.Skip()
 	g := starlet.StringAnyMap{"x": 1}
 	m := starlet.NewWithGlobals(g)
 	if m == nil {
 		t.Errorf("expected not nil, got nil machine")
 	}
-	if gg := m.GetGlobals(); !reflect.DeepEqual(g, gg) {
-		t.Errorf("expected %v, got %v", g, gg)
+	if gg := m.GetGlobals(); !expectEqualStringAnyMap(t, gg, g) {
+		return
 	}
 	// check the rest of the fields
-	if p := m.GetPreloadModules(); len(p) != 0 {
-		t.Errorf("expected empty preload modules, got %v", p)
+	if pp := m.GetPreloadModules(); len(pp) != 0 {
+		t.Errorf("expected empty preload modules, got %v", pp)
 	}
-	if l := m.GetLazyloadModules(); len(l) != 0 {
-		t.Errorf("expected empty lazyload modules, got %v", l)
+	if ll := m.GetLazyloadModules(); len(ll) != 0 {
+		t.Errorf("expected empty lazyload modules, got %v", ll)
 	}
 }
 
 func TestNewWithLoaders(t *testing.T) {
-	t.Skip()
 	p, err := starlet.MakeBuiltinModuleLoaderList("json")
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
@@ -58,13 +55,13 @@ func TestNewWithLoaders(t *testing.T) {
 	if m == nil {
 		t.Errorf("expected not nil, got nil machine")
 	}
-	if gg := m.GetGlobals(); !reflect.DeepEqual(g, gg) {
-		t.Errorf("expected %v, got %v", g, gg)
+	if gg := m.GetGlobals(); !expectEqualStringAnyMap(t, gg, g) {
+		return
 	}
-	if pp := m.GetPreloadModules(); !reflect.DeepEqual(p, pp) {
-		t.Errorf("expected %v, got %v", p, pp)
+	if pp := m.GetPreloadModules(); !expectEqualModuleList(t, pp, p) {
+		return
 	}
-	if ll := m.GetLazyloadModules(); !reflect.DeepEqual(l, ll) {
-		t.Errorf("expected %v, got %v", l, ll)
+	if ll := m.GetLazyloadModules(); !expectEqualModuleMap(t, ll, l) {
+		return
 	}
 }
