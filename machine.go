@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"sync"
 
+	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 )
 
@@ -217,6 +218,14 @@ func (m *Machine) SetScript(name string, content []byte, fileSys fs.FS) {
 	m.scriptName = name
 	m.scriptContent = content
 	m.scriptFS = fileSys
+}
+
+// Export returns the current variables of the Starlark runtime environment.
+func (m *Machine) Export() StringAnyMap {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return convert.FromStringDict(m.predeclared)
 }
 
 // StringAnyMap type is a map of string to interface{} and is used to store global variables like StringDict of Starlark, but not a Starlark type.
