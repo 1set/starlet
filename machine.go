@@ -58,6 +58,14 @@ func (m *Machine) String() string {
 		m.runTimes, steps, m.scriptName, len(m.scriptContent), m.scriptFS)
 }
 
+// PrintFunc is a function that tells Starlark how to print messages.
+// If nil, the default `fmt.Fprintln(os.Stderr, msg)` will be used instead.
+type PrintFunc func(thread *starlark.Thread, msg string)
+
+// LoadFunc is a function that tells Starlark how to find and load other scripts
+// using the load() function. If you don't use load() in your scripts, you can pass in nil.
+type LoadFunc func(thread *starlark.Thread, module string) (starlark.StringDict, error)
+
 // NewDefault creates a new Starlark runtime environment.
 func NewDefault() *Machine {
 	return &Machine{}
@@ -70,7 +78,7 @@ func NewWithGlobals(globals StringAnyMap) *Machine {
 	}
 }
 
-// NewWithLoaders creates a new Starlark runtime environment with given global variables and preload module loaders.
+// NewWithLoaders creates a new Starlark runtime environment with given global variables and preload & lazyload module loaders.
 func NewWithLoaders(globals StringAnyMap, preload ModuleLoaderList, lazyload ModuleLoaderMap) *Machine {
 	return &Machine{
 		globals:      globals,
@@ -79,14 +87,26 @@ func NewWithLoaders(globals StringAnyMap, preload ModuleLoaderList, lazyload Mod
 	}
 }
 
+// NewWithBuiltins creates a new Starlark runtime environment with given global variables and all preload & lazyload built-in modules.
+func NewWithBuiltins(globals StringAnyMap, additionalPreload ModuleLoaderList, additionalLazyload ModuleLoaderMap) *Machine {
+	pre := append(GetAllBuiltinModules(), additionalPreload...)
+	lazy := GetBuiltinModuleMap()
+	lazy.Merge(additionalLazyload)
+	return &Machine{
+		globals:      globals,
+		preloadMods:  pre,
+		lazyloadMods: lazy,
+	}
+}
+
 // NewWithNames creates a new Starlark runtime environment with given global variables, preload and lazyload module names.
 // The modules should be built-in modules, and it panics if any of the given modules fails to load.
 func NewWithNames(globals StringAnyMap, preloads []string, lazyloads []string) *Machine {
-	pre, err := MakeBuiltinModuleLoaderList(preloads)
+	pre, err := MakeBuiltinModuleLoaderList(preloads...)
 	if err != nil {
 		panic(err)
 	}
-	lazy, err := MakeBuiltinModuleLoaderMap(lazyloads)
+	lazy, err := MakeBuiltinModuleLoaderMap(lazyloads...)
 	if err != nil {
 		panic(err)
 	}
@@ -125,7 +145,7 @@ func (m *Machine) GetGlobals() StringAnyMap {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	return m.globals
+	return m.globals.Clone()
 }
 
 // SetPreloadModules sets the preload modules of the Starlark runtime environment.
@@ -145,6 +165,15 @@ func (m *Machine) GetPreloadModules() ModuleLoaderList {
 	return m.preloadMods.Clone()
 }
 
+// AddPreloadModules adds the preload modules of the Starlark runtime environment.
+// These modules only take effect before the first run or after a reset.
+func (m *Machine) AddPreloadModules(mods ModuleLoaderList) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.preloadMods = append(m.preloadMods, mods...)
+}
+
 // SetLazyloadModules sets the modules allowed to be loaded later of the Starlark runtime environment.
 func (m *Machine) SetLazyloadModules(mods ModuleLoaderMap) {
 	m.mu.Lock()
@@ -159,6 +188,17 @@ func (m *Machine) GetLazyloadModules() ModuleLoaderMap {
 	defer m.mu.RUnlock()
 
 	return m.lazyloadMods.Clone()
+}
+
+// AddLazyloadModules adds the modules allowed to be loaded later of the Starlark runtime environment.
+func (m *Machine) AddLazyloadModules(mods ModuleLoaderMap) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.lazyloadMods == nil {
+		m.lazyloadMods = make(ModuleLoaderMap)
+	}
+	m.lazyloadMods.Merge(mods)
 }
 
 // SetPrintFunc sets the print function of the Starlark runtime environment.
@@ -191,7 +231,7 @@ func (d StringAnyMap) Clone() StringAnyMap {
 	return clone
 }
 
-// Merge merges the given data store into the current data store.
+// Merge merges the given data store into the current data store. It does nothing if the current data store is nil.
 func (d StringAnyMap) Merge(other StringAnyMap) {
 	if d == nil {
 		return
