@@ -129,3 +129,74 @@ func TestNewWithNames_LazyNotExist(t *testing.T) {
 	g := starlet.StringAnyMap{"x": 6}
 	_ = starlet.NewWithNames(g, []string{"json"}, []string{"math", "time", "not-exist"})
 }
+
+func TestMachine_Field_PreloadModules(t *testing.T) {
+	p1, err := starlet.MakeBuiltinModuleLoaderList("json")
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	p2, err := starlet.MakeBuiltinModuleLoaderList("math")
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	p3, err := starlet.MakeBuiltinModuleLoaderList("time")
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	m := starlet.NewDefault()
+	// empty
+	if pp := m.GetPreloadModules(); len(pp) != 0 {
+		t.Errorf("expected empty preload modules, got %v", pp)
+	}
+	// empty add
+	m.AddPreloadModules(p3)
+	if pp := m.GetPreloadModules(); !expectEqualModuleList(t, pp, p3) {
+		return
+	}
+	// set
+	m.SetPreloadModules(p1)
+	if pp := m.GetPreloadModules(); !expectEqualModuleList(t, pp, p1) {
+		return
+	}
+	// add
+	m.AddPreloadModules(p2)
+	if pp := m.GetPreloadModules(); !expectEqualModuleList(t, pp, append(p1, p2...)) {
+		return
+	}
+}
+
+func TestMachine_Field_LazyloadModules(t *testing.T) {
+	l1, err := starlet.MakeBuiltinModuleLoaderMap("json")
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	l2, err := starlet.MakeBuiltinModuleLoaderMap("math")
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	l3, err := starlet.MakeBuiltinModuleLoaderMap("time")
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	m := starlet.NewDefault()
+	// empty
+	if ll := m.GetLazyloadModules(); len(ll) != 0 {
+		t.Errorf("expected empty lazyload modules, got %v", ll)
+	}
+	// empty add
+	m.AddLazyloadModules(l3)
+	if ll := m.GetLazyloadModules(); !expectEqualModuleMap(t, ll, l3) {
+		return
+	}
+	// set
+	m.SetLazyloadModules(l1)
+	if ll := m.GetLazyloadModules(); !expectEqualModuleMap(t, ll, l1) {
+		return
+	}
+	// add
+	m.AddLazyloadModules(l2)
+	l2.Merge(l1) // new l2
+	if ll := m.GetLazyloadModules(); !expectEqualModuleMap(t, ll, l2) {
+		return
+	}
+}
