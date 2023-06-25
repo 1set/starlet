@@ -1760,3 +1760,67 @@ func TestRunScript(t *testing.T) {
 		})
 	}
 }
+
+func TestRunFile(t *testing.T) {
+	tests := []struct {
+		name      string
+		inputName string
+		inputFS   fs.FS
+		extras    starlet.StringAnyMap
+		wantRes   starlet.StringAnyMap
+		wantErr   bool
+	}{
+		{
+			name:      "no file",
+			inputName: "no-file.star",
+			inputFS:   MemFS{},
+			wantErr:   true,
+		},
+		{
+			name:      "no file name",
+			inputName: "",
+			inputFS:   MemFS{"a.star": `a = 123`},
+			wantErr:   true,
+		},
+		{
+			name:      "no file system",
+			inputName: "no-fs.star",
+			wantErr:   true,
+		},
+		{
+			name:      "simple assignment",
+			inputName: "a.star",
+			inputFS:   MemFS{"a.star": `a = 123`},
+			wantRes:   starlet.StringAnyMap{"a": int64(123)},
+		},
+		{
+			name:      "simple assignment with extra",
+			inputName: "a.star",
+			inputFS:   MemFS{"a.star": `a = b`},
+			extras:    starlet.StringAnyMap{"b": 456},
+			wantRes:   starlet.StringAnyMap{"a": int64(456)},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m, res, err := starlet.RunFile(tt.inputName, tt.inputFS, tt.extras)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("RunFile() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			} else if err != nil {
+				return
+			}
+			if m == nil {
+				t.Errorf("RunFile() got nil machine")
+				return
+			}
+			if !reflect.DeepEqual(res, tt.wantRes) {
+				t.Errorf("RunFile() got = %v, want %v", res, tt.wantRes)
+				return
+			}
+			if tt.wantErr && err == nil {
+				t.Errorf("RunFile() expected error, got nil")
+			}
+		})
+	}
+}

@@ -3,6 +3,7 @@ package starlet_test
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"math"
 	"reflect"
 	"runtime"
@@ -213,4 +214,72 @@ func (r *errorReader) Read(p []byte) (n int, err error) {
 	}
 	copy(p, r.data)
 	return len(r.data), nil
+}
+
+// MemFS is an in-memory filesystem.
+type MemFS map[string]string
+
+func (m MemFS) Open(name string) (fs.File, error) {
+	if data, ok := m[name]; ok {
+		return &MemFile{data: data, name: name}, nil
+	}
+	return nil, fs.ErrNotExist
+}
+
+// MemFile is an in-memory file.
+type MemFile struct {
+	data string
+	name string
+	pos  int
+}
+
+func (f *MemFile) Stat() (fs.FileInfo, error) {
+	return &MemFileInfo{
+		name: f.name,
+		size: len(f.data),
+	}, nil
+}
+
+func (f *MemFile) Read(p []byte) (n int, err error) {
+	if f.pos >= len(f.data) {
+		return 0, fs.ErrClosed
+	}
+
+	n = copy(p, f.data[f.pos:])
+	f.pos += n
+	return n, nil
+}
+
+func (f *MemFile) Close() error {
+	return nil
+}
+
+// MemFileInfo is an in-memory file info.
+type MemFileInfo struct {
+	name string
+	size int
+}
+
+func (fi *MemFileInfo) Name() string {
+	return fi.name
+}
+
+func (fi *MemFileInfo) Size() int64 {
+	return int64(fi.size)
+}
+
+func (fi *MemFileInfo) Mode() fs.FileMode {
+	return 0444 // read-only
+}
+
+func (fi *MemFileInfo) ModTime() time.Time {
+	return time.Time{} // zero time
+}
+
+func (fi *MemFileInfo) IsDir() bool {
+	return false
+}
+
+func (fi *MemFileInfo) Sys() interface{} {
+	return nil
 }
