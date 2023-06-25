@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -1693,4 +1694,69 @@ res = ans % 100
 		t.Errorf("Unexpected result: %v", out)
 	}
 	t.Logf("got result after run #5: %v", out)
+}
+
+func TestRunScript(t *testing.T) {
+	tests := []struct {
+		name    string
+		code    string
+		extras  starlet.StringAnyMap
+		wantRes starlet.StringAnyMap
+		wantErr bool
+	}{
+		{
+			name:    "no code",
+			wantRes: starlet.StringAnyMap{},
+		},
+		{
+			name:    "only extra",
+			extras:  starlet.StringAnyMap{"a": 123},
+			wantRes: starlet.StringAnyMap{},
+		},
+		{
+			name:    "simple assignment",
+			code:    `a = 123`,
+			wantRes: starlet.StringAnyMap{"a": int64(123)},
+		},
+		{
+			name:    "simple assignment with extra",
+			code:    `a = 123`,
+			extras:  starlet.StringAnyMap{"b": 456},
+			wantRes: starlet.StringAnyMap{"a": int64(123)},
+		},
+		{
+			name:    "simple assignment overrides extra",
+			code:    `a = 123`,
+			extras:  starlet.StringAnyMap{"a": 456},
+			wantRes: starlet.StringAnyMap{"a": int64(123)},
+		},
+		{
+			name:    "simple assignment and extra",
+			code:    `b = a`,
+			extras:  starlet.StringAnyMap{"a": 456},
+			wantRes: starlet.StringAnyMap{"b": int64(456)},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m, res, err := starlet.RunScript([]byte(tt.code), tt.extras)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("RunScript() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if m == nil {
+				t.Errorf("RunScript() got nil machine")
+				return
+			}
+			if !reflect.DeepEqual(res, tt.wantRes) {
+				t.Errorf("RunScript() got = %v, want %v", res, tt.wantRes)
+				return
+			}
+			if tt.wantErr && err == nil {
+				t.Errorf("RunScript() expected error, got nil")
+			} else if !tt.wantErr && err != nil {
+				t.Errorf("RunScript() expected no error, got %v", err)
+			}
+		})
+	}
 }
