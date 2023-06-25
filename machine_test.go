@@ -130,6 +130,36 @@ func TestNewWithNames_LazyNotExist(t *testing.T) {
 	_ = starlet.NewWithNames(g, []string{"json"}, []string{"math", "time", "not-exist"})
 }
 
+func TestMachine_Field_Globals(t *testing.T) {
+	g := starlet.StringAnyMap{"x": 7}
+	g2 := starlet.StringAnyMap{"y": 8}
+	m := starlet.NewDefault()
+	// empty
+	if gg := m.GetGlobals(); len(gg) != 0 {
+		t.Errorf("expected empty globals, got %v", gg)
+	}
+	// empty set
+	m.SetGlobals(g)
+	if gg := m.GetGlobals(); !expectEqualStringAnyMap(t, gg, g) {
+		return
+	}
+	// non-empty set
+	m.SetGlobals(nil)
+	if gg := m.GetGlobals(); len(gg) != 0 {
+		t.Errorf("expected empty globals, got %v", gg)
+	}
+	// empty add
+	m.AddGlobals(g)
+	if gg := m.GetGlobals(); !expectEqualStringAnyMap(t, gg, g) {
+		return
+	}
+	// non-empty add
+	m.AddGlobals(g2)
+	if gg := m.GetGlobals(); !expectEqualStringAnyMap(t, gg, starlet.StringAnyMap{"x": 7, "y": 8}) {
+		return
+	}
+}
+
 func TestMachine_Field_PreloadModules(t *testing.T) {
 	p1, err := starlet.MakeBuiltinModuleLoaderList("json")
 	if err != nil {
