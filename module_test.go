@@ -128,6 +128,43 @@ func Test_ModuleLoaderMap_Clone(t *testing.T) {
 	}
 }
 
+func Test_ModuleLoaderMap_Merge(t *testing.T) {
+	original := starlet.ModuleLoaderMap{
+		"go_idiomatic": starlet.GetBuiltinModule("go_idiomatic"),
+		"struct":       starlet.GetBuiltinModule("struct"),
+	}
+	other := starlet.ModuleLoaderMap{
+		"go_idiomatic": starlet.GetBuiltinModule("go_idiomatic"),
+		"time":         starlet.GetBuiltinModule("time"),
+	}
+	expected := starlet.ModuleLoaderMap{
+		"go_idiomatic": starlet.GetBuiltinModule("go_idiomatic"),
+		"struct":       starlet.GetBuiltinModule("struct"),
+		"time":         starlet.GetBuiltinModule("time"),
+	}
+	var nilMap starlet.ModuleLoaderMap
+
+	original.Merge(other)
+	if len(original) != 3 {
+		t.Errorf("Expected merged map length %d, got %d", 3, len(original))
+	}
+	for k := range original {
+		if _, ok := expected[k]; !ok {
+			t.Errorf("Unexpected key %q in merged map", k)
+		}
+	}
+
+	nilMap.Merge(other)
+	if len(nilMap) != 0 {
+		t.Errorf("Expected merged nil map length %d, got %d", 0, len(nilMap))
+	}
+
+	other.Merge(nilMap)
+	if len(other) != 2 {
+		t.Errorf("Expected merged other map length %d, got %d", 2, len(other))
+	}
+}
+
 func Test_ModuleLoaderMap_GetLazyLoader(t *testing.T) {
 	failName, failLoader := getErrorModuleLoader()
 	tests := []struct {
