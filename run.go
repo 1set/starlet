@@ -11,13 +11,35 @@ import (
 	"go.starlark.net/starlark"
 )
 
-// PrintFunc is a function that tells Starlark how to print messages.
-// If nil, the default `fmt.Fprintln(os.Stderr, msg)` will be used instead.
-type PrintFunc func(thread *starlark.Thread, msg string)
+// RunScript initiates a Machine, executes a script with extra variables, and returns the Machine and the execution result.
+func RunScript(content []byte, extras StringAnyMap) (*Machine, StringAnyMap, error) {
+	m := NewDefault()
+	res, err := m.RunScript(content, extras)
+	return m, res, err
+}
 
-// LoadFunc is a function that tells Starlark how to find and load other scripts
-// using the load() function. If you don't use load() in your scripts, you can pass in nil.
-type LoadFunc func(thread *starlark.Thread, module string) (starlark.StringDict, error)
+// RunFile initiates a Machine, executes a script from a file with extra variables, and returns the Machine and the execution result.
+func RunFile(name string, fileSys fs.FS, extras StringAnyMap) (*Machine, StringAnyMap, error) {
+	m := NewDefault()
+	res, err := m.RunFile(name, fileSys, extras)
+	return m, res, err
+}
+
+// RunTrustedScript initiates a Machine, executes a script with all builtin modules loaded and extra variables, returns the Machine and the result.
+// Use with caution as it allows script access to file system and network.
+func RunTrustedScript(content []byte, globals, extras StringAnyMap) (*Machine, StringAnyMap, error) {
+	m := NewWithBuiltins(globals, nil, nil)
+	res, err := m.RunScript(content, extras)
+	return m, res, err
+}
+
+// RunTrustedFile initiates a Machine, executes a script from a file with all builtin modules loaded and extra variables, returns the Machine and the result.
+// Use with caution as it allows script access to file system and network.
+func RunTrustedFile(name string, fileSys fs.FS, globals, extras StringAnyMap) (*Machine, StringAnyMap, error) {
+	m := NewWithBuiltins(globals, nil, nil)
+	res, err := m.RunFile(name, fileSys, extras)
+	return m, res, err
+}
 
 // Run executes a preset script and returns the output.
 func (m *Machine) Run() (StringAnyMap, error) {
@@ -188,10 +210,12 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 
 		// cache load&read + printf -> thread
 		m.loadCache = &cache{
-			cache:    make(map[string]*entry),
-			loadMod:  m.lazyloadMods.GetLazyLoader(),
-			readFile: m.readFSFile,
-			globals:  m.predeclared,
+			cache:   make(map[string]*entry),
+			loadMod: m.lazyloadMods.GetLazyLoader(),
+			readFile: func(name string) ([]byte, error) {
+				return readScriptFile(name, m.scriptFS)
+			},
+			globals: m.predeclared,
 		}
 		m.thread = &starlark.Thread{
 			Name:  "starlet",
@@ -218,8 +242,4 @@ func (m *Machine) Reset() {
 	m.thread = nil
 	m.loadCache = nil
 	m.predeclared = nil
-}
-
-func (m *Machine) readFSFile(name string) ([]byte, error) {
-	return readScriptFile(name, m.scriptFS)
 }

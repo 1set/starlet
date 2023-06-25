@@ -3,7 +3,10 @@ package starlet_test
 import (
 	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"math"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -19,6 +22,66 @@ var (
 	isOnLinux   = runtime.GOOS == `linux`
 	isOnDarwin  = runtime.GOOS == `darwin`
 )
+
+func expectEqualStringAnyMap(t *testing.T, act map[string]interface{}, exp map[string]interface{}) bool {
+	if len(act) != len(exp) {
+		t.Errorf("expected map length: %d, got: %d", len(exp), len(act))
+		return false
+	}
+	for k, v := range exp {
+		actV, ok := act[k]
+		if !ok {
+			t.Errorf("expected key: %q, got: %v", k, actV)
+			return false
+		}
+		if !reflect.DeepEqual(v, actV) {
+			t.Errorf("expected value: %v, got: %v", v, actV)
+			return false
+		}
+	}
+	return true
+}
+
+func getFuncAddr(i interface{}) uintptr {
+	return reflect.ValueOf(i).Pointer()
+}
+
+func expectEqualModuleList(t *testing.T, act starlet.ModuleLoaderList, exp starlet.ModuleLoaderList) bool {
+	if len(act) != len(exp) {
+		t.Errorf("expected module list length: %d, got: %d", len(exp), len(act))
+		return false
+	}
+	for i := range exp {
+		e := getFuncAddr(exp[i])
+		a := getFuncAddr(act[i])
+		if e != a {
+			t.Errorf("expected module: %v, got: %v", e, a)
+			return false
+		}
+	}
+	return true
+}
+
+func expectEqualModuleMap(t *testing.T, act starlet.ModuleLoaderMap, exp starlet.ModuleLoaderMap) bool {
+	if len(act) != len(exp) {
+		t.Errorf("expected module map length: %d, got: %d", len(exp), len(act))
+		return false
+	}
+	for k, v := range exp {
+		actV, ok := act[k]
+		if !ok {
+			t.Errorf("expected key: %q, got: %p", k, actV)
+			return false
+		}
+		e := getFuncAddr(v)
+		a := getFuncAddr(actV)
+		if e != a {
+			t.Errorf("expected module: %v, got: %v", e, a)
+			return false
+		}
+	}
+	return true
+}
 
 func expectErr(t *testing.T, err error, expected ...string) {
 	// preconditions
@@ -152,4 +215,72 @@ func (r *errorReader) Read(p []byte) (n int, err error) {
 	}
 	copy(p, r.data)
 	return len(r.data), nil
+}
+
+// MemFS is an in-memory filesystem.
+type MemFS map[string]string
+
+func (m MemFS) Open(name string) (fs.File, error) {
+	if data, ok := m[name]; ok {
+		return &MemFile{data: data, name: name}, nil
+	}
+	return nil, fs.ErrNotExist
+}
+
+// MemFile is an in-memory file.
+type MemFile struct {
+	data string
+	name string
+	pos  int
+}
+
+func (f *MemFile) Stat() (fs.FileInfo, error) {
+	return &MemFileInfo{
+		name: f.name,
+		size: len(f.data),
+	}, nil
+}
+
+func (f *MemFile) Read(p []byte) (n int, err error) {
+	if f.pos >= len(f.data) {
+		return 0, io.EOF // Indicate end of file
+	}
+
+	n = copy(p, f.data[f.pos:])
+	f.pos += n
+	return n, nil
+}
+
+func (f *MemFile) Close() error {
+	return nil
+}
+
+// MemFileInfo is an in-memory file info.
+type MemFileInfo struct {
+	name string
+	size int
+}
+
+func (fi *MemFileInfo) Name() string {
+	return fi.name
+}
+
+func (fi *MemFileInfo) Size() int64 {
+	return int64(fi.size)
+}
+
+func (fi *MemFileInfo) Mode() fs.FileMode {
+	return 0444 // read-only
+}
+
+func (fi *MemFileInfo) ModTime() time.Time {
+	return time.Time{} // zero time
+}
+
+func (fi *MemFileInfo) IsDir() bool {
+	return false
+}
+
+func (fi *MemFileInfo) Sys() interface{} {
+	return nil
 }
