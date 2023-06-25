@@ -1884,6 +1884,23 @@ func TestRunTrustedScript(t *testing.T) {
 			extras:  starlet.StringAnyMap{"y": 200},
 			wantRes: starlet.StringAnyMap{"a": int64(300)},
 		},
+		{
+			name:    "access to builtins",
+			code:    `a = math.sqrt(4)`,
+			wantRes: starlet.StringAnyMap{"a": 2.0},
+		},
+		{
+			name:    "access to builtins with globals",
+			code:    `a = math.sqrt(x)`,
+			globals: starlet.StringAnyMap{"x": 4},
+			wantRes: starlet.StringAnyMap{"a": 2.0},
+		},
+		{
+			name:    "access to builtins with extra",
+			code:    `a = math.sqrt(x)`,
+			extras:  starlet.StringAnyMap{"x": 4},
+			wantRes: starlet.StringAnyMap{"a": 2.0},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
