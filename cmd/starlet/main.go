@@ -23,7 +23,7 @@ var (
 )
 
 var (
-	defaultPreloadModules = starlet.ListBuiltinModules()
+	defaultPreloadModules = starlet.GetAllBuiltinModuleNames()
 )
 
 func init() {
