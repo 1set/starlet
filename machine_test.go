@@ -90,12 +90,12 @@ func TestNewWithNames(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
 	}
-	l, err := starlet.MakeBuiltinModuleLoaderMap("time")
+	l, err := starlet.MakeBuiltinModuleLoaderMap("time", "math")
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
 	}
 	g := starlet.StringAnyMap{"x": 4}
-	m := starlet.NewWithNames(g, []string{"json"}, []string{"time"})
+	m := starlet.NewWithNames(g, []string{"json"}, []string{"math", "time"})
 	if m == nil {
 		t.Errorf("expected not nil, got nil machine")
 	}
