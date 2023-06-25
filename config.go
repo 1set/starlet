@@ -36,9 +36,19 @@ var allBuiltinModules = ModuleLoaderMap{
 	},
 }
 
-// ListBuiltinModules returns a list of all builtin modules.
-func ListBuiltinModules() []string {
+// GetAllBuiltinModuleNames returns a list of all builtin module names.
+func GetAllBuiltinModuleNames() []string {
 	return allBuiltinModules.Keys()
+}
+
+// GetAllBuiltinModules returns a list of all builtin modules.
+func GetAllBuiltinModules() ModuleLoaderList {
+	return allBuiltinModules.Values()
+}
+
+// GetBuiltinModuleMap returns a map of all builtin modules.
+func GetBuiltinModuleMap() ModuleLoaderMap {
+	return allBuiltinModules.Clone()
 }
 
 // GetBuiltinModule returns the builtin module with the given name.

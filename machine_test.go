@@ -50,8 +50,52 @@ func TestNewWithLoaders(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
 	}
-	g := starlet.StringAnyMap{"x": 1}
+	g := starlet.StringAnyMap{"x": 2}
 	m := starlet.NewWithLoaders(g, p, l)
+	if m == nil {
+		t.Errorf("expected not nil, got nil machine")
+	}
+	if gg := m.GetGlobals(); !expectEqualStringAnyMap(t, gg, g) {
+		return
+	}
+	if pp := m.GetPreloadModules(); !expectEqualModuleList(t, pp, p) {
+		return
+	}
+	if ll := m.GetLazyloadModules(); !expectEqualModuleMap(t, ll, l) {
+		return
+	}
+}
+
+func TestNewWithBuiltins(t *testing.T) {
+	bp := starlet.GetAllBuiltinModules()
+	bl := starlet.GetBuiltinModuleMap()
+	g := starlet.StringAnyMap{"x": 3}
+	m := starlet.NewWithBuiltins(g, nil, nil)
+	if m == nil {
+		t.Errorf("expected not nil, got nil machine")
+	}
+	if gg := m.GetGlobals(); !expectEqualStringAnyMap(t, gg, g) {
+		return
+	}
+	if pp := m.GetPreloadModules(); !expectEqualModuleList(t, pp, bp) {
+		return
+	}
+	if ll := m.GetLazyloadModules(); !expectEqualModuleMap(t, ll, bl) {
+		return
+	}
+}
+
+func TestNewWithNames(t *testing.T) {
+	p, err := starlet.MakeBuiltinModuleLoaderList("json")
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	l, err := starlet.MakeBuiltinModuleLoaderMap("time")
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	g := starlet.StringAnyMap{"x": 4}
+	m := starlet.NewWithNames(g, []string{"json"}, []string{"time"})
 	if m == nil {
 		t.Errorf("expected not nil, got nil machine")
 	}

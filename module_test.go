@@ -17,7 +17,7 @@ var (
 )
 
 func TestListBuiltinModules(t *testing.T) {
-	modules := starlet.ListBuiltinModules()
+	modules := starlet.GetAllBuiltinModuleNames()
 
 	expectedModules := builtinModules
 	if len(modules) != len(expectedModules) {

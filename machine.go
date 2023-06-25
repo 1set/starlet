@@ -89,8 +89,8 @@ func NewWithLoaders(globals StringAnyMap, preload ModuleLoaderList, lazyload Mod
 
 // NewWithBuiltins creates a new Starlark runtime environment with given global variables and all preload & lazyload built-in modules.
 func NewWithBuiltins(globals StringAnyMap, additionalPreload ModuleLoaderList, additionalLazyload ModuleLoaderMap) *Machine {
-	pre := append(allBuiltinModules.Values(), additionalPreload...)
-	lazy := allBuiltinModules.Clone()
+	pre := append(GetAllBuiltinModules(), additionalPreload...)
+	lazy := GetBuiltinModuleMap()
 	lazy.Merge(additionalLazyload)
 	return &Machine{
 		globals:      globals,
