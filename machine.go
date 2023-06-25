@@ -102,11 +102,11 @@ func NewWithBuiltins(globals StringAnyMap, additionalPreload ModuleLoaderList, a
 // NewWithNames creates a new Starlark runtime environment with given global variables, preload and lazyload module names.
 // The modules should be built-in modules, and it panics if any of the given modules fails to load.
 func NewWithNames(globals StringAnyMap, preloads []string, lazyloads []string) *Machine {
-	pre, err := MakeBuiltinModuleLoaderList(preloads)
+	pre, err := MakeBuiltinModuleLoaderList(preloads...)
 	if err != nil {
 		panic(err)
 	}
-	lazy, err := MakeBuiltinModuleLoaderMap(lazyloads)
+	lazy, err := MakeBuiltinModuleLoaderMap(lazyloads...)
 	if err != nil {
 		panic(err)
 	}
@@ -145,7 +145,7 @@ func (m *Machine) GetGlobals() StringAnyMap {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	return m.globals
+	return m.globals.Clone()
 }
 
 // SetPreloadModules sets the preload modules of the Starlark runtime environment.

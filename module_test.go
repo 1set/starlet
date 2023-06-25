@@ -202,7 +202,7 @@ func Test_MakeBuiltinModuleLoaderList(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			loaderList, err := starlet.MakeBuiltinModuleLoaderList(tt.modules)
+			loaderList, err := starlet.MakeBuiltinModuleLoaderList(tt.modules...)
 			if tt.wantErr != "" {
 				expectErr(t, err, tt.wantErr)
 			} else if err != nil {
@@ -237,7 +237,7 @@ func Test_MakeBuiltinModuleLoaderMap(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			loaderMap, err := starlet.MakeBuiltinModuleLoaderMap(tt.modules)
+			loaderMap, err := starlet.MakeBuiltinModuleLoaderMap(tt.modules...)
 			if tt.wantErr != "" {
 				expectErr(t, err, tt.wantErr)
 			} else if err != nil {
