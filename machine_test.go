@@ -109,3 +109,23 @@ func TestNewWithNames(t *testing.T) {
 		return
 	}
 }
+
+func TestNewWithNames_PreNotExist(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic, got no panic")
+		}
+	}()
+	g := starlet.StringAnyMap{"x": 5}
+	_ = starlet.NewWithNames(g, []string{"json", "not-exist"}, []string{"math", "time"})
+}
+
+func TestNewWithNames_LazyNotExist(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic, got no panic")
+		}
+	}()
+	g := starlet.StringAnyMap{"x": 6}
+	_ = starlet.NewWithNames(g, []string{"json"}, []string{"math", "time", "not-exist"})
+}
