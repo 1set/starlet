@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/starlarktest"
 )
 
@@ -21,7 +22,19 @@ func NewAssertLoader(moduleName string, loader ModuleLoadFunc) ThreadLoadFunc {
 	return func(thread *starlark.Thread, module string) (starlark.StringDict, error) {
 		switch module {
 		case moduleName:
-			return loader()
+			d, err := loader()
+			if err != nil {
+				return nil, err
+			}
+			if len(d) == 1 {
+				m, found := d[moduleName]
+				if found {
+					if md, ok := m.(*starlarkstruct.Module); ok && md != nil {
+						return md.Members, nil
+					}
+				}
+			}
+			return d, nil
 		case "assert.star":
 			starlarktest.DataFile = func(pkgdir, filename string) string {
 				_, currFileName, _, ok := runtime.Caller(1)

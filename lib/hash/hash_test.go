@@ -9,12 +9,13 @@ import (
 
 func TestLoadModule_Hash(t *testing.T) {
 	code := itn.HereDoc(`
-	load('hash', 'hash')
 	load('assert.star', 'assert')
+	load('hash', 'md5', 'sha1', 'sha256')
 
-	assert.eq(hash.md5("helloworld"), "fc5e038d38a57032085441e7fe7010b0")
-	assert.eq(hash.sha1("helloworld"), "6adfb183a4a2c94a2f92dab5ade762a47889a5a1")
-	assert.eq(hash.sha256("helloworld"), "936a185caaa266bb9cbe981e9e05cb78cd732b0b3280eb944412bb6f8f8f07af")
+	assert.eq(md5(""), "d41d8cd98f00b204e9800998ecf8427e")
+	assert.eq(md5("Aloha!"), "de424bf3e7dcba091c27d652ada485fb")
+	assert.eq(sha1("Aloha!"), "c3dd37312ba987e1cc40ae021bc202c4a52d8afe")
+	assert.eq(sha256("Aloha!"), "dea7e28aee505f2dd033de1427a517793e38b7605e8fc24da40151907e52cea3")
 	`)
 
 	_, err := itn.ExecModuleWithErrorTest(t, hash.ModuleName, hash.LoadModule, code, nil)
