@@ -1993,3 +1993,14 @@ func TestRunTrustedFile(t *testing.T) {
 		})
 	}
 }
+
+func TestMachine_REPL_OK(t *testing.T) {
+	m := starlet.NewDefault()
+	m.REPL()
+}
+
+func TestMachine_REPL_Error(t *testing.T) {
+	m := starlet.NewDefault()
+	m.SetGlobals(starlet.StringAnyMap{"x": make(chan int, 1)})
+	m.REPL()
+}
