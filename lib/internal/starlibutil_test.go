@@ -118,8 +118,6 @@ func TestMarshal(t *testing.T) {
 }
 
 func TestUnmarshal(t *testing.T) {
-	t.Skip() // TODO: fix this test
-
 	strDict := starlark.NewDict(1)
 	if err := strDict.SetKey(starlark.String("foo"), starlark.MakeInt(42)); err != nil {
 		t.Fatal(err)
@@ -177,10 +175,37 @@ func TestUnmarshal(t *testing.T) {
 			t.Errorf("case %d. error mismatch. expected: %q, got: %q, %T -> %T", i, c.err, err, c.in, c.want)
 			continue
 		}
-		if !reflect.DeepEqual(c.want, got) {
-			t.Errorf("case %d. expected: %#v, got: %#v, %T -> %T", i, c.want, got, c.in, c.want)
+
+		// convert to the same type as expected
+		var act interface{}
+		act = got
+		switch c.want.(type) {
+		case int8:
+			act = int8(got.(int))
+		case int16:
+			act = int16(got.(int))
+		case int32:
+			act = int32(got.(int))
+		case int64:
+			act = int64(got.(int))
+		case uint:
+			act = uint(got.(int))
+		case uint8:
+			act = uint8(got.(int))
+		case uint16:
+			act = uint16(got.(int))
+		case uint32:
+			act = uint32(got.(int))
+		case uint64:
+			act = uint64(got.(int))
+		case float32:
+			act = float32(got.(float64))
 		}
-		// assert.EqualValues(t, c.want, got, "case %d: %T -> %T", i, c.in, c.want)
+
+		// compare
+		if !reflect.DeepEqual(c.want, act) {
+			t.Errorf("case %d. expected: %#v (%T), got: %#v (%T), %T -> %T", i, c.want, c.want, got, got, c.in, c.want)
+		}
 	}
 }
 

@@ -151,6 +151,12 @@ var (
 	Guard RequestGuard
 )
 
+// RequestGuard controls access to http by checking before making requests
+// if Allowed returns an error the request will be denied
+type RequestGuard interface {
+	Allowed(thread *starlark.Thread, req *http.Request) (*http.Request, error)
+}
+
 // LoadModule creates an http Module
 func LoadModule() (starlark.StringDict, error) {
 	var m = &Module{cli: Client}
@@ -161,12 +167,6 @@ func LoadModule() (starlark.StringDict, error) {
 		"http": m.Struct(),
 	}
 	return ns, nil
-}
-
-// RequestGuard controls access to http by checking before making requests
-// if Allowed returns an error the request will be denied
-type RequestGuard interface {
-	Allowed(thread *starlark.Thread, req *http.Request) (*http.Request, error)
 }
 
 // Module joins http tools to a dataset, allowing dataset
