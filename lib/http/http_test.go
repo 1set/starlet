@@ -35,7 +35,7 @@ func TestAsString(t *testing.T) {
 	}
 }
 
-func TestNewModule(t *testing.T) {
+func TestLoadModule_HTTP(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Date", "Mon, 01 Jun 2000 00:00:00 GMT")
 		if _, err := w.Write([]byte(`{"hello":"world"}`)); err != nil {
@@ -49,10 +49,7 @@ func TestNewModule(t *testing.T) {
 
 	code := itn.HereDoc(`
 	load('assert.star', 'assert')
-	load('http', 'http')
-
-	get = http.get
-	post = http.post
+	load('http', 'get', 'post')
 
 	res_1 = get(test_server_url, params={ "a" : "b", "c" : "d"})
 	assert.eq(res_1.url, test_server_url + "?a=b&c=d")

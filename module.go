@@ -130,12 +130,16 @@ func (m ModuleLoaderMap) GetLazyLoader() NamedModuleLoader {
 			// failed to load
 			return nil, err
 		}
-		// extract all members of module from dict like `{name: module}`
+		// extract all members of module from dict like `{name: module}` or `{name: struct}`
 		if len(d) == 1 {
 			m, found := d[s]
 			if found {
-				if md, ok := m.(*starlarkstruct.Module); ok && md != nil {
-					return md.Members, nil
+				if mm, ok := m.(*starlarkstruct.Module); ok && mm != nil {
+					return mm.Members, nil
+				} else if ms, ok := m.(*starlarkstruct.Struct); ok && ms != nil {
+					sd := make(starlark.StringDict)
+					ms.ToStringDict(sd)
+					return sd, nil
 				}
 			}
 		}
