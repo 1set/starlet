@@ -24,8 +24,10 @@ func NewAssertLoader(moduleName string, loader ModuleLoadFunc) ThreadLoadFunc {
 		case moduleName:
 			d, err := loader()
 			if err != nil {
+				// failed to load
 				return nil, err
 			}
+			// extract all members of module from dict like `{name: module}`
 			if len(d) == 1 {
 				m, found := d[moduleName]
 				if found {
