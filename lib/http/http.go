@@ -1,4 +1,4 @@
-/*Package http defines a module for doing http operations in starlark
+/*Package http defines a module for doing http operations in Starlark.
 
 Migrated from: https://github.com/qri-io/starlib/tree/master/http
 
