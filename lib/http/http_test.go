@@ -35,13 +35,14 @@ func TestAsString(t *testing.T) {
 	}
 }
 
-func TestLoadModule_HTTP(t *testing.T) {
+func TestLoadModule_HTTP_One(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Date", "Mon, 01 Jun 2000 00:00:00 GMT")
 		if _, err := w.Write([]byte(`{"hello":"world"}`)); err != nil {
 			t.Fatal(err)
 		}
 	}))
+	defer ts.Close()
 	starlark.Universe["test_server_url"] = starlark.String(ts.URL)
 
 	thread := &starlark.Thread{Load: itn.NewAssertLoader(ModuleName, LoadModule)}
