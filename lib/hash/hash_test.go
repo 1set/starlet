@@ -1,6 +1,7 @@
 package hash_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/1set/starlet/lib/hash"
@@ -35,6 +36,15 @@ func TestLoadModule_Hash(t *testing.T) {
 				load('hash', 'sha256')
 				assert.eq(sha256("Aloha!"), "dea7e28aee505f2dd033de1427a517793e38b7605e8fc24da40151907e52cea3")
 			`),
+		},
+		{
+			name: `Invalid Input Type`,
+			script: itn.HereDoc(`
+				load('hash', 'md5')
+				md5(123)
+				assert.fail("should not reach here")
+			`),
+			wantErr: errors.New("hash.md5: for parameter 1: got int, want string"),
 		},
 	}
 	for _, tt := range tests {
