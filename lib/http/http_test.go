@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"more-starlight/starlib/testdata"
+	itn "github.com/1set/starlet/lib/internal"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarktest"
 )
@@ -36,7 +36,6 @@ func TestAsString(t *testing.T) {
 }
 
 func TestNewModule(t *testing.T) {
-
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Date", "Mon, 01 Jun 2000 00:00:00 GMT")
 		if _, err := w.Write([]byte(`{"hello":"world"}`)); err != nil {
@@ -45,11 +44,34 @@ func TestNewModule(t *testing.T) {
 	}))
 	starlark.Universe["test_server_url"] = starlark.String(ts.URL)
 
-	thread := &starlark.Thread{Load: testdata.NewLoader(LoadModule, ModuleName)}
+	thread := &starlark.Thread{Load: itn.NewAssertLoader(ModuleName, LoadModule)}
 	starlarktest.SetReporter(thread, t)
 
+	code := itn.HereDoc(`
+	load('assert.star', 'assert')
+	load('http', 'http')
+
+	get = http.get
+	post = http.post
+
+	res_1 = get(test_server_url, params={ "a" : "b", "c" : "d"})
+	assert.eq(res_1.url, test_server_url + "?a=b&c=d")
+	assert.eq(res_1.status_code, 200)
+	assert.eq(res_1.body(), '{"hello":"world"}')
+	assert.eq(res_1.json(), {"hello":"world"})
+
+	assert.eq(res_1.headers, {"Date": "Mon, 01 Jun 2000 00:00:00 GMT", "Content-Length": "17", "Content-Type": "text/plain; charset=utf-8"})
+
+	res_2 = get(test_server_url)
+	assert.eq(res_2.json()["hello"], "world")
+
+	headers = {"foo" : "bar"}
+	post(test_server_url, json_body={ "a" : "b", "c" : "d"}, headers=headers)
+	post(test_server_url, form_body={ "a" : "b", "c" : "d"})
+`)
+
 	// Execute test file
-	_, err := starlark.ExecFile(thread, "testdata/test.star", nil, nil)
+	_, err := starlark.ExecFile(thread, "test.star", code, nil)
 	if err != nil {
 		t.Error(err)
 	}

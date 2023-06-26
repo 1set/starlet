@@ -1,3 +1,125 @@
+/*Package http defines a module for doing http operations in starlark
+
+Migrated from: https://github.com/qri-io/starlib/tree/master/http
+
+  outline: http
+    http defines an HTTP client implementation
+    path: http
+    functions:
+      get(url,params={},headers={},auth=()) response
+        perform an HTTP GET request, returning a response
+        params:
+          url string
+            url to request
+          headers dict
+            optional. dictionary of headers to add to request
+          auth tuple
+            optional. (username,password) tuple for http basic authorization
+      put(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=()) response
+        perform an HTTP PUT request, returning a response
+        params:
+          url string
+            url to request
+          headers dict
+            optional. dictionary of headers to add to request
+          body string
+            optional. raw string body to provide to the request
+          form_body dict
+            optional. dict of values that will be encoded as form data
+          form_encoding string
+            optional. `application/x-www-form-url-encoded` (default) or `multipart/form-data`
+          json_body any
+            optional. json data to supply as a request. handy for working with JSON-API's
+          auth tuple
+            optional. (username,password) tuple for http basic authorization
+      post(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=()) response
+        perform an HTTP POST request, returning a response
+        params:
+          url string
+            url to request
+          headers dict
+            optional. dictionary of headers to add to request
+          body string
+            optional. raw string body to provide to the request
+          form_body dict
+            optional. dict of values that will be encoded as form data
+          form_encoding string
+            optional. `application/x-www-form-url-encoded` (default) or `multipart/form-data`
+          json_body any
+            optional. json data to supply as a request. handy for working with JSON-API's
+          auth tuple
+            optional. (username,password) tuple for http basic authorization
+      delete(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=()) response
+        perform an HTTP DELETE request, returning a response
+        params:
+          url string
+            url to request
+          headers dict
+            optional. dictionary of headers to add to request
+          body string
+            optional. raw string body to provide to the request
+          form_body dict
+            optional. dict of values that will be encoded as form data
+          form_encoding string
+            optional. `application/x-www-form-url-encoded` (default) or `multipart/form-data`
+          json_body any
+            optional. json data to supply as a request. handy for working with JSON-API's
+          auth tuple
+            optional. (username,password) tuple for http basic authorization
+      patch(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=()) response
+        perform an HTTP PATCH request, returning a response
+        params:
+          url string
+            url to request
+          headers dict
+            optional. dictionary of headers to add to request
+          body string
+            optional. raw string body to provide to the request
+          form_body dict
+            optional. dict of values that will be encoded as form data
+          form_encoding string
+            optional. `application/x-www-form-url-encoded` (default) or `multipart/form-data`
+          json_body any
+            optional. json data to supply as a request. handy for working with JSON-API's
+          auth tuple
+            optional. (username,password) tuple for http basic authorization
+      options(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=()) response
+        perform an HTTP OPTIONS request, returning a response
+        params:
+          url string
+            url to request
+          headers dict
+            optional. dictionary of headers to add to request
+          body string
+            optional. raw string body to provide to the request
+          form_body dict
+            optional. dict of values that will be encoded as form data
+          form_encoding string
+            optional. `application/x-www-form-url-encoded` (default) or `multipart/form-data`
+          json_body any
+            optional. json data to supply as a request. handy for working with JSON-API's
+          auth tuple
+            optional. (username,password) tuple for http basic authorization
+
+    types:
+      response
+        the result of performing a http request
+        fields:
+          url string
+            the url that was ultimately requested (may change after redirects)
+          status_code int
+            response status code (for example: 200 == OK)
+          headers dict
+            dictionary of response headers
+          encoding string
+            transfer encoding. example: "octet-stream" or "application/json"
+        methods:
+          body() string
+            output response body as a string
+          json()
+            attempt to parse resonse body as json, returning a JSON-decoded result
+
+*/
 package http
 
 import (
@@ -11,19 +133,14 @@ import (
 	"strconv"
 	"strings"
 
-	util "more-starlight/starlib/util"
+	util "github.com/1set/starlet/lib/internal"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
 
-// AsString unquotes a starlark string value
-func AsString(x starlark.Value) (string, error) {
-	return strconv.Unquote(x.String())
-}
-
 // ModuleName defines the expected name for this Module when used
-// in starlark's load() function, eg: load('http.star', 'http')
-const ModuleName = "http.star"
+// in starlark's load() function, eg: load('http', 'get')
+const ModuleName = "http"
 
 var (
 	// Client is the http client used to create the http module. override with
@@ -32,14 +149,6 @@ var (
 	// Guard is a global RequestGuard used in LoadModule. override with a custom
 	// implementation before calling LoadModule
 	Guard RequestGuard
-)
-
-// Encodings for form data.
-//
-// See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/POST
-const (
-	formEncodingMultipart = "multipart/form-data"
-	formEncodingURL       = "application/x-www-form-urlencoded"
 )
 
 // LoadModule creates an http Module
@@ -141,6 +250,19 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, _ *starl
 		return r.Struct(), nil
 	}
 }
+
+// AsString unquotes a starlark string value
+func AsString(x starlark.Value) (string, error) {
+	return strconv.Unquote(x.String())
+}
+
+// Encodings for form data.
+//
+// See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/POST
+const (
+	formEncodingMultipart = "multipart/form-data"
+	formEncodingURL       = "application/x-www-form-urlencoded"
+)
 
 func setQueryParams(rawurl *string, params *starlark.Dict) error {
 	keys := params.Keys()
