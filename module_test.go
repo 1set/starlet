@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	builtinModules = []string{"go_idiomatic", "hash", "json", "math", "struct", "time"}
+	builtinModules = []string{"go_idiomatic", "hash", "http", "json", "math", "struct", "time"}
 )
 
 func TestListBuiltinModules(t *testing.T) {
@@ -196,6 +196,18 @@ func Test_ModuleLoaderMap_GetLazyLoader(t *testing.T) {
 			moduleLoaders: starlet.ModuleLoaderMap{failName: failLoader},
 			moduleName:    failName,
 			wantErr:       "invalid module loader",
+		},
+		{
+			name:          "embedded module",
+			moduleLoaders: starlet.ModuleLoaderMap{"hash": starlet.GetBuiltinModule("hash")},
+			moduleName:    "hash",
+			wantMod:       true,
+		},
+		{
+			name:          "embedded struct",
+			moduleLoaders: starlet.ModuleLoaderMap{"http": starlet.GetBuiltinModule("http")},
+			moduleName:    "http",
+			wantMod:       true,
 		},
 	}
 
