@@ -132,6 +132,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	util "github.com/1set/starlet/lib/internal"
 	"go.starlark.net/starlark"
@@ -143,11 +144,17 @@ import (
 const ModuleName = "http"
 
 var (
-	// Client is the http client used to create the http module. override with
-	// a custom client before calling LoadModule
-	Client = http.DefaultClient
-	// Guard is a global RequestGuard used in LoadModule. override with a custom
-	// implementation before calling LoadModule
+	// Timeout is the default timeout for http requests, override with a custom value before calling LoadModule.
+	Timeout = 30 * time.Second
+	// UserAgent is the default user agent for http requests, override with a custom value before calling LoadModule.
+	UserAgent = "Starlet-http-client/v0.0.1"
+	// SkipInsecureVerify controls whether to skip TLS verification, override with a custom value before calling LoadModule.
+	SkipInsecureVerify = false
+	// DisableRedirect controls whether to follow redirects, override with a custom value before calling LoadModule.
+	DisableRedirect = false
+	// Client is the http client used to create the http module, override with a custom client before calling LoadModule.
+	Client *http.Client
+	// Guard is a global RequestGuard used in LoadModule, override with a custom implementation before calling LoadModule.
 	Guard RequestGuard
 )
 
@@ -157,9 +164,35 @@ type RequestGuard interface {
 	Allowed(thread *starlark.Thread, req *http.Request) (*http.Request, error)
 }
 
+func getHTTPClient() *http.Client {
+	// use custom client if set
+	if Client != nil {
+		return Client
+	}
+	// make up based on global settings
+	var timeout = Timeout
+	if timeout <= 0 {
+		timeout = 30 * time.Second
+	}
+	cli := &http.Client{Timeout: timeout}
+	// skip TLS verification if set
+	if SkipInsecureVerify {
+		tr := http.DefaultTransport.(*http.Transport).Clone()
+		tr.TLSClientConfig.InsecureSkipVerify = true
+		cli.Transport = tr
+	}
+	// disable redirects if set
+	if DisableRedirect {
+		cli.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		}
+	}
+	return cli
+}
+
 // LoadModule creates an http Module
 func LoadModule() (starlark.StringDict, error) {
-	var m = &Module{cli: Client}
+	var m = &Module{cli: getHTTPClient()}
 	if Guard != nil {
 		m.rg = Guard
 	}
@@ -326,6 +359,10 @@ func setHeaders(req *http.Request, headers *starlark.Dict) error {
 		return nil
 	}
 
+	var (
+		UAKey   = "User-Agent"
+		isUASet = false
+	)
 	for _, key := range keys {
 		keystr, err := AsString(key)
 		if err != nil {
@@ -345,8 +382,14 @@ func setHeaders(req *http.Request, headers *starlark.Dict) error {
 		}
 
 		req.Header.Add(keystr, valstr)
+		if keystr == UAKey {
+			isUASet = true
+		}
 	}
 
+	if UserAgent != "" && !isUASet {
+		req.Header.Set(UAKey, UserAgent)
+	}
 	return nil
 }
 
