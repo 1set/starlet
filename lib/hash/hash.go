@@ -43,8 +43,10 @@ import (
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
-	"fmt"
+	"crypto/sha512"
+	"encoding/hex"
 	"hash"
+	"io"
 	"sync"
 
 	"go.starlark.net/starlark"
@@ -71,6 +73,7 @@ func LoadModule() (starlark.StringDict, error) {
 					"md5":    starlark.NewBuiltin("hash.md5", fnHash(md5.New)),
 					"sha1":   starlark.NewBuiltin("hash.sha1", fnHash(sha1.New)),
 					"sha256": starlark.NewBuiltin("hash.sha256", fnHash(sha256.New)),
+					"sha512": starlark.NewBuiltin("hash.sha512", fnHash(sha512.New)),
 				},
 			},
 		}
@@ -87,9 +90,10 @@ func fnHash(algo func() hash.Hash) func(*starlark.Thread, *starlark.Builtin, sta
 		}
 
 		h := algo()
-		if _, err := h.Write([]byte(string(s))); err != nil {
+		_, err := io.WriteString(h, s.GoString())
+		if err != nil {
 			return starlark.None, err
 		}
-		return starlark.String(fmt.Sprintf("%x", h.Sum(nil))), nil
+		return starlark.String(hex.EncodeToString(h.Sum(nil))), nil
 	}
 }
