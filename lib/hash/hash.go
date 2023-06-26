@@ -79,7 +79,6 @@ func LoadModule() (starlark.StringDict, error) {
 		}
 	})
 	return hashModule, hashError
-
 }
 
 func fnHash(algo func() hash.Hash) func(*starlark.Thread, *starlark.Builtin, starlark.Tuple, []starlark.Tuple) (starlark.Value, error) {
