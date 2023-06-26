@@ -11,3 +11,5 @@ require (
 	go.starlark.net v0.0.0-20230612165344-9532f5667272
 	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467
 )
+
+replace github.com/1set/starlet => ../..

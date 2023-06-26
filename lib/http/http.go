@@ -498,9 +498,8 @@ func (r *Response) Struct() *starlarkstruct.Struct {
 		"status_code": starlark.MakeInt(r.StatusCode),
 		"headers":     r.HeadersDict(),
 		"encoding":    starlark.String(strings.Join(r.TransferEncoding, ",")),
-
-		"body": starlark.NewBuiltin("body", r.Text),
-		"json": starlark.NewBuiltin("json", r.JSON),
+		"body":        starlark.NewBuiltin("body", r.Text),
+		"json":        starlark.NewBuiltin("json", r.JSON),
 	})
 }
 
