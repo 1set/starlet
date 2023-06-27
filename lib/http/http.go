@@ -222,6 +222,7 @@ func (m *Module) StringDict() starlark.StringDict {
 		"post":     starlark.NewBuiltin("post", m.reqMethod("post")),
 		"postForm": starlark.NewBuiltin("postForm", m.reqMethod("postForm")),
 		"delete":   starlark.NewBuiltin("delete", m.reqMethod("delete")),
+		"head":     starlark.NewBuiltin("head", m.reqMethod("head")),
 		"patch":    starlark.NewBuiltin("patch", m.reqMethod("patch")),
 		"options":  starlark.NewBuiltin("options", m.reqMethod("options")),
 	}

@@ -171,6 +171,15 @@ func TestLoadModule_HTTP(t *testing.T) {
 				assert.eq('User-Agent: GqQdYX3eIJw2DTt' in b, True)
 			`),
 		},
+		{
+			name: `HEAD Anything`,
+			script: itn.HereDoc(`
+				load('http', 'head')
+				res = head(test_server_url, params={ "a" : "b", "c" : "d"}, headers={ "foo" : "bar"})
+				assert.eq(res.status_code, 200)
+				assert.eq(len(res.body()), 0)
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
