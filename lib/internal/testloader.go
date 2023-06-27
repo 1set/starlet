@@ -34,9 +34,9 @@ func NewAssertLoader(moduleName string, loader ModuleLoadFunc) ThreadLoadFunc {
 				if found {
 					if mm, ok := m.(*starlarkstruct.Module); ok && mm != nil {
 						return mm.Members, nil
-					} else if ms, ok := m.(*starlarkstruct.Struct); ok && ms != nil {
+					} else if sm, ok := m.(*starlarkstruct.Struct); ok && sm != nil {
 						sd := make(starlark.StringDict)
-						ms.ToStringDict(sd)
+						sm.ToStringDict(sd)
 						return sd, nil
 					}
 				}

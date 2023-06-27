@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	itn "github.com/1set/starlet/lib/internal"
+	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 )
 
@@ -50,6 +51,10 @@ func length(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 	case *starlark.Set:
 		return starlark.MakeInt(v.Len()), nil
 	case *starlark.Dict:
+		return starlark.MakeInt(v.Len()), nil
+	case *convert.GoSlice:
+		return starlark.MakeInt(v.Len()), nil
+	case *convert.GoMap:
 		return starlark.MakeInt(v.Len()), nil
 	default:
 		return none, fmt.Errorf(`object of type '%s' has no length()`, v.Type())

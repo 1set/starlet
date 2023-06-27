@@ -6,9 +6,12 @@ import (
 
 	"github.com/1set/starlet/lib/goidiomatic"
 	itn "github.com/1set/starlet/lib/internal"
+	"github.com/1set/starlight/convert"
+	"go.starlark.net/starlark"
 )
 
 func TestLoadModule_GoIdiomatic(t *testing.T) {
+	// test cases
 	tests := []struct {
 		name    string
 		script  string
@@ -146,11 +149,31 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 			`),
 		},
 		{
-			name: `length(list)`,
+			name: `length(list/tuple/dict/set)`,
 			script: itn.HereDoc(`
 				load('go_idiomatic', 'length')
 				assert.eq(0, length([]))
 				assert.eq(5, length([1, 2, "#", True, None]))
+				assert.eq(1, length((3,)))
+				assert.eq(2, length((1, 2)))
+				assert.eq(0, length({}))
+				assert.eq(2, length({'a': 1, 'b': 2}))
+				assert.eq(0, length(set()))
+				assert.eq(2, length(set(['a', 'b'])))
+			`),
+		},
+		{
+			name: `length(slice)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'length')
+				assert.eq(3, length(slice))
+			`),
+		},
+		{
+			name: `length(map)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'length')
+				assert.eq(2, length(map))
 			`),
 		},
 		{
@@ -180,6 +203,20 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// prepare
+			s, err := convert.ToValue([]string{"a", "b", "c"})
+			if err != nil {
+				t.Errorf("convert.ToValue Slice: %v", err)
+				return
+			}
+			m, err := convert.ToValue(map[string]string{"a": "b", "c": "d"})
+			if err != nil {
+				t.Errorf("convert.ToValue Map: %v", err)
+				return
+			}
+			starlark.Universe["slice"] = s
+			starlark.Universe["map"] = m
+
 			res, err := itn.ExecModuleWithErrorTest(t, goidiomatic.ModuleName, goidiomatic.LoadModule, tt.script, tt.wantErr)
 			if (err != nil) != (tt.wantErr != nil) {
 				t.Errorf("go_idiomatic(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
