@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httputil"
 	"strings"
 	"testing"
 
@@ -72,6 +73,116 @@ func TestLoadModule_HTTP_One(t *testing.T) {
 	_, err := starlark.ExecFile(thread, "test.star", code, nil)
 	if err != nil {
 		t.Error(err)
+	}
+}
+
+func TestLoadModule_HTTP(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, err := httputil.DumpRequest(r, true)
+		if err != nil {
+			t.Errorf("Error dumping request: %v", err)
+		}
+		t.Logf("Web server received request: [[%s]]", b)
+		w.Write(b)
+	}))
+	defer ts.Close()
+	starlark.Universe["test_server_url"] = starlark.String(ts.URL)
+
+	tests := []struct {
+		name    string
+		preset  func()
+		script  string
+		wantErr error
+	}{
+		{
+			name: `Simple GET`,
+			script: itn.HereDoc(`
+				load('http', 'get')
+				res = get(test_server_url)
+				assert.eq(res.status_code, 200)
+				print(res.body())
+			`),
+		},
+		{
+			name: `GET with params`,
+			script: itn.HereDoc(`
+				load('http', 'get')
+				res = get(test_server_url, params={ "a" : "b", "c" : "d"})
+				assert.eq(res.url, test_server_url + "?a=b&c=d")
+				assert.eq(res.status_code, 200)
+			`),
+		},
+		{
+			name: `Simple POST`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				res = post(test_server_url)
+				assert.eq(res.status_code, 200)
+				assert.eq(res.body().startswith("POST "), True)
+			`),
+		},
+		{
+			name: `POST JSON`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				res = post(test_server_url, json_body={ "a" : "b", "c" : "d"})
+				assert.eq(res.status_code, 200)
+				b = res.body()
+				assert.eq(b.startswith("POST "), True)
+				assert.eq('/json' in b, True)
+			`),
+		},
+		{
+			name: `POST Form`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				res = post(test_server_url, form_body={ "a" : "b", "c" : "d"})
+				assert.eq(res.status_code, 200)
+				b = res.body()
+				assert.eq(b.startswith("POST "), True)
+				assert.eq('/x-www-form-urlencoded' in b, True)
+			`),
+		},
+		{
+			name: `POST with headers`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				headers = {"foo" : "bar"}
+				res = post(test_server_url, json_body={ "a" : "b", "c" : "d"}, headers=headers)
+				assert.eq(res.status_code, 200)
+				b = res.body()
+				assert.eq(b.startswith("POST "), True)
+				assert.eq('/json' in b, True)
+				assert.eq('Foo: bar' in b, True)
+			`),
+		},
+		{
+			name: `POST with UA Set`,
+			preset: func() {
+				UserAgent = "GqQdYX3eIJw2DTt"
+			},
+			script: itn.HereDoc(`
+				load('http', 'post')
+				res = post(test_server_url, json_body={ "a" : "b", "c" : "d"})
+				assert.eq(res.status_code, 200)
+				b = res.body()
+				assert.eq(b.startswith("POST "), True)
+				assert.eq('/json' in b, True)
+				assert.eq('User-Agent: GqQdYX3eIJw2DTt' in b, True)
+			`),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.preset != nil {
+				tt.preset()
+			}
+			res, err := itn.ExecModuleWithErrorTest(t, ModuleName, LoadModule, tt.script, tt.wantErr)
+			if (err != nil) != (tt.wantErr != nil) {
+				t.Errorf("http(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
+				return
+			}
+		})
 	}
 }
 

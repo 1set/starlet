@@ -59,7 +59,7 @@ func NewAssertLoader(moduleName string, loader ModuleLoadFunc) ThreadLoadFunc {
 
 // ExecModuleWithErrorTest executes a Starlark script with a module loader and compares the error with the expected error.
 func ExecModuleWithErrorTest(t *testing.T, name string, loader ModuleLoadFunc, script string, wantErr error) (starlark.StringDict, error) {
-	thread := &starlark.Thread{Load: NewAssertLoader(name, loader)}
+	thread := &starlark.Thread{Load: NewAssertLoader(name, loader), Print: func(_ *starlark.Thread, msg string) { t.Log("※", msg) }}
 	starlarktest.SetReporter(thread, t)
 	header := `load('assert.star', 'assert')`
 	out, err := starlark.ExecFile(thread, name+"_test.star", []byte(header+"\n"+script), nil)

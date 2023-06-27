@@ -290,7 +290,6 @@ func AsString(x starlark.Value) (string, error) {
 }
 
 // Encodings for form data.
-//
 // See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/POST
 const (
 	formEncodingMultipart = "multipart/form-data"
@@ -354,12 +353,8 @@ func setAuth(req *http.Request, auth starlark.Tuple) error {
 }
 
 func setHeaders(req *http.Request, headers *starlark.Dict) error {
-	keys := headers.Keys()
-	if len(keys) == 0 {
-		return nil
-	}
-
 	var (
+		keys    = headers.Keys()
 		UAKey   = "User-Agent"
 		isUASet = false
 	)
