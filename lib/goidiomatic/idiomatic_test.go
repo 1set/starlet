@@ -123,6 +123,60 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 			`),
 			wantErr: errors.New(`starlet runtime system exit (Use Ctrl-D in REPL to exit)`),
 		},
+		{
+			name: `length(string)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'length')
+				assert.eq(0, length(''))
+				assert.eq(1, length('a'))
+				assert.eq(2, length('ab'))
+				assert.eq(3, length('abc'))
+				assert.eq(1, length('🙆'))
+				assert.eq(1, length('✅'))
+				assert.eq(3, length('水光肌'))
+			`),
+		},
+		{
+			name: `length(bytes)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'length')
+				assert.eq(0, length(b''))
+				assert.eq(9, length(b'水光肌'))
+				assert.eq(7, length(b'🙆✅'))
+			`),
+		},
+		{
+			name: `length(list)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'length')
+				assert.eq(0, length([]))
+				assert.eq(5, length([1, 2, "#", True, None]))
+			`),
+		},
+		{
+			name: `length()`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'length')
+				length()
+			`),
+			wantErr: errors.New(`length() takes exactly one argument (0 given)`),
+		},
+		{
+			name: `length(*2)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'length')
+				length('a', 'b')
+			`),
+			wantErr: errors.New(`length() takes exactly one argument (2 given)`),
+		},
+		{
+			name: `length(bool)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'length')
+				length(True)
+			`),
+			wantErr: errors.New(`object of type 'bool' has no length()`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
