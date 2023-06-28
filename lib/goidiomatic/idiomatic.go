@@ -9,7 +9,6 @@ import (
 	"unicode/utf8"
 
 	itn "github.com/1set/starlet/lib/internal"
-	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 )
 
@@ -39,24 +38,16 @@ func length(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 	if l := len(args); l != 1 {
 		return none, fmt.Errorf(`length() takes exactly one argument (%d given)`, l)
 	}
+
 	switch r := args[0]; v := r.(type) {
 	case starlark.String:
 		return starlark.MakeInt(utf8.RuneCountInString(v.GoString())), nil
 	case starlark.Bytes:
 		return starlark.MakeInt(len(v)), nil
-	case starlark.Tuple:
-		return starlark.MakeInt(v.Len()), nil
-	case *starlark.List:
-		return starlark.MakeInt(v.Len()), nil
-	case *starlark.Set:
-		return starlark.MakeInt(v.Len()), nil
-	case *starlark.Dict:
-		return starlark.MakeInt(v.Len()), nil
-	case *convert.GoSlice:
-		return starlark.MakeInt(v.Len()), nil
-	case *convert.GoMap:
-		return starlark.MakeInt(v.Len()), nil
 	default:
+		if sv, ok := v.(starlark.Sequence); ok {
+			return starlark.MakeInt(sv.Len()), nil
+		}
 		return none, fmt.Errorf(`object of type '%s' has no length()`, v.Type())
 	}
 }
