@@ -1,12 +1,14 @@
 package http
 
 import (
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
 	"strings"
 	"testing"
+	"time"
 
 	itn "github.com/1set/starlet/lib/internal"
 	"go.starlark.net/starlark"
@@ -83,6 +85,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 			t.Errorf("Error dumping request: %v", err)
 		}
 		t.Logf("Web server received request: [[%s]]", b)
+		time.Sleep(50 * time.Millisecond)
 		w.Write(b)
 	}))
 	defer ts.Close()
@@ -179,6 +182,14 @@ func TestLoadModule_HTTP(t *testing.T) {
 				assert.eq(res.status_code, 200)
 				assert.eq(len(res.body()), 0)
 			`),
+		},
+		{
+			name: `GET Timeout`,
+			script: itn.HereDoc(`
+				load('http', 'get')
+				res = get(test_server_url, timeout=0.01)
+			`),
+			wantErr: errors.New(`context deadline exceeded (Client.Timeout exceeded while awaiting headers)`),
 		},
 	}
 	for _, tt := range tests {

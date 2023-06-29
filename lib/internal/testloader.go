@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"go.starlark.net/starlark"
@@ -70,8 +71,7 @@ func ExecModuleWithErrorTest(t *testing.T, name string, loader ModuleLoadFunc, s
 			} else {
 				t.Errorf("got unexpected error: '%v'", err)
 			}
-		}
-		if wantErr != nil && err.Error() != wantErr.Error() {
+		} else if wantErr != nil && !strings.Contains(err.Error(), wantErr.Error()) {
 			t.Errorf("got mismatched error: '%v', want: '%v'", err, wantErr)
 		}
 	}
