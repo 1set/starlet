@@ -59,19 +59,19 @@ func NewAssertLoader(moduleName string, loader ModuleLoadFunc) ThreadLoadFunc {
 }
 
 // ExecModuleWithErrorTest executes a Starlark script with a module loader and compares the error with the expected error.
-func ExecModuleWithErrorTest(t *testing.T, name string, loader ModuleLoadFunc, script string, wantErr error) (starlark.StringDict, error) {
+func ExecModuleWithErrorTest(t *testing.T, name string, loader ModuleLoadFunc, script string, wantErr string) (starlark.StringDict, error) {
 	thread := &starlark.Thread{Load: NewAssertLoader(name, loader), Print: func(_ *starlark.Thread, msg string) { t.Log("※", msg) }}
 	starlarktest.SetReporter(thread, t)
 	header := `load('assert.star', 'assert')`
 	out, err := starlark.ExecFile(thread, name+"_test.star", []byte(header+"\n"+script), nil)
 	if err != nil {
-		if wantErr == nil {
+		if wantErr == "" {
 			if ee, ok := err.(*starlark.EvalError); ok {
 				t.Errorf("got unexpected starlark error: '%v'", ee.Backtrace())
 			} else {
 				t.Errorf("got unexpected error: '%v'", err)
 			}
-		} else if wantErr != nil && !strings.Contains(err.Error(), wantErr.Error()) {
+		} else if wantErr != "" && !strings.Contains(err.Error(), wantErr) {
 			t.Errorf("got mismatched error: '%v', want: '%v'", err, wantErr)
 		}
 	}

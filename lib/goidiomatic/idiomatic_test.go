@@ -1,7 +1,6 @@
 package goidiomatic_test
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/1set/starlet/lib/goidiomatic"
@@ -15,7 +14,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 	tests := []struct {
 		name    string
 		script  string
-		wantErr error
+		wantErr string
 	}{
 		{
 			name: `boolean`,
@@ -38,7 +37,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'sleep')
 				sleep()
 			`),
-			wantErr: errors.New(`sleep: missing argument for secs`),
+			wantErr: `sleep: missing argument for secs`,
 		},
 		{
 			name: `sleep 0`,
@@ -60,7 +59,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'sleep')
 				sleep(-1)
 			`),
-			wantErr: errors.New(`secs must be non-negative`),
+			wantErr: `secs must be non-negative`,
 		},
 		{
 			name: `sleep hello`,
@@ -68,7 +67,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'sleep')
 				sleep('hello')
 			`),
-			wantErr: errors.New(`sleep: for parameter secs: got string, want float or int`),
+			wantErr: `sleep: for parameter secs: got string, want float or int`,
 		},
 		{
 			name: `sleep none`,
@@ -76,7 +75,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'sleep')
 				sleep(None)
 			`),
-			wantErr: errors.New(`sleep: for parameter secs: got NoneType, want float or int`),
+			wantErr: `sleep: for parameter secs: got NoneType, want float or int`,
 		},
 		{
 			name: `exit`,
@@ -84,7 +83,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'exit')
 				exit()
 			`),
-			wantErr: errors.New(`starlet runtime system exit (Use Ctrl-D in REPL to exit)`),
+			wantErr: `starlet runtime system exit (Use Ctrl-D in REPL to exit)`,
 		},
 		{
 			name: `exit 0`,
@@ -92,7 +91,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'exit')
 				exit(0)
 			`),
-			wantErr: errors.New(`starlet runtime system exit (Use Ctrl-D in REPL to exit)`),
+			wantErr: `starlet runtime system exit (Use Ctrl-D in REPL to exit)`,
 		},
 		{
 			name: `exit 1`,
@@ -100,7 +99,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'exit')
 				exit(1)
 			`),
-			wantErr: errors.New(`starlet runtime system exit (Use Ctrl-D in REPL to exit)`),
+			wantErr: `starlet runtime system exit (Use Ctrl-D in REPL to exit)`,
 		},
 		{
 			name: `exit -1`,
@@ -108,7 +107,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'exit')
 				exit(-1)
 			`),
-			wantErr: errors.New(`exit: for parameter code: -1 out of range (want value in unsigned 8-bit range)`),
+			wantErr: `exit: for parameter code: -1 out of range (want value in unsigned 8-bit range)`,
 		},
 		{
 			name: `exit hello`,
@@ -116,7 +115,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'exit')
 				exit('hello')
 			`),
-			wantErr: errors.New(`exit: for parameter code: got string, want int`),
+			wantErr: `exit: for parameter code: got string, want int`,
 		},
 		{
 			name: `quit`,
@@ -124,7 +123,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'quit')
 				quit()
 			`),
-			wantErr: errors.New(`starlet runtime system exit (Use Ctrl-D in REPL to exit)`),
+			wantErr: `starlet runtime system exit (Use Ctrl-D in REPL to exit)`,
 		},
 		{
 			name: `length(string)`,
@@ -182,7 +181,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'length')
 				length()
 			`),
-			wantErr: errors.New(`length() takes exactly one argument (0 given)`),
+			wantErr: `length() takes exactly one argument (0 given)`,
 		},
 		{
 			name: `length(*2)`,
@@ -190,7 +189,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'length')
 				length('a', 'b')
 			`),
-			wantErr: errors.New(`length() takes exactly one argument (2 given)`),
+			wantErr: `length() takes exactly one argument (2 given)`,
 		},
 		{
 			name: `length(bool)`,
@@ -198,7 +197,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'length')
 				length(True)
 			`),
-			wantErr: errors.New(`object of type 'bool' has no length()`),
+			wantErr: `object of type 'bool' has no length()`,
 		},
 	}
 	for _, tt := range tests {
@@ -218,7 +217,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 			starlark.Universe["map"] = m
 
 			res, err := itn.ExecModuleWithErrorTest(t, goidiomatic.ModuleName, goidiomatic.LoadModule, tt.script, tt.wantErr)
-			if (err != nil) != (tt.wantErr != nil) {
+			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("go_idiomatic(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
 				return
 			}

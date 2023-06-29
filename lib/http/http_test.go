@@ -1,7 +1,6 @@
 package http
 
 import (
-	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -95,7 +94,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 		name    string
 		preset  func()
 		script  string
-		wantErr error
+		wantErr string
 	}{
 		{
 			name: `Simple GET`,
@@ -189,7 +188,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 				load('http', 'get')
 				res = get(test_server_url, timeout=0.01)
 			`),
-			wantErr: errors.New(`context deadline exceeded (Client.Timeout exceeded while awaiting headers)`),
+			wantErr: `context deadline exceeded (Client.Timeout exceeded while awaiting headers)`,
 		},
 	}
 	for _, tt := range tests {
@@ -198,7 +197,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 				tt.preset()
 			}
 			res, err := itn.ExecModuleWithErrorTest(t, ModuleName, LoadModule, tt.script, tt.wantErr)
-			if (err != nil) != (tt.wantErr != nil) {
+			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("http(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
 				return
 			}
