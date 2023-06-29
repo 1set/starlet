@@ -134,7 +134,7 @@ import (
 	"strings"
 	"time"
 
-	util "github.com/1set/starlet/lib/internal"
+	itn "github.com/1set/starlet/lib/internal"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
@@ -144,10 +144,10 @@ import (
 const ModuleName = "http"
 
 var (
-	// Timeout is the default timeout for http requests, override with a custom value before calling LoadModule.
-	Timeout = 30 * time.Second
 	// UserAgent is the default user agent for http requests, override with a custom value before calling LoadModule.
 	UserAgent = "Starlet-http-client/v0.0.1"
+	// TimeoutSecond is the default timeout in seconds for http requests, override with a custom value before calling LoadModule.
+	TimeoutSecond = 30
 	// SkipInsecureVerify controls whether to skip TLS verification, override with a custom value before calling LoadModule.
 	SkipInsecureVerify = false
 	// DisableRedirect controls whether to follow redirects, override with a custom value before calling LoadModule.
@@ -164,35 +164,12 @@ type RequestGuard interface {
 	Allowed(thread *starlark.Thread, req *http.Request) (*http.Request, error)
 }
 
-func getHTTPClient() *http.Client {
-	// use custom client if set
-	if Client != nil {
-		return Client
-	}
-	// make up based on global settings
-	var timeout = Timeout
-	if timeout <= 0 {
-		timeout = 30 * time.Second
-	}
-	cli := &http.Client{Timeout: timeout}
-	// skip TLS verification if set
-	if SkipInsecureVerify {
-		tr := http.DefaultTransport.(*http.Transport).Clone()
-		tr.TLSClientConfig.InsecureSkipVerify = true
-		cli.Transport = tr
-	}
-	// disable redirects if set
-	if DisableRedirect {
-		cli.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		}
-	}
-	return cli
-}
-
 // LoadModule creates an http Module
 func LoadModule() (starlark.StringDict, error) {
-	var m = &Module{cli: getHTTPClient()}
+	var m = &Module{}
+	if Client != nil {
+		m.cli = Client
+	}
 	if Guard != nil {
 		m.rg = Guard
 	}
@@ -232,29 +209,33 @@ func (m *Module) StringDict() starlark.StringDict {
 func (m *Module) reqMethod(method string) func(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	return func(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var (
-			urlv         starlark.String
-			params       = &starlark.Dict{}
-			headers      = &starlark.Dict{}
-			formBody     = &starlark.Dict{}
-			formEncoding starlark.String
-			auth         starlark.Tuple
-			body         starlark.String
-			jsonBody     starlark.Value
+			urlv          starlark.String
+			params        = &starlark.Dict{}
+			headers       = &starlark.Dict{}
+			formBody      = &starlark.Dict{}
+			formEncoding  starlark.String
+			auth          starlark.Tuple
+			body          starlark.String
+			jsonBody      starlark.Value
+			timeout       = itn.FloatOrInt(TimeoutSecond)
+			allowRedirect = starlark.Bool(!DisableRedirect)
+			verifySSL     = starlark.Bool(!SkipInsecureVerify)
 		)
 
-		if err := starlark.UnpackArgs(method, args, kwargs, "url", &urlv, "params?", &params, "headers", &headers, "body", &body, "form_body", &formBody, "form_encoding", &formEncoding, "json_body", &jsonBody, "auth", &auth); err != nil {
+		if err := starlark.UnpackArgs(method, args, kwargs, "url", &urlv, "params?", &params, "headers", &headers, "body", &body, "form_body", &formBody, "form_encoding", &formEncoding, "json_body", &jsonBody,
+			"auth", &auth, "timeout?", &timeout, "allow_redirects?", &allowRedirect, "verify_ssl?", &verifySSL); err != nil {
 			return nil, err
 		}
 
-		rawurl, err := AsString(urlv)
+		rawURL, err := AsString(urlv)
 		if err != nil {
 			return nil, err
 		}
-		if err = setQueryParams(&rawurl, params); err != nil {
+		if err = setQueryParams(&rawURL, params); err != nil {
 			return nil, err
 		}
 
-		req, err := http.NewRequest(strings.ToUpper(method), rawurl, nil)
+		req, err := http.NewRequest(strings.ToUpper(method), rawURL, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -275,7 +256,8 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, _ *starl
 			return nil, err
 		}
 
-		res, err := m.cli.Do(req)
+		cli := m.getHTTPClient(float64(timeout), bool(allowRedirect), bool(verifySSL))
+		res, err := cli.Do(req)
 		if err != nil {
 			return nil, err
 		}
@@ -283,6 +265,31 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, _ *starl
 		r := &Response{*res}
 		return r.Struct(), nil
 	}
+}
+
+func (m *Module) getHTTPClient(timeoutSec float64, allowRedirect, verifySSL bool) *http.Client {
+	// return existing client if set
+	if m.cli != nil {
+		return m.cli
+	}
+	// set timeout to 30 seconds if it's negative
+	if timeoutSec < 0 {
+		timeoutSec = 30
+	}
+	cli := &http.Client{Timeout: time.Duration(timeoutSec * float64(time.Second))}
+	// skip TLS verification if set
+	if !verifySSL {
+		tr := http.DefaultTransport.(*http.Transport).Clone()
+		tr.TLSClientConfig.InsecureSkipVerify = true
+		cli.Transport = tr
+	}
+	// disable redirects if set
+	if !allowRedirect {
+		cli.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		}
+	}
+	return cli
 }
 
 // AsString unquotes a starlark string value
@@ -390,7 +397,7 @@ func setHeaders(req *http.Request, headers *starlark.Dict) error {
 }
 
 func setBody(req *http.Request, body starlark.String, formData *starlark.Dict, formEncoding starlark.String, jsondata starlark.Value) error {
-	if !util.IsEmptyString(body) {
+	if !itn.IsEmptyString(body) {
 		uq, err := strconv.Unquote(body.String())
 		if err != nil {
 			return err
@@ -406,7 +413,7 @@ func setBody(req *http.Request, body starlark.String, formData *starlark.Dict, f
 	if jsondata != nil && jsondata.String() != "" {
 		req.Header.Set("Content-Type", "application/json")
 
-		v, err := util.Unmarshal(jsondata)
+		v, err := itn.Unmarshal(jsondata)
 		if err != nil {
 			return err
 		}
@@ -538,5 +545,5 @@ func (r *Response) JSON(thread *starlark.Thread, _ *starlark.Builtin, args starl
 	r.Body.Close()
 	// reset reader to allow multiple calls
 	r.Body = ioutil.NopCloser(bytes.NewReader(body))
-	return util.Marshal(data)
+	return itn.Marshal(data)
 }
