@@ -1,18 +1,20 @@
 package goidiomatic_test
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/1set/starlet/lib/goidiomatic"
 	itn "github.com/1set/starlet/lib/internal"
+	"github.com/1set/starlight/convert"
+	"go.starlark.net/starlark"
 )
 
 func TestLoadModule_GoIdiomatic(t *testing.T) {
+	// test cases
 	tests := []struct {
 		name    string
 		script  string
-		wantErr error
+		wantErr string
 	}{
 		{
 			name: `boolean`,
@@ -35,7 +37,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'sleep')
 				sleep()
 			`),
-			wantErr: errors.New(`sleep: missing argument for secs`),
+			wantErr: `sleep: missing argument for secs`,
 		},
 		{
 			name: `sleep 0`,
@@ -57,7 +59,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'sleep')
 				sleep(-1)
 			`),
-			wantErr: errors.New(`secs must be non-negative`),
+			wantErr: `secs must be non-negative`,
 		},
 		{
 			name: `sleep hello`,
@@ -65,7 +67,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'sleep')
 				sleep('hello')
 			`),
-			wantErr: errors.New(`sleep: for parameter secs: got string, want float or int`),
+			wantErr: `sleep: for parameter secs: got string, want float or int`,
 		},
 		{
 			name: `sleep none`,
@@ -73,7 +75,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'sleep')
 				sleep(None)
 			`),
-			wantErr: errors.New(`sleep: for parameter secs: got NoneType, want float or int`),
+			wantErr: `sleep: for parameter secs: got NoneType, want float or int`,
 		},
 		{
 			name: `exit`,
@@ -81,7 +83,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'exit')
 				exit()
 			`),
-			wantErr: errors.New(`starlet runtime system exit (Use Ctrl-D in REPL to exit)`),
+			wantErr: `starlet runtime system exit (Use Ctrl-D in REPL to exit)`,
 		},
 		{
 			name: `exit 0`,
@@ -89,7 +91,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'exit')
 				exit(0)
 			`),
-			wantErr: errors.New(`starlet runtime system exit (Use Ctrl-D in REPL to exit)`),
+			wantErr: `starlet runtime system exit (Use Ctrl-D in REPL to exit)`,
 		},
 		{
 			name: `exit 1`,
@@ -97,7 +99,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'exit')
 				exit(1)
 			`),
-			wantErr: errors.New(`starlet runtime system exit (Use Ctrl-D in REPL to exit)`),
+			wantErr: `starlet runtime system exit (Use Ctrl-D in REPL to exit)`,
 		},
 		{
 			name: `exit -1`,
@@ -105,7 +107,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'exit')
 				exit(-1)
 			`),
-			wantErr: errors.New(`exit: for parameter code: -1 out of range (want value in unsigned 8-bit range)`),
+			wantErr: `exit: for parameter code: -1 out of range (want value in unsigned 8-bit range)`,
 		},
 		{
 			name: `exit hello`,
@@ -113,7 +115,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'exit')
 				exit('hello')
 			`),
-			wantErr: errors.New(`exit: for parameter code: got string, want int`),
+			wantErr: `exit: for parameter code: got string, want int`,
 		},
 		{
 			name: `quit`,
@@ -121,13 +123,101 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'quit')
 				quit()
 			`),
-			wantErr: errors.New(`starlet runtime system exit (Use Ctrl-D in REPL to exit)`),
+			wantErr: `starlet runtime system exit (Use Ctrl-D in REPL to exit)`,
+		},
+		{
+			name: `length(string)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'length')
+				assert.eq(0, length(''))
+				assert.eq(1, length('a'))
+				assert.eq(2, length('ab'))
+				assert.eq(3, length('abc'))
+				assert.eq(1, length('🙆'))
+				assert.eq(1, length('✅'))
+				assert.eq(3, length('水光肌'))
+			`),
+		},
+		{
+			name: `length(bytes)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'length')
+				assert.eq(0, length(b''))
+				assert.eq(9, length(b'水光肌'))
+				assert.eq(7, length(b'🙆✅'))
+			`),
+		},
+		{
+			name: `length(list/tuple/dict/set)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'length')
+				assert.eq(0, length([]))
+				assert.eq(5, length([1, 2, "#", True, None]))
+				assert.eq(1, length((3,)))
+				assert.eq(2, length((1, 2)))
+				assert.eq(0, length({}))
+				assert.eq(2, length({'a': 1, 'b': 2}))
+				assert.eq(0, length(set()))
+				assert.eq(2, length(set(['a', 'b'])))
+			`),
+		},
+		{
+			name: `length(slice)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'length')
+				assert.eq(3, length(slice))
+			`),
+		},
+		{
+			name: `length(map)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'length')
+				assert.eq(2, length(map))
+			`),
+		},
+		{
+			name: `length()`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'length')
+				length()
+			`),
+			wantErr: `length() takes exactly one argument (0 given)`,
+		},
+		{
+			name: `length(*2)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'length')
+				length('a', 'b')
+			`),
+			wantErr: `length() takes exactly one argument (2 given)`,
+		},
+		{
+			name: `length(bool)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'length')
+				length(True)
+			`),
+			wantErr: `object of type 'bool' has no length()`,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// prepare
+			s, err := convert.ToValue([]string{"a", "b", "c"})
+			if err != nil {
+				t.Errorf("convert.ToValue Slice: %v", err)
+				return
+			}
+			m, err := convert.ToValue(map[string]string{"a": "b", "c": "d"})
+			if err != nil {
+				t.Errorf("convert.ToValue Map: %v", err)
+				return
+			}
+			starlark.Universe["slice"] = s
+			starlark.Universe["map"] = m
+
 			res, err := itn.ExecModuleWithErrorTest(t, goidiomatic.ModuleName, goidiomatic.LoadModule, tt.script, tt.wantErr)
-			if (err != nil) != (tt.wantErr != nil) {
+			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("go_idiomatic(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
 				return
 			}

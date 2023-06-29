@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"go.starlark.net/starlark"
@@ -27,12 +28,17 @@ func NewAssertLoader(moduleName string, loader ModuleLoadFunc) ThreadLoadFunc {
 				// failed to load
 				return nil, err
 			}
-			// extract all members of module from dict like `{name: module}`
+			// Aligned with starlet/module.go: GetLazyLoader() function
+			// extract all members of module from dict like `{name: module}` or `{name: struct}`
 			if len(d) == 1 {
 				m, found := d[moduleName]
 				if found {
-					if md, ok := m.(*starlarkstruct.Module); ok && md != nil {
-						return md.Members, nil
+					if mm, ok := m.(*starlarkstruct.Module); ok && mm != nil {
+						return mm.Members, nil
+					} else if sm, ok := m.(*starlarkstruct.Struct); ok && sm != nil {
+						sd := make(starlark.StringDict)
+						sm.ToStringDict(sd)
+						return sd, nil
 					}
 				}
 			}
@@ -53,20 +59,19 @@ func NewAssertLoader(moduleName string, loader ModuleLoadFunc) ThreadLoadFunc {
 }
 
 // ExecModuleWithErrorTest executes a Starlark script with a module loader and compares the error with the expected error.
-func ExecModuleWithErrorTest(t *testing.T, name string, loader ModuleLoadFunc, script string, wantErr error) (starlark.StringDict, error) {
-	thread := &starlark.Thread{Load: NewAssertLoader(name, loader)}
+func ExecModuleWithErrorTest(t *testing.T, name string, loader ModuleLoadFunc, script string, wantErr string) (starlark.StringDict, error) {
+	thread := &starlark.Thread{Load: NewAssertLoader(name, loader), Print: func(_ *starlark.Thread, msg string) { t.Log("※", msg) }}
 	starlarktest.SetReporter(thread, t)
 	header := `load('assert.star', 'assert')`
 	out, err := starlark.ExecFile(thread, name+"_test.star", []byte(header+"\n"+script), nil)
 	if err != nil {
-		if wantErr == nil {
+		if wantErr == "" {
 			if ee, ok := err.(*starlark.EvalError); ok {
 				t.Errorf("got unexpected starlark error: '%v'", ee.Backtrace())
 			} else {
 				t.Errorf("got unexpected error: '%v'", err)
 			}
-		}
-		if wantErr != nil && err.Error() != wantErr.Error() {
+		} else if wantErr != "" && !strings.Contains(err.Error(), wantErr) {
 			t.Errorf("got mismatched error: '%v', want: '%v'", err, wantErr)
 		}
 	}

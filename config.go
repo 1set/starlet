@@ -3,6 +3,7 @@ package starlet
 import (
 	"github.com/1set/starlet/lib/goidiomatic"
 	"github.com/1set/starlet/lib/hash"
+	"github.com/1set/starlet/lib/http"
 	sjson "go.starlark.net/lib/json"
 	smath "go.starlark.net/lib/math"
 	stime "go.starlark.net/lib/time"
@@ -37,6 +38,7 @@ var allBuiltinModules = ModuleLoaderMap{
 	},
 	// add third-party modules
 	hash.ModuleName: hash.LoadModule,
+	http.ModuleName: http.LoadModule,
 }
 
 // GetAllBuiltinModuleNames returns a list of all builtin module names.

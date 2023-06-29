@@ -4,7 +4,9 @@ package goidiomatic
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
+	"unicode/utf8"
 
 	itn "github.com/1set/starlet/lib/internal"
 	"go.starlark.net/starlark"
@@ -16,12 +18,13 @@ const ModuleName = "go_idiomatic"
 // LoadModule loads the Go idiomatic module.
 func LoadModule() (starlark.StringDict, error) {
 	return starlark.StringDict{
-		"true":  starlark.True,
-		"false": starlark.False,
-		"nil":   starlark.None,
-		"sleep": starlark.NewBuiltin("sleep", sleep),
-		"exit":  starlark.NewBuiltin("exit", exit),
-		"quit":  starlark.NewBuiltin("quit", exit), // alias for exit
+		"true":   starlark.True,
+		"false":  starlark.False,
+		"nil":    starlark.None,
+		"length": starlark.NewBuiltin("length", length),
+		"sleep":  starlark.NewBuiltin("sleep", sleep),
+		"exit":   starlark.NewBuiltin("exit", exit),
+		"quit":   starlark.NewBuiltin("quit", exit), // alias for exit
 	}, nil
 }
 
@@ -29,6 +32,25 @@ func LoadModule() (starlark.StringDict, error) {
 var (
 	none = starlark.None
 )
+
+// length returns the length of the given value.
+func length(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if l := len(args); l != 1 {
+		return none, fmt.Errorf(`length() takes exactly one argument (%d given)`, l)
+	}
+
+	switch r := args[0]; v := r.(type) {
+	case starlark.String:
+		return starlark.MakeInt(utf8.RuneCountInString(v.GoString())), nil
+	case starlark.Bytes:
+		return starlark.MakeInt(len(v)), nil
+	default:
+		if sv, ok := v.(starlark.Sequence); ok {
+			return starlark.MakeInt(sv.Len()), nil
+		}
+		return none, fmt.Errorf(`object of type '%s' has no length()`, v.Type())
+	}
+}
 
 // sleep sleeps for the given number of seconds.
 func sleep(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
