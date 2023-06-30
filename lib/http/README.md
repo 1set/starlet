@@ -4,7 +4,7 @@
 
 ## Functions
 
-### get(url,params={},headers={},auth=()) response
+### `get(url,params={},headers={},auth=()) response`
 
 perform an HTTP GET request, returning a response
 
@@ -16,7 +16,7 @@ perform an HTTP GET request, returning a response
 | `headers` | `dict`   | optional. dictionary of headers to add to request                |
 | `auth`    | `tuple`  | optional. (username,password) tuple for http basic authorization |
 
-### put(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=()) response
+### `put(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=()) response`
 
 perform an HTTP PUT request, returning a response
 
@@ -32,7 +32,7 @@ perform an HTTP PUT request, returning a response
 | `json_body`     | `any`    | optional. json data to supply as a request. handy for working with JSON-API's     |
 | `auth`          | `tuple`  | optional. (username,password) tuple for http basic authorization                  |
 
-### post(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=()) response
+### `post(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=()) response`
 
 perform an HTTP POST request, returning a response
 
@@ -48,7 +48,7 @@ perform an HTTP POST request, returning a response
 | `json_body`     | `any`    | optional. json data to supply as a request. handy for working with JSON-API's     |
 | `auth`          | `tuple`  | optional. (username,password) tuple for http basic authorization                  |
 
-### delete(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=()) response
+### `delete(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=()) response`
 
 perform an HTTP DELETE request, returning a response
 
@@ -64,7 +64,7 @@ perform an HTTP DELETE request, returning a response
 | `json_body`     | `any`    | optional. json data to supply as a request. handy for working with JSON-API's     |
 | `auth`          | `tuple`  | optional. (username,password) tuple for http basic authorization                  |
 
-### patch(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=()) response
+### `patch(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=()) response`
 
 perform an HTTP PATCH request, returning a response
 
@@ -80,7 +80,7 @@ perform an HTTP PATCH request, returning a response
 | `json_body`     | `any`    | optional. json data to supply as a request. handy for working with JSON-API's     |
 | `auth`          | `tuple`  | optional. (username,password) tuple for http basic authorization                  |
 
-### options(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=()) response
+### `options(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=()) response`
 
 perform an HTTP OPTIONS request, returning a response
 
@@ -98,7 +98,7 @@ perform an HTTP OPTIONS request, returning a response
 
 ## Types
 
-### response
+### `response`
 
 the result of performing a http request
 
@@ -113,10 +113,10 @@ the result of performing a http request
 
 **Methods**
 
-#### body() string
+#### `body() string`
 
 output response body as a string
 
-#### json()
+#### `json()`
 
 attempt to parse resonse body as json, returning a JSON-decoded result

@@ -4,7 +4,7 @@
 
 ## Functions
 
-### length(obj) int
+### `length(obj) int`
 
 Returns the length of the object, for string it returns the number of Unicode code points, instead of bytes like `len()`.
 
@@ -31,7 +31,7 @@ print(length([1, 2, 3]), length(set([1, 2])), length({1: 2}))
 # Output: 3 2 1
 ```
 
-### sleep(secs)
+### `sleep(secs)`
 
 Sleeps for the given number of seconds.
 
@@ -46,7 +46,7 @@ load("go_idiomatic", "sleep")
 sleep(1)
 ```
 
-### exit(code=0)
+### `exit(code=0)`
 
 Exits the program with the given exit code.
 
@@ -70,7 +70,7 @@ load("go_idiomatic", "exit")
 exit(1)
 ```
 
-### quit(code=0)
+### `quit(code=0)`
 
 Alias for `exit()`.
 
@@ -96,14 +96,14 @@ quit(1)
 
 ## Types
 
-### nil
+### `nil`
 
 Value as an alias for `None`.
 
-### true
+### `true`
 
 Value as an alias for `True`.
 
-### false
+### `false`
 
 Value as an alias for `False`.
