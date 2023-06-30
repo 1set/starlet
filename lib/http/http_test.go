@@ -78,7 +78,7 @@ func TestLoadModule_HTTP_One(t *testing.T) {
 }
 
 func TestLoadModule_HTTP(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	httpHand := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		b, err := httputil.DumpRequest(r, true)
 		if err != nil {
 			t.Errorf("Error dumping request: %v", err)
@@ -86,9 +86,14 @@ func TestLoadModule_HTTP(t *testing.T) {
 		t.Logf("Web server received request: [[%s]]", b)
 		time.Sleep(50 * time.Millisecond)
 		w.Write(b)
-	}))
+	})
+	ts := httptest.NewServer(httpHand)
 	defer ts.Close()
 	starlark.Universe["test_server_url"] = starlark.String(ts.URL)
+
+	ts2 := httptest.NewTLSServer(httpHand)
+	defer ts2.Close()
+	starlark.Universe["test_server_url_ssl"] = starlark.String(ts2.URL)
 
 	tests := []struct {
 		name    string
@@ -189,6 +194,21 @@ func TestLoadModule_HTTP(t *testing.T) {
 				res = get(test_server_url, timeout=0.01)
 			`),
 			wantErr: `context deadline exceeded (Client.Timeout exceeded while awaiting headers)`,
+		},
+		{
+			name: `GET SSL Error`,
+			script: itn.HereDoc(`
+				load('http', 'get')
+				res = get(test_server_url_ssl)
+			`),
+			wantErr: `x509: certificate signed by unknown authority`,
+		},
+		{
+			name: `GET SSL Insecure`,
+			script: itn.HereDoc(`
+				load('http', 'get')
+				res = get(test_server_url_ssl, verify=False)
+			`),
 		},
 	}
 	for _, tt := range tests {
