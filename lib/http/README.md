@@ -139,12 +139,12 @@ The result of performing a HTTP request.
 
 **Fields**
 
-| name        | type   | description                                                         |
-|-------------|--------|---------------------------------------------------------------------|
-| url         | string | the URL that was ultimately requested (may change after redirects). |
-| status_code | int    | response status code (for example: `200 == OK`).                    |
-| headers     | dict   | dictionary of response headers.                                     |
-| encoding    | string | transfer encoding. example: "octet-stream" or "application/json".   |
+| name          | type     | description                                                         |
+|---------------|----------|---------------------------------------------------------------------|
+| `url`         | `string` | the URL that was ultimately requested (may change after redirects). |
+| `status_code` | `int`    | response status code (for example: `200 == OK`).                    |
+| `headers`     | `dict`   | dictionary of response headers.                                     |
+| `encoding`    | `string` | transfer encoding. example: "octet-stream" or "application/json".   |
 
 **Methods**
 
