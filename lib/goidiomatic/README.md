@@ -31,6 +31,32 @@ print(length([1, 2, 3]), length(set([1, 2])), length({1: 2}))
 # Output: 3 2 1
 ```
 
+### `sum(iterable, start=0)`
+
+Returns the sum of `start` and the items of an iterable from left to right. The iterable's items are normally numbers, and the start value is not allowed to be a string.
+
+#### Examples
+
+**Basic**
+
+Calculate the sum of a list.
+
+```python
+load("go_idiomatic", "sum")
+print(sum([1, 2, 3]))
+# Output: 6
+```
+
+**Start**
+
+Calculate the sum of a list with a start value.
+
+```python
+load("go_idiomatic", "sum")
+print(sum([1, 2, 3], 10))
+# Output: 16
+```
+
 ### `sleep(secs)`
 
 Sleeps for the given number of seconds.
