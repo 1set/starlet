@@ -23,3 +23,40 @@ func (p *FloatOrInt) Unpack(v starlark.Value) error {
 	}
 	return fmt.Errorf("got %s, want float or int", v.Type())
 }
+
+// StarNumber is a custom type that implements the Starlark Value interface.
+// It can be used to represent a number in Starlark.
+type StarNumber struct {
+	numInt   starlark.Int
+	numFloat starlark.Float
+	cntInt   int
+	cntFloat int
+}
+
+// Add adds the given value to this StarNumber.
+func (n *StarNumber) Add(v starlark.Value) error {
+	switch v := v.(type) {
+	case starlark.Int:
+		n.numInt.Add(v)
+		n.cntInt++
+	case starlark.Float:
+		n.numFloat += v
+		n.cntFloat++
+	default:
+		return fmt.Errorf("got %s, want float or int", v.Type())
+	}
+	return nil
+}
+
+// AsFloat returns the float value of this StarNumber.
+func (n *StarNumber) AsFloat() float64 {
+	return float64(n.numFloat + n.numInt.Float())
+}
+
+// Value returns the Starlark value of this StarNumber.
+func (n *StarNumber) Value() starlark.Value {
+	if n.cntFloat > 0 {
+		return n.numFloat + n.numInt.Float()
+	}
+	return n.numInt
+}
