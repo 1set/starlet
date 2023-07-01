@@ -33,17 +33,22 @@ type StarNumber struct {
 	cntFloat int
 }
 
+// NewStarNumber creates a new StarNumber.
+func NewStarNumber() *StarNumber {
+	return &StarNumber{numInt: starlark.MakeInt(0), numFloat: starlark.Float(0)}
+}
+
 // Add adds the given value to this StarNumber.
 func (n *StarNumber) Add(v starlark.Value) error {
-	switch v := v.(type) {
+	switch vv := v.(type) {
 	case starlark.Int:
-		n.numInt.Add(v)
+		n.numInt = n.numInt.Add(vv)
 		n.cntInt++
 	case starlark.Float:
-		n.numFloat += v
+		n.numFloat += vv
 		n.cntFloat++
 	default:
-		return fmt.Errorf("got %s, want float or int", v.Type())
+		return fmt.Errorf("got %s, want float or int", vv.Type())
 	}
 	return nil
 }

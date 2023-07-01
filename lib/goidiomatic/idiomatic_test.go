@@ -199,6 +199,51 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 			`),
 			wantErr: `object of type 'bool' has no length()`,
 		},
+		{
+			name: `sum()`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sum')
+				sum()
+			`),
+			wantErr: `sum() takes at least 1 positional argument (0 given)`,
+		},
+		{
+			name: `sum(>2)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sum')
+				sum(1, 2, 3)
+			`),
+			wantErr: `sum() takes at most 2 arguments (3 given)`,
+		},
+		{
+			name: `sum(int)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sum')
+				sum(1)
+			`),
+			wantErr: `object of type 'int' is not iterable`,
+		},
+		{
+			name: `sum([int])`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sum')
+				assert.eq(6, sum([1, 2, 3]))
+			`),
+		},
+		{
+			name: `sum([float])`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sum')
+				assert.eq(6, sum([1.0, 2.0, 3.0]))
+			`),
+		},
+		{
+			name: `sum([int,float])`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sum')
+				assert.eq(7, sum([1, 2.0, 4]))
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

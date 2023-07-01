@@ -64,7 +64,7 @@ func sum(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwar
 	}
 
 	// result
-	var total itn.StarNumber
+	var total = itn.NewStarNumber()
 
 	// loop through the list
 	lst := args[0]
