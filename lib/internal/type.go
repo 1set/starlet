@@ -34,8 +34,17 @@ type StarNumber struct {
 }
 
 // NewStarNumber creates a new StarNumber.
-func NewStarNumber() *StarNumber {
-	return &StarNumber{numInt: starlark.MakeInt(0), numFloat: starlark.Float(0)}
+func NewStarNumber(v starlark.Value) (*StarNumber, error) {
+	switch vv := v.(type) {
+	case starlark.Int:
+		return &StarNumber{numInt: vv, numFloat: starlark.Float(0), cntInt: 1}, nil
+	case starlark.Float:
+		return &StarNumber{numInt: starlark.MakeInt(0), numFloat: vv, cntFloat: 1}, nil
+	case nil:
+		return &StarNumber{numInt: starlark.MakeInt(0), numFloat: starlark.Float(0)}, nil
+	default:
+		return nil, fmt.Errorf("got %T, want float or int", vv)
+	}
 }
 
 // Add adds the given value to this StarNumber.

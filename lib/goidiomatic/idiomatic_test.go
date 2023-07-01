@@ -205,7 +205,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'sum')
 				sum()
 			`),
-			wantErr: `sum() takes at least 1 positional argument (0 given)`,
+			wantErr: `sum: missing argument for iterable`,
 		},
 		{
 			name: `sum(>2)`,
@@ -213,7 +213,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'sum')
 				sum(1, 2, 3)
 			`),
-			wantErr: `sum() takes at most 2 arguments (3 given)`,
+			wantErr: `sum: got 3 arguments, want at most 2`,
 		},
 		{
 			name: `sum(int)`,
@@ -221,7 +221,15 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'sum')
 				sum(1)
 			`),
-			wantErr: `object of type 'int' is not iterable`,
+			wantErr: `sum: for parameter iterable: got int, want iterable`,
+		},
+		{
+			name: `sum(string)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sum')
+				sum('abc')
+			`),
+			wantErr: `sum: for parameter iterable: got string, want iterable`,
 		},
 		{
 			name: `sum([int])`,
@@ -236,6 +244,14 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'sum')
 				assert.eq(6, sum([1.0, 2.0, 3.0]))
 			`),
+		},
+		{
+			name: `sum([string])`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sum')
+				sum(['a', 'b', 'c'])
+			`),
+			wantErr: `got string, want float or int`,
 		},
 		{
 			name: `sum([int,float])`,
