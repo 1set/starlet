@@ -244,6 +244,28 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				assert.eq(7, sum([1, 2.0, 4]))
 			`),
 		},
+		{
+			name: `sum([int,string])`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sum')
+				sum([1, 'a'])
+			`),
+			wantErr: `got string, want float or int`,
+		},
+		{
+			name: `sum([int], float)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sum')
+				assert.eq(15, sum([1, 2, 4], 8.0))
+			`),
+		},
+		{
+			name: `sum([int], start=int)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sum')
+				assert.eq(15, sum([1, 2, 4], start=8))
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
