@@ -63,9 +63,9 @@ func sum(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwar
 		return none, err
 	}
 
-	// result
-	total, err := itn.NewStarNumber(start)
-	if err != nil {
+	// start with the given start value
+	total := itn.NewStarNumber()
+	if err := total.Add(start); err != nil {
 		return none, err
 	}
 
