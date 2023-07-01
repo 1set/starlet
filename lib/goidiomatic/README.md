@@ -33,7 +33,7 @@ print(length([1, 2, 3]), length(set([1, 2])), length({1: 2}))
 
 ### `sum(iterable, start=0)`
 
-Returns the sum of `start` and the items of an iterable from left to right. The iterable's items are normally numbers, and the start value is not allowed to be a string.
+Returns the sum of `start` and the items of an iterable from left to right. The iterable's items and the `start` value are normally numbers.
 
 #### Examples
 
