@@ -21,16 +21,24 @@ func TestLoadModule_Re(t *testing.T) {
 			match_test = "EDM ADD FROM INJURED NAT Jordan BEAULIEU (DB) Western University"
 			
 			assert.eq(match(match_pattern,match_test), [(match_test, "EDM", "ADD", "FROM INJURED ", "NAT", "Jordan BEAULIEU ", "(DB)", "Western University")])
-			assert.eq(match(match_pattern,"asc"), [])
+			assert.eq(match(match_pattern,"what"), [])
 			`),
 		},
 		{
-			name: `match error`,
+			name: `match error pattern`,
 			script: itn.HereDoc(`
 			load('re', 'match')
 			match(123, "foo")
 			`),
 			wantErr: `match: for parameter pattern: got int, want string`,
+		},
+		{
+			name: `match error string`,
+			script: itn.HereDoc(`
+			load('re', 'match')
+			match("foobar", 2)
+			`),
+			wantErr: `match: for parameter string: got int, want string`,
 		},
 		{
 			name: `search`,
@@ -39,7 +47,7 @@ func TestLoadModule_Re(t *testing.T) {
 			match_pattern = r"(\w*)\s*(ADD|REM|DEL|EXT|TRF)\s*(.*)\s*(NAT|INT)\s*(.*)\s*(\(\w{2}\))\s*(.*)"
 			match_test = "EDM ADD FROM INJURED NAT Jordan BEAULIEU (DB) Western University"
 			assert.eq(search(match_pattern, match_test), [0, 64])
-			assert.eq(search(match_pattern, "asc"), None)
+			assert.eq(search(match_pattern, "what"), None)
 			`),
 		},
 		{
