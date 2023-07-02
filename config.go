@@ -1,44 +1,46 @@
 package starlet
 
 import (
-	"github.com/1set/starlet/lib/goidiomatic"
-	"github.com/1set/starlet/lib/hash"
-	"github.com/1set/starlet/lib/http"
-	sjson "go.starlark.net/lib/json"
-	smath "go.starlark.net/lib/math"
-	stime "go.starlark.net/lib/time"
+	libgoid "github.com/1set/starlet/lib/goidiomatic"
+	libhash "github.com/1set/starlet/lib/hash"
+	libhttp "github.com/1set/starlet/lib/http"
+	libre "github.com/1set/starlet/lib/re"
+	stdjson "go.starlark.net/lib/json"
+	stdmath "go.starlark.net/lib/math"
+	stdtime "go.starlark.net/lib/time"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
-	"go.starlark.net/starlarkstruct"
+	stdstruct "go.starlark.net/starlarkstruct"
 )
 
 var allBuiltinModules = ModuleLoaderMap{
-	goidiomatic.ModuleName: func() (starlark.StringDict, error) {
-		return goidiomatic.LoadModule()
+	libgoid.ModuleName: func() (starlark.StringDict, error) {
+		return libgoid.LoadModule()
 	},
 	"json": func() (starlark.StringDict, error) {
 		return starlark.StringDict{
-			"json": sjson.Module,
+			"json": stdjson.Module,
 		}, nil
 	},
 	"math": func() (starlark.StringDict, error) {
 		return starlark.StringDict{
-			"math": smath.Module,
+			"math": stdmath.Module,
 		}, nil
 	},
 	"struct": func() (starlark.StringDict, error) {
 		return starlark.StringDict{
-			"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
+			"struct": starlark.NewBuiltin("struct", stdstruct.Make),
 		}, nil
 	},
 	"time": func() (starlark.StringDict, error) {
 		return starlark.StringDict{
-			"time": stime.Module,
+			"time": stdtime.Module,
 		}, nil
 	},
 	// add third-party modules
-	hash.ModuleName: hash.LoadModule,
-	http.ModuleName: http.LoadModule,
+	libhash.ModuleName: libhash.LoadModule,
+	libhttp.ModuleName: libhttp.LoadModule,
+	libre.ModuleName:   libre.LoadModule,
 }
 
 // GetAllBuiltinModuleNames returns a list of all builtin module names.
