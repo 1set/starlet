@@ -1,20 +1,76 @@
-package re
+package re_test
 
 import (
 	"testing"
 
-	"github.com/qri-io/starlib/testdata"
-	"go.starlark.net/starlark"
-	"go.starlark.net/starlarktest"
+	itn "github.com/1set/starlet/lib/internal"
+	"github.com/1set/starlet/lib/re"
 )
 
-func TestFile(t *testing.T) {
-	thread := &starlark.Thread{Load: testdata.NewLoader(LoadModule, ModuleName)}
-	starlarktest.SetReporter(thread, t)
-
-	// Execute test file
-	_, err := starlark.ExecFile(thread, "testdata/test.star", nil, nil)
-	if err != nil {
-		t.Error(err)
+func TestLoadModule_Re(t *testing.T) {
+	tests := []struct {
+		name    string
+		script  string
+		wantErr string
+	}{
+		{
+			name: `match`,
+			script: itn.HereDoc(`
+			load('re', 'match')
+			match_pattern = r"(\w*)\s*(ADD|REM|DEL|EXT|TRF)\s*(.*)\s*(NAT|INT)\s*(.*)\s*(\(\w{2}\))\s*(.*)"
+			match_test = "EDM ADD FROM INJURED NAT Jordan BEAULIEU (DB) Western University"
+			
+			assert.eq(match(match_pattern,match_test), [(match_test, "EDM", "ADD", "FROM INJURED ", "NAT", "Jordan BEAULIEU ", "(DB)", "Western University")])
+			`),
+		},
+		{
+			name: `compile`,
+			script: itn.HereDoc(`
+			load('re', 'compile')
+			match_pattern = r"(\w*)\s*(ADD|REM|DEL|EXT|TRF)\s*(.*)\s*(NAT|INT)\s*(.*)\s*(\(\w{2}\))\s*(.*)"
+			match_test = "EDM ADD FROM INJURED NAT Jordan BEAULIEU (DB) Western University"
+			
+			match_r = compile(match_pattern)
+			assert.eq(match_r.match(match_test), [(match_test, "EDM", "ADD", "FROM INJURED ", "NAT", "Jordan BEAULIEU ", "(DB)", "Western University")])
+			assert.eq(match_r.sub("", match_test), "")
+			`),
+		},
+		{
+			name: `sub`,
+			script: itn.HereDoc(`
+			load('re', 'sub')
+			match_pattern = r"(\w*)\s*(ADD|REM|DEL|EXT|TRF)\s*(.*)\s*(NAT|INT)\s*(.*)\s*(\(\w{2}\))\s*(.*)"
+			match_test = "EDM ADD FROM INJURED NAT Jordan BEAULIEU (DB) Western University"
+			
+			assert.eq(sub(match_pattern, "", match_test), "")
+			`),
+		},
+		{
+			name: `split`,
+			script: itn.HereDoc(`
+			load('re', 'split', 'compile')
+			space_r = compile(" ")
+			assert.eq(split(" ", "foo bar baz bat"), ("foo", "bar", "baz", "bat"))
+			assert.eq(space_r.split("foo bar baz bat"), ("foo", "bar", "baz", "bat"))
+			`),
+		},
+		{
+			name: `findall`,
+			script: itn.HereDoc(`
+			load('re', 'compile', 'findall')
+			foo_r = compile("foo")
+			assert.eq(findall("foo", "foo bar baz"), ("foo",))
+			assert.eq(foo_r.findall("foo bar baz"), ("foo",))
+			`),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res, err := itn.ExecModuleWithErrorTest(t, re.ModuleName, re.LoadModule, tt.script, tt.wantErr)
+			if (err != nil) != (tt.wantErr != "") {
+				t.Errorf("re(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
+				return
+			}
+		})
 	}
 }

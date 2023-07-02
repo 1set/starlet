@@ -1,3 +1,7 @@
+// Package re defines regular expression functions, it's intended to be a drop-in subset of Python's re module for Starlark.
+//
+// Migrated from: https://github.com/qri-io/starlib/tree/master/re
+// TODO: fullmatch, finditer, subn, escape
 package re
 
 import (
@@ -5,14 +9,13 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/qri-io/starlib/util"
+	itn "github.com/1set/starlet/lib/internal"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
 
-// ModuleName defines the expected name for this Module when used
-// in starlark's load() function, eg: load('re.star', 're')
-const ModuleName = "re.star"
+// ModuleName defines the expected name for this Module when used in starlark's load() function, eg: load('re', 'match')
+const ModuleName = "re"
 
 var (
 	once     sync.Once
@@ -28,9 +31,8 @@ func LoadModule() (starlark.StringDict, error) {
 				Name: "re",
 				Members: starlark.StringDict{
 					"compile": starlark.NewBuiltin("compile", compile),
-
-					"search": starlark.NewBuiltin("search", search),
-					"match":  starlark.NewBuiltin("match", match),
+					"search":  starlark.NewBuiltin("search", search),
+					"match":   starlark.NewBuiltin("match", match),
 					// "fullmatch": starlark.NewBuiltin("fullmatch", fullmatch),
 					"split":   starlark.NewBuiltin("split", split),
 					"findall": starlark.NewBuiltin("findall", findall),
@@ -96,7 +98,7 @@ func reSearch(re *regexp.Regexp, str starlark.String, flags starlark.Int) (starl
 		vals[i] = m
 	}
 
-	return util.Marshal(vals)
+	return itn.Marshal(vals)
 }
 
 // match(pattern, string, flags=0)
