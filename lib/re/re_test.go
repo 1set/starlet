@@ -43,6 +43,14 @@ func TestLoadModule_Re(t *testing.T) {
 			`),
 		},
 		{
+			name: `search error`,
+			script: itn.HereDoc(`
+			load('re', 'search')
+			search(123, "foo")
+			`),
+			wantErr: `search: for parameter pattern: got int, want string`,
+		},
+		{
 			name: `compile`,
 			script: itn.HereDoc(`
 			load('re', 'compile')
@@ -51,6 +59,7 @@ func TestLoadModule_Re(t *testing.T) {
 			
 			match_r = compile(match_pattern)
 			assert.eq(match_r.match(match_test), [(match_test, "EDM", "ADD", "FROM INJURED ", "NAT", "Jordan BEAULIEU ", "(DB)", "Western University")])
+			assert.eq(match_r.match("ab acdef"), [])
 			assert.eq(match_r.sub("", match_test), "")
 			`),
 		},
@@ -78,7 +87,16 @@ func TestLoadModule_Re(t *testing.T) {
 			match_test = "EDM ADD FROM INJURED NAT Jordan BEAULIEU (DB) Western University"
 			
 			assert.eq(sub(match_pattern, "", match_test), "")
+			assert.eq(sub(match_pattern, "", "ab acdef"), "ab acdef")
 			`),
+		},
+		{
+			name: `sub error`,
+			script: itn.HereDoc(`
+			load('re', 'sub')
+			sub(123, "", "foo")
+			`),
+			wantErr: `sub: for parameter pattern: got int, want string`,
 		},
 		{
 			name: `split`,
@@ -87,7 +105,16 @@ func TestLoadModule_Re(t *testing.T) {
 			space_r = compile(" ")
 			assert.eq(split(" ", "foo bar baz bat"), ("foo", "bar", "baz", "bat"))
 			assert.eq(space_r.split("foo bar baz bat"), ("foo", "bar", "baz", "bat"))
+			assert.eq(split(" ", "foobar"), ("foobar",))
 			`),
+		},
+		{
+			name: `split error`,
+			script: itn.HereDoc(`
+			load('re', 'split')
+			split(123, "foo")
+			`),
+			wantErr: `split: for parameter pattern: got int, want string`,
 		},
 		{
 			name: `findall`,
@@ -96,7 +123,16 @@ func TestLoadModule_Re(t *testing.T) {
 			foo_r = compile("foo")
 			assert.eq(findall("foo", "foo bar baz"), ("foo",))
 			assert.eq(foo_r.findall("foo bar baz"), ("foo",))
+			assert.eq(findall("foo", "bar baz"), ())
 			`),
+		},
+		{
+			name: `findall error`,
+			script: itn.HereDoc(`
+			load('re', 'findall')
+			findall(123, "foo")
+			`),
+			wantErr: `findall: for parameter pattern: got int, want string`,
 		},
 	}
 	for _, tt := range tests {
