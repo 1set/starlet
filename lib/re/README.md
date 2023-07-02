@@ -52,7 +52,7 @@ is returned as the final element of the list.
 Return the string obtained by replacing the leftmost non-overlapping occurrences of pattern
 in string by the replacement repl. If the pattern isn’t found, string is returned unchanged.
 repl can be a string or a function; if it is a string, any backslash escapes in it are processed.
-That is, \n is converted to a single newline character, \r is converted to a carriage return, and so forth.
+That is, `\n` is converted to a single newline character, `\r` is converted to a carriage return, and so forth.
 
 #### Parameters
 
