@@ -199,6 +199,89 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 			`),
 			wantErr: `object of type 'bool' has no length()`,
 		},
+		{
+			name: `sum()`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sum')
+				sum()
+			`),
+			wantErr: `sum: missing argument for iterable`,
+		},
+		{
+			name: `sum(>2)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sum')
+				sum(1, 2, 3)
+			`),
+			wantErr: `sum: got 3 arguments, want at most 2`,
+		},
+		{
+			name: `sum(int)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sum')
+				sum(1)
+			`),
+			wantErr: `sum: for parameter iterable: got int, want iterable`,
+		},
+		{
+			name: `sum(string)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sum')
+				sum('abc')
+			`),
+			wantErr: `sum: for parameter iterable: got string, want iterable`,
+		},
+		{
+			name: `sum([int])`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sum')
+				assert.eq(6, sum([1, 2, 3]))
+			`),
+		},
+		{
+			name: `sum([float])`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sum')
+				assert.eq(6, sum([1.0, 2.0, 3.0]))
+			`),
+		},
+		{
+			name: `sum([string])`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sum')
+				sum(['a', 'b', 'c'])
+			`),
+			wantErr: `unsupported type: string, expected float or int`,
+		},
+		{
+			name: `sum([int,float])`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sum')
+				assert.eq(7, sum([1, 2.0, 4]))
+			`),
+		},
+		{
+			name: `sum([int,string])`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sum')
+				sum([1, 'a'])
+			`),
+			wantErr: `unsupported type: string, expected float or int`,
+		},
+		{
+			name: `sum([int], float)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sum')
+				assert.eq(15, sum([1, 2, 4], 8.0))
+			`),
+		},
+		{
+			name: `sum([int], start=int)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sum')
+				assert.eq(15, sum([1, 2, 4], start=8))
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

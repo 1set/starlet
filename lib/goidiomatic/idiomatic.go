@@ -22,6 +22,7 @@ func LoadModule() (starlark.StringDict, error) {
 		"false":  starlark.False,
 		"nil":    starlark.None,
 		"length": starlark.NewBuiltin("length", length),
+		"sum":    starlark.NewBuiltin("sum", sum),
 		"sleep":  starlark.NewBuiltin("sleep", sleep),
 		"exit":   starlark.NewBuiltin("exit", exit),
 		"quit":   starlark.NewBuiltin("quit", exit), // alias for exit
@@ -50,6 +51,37 @@ func length(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		}
 		return none, fmt.Errorf(`object of type '%s' has no length()`, v.Type())
 	}
+}
+
+// sum returns the sum of the given values.
+func sum(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var (
+		lst   starlark.Iterable
+		start starlark.Value
+	)
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "iterable", &lst, "start?", &start); err != nil {
+		return none, err
+	}
+
+	// start with the given start value
+	total := itn.NewNumericValue()
+	if err := total.Add(start); err != nil {
+		return none, err
+	}
+
+	// loop through the list
+	iter := lst.Iterate()
+	defer iter.Done()
+
+	var x starlark.Value
+	for iter.Next(&x) {
+		if err := total.Add(x); err != nil {
+			return none, err
+		}
+	}
+
+	// return the result
+	return total.Value(), nil
 }
 
 // sleep sleeps for the given number of seconds.
