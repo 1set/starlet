@@ -15,6 +15,21 @@ can be used for matching using its match(), search() and other methods.
 |-----------|----------|-----------------------------------|
 | `pattern` | `string` | regular expression pattern string |
 
+### `search(pattern,string,flags=0)`
+
+Scan through string looking for the first location where the regular expression pattern
+produces a match, and return a corresponding match object. Return None if no position in
+the string matches the pattern; note that this is different from finding a zero-length match
+at some point in the string.
+
+#### Parameters
+
+| name      | type     | description                                                       |
+|-----------|----------|-------------------------------------------------------------------|
+| `pattern` | `string` | regular expression pattern string                                 |
+| `string`  | `string` | input string to search                                            |
+| `flags`   | `int`    | integer flags to control regex behaviour. reserved for future use |
+
 ### `findall(pattern, text, flags=0)`
 
 Returns all non-overlapping matches of pattern in string, as a list of strings.
