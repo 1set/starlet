@@ -6,7 +6,8 @@
 
 ### `compile(pattern) Pattern`
 
-Compile a regular expression pattern into a regular expression object, which can be used for matching using its match(), search() and other methods.
+Compile a regular expression pattern into a regular expression object, which
+can be used for matching using its match(), search() and other methods.
 
 #### Parameters
 
@@ -16,7 +17,11 @@ Compile a regular expression pattern into a regular expression object, which can
 
 ### `findall(pattern, text, flags=0)`
 
-Returns all non-overlapping matches of pattern in string, as a list of strings. The string is scanned left-to-right, and matches are returned in the order found. If one or more groups are present in the pattern, return a list of groups; this will be a list of tuples if the pattern has more than one group. Empty matches are included in the result.
+Returns all non-overlapping matches of pattern in string, as a list of strings.
+The string is scanned left-to-right, and matches are returned in the order found.
+If one or more groups are present in the pattern, return a list of groups;
+this will be a list of tuples if the pattern has more than one group.
+Empty matches are included in the result.
 
 #### Parameters
 
@@ -28,7 +33,10 @@ Returns all non-overlapping matches of pattern in string, as a list of strings. 
 
 ### `split(pattern, text, maxsplit=0, flags=0)`
 
-Split text by the occurrences of pattern. If capturing parentheses are used in pattern, then the text of all groups in the pattern are also returned as part of the resulting list. If maxsplit is nonzero, at most maxsplit splits occur, and the remainder of the string is returned as the final element of the list.
+Split text by the occurrences of pattern. If capturing parentheses are used in pattern,
+then the text of all groups in the pattern are also returned as part of the resulting list.
+If maxsplit is nonzero, at most maxsplit splits occur, and the remainder of the string
+is returned as the final element of the list.
 
 #### Parameters
 
@@ -41,7 +49,10 @@ Split text by the occurrences of pattern. If capturing parentheses are used in p
 
 ### `sub(pattern, repl, text, count=0, flags=0)`
 
-Return the string obtained by replacing the leftmost non-overlapping occurrences of pattern in string by the replacement repl. If the pattern isn’t found, string is returned unchanged. repl can be a string or a function; if it is a string, any backslash escapes in it are processed. That is, \n is converted to a single newline character, \r is converted to a carriage return, and so forth.
+Return the string obtained by replacing the leftmost non-overlapping occurrences of pattern
+in string by the replacement repl. If the pattern isn’t found, string is returned unchanged.
+repl can be a string or a function; if it is a string, any backslash escapes in it are processed.
+That is, \n is converted to a single newline character, \r is converted to a carriage return, and so forth.
 
 #### Parameters
 
@@ -55,7 +66,8 @@ Return the string obtained by replacing the leftmost non-overlapping occurrences
 
 ### `match(pattern, string, flags=0)`
 
-If zero or more characters at the beginning of string match the regular expression pattern, return a corresponding match string tuple. Return None if the string does not match the pattern
+If zero or more characters at the beginning of string match the regular expression pattern,
+return a corresponding match string tuple. Return None if the string does not match the pattern
 
 #### Parameters
 
