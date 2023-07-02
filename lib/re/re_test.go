@@ -21,6 +21,7 @@ func TestLoadModule_Re(t *testing.T) {
 			match_test = "EDM ADD FROM INJURED NAT Jordan BEAULIEU (DB) Western University"
 			
 			assert.eq(match(match_pattern,match_test), [(match_test, "EDM", "ADD", "FROM INJURED ", "NAT", "Jordan BEAULIEU ", "(DB)", "Western University")])
+			assert.eq(match(match_pattern,"asc"), [])
 			`),
 		},
 		{
@@ -38,6 +39,7 @@ func TestLoadModule_Re(t *testing.T) {
 			match_pattern = r"(\w*)\s*(ADD|REM|DEL|EXT|TRF)\s*(.*)\s*(NAT|INT)\s*(.*)\s*(\(\w{2}\))\s*(.*)"
 			match_test = "EDM ADD FROM INJURED NAT Jordan BEAULIEU (DB) Western University"
 			assert.eq(search(match_pattern, match_test), [0, 64])
+			assert.eq(search(match_pattern, "asc"), None)
 			`),
 		},
 		{
@@ -59,6 +61,14 @@ func TestLoadModule_Re(t *testing.T) {
 			compile(123)
 			`),
 			wantErr: `compile: for parameter pattern: got int, want string`,
+		},
+		{
+			name: `compile fail`,
+			script: itn.HereDoc(`
+			load('re', 'compile')
+			compile("\q")
+			`),
+			wantErr: `re_test.star:3:9: invalid escape sequence \q`,
 		},
 		{
 			name: `sub`,

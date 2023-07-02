@@ -1,7 +1,10 @@
 // Package re defines regular expression functions, it's intended to be a drop-in subset of Python's re module for Starlark.
 //
 // Migrated from: https://github.com/qri-io/starlib/tree/master/re
-// TODO: fullmatch, finditer, subn, escape, search returns Match
+// TODO:
+// 1) fullmatch, finditer, subn, escape, search
+// 2) Match as a type
+// 3) Support flags as constants
 package re
 
 import (
@@ -106,7 +109,7 @@ func reSearch(re *regexp.Regexp, str starlark.String, flags starlark.Int) (starl
 // return a corresponding match object. Return None if the string does not match the pattern;
 // note that this is different from a zero-length match.
 // Note that even in MULTILINE mode, re.match() will only match at the beginning of the string and not at the beginning of each line.
-// If you want to locate a match anywhere in string, use search() instead
+// If you want to locate a match anywhere in string, use search() instead.
 func match(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		pattern, str starlark.String
