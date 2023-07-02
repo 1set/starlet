@@ -1,7 +1,7 @@
 // Package re defines regular expression functions, it's intended to be a drop-in subset of Python's re module for Starlark.
 //
 // Migrated from: https://github.com/qri-io/starlib/tree/master/re
-// TODO: fullmatch, finditer, subn, escape
+// TODO: fullmatch, finditer, subn, escape, search returns Match
 package re
 
 import (
