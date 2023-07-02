@@ -67,3 +67,54 @@ func (n *StarNumber) Value() starlark.Value {
 	}
 	return n.numInt
 }
+
+// NumericValue holds a Starlark numeric value and tracks its type.
+// It can represent an integer or a float.
+type NumericValue struct {
+	intValue    starlark.Int
+	floatValue  starlark.Float
+	isFloatType bool
+}
+
+// NewNumericValue creates and returns a new NumericValue.
+func NewNumericValue() *NumericValue {
+	return &NumericValue{intValue: starlark.MakeInt(0), floatValue: starlark.Float(0)}
+}
+
+// Add takes a Starlark Value and adds it to the NumericValue.
+// It returns an error if the given value is neither an int nor a float.
+func (n *NumericValue) Add(value starlark.Value) error {
+	switch value := value.(type) {
+	case starlark.Int:
+		if n.isFloatType {
+			n.floatValue += starlark.Float(value.Float())
+		} else {
+			n.intValue = n.intValue.Add(value)
+		}
+	case starlark.Float:
+		if !n.isFloatType {
+			n.floatValue = starlark.Float(n.intValue.Float())
+			n.isFloatType = true
+		}
+		n.floatValue += value
+	default:
+		return fmt.Errorf("unsupported type: %s, expected float or int", value.Type())
+	}
+	return nil
+}
+
+// AsFloat returns the float representation of the NumericValue.
+func (n *NumericValue) AsFloat() float64 {
+	if n.isFloatType {
+		return float64(n.floatValue)
+	}
+	return float64(n.intValue.Float())
+}
+
+// Value returns the Starlark Value representation of the NumericValue.
+func (n *NumericValue) Value() starlark.Value {
+	if n.isFloatType {
+		return n.floatValue
+	}
+	return n.intValue
+}
