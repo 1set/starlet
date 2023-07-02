@@ -1,8 +1,9 @@
 package internal
 
 import (
-	"go.starlark.net/starlark"
 	"testing"
+
+	"go.starlark.net/starlark"
 )
 
 func TestFloatOrInt_Unpack(t *testing.T) {
@@ -114,10 +115,20 @@ func TestNumericValue(t *testing.T) {
 			values:  []starlark.Value{double(4), double(2), double(3)},
 			wantVal: double(9),
 		},
+		{
+			name:    "int and nil",
+			values:  []starlark.Value{integer(100), nil},
+			wantVal: integer(100),
+		},
+		{
+			name:    "float and nil",
+			values:  []starlark.Value{double(4), nil},
+			wantVal: double(4),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewStarNumber()
+			n := NewNumericValue()
 			var err error
 			for _, v := range tt.values {
 				if err = n.Add(v); err != nil {

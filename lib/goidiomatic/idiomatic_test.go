@@ -251,7 +251,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'sum')
 				sum(['a', 'b', 'c'])
 			`),
-			wantErr: `got string, want float or int`,
+			wantErr: `unsupported type: string, expected float or int`,
 		},
 		{
 			name: `sum([int,float])`,
@@ -266,7 +266,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'sum')
 				sum([1, 'a'])
 			`),
-			wantErr: `got string, want float or int`,
+			wantErr: `unsupported type: string, expected float or int`,
 		},
 		{
 			name: `sum([int], float)`,
