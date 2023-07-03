@@ -26,14 +26,35 @@ func LoadModule() (starlark.StringDict, error) {
 			"random": &starlarkstruct.Module{
 				Name: "random",
 				Members: starlark.StringDict{
-					"randint": starlark.NewBuiltin("randint", randint),
-					"choice":  starlark.NewBuiltin("choice", choice),
-					"shuffle": starlark.NewBuiltin("shuffle", shuffle),
+					"randbytes": starlark.NewBuiltin("randbytes", randbytes),
+					"randint":   starlark.NewBuiltin("randint", randint),
+					"choice":    starlark.NewBuiltin("choice", choice),
+					"shuffle":   starlark.NewBuiltin("shuffle", shuffle),
 				},
 			},
 		}
 	})
 	return module, nil
+}
+
+// randbytes(n) returns a random byte string of length n.
+func randbytes(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// precondition checks
+	var n starlark.Int
+	if err := starlark.UnpackArgs("randbytes", args, kwargs, "n?", &n); err != nil {
+		return nil, err
+	}
+	// set default value if n is not provided correctly
+	nInt := n.BigInt()
+	if nInt.Sign() <= 0 {
+		nInt = big.NewInt(10)
+	}
+	// get random bytes
+	buf := make([]byte, nInt.Int64())
+	if _, err := rand.Read(buf); err != nil {
+		return nil, err
+	}
+	return starlark.String(buf), nil
 }
 
 // randint(a, b) returns a random integer N such that a <= N <= b. Alias for randrange(a, b+1).
