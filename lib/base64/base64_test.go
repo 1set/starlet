@@ -7,7 +7,7 @@ import (
 	itn "github.com/1set/starlet/lib/internal"
 )
 
-func TestLoadModule_Re(t *testing.T) {
+func TestLoadModule_Base64(t *testing.T) {
 	tests := []struct {
 		name    string
 		script  string
@@ -24,6 +24,22 @@ func TestLoadModule_Re(t *testing.T) {
 			`),
 		},
 		{
+			name: `encode with invalid encoding`,
+			script: itn.HereDoc(`
+				load('base64', 'encode')
+				encode("hello", encoding="invalid")
+			`),
+			wantErr: `unsupported encoding format: "invalid"`,
+		},
+		{
+			name: `encode with invalid input`,
+			script: itn.HereDoc(`
+				load('base64', 'encode')
+				encode(123)
+			`),
+			wantErr: `encode: for parameter data: got int, want string`,
+		},
+		{
 			name: `decode`,
 			script: itn.HereDoc(`
 				load('base64', 'decode')
@@ -32,6 +48,22 @@ func TestLoadModule_Re(t *testing.T) {
 				assert.eq(decode("aGVsbG8gZnJpZW5kIQ==", encoding="url"),"hello friend!")
 				assert.eq(decode("aGVsbG8gZnJpZW5kIQ", encoding="url_raw"),"hello friend!")
 			`),
+		},
+		{
+			name: `decode with invalid encoding`,
+			script: itn.HereDoc(`
+				load('base64', 'decode')
+				decode("aGVsbG8=", encoding="invalid")
+			`),
+			wantErr: `unsupported encoding format: "invalid"`,
+		},
+		{
+			name: `decode with invalid input`,
+			script: itn.HereDoc(`
+				load('base64', 'decode')
+				decode(123)
+			`),
+			wantErr: `decode: for parameter data: got int, want string`,
 		},
 	}
 	for _, tt := range tests {
