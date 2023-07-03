@@ -1,3 +1,4 @@
+// Package base64 defines base64 encoding & decoding functions for Starlark.
 package base64
 
 import (
@@ -9,9 +10,8 @@ import (
 	"go.starlark.net/starlarkstruct"
 )
 
-// ModuleName defines the expected name for this Module when used
-// in starlark's load() function, eg: load('encoding/base64.star', 'base64')
-const ModuleName = "encoding/base64.star"
+// ModuleName defines the expected name for this Module when used in starlark's load() function, eg: load('base64', 'encode')
+const ModuleName = "base64"
 
 var (
 	once         sync.Once
