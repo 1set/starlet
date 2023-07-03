@@ -26,7 +26,8 @@ func LoadModule() (starlark.StringDict, error) {
 			"random": &starlarkstruct.Module{
 				Name: "random",
 				Members: starlark.StringDict{
-					"choice": starlark.NewBuiltin("choice", choice),
+					"choice":  starlark.NewBuiltin("choice", choice),
+					"shuffle": starlark.NewBuiltin("shuffle", shuffle),
 				},
 			},
 		}
@@ -52,6 +53,53 @@ func choice(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, k
 	}
 	// return element at index
 	return seq.Index(i), nil
+}
+
+// shuffle(x) shuffles the sequence x in place.
+func shuffle(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// precondition checks
+	var seq starlark.HasSetIndex
+	if err := starlark.UnpackArgs("shuffle", args, kwargs, "seq", &seq); err != nil {
+		return starlark.None, err
+	}
+	// nothing to do if seq is empty or has only one element
+	l := seq.Len()
+	if l <= 1 {
+		return starlark.None, nil
+	}
+	// shuffle
+	var (
+		randBig   = new(big.Int)
+		randBytes = make([]byte, 8)
+	)
+	// The algorithm is the Fisher-Yates Shuffle and its complexity is O(n).
+	swap := func(i, j int) error {
+		x := seq.Index(i)
+		y := seq.Index(j)
+		if e := seq.SetIndex(i, y); e != nil {
+			return e
+		}
+		if e := seq.SetIndex(j, x); e != nil {
+			return e
+		}
+		return nil
+	}
+	for i := uint64(l - 1); i > 0; {
+		if _, err := rand.Read(randBytes); err != nil {
+			return starlark.None, err
+		}
+		randBig.SetBytes(randBytes)
+		for num := randBig.Uint64(); num > i && i > 0; i-- {
+			max := i + 1
+			j := int(num % max)
+			num /= max
+			if e := swap(int(i), j); e != nil {
+				return starlark.None, e
+			}
+		}
+	}
+	// done
+	return starlark.None, nil
 }
 
 // getRandomInt returns a random integer in the range [0, max).

@@ -38,6 +38,14 @@ func TestLoadModule_Hash(t *testing.T) {
 			wantErr: `cannot choose from an empty sequence`,
 		},
 		{
+			name: `invalid choice`,
+			script: itn.HereDoc(`
+				load('random', 'choice')
+				choice(123)
+			`),
+			wantErr: `choice: for parameter seq: got int, want starlark.Indexable`,
+		},
+		{
 			name: `one choice`,
 			script: itn.HereDoc(`
 				load('random', 'choice')
