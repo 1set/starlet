@@ -67,23 +67,22 @@ func shuffle(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, 
 	if l <= 1 {
 		return starlark.None, nil
 	}
-	// shuffle
+	// The shuffle algorithm is the Fisher-Yates Shuffle and its complexity is O(n).
 	var (
 		randBig   = new(big.Int)
 		randBytes = make([]byte, 8)
+		swap      = func(i, j int) error {
+			x := seq.Index(i)
+			y := seq.Index(j)
+			if e := seq.SetIndex(i, y); e != nil {
+				return e
+			}
+			if e := seq.SetIndex(j, x); e != nil {
+				return e
+			}
+			return nil
+		}
 	)
-	// The algorithm is the Fisher-Yates Shuffle and its complexity is O(n).
-	swap := func(i, j int) error {
-		x := seq.Index(i)
-		y := seq.Index(j)
-		if e := seq.SetIndex(i, y); e != nil {
-			return e
-		}
-		if e := seq.SetIndex(j, x); e != nil {
-			return e
-		}
-		return nil
-	}
 	for i := uint64(l - 1); i > 0; {
 		if _, err := rand.Read(randBytes); err != nil {
 			return starlark.None, err
