@@ -77,6 +77,82 @@ func TestLoadModule_Hash(t *testing.T) {
 				return val == one || val == two || val == three
 			},
 		},
+		{
+			name: `same choices`,
+			script: itn.HereDoc(`
+				load('random', 'choice')
+				val = choice((3, 3, 3, 3, 3, 3, 3, 3, 3))
+			`),
+			checkResult: func(res starlark.Value) bool {
+				return res.(starlark.Int) == three
+			},
+		},
+		{
+			name: "shuffle with invalid type",
+			script: itn.HereDoc(`
+				load('random', 'shuffle')
+				x = 123
+				shuffle(x)
+			`),
+			wantErr: `shuffle: for parameter seq: got int, want starlark.HasSetIndex`,
+		},
+		{
+			name: "shuffle with immutable type",
+			script: itn.HereDoc(`
+				load('random', 'shuffle')
+				x = (1, 2, 3)
+				shuffle(x)
+			`),
+			wantErr: `shuffle: for parameter seq: got tuple, want starlark.HasSetIndex`,
+		},
+		{
+			name: "shuffle with empty type",
+			script: itn.HereDoc(`
+				load('random', 'shuffle')
+				val = []
+				shuffle(val)
+			`),
+			checkResult: func(res starlark.Value) bool {
+				return res.(*starlark.List).Len() == 0
+			},
+		},
+		{
+			name: "shuffle with one element",
+			script: itn.HereDoc(`
+				load('random', 'shuffle')
+				val = [1]
+				shuffle(val)
+			`),
+			checkResult: func(res starlark.Value) bool {
+				l := res.(*starlark.List)
+				return l.Len() == 1 && l.Index(0) == one
+			},
+		},
+		{
+			name: "shuffle with two elements",
+			script: itn.HereDoc(`
+				load('random', 'shuffle')
+				val = [2, 3]
+				shuffle(val)
+			`),
+			checkResult: func(res starlark.Value) bool {
+				l := res.(*starlark.List)
+				return l.Len() == 2 && ((l.Index(0) == two && l.Index(1) == three) || (l.Index(0) == three && l.Index(1) == two))
+			},
+		},
+		{
+			name: "shuffle with mutable type",
+			script: itn.HereDoc(`
+				load('random', 'shuffle')
+				val = [1, 2, 3]
+				shuffle(val)
+				print(val)
+			`),
+			checkResult: func(res starlark.Value) bool {
+				val := res.(*starlark.List)
+				return val.Index(0) == one || val.Index(0) == two || val.Index(0) == three
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
