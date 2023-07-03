@@ -1,6 +1,6 @@
 package internal
 
-// Migrated from https://github.com/qri-io/starlib/tree/master/util
+// Based on https://github.com/qri-io/starlib/tree/master/util with some modifications and additions
 
 import (
 	"fmt"
