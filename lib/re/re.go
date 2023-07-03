@@ -17,7 +17,7 @@ import (
 	"go.starlark.net/starlarkstruct"
 )
 
-// ModuleName defines the expected name for this Module when used in starlark's load() function, eg: load('re', 'match')
+// ModuleName defines the expected name for this Module when used in Starlark's load() function, eg: load('re', 'match')
 const ModuleName = "re"
 
 var (
@@ -25,8 +25,7 @@ var (
 	reModule starlark.StringDict
 )
 
-// LoadModule loads the re module.
-// It is concurrency-safe and idempotent.
+// LoadModule loads the re module. It is concurrency-safe and idempotent.
 func LoadModule() (starlark.StringDict, error) {
 	once.Do(func() {
 		reModule = starlark.StringDict{
