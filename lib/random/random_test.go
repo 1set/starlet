@@ -216,6 +216,49 @@ func TestLoadModule_Hash(t *testing.T) {
 				return res.(starlark.Int) == one || res.(starlark.Int) == two || res.(starlark.Int) == three
 			},
 		},
+		{
+			name: "randbytes with less than 1 args",
+			script: itn.HereDoc(`
+				load('random', 'randbytes')
+				x = randbytes()
+				assert.eq(len(x), 10)
+			`),
+		},
+		{
+			name: "randbytes with invalid args",
+			script: itn.HereDoc(`
+				load('random', 'randbytes')
+				x = randbytes(-2)
+				assert.eq(len(x), 10)
+				y = randbytes(0)
+				assert.eq(len(y), 10)
+			`),
+		},
+		{
+			name: "randbytes with invalid type",
+			script: itn.HereDoc(`
+				load('random', 'randbytes')
+				randbytes('1')
+			`),
+			wantErr: `randbytes: for parameter n: got string, want int`,
+		},
+		{
+			name: "randbytes with 1",
+			script: itn.HereDoc(`
+				load('random', 'randbytes')
+				x = randbytes(1)
+				assert.eq(len(x), 1)
+				print(x)
+			`),
+		},
+		{
+			name: "randbytes with 20",
+			script: itn.HereDoc(`
+				load('random', 'randbytes')
+				x = randbytes(20)
+				assert.eq(len(x), 20)
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -54,7 +54,7 @@ func randbytes(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple
 	if _, err := rand.Read(buf); err != nil {
 		return nil, err
 	}
-	return starlark.String(buf), nil
+	return starlark.Bytes(buf), nil
 }
 
 // randint(a, b) returns a random integer N such that a <= N <= b. Alias for randrange(a, b+1).
