@@ -1,6 +1,7 @@
 package starlet
 
 import (
+	libbase64 "github.com/1set/starlet/lib/base64"
 	libgoid "github.com/1set/starlet/lib/goidiomatic"
 	libhash "github.com/1set/starlet/lib/hash"
 	libhttp "github.com/1set/starlet/lib/http"
@@ -38,9 +39,10 @@ var allBuiltinModules = ModuleLoaderMap{
 		}, nil
 	},
 	// add third-party modules
-	libhash.ModuleName: libhash.LoadModule,
-	libhttp.ModuleName: libhttp.LoadModule,
-	libre.ModuleName:   libre.LoadModule,
+	libhash.ModuleName:   libhash.LoadModule,
+	libhttp.ModuleName:   libhttp.LoadModule,
+	libre.ModuleName:     libre.LoadModule,
+	libbase64.ModuleName: libbase64.LoadModule,
 }
 
 // GetAllBuiltinModuleNames returns a list of all builtin module names.
