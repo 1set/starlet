@@ -26,6 +26,7 @@ func LoadModule() (starlark.StringDict, error) {
 			"random": &starlarkstruct.Module{
 				Name: "random",
 				Members: starlark.StringDict{
+					"randint": starlark.NewBuiltin("randint", randint),
 					"choice":  starlark.NewBuiltin("choice", choice),
 					"shuffle": starlark.NewBuiltin("shuffle", shuffle),
 				},
@@ -33,6 +34,33 @@ func LoadModule() (starlark.StringDict, error) {
 		}
 	})
 	return module, nil
+}
+
+// randint(a, b) returns a random integer N such that a <= N <= b. Alias for randrange(a, b+1).
+func randint(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// precondition checks
+	var a, b starlark.Int
+	if err := starlark.UnpackArgs("randint", args, kwargs, "a", &a, "b", &b); err != nil {
+		return nil, err
+	}
+	// a <= b, then a - b <= 0
+	if cmp := a.Sub(b).BigInt(); cmp.Sign() > 0 {
+		return nil, errors.New(`a must be less than or equal to b`)
+	}
+	// get random diff
+	var (
+		aInt = a.BigInt()
+		bInt = b.BigInt()
+	)
+	diff := new(big.Int).Sub(bInt, aInt)
+	diff.Add(diff, big.NewInt(1)) // make it inclusive
+	n, err := rand.Int(rand.Reader, diff)
+	if err != nil {
+		return nil, err
+	}
+	// rand big int is low + diff
+	n.Add(n, aInt)
+	return starlark.MakeBigInt(n), nil
 }
 
 // choice returns a random element from the non-empty sequence seq. If seq is empty, raises a ValueError.

@@ -10,7 +10,7 @@ import (
 
 func TestLoadModule_Hash(t *testing.T) {
 	var (
-		repeatTimes = 10
+		repeatTimes = 20
 		one         = starlark.MakeInt(1)
 		two         = starlark.MakeInt(2)
 		three       = starlark.MakeInt(3)
@@ -151,6 +151,69 @@ func TestLoadModule_Hash(t *testing.T) {
 			checkResult: func(res starlark.Value) bool {
 				val := res.(*starlark.List)
 				return val.Index(0) == one || val.Index(0) == two || val.Index(0) == three
+			},
+		},
+		{
+			name: "randint with less than 2 args",
+			script: itn.HereDoc(`
+				load('random', 'randint')
+				randint()
+			`),
+			wantErr: `randint: missing argument for a`,
+		},
+		{
+			name: "randint with more than 2 args",
+			script: itn.HereDoc(`
+				load('random', 'randint')
+				randint(1, 2, 3)
+			`),
+			wantErr: `randint: got 3 arguments, want at most 2`,
+		},
+		{
+			name: "randint with invalid type",
+			script: itn.HereDoc(`
+				load('random', 'randint')
+				randint(1, '2')
+			`),
+			wantErr: `randint: for parameter b: got string, want int`,
+		},
+		{
+			name: "randint with invalid range",
+			script: itn.HereDoc(`
+				load('random', 'randint')
+				randint(2, 1)
+			`),
+			wantErr: `a must be less than or equal to b`,
+		},
+		{
+			name: "randint with equal range",
+			script: itn.HereDoc(`
+				load('random', 'randint')
+				val = randint(1, 1)
+			`),
+			checkResult: func(res starlark.Value) bool {
+				return res.(starlark.Int) == one
+			},
+		},
+		{
+			name: "randint with range 1",
+			script: itn.HereDoc(`
+				load('random', 'randint')
+				val = randint(1, 2)
+			`),
+			checkResult: func(res starlark.Value) bool {
+				return res.(starlark.Int) == one || res.(starlark.Int) == two
+			},
+		},
+		{
+			name: "randint with range 2",
+			script: itn.HereDoc(`
+				load('random', 'randint')
+				val = randint(1, 3)
+				print(val)
+			`),
+			checkResult: func(res starlark.Value) bool {
+				return res.(starlark.Int) == one || res.(starlark.Int) == two || res.(starlark.Int) == three
 			},
 		},
 	}
