@@ -30,7 +30,7 @@ export PACK=main
 export FLAGS="-s -w -X '$(PACK).AppName=$(BINARY)' -X '$(PACK).BuildDate=`date '+%Y-%m-%dT%T%z'`' -X '$(PACK).BuildHost=`hostname`' -X '$(PACK).GoVersion=`go version`' -X '$(PACK).GitBranch=`git symbolic-ref -q --short HEAD`' -X '$(PACK).GitCommit=`git rev-parse --short HEAD`' -X '$(PACK).GitSummary=`git describe --tags --dirty --always`' -X '$(PACK).CIBuildNum=${BUILD_NUM}'"
 
 # commands
-.PHONY: default build build_linux build_mac build_windows run
+.PHONY: default build build_linux build_mac build_windows run install
 default:
 	@echo "build target is required for $(BINARY)"
 	@exit 1
@@ -49,3 +49,10 @@ build_windows:
 
 run: build
 	./$(BINARY)
+
+install: build
+ifndef GOBIN
+	$(error GOBIN is not set)
+endif
+	@if [ ! -d "$(GOBIN)" ]; then echo "Directory $(GOBIN) does not exist"; exit 1; fi
+	cp $(BINARY) $(GOBIN)
