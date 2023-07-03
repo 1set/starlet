@@ -65,6 +65,14 @@ func TestLoadModule_Base64(t *testing.T) {
 			`),
 			wantErr: `decode: for parameter data: got int, want string`,
 		},
+		{
+			name: `decode fail`,
+			script: itn.HereDoc(`
+				load('base64', 'decode')
+				decode("aGVsbG8")
+			`),
+			wantErr: `illegal base64 data at input byte 4`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
