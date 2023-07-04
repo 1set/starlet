@@ -1,4 +1,6 @@
 // Package base64 defines base64 encoding & decoding functions for Starlark.
+//
+// Migrated from: https://github.com/qri-io/starlib/tree/master/encoding/base64
 package base64
 
 import (

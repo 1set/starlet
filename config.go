@@ -1,10 +1,11 @@
 package starlet
 
 import (
-	libbase64 "github.com/1set/starlet/lib/base64"
+	libb64 "github.com/1set/starlet/lib/base64"
 	libgoid "github.com/1set/starlet/lib/goidiomatic"
 	libhash "github.com/1set/starlet/lib/hash"
 	libhttp "github.com/1set/starlet/lib/http"
+	librand "github.com/1set/starlet/lib/random"
 	libre "github.com/1set/starlet/lib/re"
 	stdjson "go.starlark.net/lib/json"
 	stdmath "go.starlark.net/lib/math"
@@ -39,10 +40,11 @@ var allBuiltinModules = ModuleLoaderMap{
 		}, nil
 	},
 	// add third-party modules
-	libhash.ModuleName:   libhash.LoadModule,
-	libhttp.ModuleName:   libhttp.LoadModule,
-	libre.ModuleName:     libre.LoadModule,
-	libbase64.ModuleName: libbase64.LoadModule,
+	libhash.ModuleName: libhash.LoadModule,
+	libhttp.ModuleName: libhttp.LoadModule,
+	libre.ModuleName:   libre.LoadModule,
+	libb64.ModuleName:  libb64.LoadModule,
+	librand.ModuleName: librand.LoadModule,
 }
 
 // GetAllBuiltinModuleNames returns a list of all builtin module names.
