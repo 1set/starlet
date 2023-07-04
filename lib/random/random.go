@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"sync"
 
+	itn "github.com/1set/starlet/lib/internal"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
@@ -164,7 +165,7 @@ func random(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, k
 // uniform(a, b) returns a random floating point number N such that a <= N <= b for a <= b and b <= N <= a for b < a. The end-point value b may or may not be included in the range depending on floating-point rounding in the equation a + (b-a) * random().
 func uniform(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// precondition checks
-	var a, b starlark.Float
+	var a, b itn.FloatOrInt
 	if err := starlark.UnpackArgs("uniform", args, kwargs, "a", &a, "b", &b); err != nil {
 		return starlark.None, err
 	}

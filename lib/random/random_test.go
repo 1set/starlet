@@ -299,8 +299,45 @@ func TestLoadModule_Hash(t *testing.T) {
 			name: "uniform with int",
 			script: itn.HereDoc(`
 				load('random', 'uniform')
-				uniform(1, 2)
+				val = uniform(1, 2)
 			`),
+			checkResult: func(res starlark.Value) bool {
+				f := res.(starlark.Float)
+				return f >= 1 && f < 2
+			},
+		},
+		{
+			name: "uniform with float",
+			script: itn.HereDoc(`
+				load('random', 'uniform')
+				val = uniform(1.0, 2.0)
+			`),
+			checkResult: func(res starlark.Value) bool {
+				f := res.(starlark.Float)
+				return f >= 1 && f < 2
+			},
+		},
+		{
+			name: "uniform with equal range",
+			script: itn.HereDoc(`
+				load('random', 'uniform')
+				val = uniform(1, 1)
+			`),
+			checkResult: func(res starlark.Value) bool {
+				f := res.(starlark.Float)
+				return f == 1
+			},
+		},
+		{
+			name: "uniform with reversed range",
+			script: itn.HereDoc(`
+				load('random', 'uniform')
+				val = uniform(2, 1)
+			`),
+			checkResult: func(res starlark.Value) bool {
+				f := res.(starlark.Float)
+				return f >= 1 && f < 2
+			},
 		},
 	}
 	for _, tt := range tests {
