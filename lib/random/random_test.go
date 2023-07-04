@@ -259,6 +259,49 @@ func TestLoadModule_Hash(t *testing.T) {
 				assert.eq(len(x), 20)
 			`),
 		},
+		{
+			name: "random",
+			script: itn.HereDoc(`
+				load('random', 'random')
+				val = random()
+				print(val)
+			`),
+			checkResult: func(res starlark.Value) bool {
+				f := res.(starlark.Float)
+				return f >= 0 && f < 1
+			},
+		},
+		{
+			name: "uniform with less than 2 args",
+			script: itn.HereDoc(`
+				load('random', 'uniform')
+				uniform()
+			`),
+			wantErr: `uniform: missing argument for a`,
+		},
+		{
+			name: "uniform with more than 2 args",
+			script: itn.HereDoc(`
+				load('random', 'uniform')
+				uniform(1, 2, 3)	
+			`),
+			wantErr: `uniform: got 3 arguments, want at most 2`,
+		},
+		{
+			name: "uniform with invalid type",
+			script: itn.HereDoc(`
+				load('random', 'uniform')
+				uniform('1', '2')
+			`),
+			wantErr: `uniform: for parameter a: got string, want float`,
+		},
+		{
+			name: "uniform with int",
+			script: itn.HereDoc(`
+				load('random', 'uniform')
+				uniform(1, 2)
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

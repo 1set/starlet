@@ -30,6 +30,8 @@ func LoadModule() (starlark.StringDict, error) {
 					"randint":   starlark.NewBuiltin("randint", randint),
 					"choice":    starlark.NewBuiltin("choice", choice),
 					"shuffle":   starlark.NewBuiltin("shuffle", shuffle),
+					"random":    starlark.NewBuiltin("random", random),
+					"uniform":   starlark.NewBuiltin("uniform", uniform),
 				},
 			},
 		}
@@ -150,6 +152,32 @@ func shuffle(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, 
 	return starlark.None, nil
 }
 
+// random() returns a random floating point number in the range 0.0 <= X < 1.0.
+func random(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	f, err := getRandomFloat(1 << 53)
+	if err != nil {
+		return starlark.None, err
+	}
+	return starlark.Float(f), nil
+}
+
+// uniform(a, b) returns a random floating point number N such that a <= N <= b for a <= b and b <= N <= a for b < a. The end-point value b may or may not be included in the range depending on floating-point rounding in the equation a + (b-a) * random().
+func uniform(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// precondition checks
+	var a, b starlark.Float
+	if err := starlark.UnpackArgs("uniform", args, kwargs, "a", &a, "b", &b); err != nil {
+		return starlark.None, err
+	}
+	// get random float
+	f, err := getRandomFloat(1 << 53)
+	if err != nil {
+		return starlark.None, err
+	}
+	// a + (b-a) * random()
+	diff := float64(b - a)
+	return starlark.Float(float64(a) + diff*f), nil
+}
+
 // getRandomInt returns a random integer in the range [0, max).
 func getRandomInt(max int) (int, error) {
 	if max <= 0 {
@@ -161,4 +189,16 @@ func getRandomInt(max int) (int, error) {
 		return 0, err
 	}
 	return int(n.Int64()), nil
+}
+
+func getRandomFloat(prec int64) (n float64, err error) {
+	if prec <= 0 {
+		return 0, errors.New(`prec must be > 0`)
+	}
+	maxBig := new(big.Int).SetUint64(uint64(prec))
+	nBig, err := rand.Int(rand.Reader, maxBig)
+	if err != nil {
+		return 0, err
+	}
+	return float64(nBig.Int64()) / float64(prec), nil
 }
