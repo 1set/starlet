@@ -173,12 +173,12 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 		if _var, ok := v.Constructor().(Unmarshaler); ok {
 			err = _var.UnmarshalStarlark(x)
 			if err != nil {
-				err = fmt.Errorf("failed marshal %q to Starlark object: %w", v.Constructor().Type(), err)
+				err = fmt.Errorf("failed marshal %T to Starlark object: %w", v.Constructor(), err)
 				return
 			}
 			val = _var
 		} else {
-			err = fmt.Errorf("constructor object from *starlarkstruct.Struct not supported Marshaler to starlark object: %s", v.Constructor().Type())
+			err = fmt.Errorf("constructor object from *starlarkstruct.Struct not supported Marshaler to starlark object: %T", v.Constructor())
 		}
 	case *convert.GoSlice:
 		if IsInterfaceNil(v) {
