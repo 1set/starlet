@@ -27,6 +27,19 @@ func IsEmptyString(s starlark.String) bool {
 	return s.String() == `""`
 }
 
+// IsInterfaceNil returns true if the given interface is nil.
+func IsInterfaceNil(i interface{}) bool {
+	if i == nil {
+		return true
+	}
+	defer func() { recover() }()
+	switch reflect.TypeOf(i).Kind() {
+	case reflect.Ptr, reflect.UnsafePointer, reflect.Interface, reflect.Struct, reflect.Slice, reflect.Map, reflect.Chan, reflect.Func:
+		return reflect.ValueOf(i).IsNil()
+	}
+	return false
+}
+
 // Unmarshal decodes a starlark.Value into it's Golang counterpart.
 func Unmarshal(x starlark.Value) (val interface{}, err error) {
 	switch v := x.(type) {
@@ -197,19 +210,6 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 		err = fmt.Errorf("unrecognized starlark type: %T", x)
 	}
 	return
-}
-
-// IsInterfaceNil returns true if the given interface is nil.
-func IsInterfaceNil(i interface{}) bool {
-	if i == nil {
-		return true
-	}
-	//defer func() { recover() }()
-	switch reflect.TypeOf(i).Kind() {
-	case reflect.Ptr, reflect.UnsafePointer, reflect.Interface, reflect.Struct, reflect.Slice, reflect.Map, reflect.Chan, reflect.Func:
-		return reflect.ValueOf(i).IsNil()
-	}
-	return false
 }
 
 // Marshal turns go values into Starlark types.
