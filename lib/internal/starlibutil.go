@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/1set/starlight/convert"
 	startime "go.starlark.net/lib/time"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
@@ -25,7 +26,7 @@ func IsEmptyString(s starlark.String) bool {
 	return s.String() == `""`
 }
 
-// Unmarshal decodes a starlark.Value into it's golang counterpart
+// Unmarshal decodes a starlark.Value into it's Golang counterpart.
 func Unmarshal(x starlark.Value) (val interface{}, err error) {
 	switch v := x.(type) {
 	case starlark.NoneType:
@@ -165,6 +166,14 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 		} else {
 			err = fmt.Errorf("constructor object from *starlarkstruct.Struct not supported Marshaler to starlark object: %s", v.Constructor().Type())
 		}
+	case *convert.GoSlice:
+		val = v.Value().Interface()
+	case *convert.GoMap:
+		val = v.Value().Interface()
+	case *convert.GoStruct:
+		val = v.Value().Interface()
+	//case *convert.GoInterface:
+	//	val = v.Value()
 	default:
 		fmt.Println("errbadtype:", x.Type())
 		err = fmt.Errorf("unrecognized starlark type: %s", x.Type())
@@ -172,7 +181,7 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 	return
 }
 
-// Marshal turns go values into starlark types
+// Marshal turns go values into Starlark types.
 func Marshal(data interface{}) (v starlark.Value, err error) {
 	switch x := data.(type) {
 	case nil:
@@ -256,13 +265,13 @@ func Marshal(data interface{}) (v starlark.Value, err error) {
 	return
 }
 
-// Unmarshaler is the interface use to unmarshal starlark custom types.
+// Unmarshaler is the interface use to unmarshal Starlark custom types.
 type Unmarshaler interface {
 	// UnmarshalStarlark unmarshal a starlark object to custom type.
 	UnmarshalStarlark(starlark.Value) error
 }
 
-// Marshaler is the interface use to marshal starlark custom types.
+// Marshaler is the interface use to marshal Starlark custom types.
 type Marshaler interface {
 	// MarshalStarlark marshal a custom type to starlark object.
 	MarshalStarlark() (starlark.Value, error)

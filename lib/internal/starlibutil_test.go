@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/1set/starlight/convert"
 	startime "go.starlark.net/lib/time"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
@@ -137,9 +138,14 @@ func TestUnmarshal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	set := starlark.NewSet(10)
-	set.Insert(starlark.String("Hello"))
-	set.Insert(starlark.String("World"))
+	ss := starlark.NewSet(10)
+	ss.Insert(starlark.String("Hello"))
+	ss.Insert(starlark.String("World"))
+
+	gs := struct {
+		Message string
+		Times   int
+	}{"Aloha", 100}
 
 	cases := []struct {
 		in   starlark.Value
@@ -171,7 +177,12 @@ func TestUnmarshal(t *testing.T) {
 		{strDictCT, map[string]interface{}{"foo": 42, "bar": &customType{42}}, ""},
 		{starlark.NewList([]starlark.Value{starlark.MakeInt(42), ct}), []interface{}{42, &customType{42}}, ""},
 		{starlark.Tuple{starlark.String("foo"), starlark.MakeInt(42)}, []interface{}{"foo", 42}, ""},
-		{set, []interface{}{"Hello", "World"}, ""},
+		{ss, []interface{}{"Hello", "World"}, ""},
+		{convert.NewGoSlice([]int{1, 2, 3}), []int{1, 2, 3}, ""},
+		{convert.NewGoSlice([]string{"Hello", "World"}), []string{"Hello", "World"}, ""},
+		{convert.NewGoMap(map[string]int{"foo": 42}), map[string]int{"foo": 42}, ""},
+		{convert.NewStruct(gs), gs, ""},
+		//{convert.MakeGoInterface("Hello, World!"), "Hello, World!", ""},
 	}
 
 	for i, c := range cases {
