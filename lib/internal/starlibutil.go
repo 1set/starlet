@@ -4,9 +4,11 @@ package internal
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"time"
 
+	"github.com/1set/starlight/convert"
 	startime "go.starlark.net/lib/time"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
@@ -25,7 +27,20 @@ func IsEmptyString(s starlark.String) bool {
 	return s.String() == `""`
 }
 
-// Unmarshal decodes a starlark.Value into it's golang counterpart
+// IsInterfaceNil returns true if the given interface is nil.
+func IsInterfaceNil(i interface{}) bool {
+	if i == nil {
+		return true
+	}
+	defer func() { recover() }()
+	switch reflect.TypeOf(i).Kind() {
+	case reflect.Ptr, reflect.UnsafePointer, reflect.Interface, reflect.Struct, reflect.Slice, reflect.Map, reflect.Chan, reflect.Func:
+		return reflect.ValueOf(i).IsNil()
+	}
+	return false
+}
+
+// Unmarshal decodes a starlark.Value into it's Golang counterpart.
 func Unmarshal(x starlark.Value) (val interface{}, err error) {
 	switch v := x.(type) {
 	case starlark.NoneType:
@@ -138,27 +153,66 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 		}
 		val = value
 	case *starlark.Set:
-		fmt.Println("errnotdone: SET")
-		err = fmt.Errorf("sets aren't yet supported")
+		var (
+			i      int
+			setVal starlark.Value
+			iter   = v.Iterate()
+			value  = make([]interface{}, v.Len())
+		)
+
+		defer iter.Done()
+		for iter.Next(&setVal) {
+			value[i], err = Unmarshal(setVal)
+			if err != nil {
+				return
+			}
+			i++
+		}
+		val = value
 	case *starlarkstruct.Struct:
 		if _var, ok := v.Constructor().(Unmarshaler); ok {
 			err = _var.UnmarshalStarlark(x)
 			if err != nil {
-				err = fmt.Errorf("failed marshal %q to Starlark object: %w", v.Constructor().Type(), err)
+				err = fmt.Errorf("failed marshal %T to Starlark object: %w", v.Constructor(), err)
 				return
 			}
 			val = _var
 		} else {
-			err = fmt.Errorf("constructor object from *starlarkstruct.Struct not supported Marshaler to starlark object: %s", v.Constructor().Type())
+			err = fmt.Errorf("constructor object from *starlarkstruct.Struct not supported Marshaler to starlark object: %T", v.Constructor())
 		}
+	case *convert.GoSlice:
+		if IsInterfaceNil(v) {
+			err = fmt.Errorf("nil GoSlice")
+			return
+		}
+		val = v.Value().Interface()
+	case *convert.GoMap:
+		if IsInterfaceNil(v) {
+			err = fmt.Errorf("nil GoMap")
+			return
+		}
+		val = v.Value().Interface()
+	case *convert.GoStruct:
+		if IsInterfaceNil(v) {
+			err = fmt.Errorf("nil GoStruct")
+			return
+		}
+		val = v.Value().Interface()
+	case *convert.GoInterface:
+		if IsInterfaceNil(v) {
+			err = fmt.Errorf("nil GoInterface")
+			return
+		}
+		val = v.Value().Interface()
 	default:
-		fmt.Println("errbadtype:", x.Type())
-		err = fmt.Errorf("unrecognized starlark type: %s", x.Type())
+		//fmt.Println("errbadtype:", x.Type())
+		//err = fmt.Errorf("unrecognized starlark type: %s", x.Type())
+		err = fmt.Errorf("unrecognized starlark type: %T", x)
 	}
 	return
 }
 
-// Marshal turns go values into starlark types
+// Marshal turns go values into Starlark types.
 func Marshal(data interface{}) (v starlark.Value, err error) {
 	switch x := data.(type) {
 	case nil:
@@ -242,13 +296,13 @@ func Marshal(data interface{}) (v starlark.Value, err error) {
 	return
 }
 
-// Unmarshaler is the interface use to unmarshal starlark custom types.
+// Unmarshaler is the interface use to unmarshal Starlark custom types.
 type Unmarshaler interface {
 	// UnmarshalStarlark unmarshal a starlark object to custom type.
 	UnmarshalStarlark(starlark.Value) error
 }
 
-// Marshaler is the interface use to marshal starlark custom types.
+// Marshaler is the interface use to marshal Starlark custom types.
 type Marshaler interface {
 	// MarshalStarlark marshal a custom type to starlark object.
 	MarshalStarlark() (starlark.Value, error)
