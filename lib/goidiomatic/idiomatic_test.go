@@ -363,6 +363,62 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				assert.eq('0b11010010001011001101100001001101010001011101111000010100001101100000101000111010101101010100001100011011101101110011100010000', bin(34921340912409213842304823423424456464))
 			`),
 		},
+		{
+			name: `bytes_hex()`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'bytes_hex')
+				bytes_hex()
+			`),
+			wantErr: `bytes_hex: missing argument for x`,
+		},
+		{
+			name: `bytes_hex(>3)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'bytes_hex')
+				bytes_hex(b'123456', "_", 4, 5)
+			`),
+			wantErr: `bytes_hex: got 4 arguments, want at most 3`,
+		},
+		{
+			name: `bytes_hex(b'123456')`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'bytes_hex')
+				assert.eq('313233343536', bytes_hex(b'123456'))
+			`),
+		},
+		{
+			name: `bytes_hex(b'123456', "_")`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'bytes_hex')
+				assert.eq('31_32_33_34_35_36', bytes_hex(b'123456', "_"))
+			`),
+		},
+		{
+			name: `bytes_hex(b'0', "-")`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'bytes_hex')
+				assert.eq('', bytes_hex(b'', "-"))
+				assert.eq('30', bytes_hex(b'0', "-"))
+			`),
+		},
+		{
+			name: `bytes_hex(b'123456', "_", 4)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'bytes_hex')
+				assert.eq('3132_33343536', bytes_hex(b'123456', "_", 4))
+				assert.eq('31_3233343536', bytes_hex(b'123456', "_", 5))
+				assert.eq('5555 44444c52 4c524142', bytes_hex(b'UUDDLRLRAB', " ", 4))
+			`),
+		},
+		{
+			name: `bytes_hex(b'123456', "_", -4)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'bytes_hex')
+				assert.eq('31323334_3536', bytes_hex(b'123456', "_", -4))
+				assert.eq('3132333435_36', bytes_hex(b'123456', "_", -5))
+				assert.eq('55554444 4c524c52 4142', bytes_hex(b'UUDDLRLRAB', " ", -4))
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

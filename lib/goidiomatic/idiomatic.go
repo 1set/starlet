@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -18,17 +19,18 @@ const ModuleName = "go_idiomatic"
 // LoadModule loads the Go idiomatic module.
 func LoadModule() (starlark.StringDict, error) {
 	return starlark.StringDict{
-		"true":   starlark.True,
-		"false":  starlark.False,
-		"nil":    starlark.None,
-		"length": starlark.NewBuiltin("length", length),
-		"sum":    starlark.NewBuiltin("sum", sum),
-		"oct":    starlark.NewBuiltin("oct", oct),
-		"hex":    starlark.NewBuiltin("hex", hex),
-		"bin":    starlark.NewBuiltin("bin", bin),
-		"sleep":  starlark.NewBuiltin("sleep", sleep),
-		"exit":   starlark.NewBuiltin("exit", exit),
-		"quit":   starlark.NewBuiltin("quit", exit), // alias for exit
+		"true":      starlark.True,
+		"false":     starlark.False,
+		"nil":       starlark.None,
+		"length":    starlark.NewBuiltin("length", length),
+		"sum":       starlark.NewBuiltin("sum", sum),
+		"oct":       starlark.NewBuiltin("oct", oct),
+		"hex":       starlark.NewBuiltin("hex", hex),
+		"bytes_hex": starlark.NewBuiltin("bytes_hex", bytesToHex),
+		"bin":       starlark.NewBuiltin("bin", bin),
+		"sleep":     starlark.NewBuiltin("sleep", sleep),
+		"exit":      starlark.NewBuiltin("exit", exit),
+		"quit":      starlark.NewBuiltin("quit", exit), // alias for exit
 	}, nil
 }
 
@@ -85,6 +87,32 @@ func sum(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwar
 
 	// return the result
 	return total.Value(), nil
+}
+
+// bytesToHex returns the hexadecimal representation of the given bytes.
+func bytesToHex(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// parse and set the arguments
+	var (
+		bs  starlark.Bytes
+		sep starlark.String
+		bps = starlark.MakeInt(1)
+	)
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "bytes", &bs, "sep?", &sep, "bytes_per_sep?", &bps); err != nil {
+		return none, err
+	}
+	bytesPerSep, ok := bps.Int64()
+	if !ok {
+		return none, fmt.Errorf("invalid bytes_per_sep: %v", bps)
+	}
+	// convert the bytes to hexadecimal
+	var rs strings.Builder
+	for i, v := range []byte(bs) {
+		if i > 0 && bytesPerSep != 0 && i%int(bytesPerSep) == 0 {
+			rs.WriteString(string(sep))
+		}
+		rs.WriteString(fmt.Sprintf("%02x", v))
+	}
+	return starlark.String(rs.String()), nil
 }
 
 // hex returns the hexadecimal representation of the given value.
