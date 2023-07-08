@@ -182,7 +182,7 @@ func TestUnmarshal(t *testing.T) {
 		{convert.NewGoSlice([]string{"Hello", "World"}), []string{"Hello", "World"}, ""},
 		{convert.NewGoMap(map[string]int{"foo": 42}), map[string]int{"foo": 42}, ""},
 		{convert.NewStruct(gs), gs, ""},
-		//{convert.MakeGoInterface("Hello, World!"), "Hello, World!", ""},
+		{convert.MakeGoInterface("Hello, World!"), "Hello, World!", ""},
 	}
 
 	for i, c := range cases {

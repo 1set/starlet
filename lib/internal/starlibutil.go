@@ -172,8 +172,8 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 		val = v.Value().Interface()
 	case *convert.GoStruct:
 		val = v.Value().Interface()
-	//case *convert.GoInterface:
-	//	val = v.Value()
+	case *convert.GoInterface:
+		val = v.Value().Interface()
 	default:
 		fmt.Println("errbadtype:", x.Type())
 		err = fmt.Errorf("unrecognized starlark type: %s", x.Type())
