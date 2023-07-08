@@ -282,6 +282,60 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				assert.eq(15, sum([1, 2, 4], start=8))
 			`),
 		},
+		{
+			name: `hex()`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'hex')
+				hex()
+			`),
+			wantErr: `hex: missing argument for x`,
+		},
+		{
+			name: `hex(>1)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'hex')
+				hex(1, 2)
+			`),
+			wantErr: `hex: got 2 arguments, want at most 1`,
+		},
+		{
+			name: `hex(1)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'hex')
+				assert.eq('0x0', hex(0))
+				assert.eq('0xf', hex(15))
+				assert.eq('-0xf', hex(-15))
+				assert.eq('-0x100', hex(-256))
+				assert.eq('0x1a459b09a8bbc286c14756a86376e710', hex(34921340912409213842304823423424456464))
+			`),
+		},
+		{
+			name: `oct()`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'oct')
+				oct()
+			`),
+			wantErr: `oct: missing argument for x`,
+		},
+		{
+			name: `oct(>1)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'oct')
+				oct(1, 2)
+			`),
+			wantErr: `oct: got 2 arguments, want at most 1`,
+		},
+		{
+			name: `oct(1)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'oct')
+				assert.eq('0o0', oct(0))
+				assert.eq('0o7', oct(7))
+				assert.eq('0o10', oct(8))
+				assert.eq('-0o70', oct(-56))
+				assert.eq('0o25002121274216244622344125302630165706706267707144', oct(468409683456048976340589328520898324578930276))
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

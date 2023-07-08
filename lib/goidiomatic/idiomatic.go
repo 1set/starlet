@@ -23,6 +23,8 @@ func LoadModule() (starlark.StringDict, error) {
 		"nil":    starlark.None,
 		"length": starlark.NewBuiltin("length", length),
 		"sum":    starlark.NewBuiltin("sum", sum),
+		"oct":    starlark.NewBuiltin("oct", oct),
+		"hex":    starlark.NewBuiltin("hex", hex),
 		"sleep":  starlark.NewBuiltin("sleep", sleep),
 		"exit":   starlark.NewBuiltin("exit", exit),
 		"quit":   starlark.NewBuiltin("quit", exit), // alias for exit
@@ -82,6 +84,44 @@ func sum(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwar
 
 	// return the result
 	return total.Value(), nil
+}
+
+// hex returns the hexadecimal representation of the given value.
+func hex(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var x starlark.Int
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "x", &x); err != nil {
+		return none, err
+	}
+	return convertStarlarkNumber(x, 16, "0x")
+}
+
+// oct returns the octal representation of the given value.
+func oct(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var x starlark.Int
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "x", &x); err != nil {
+		return none, err
+	}
+	return convertStarlarkNumber(x, 8, "0o")
+}
+
+// convertStarlarkNumber converts the given starlark.Int number to the given base string.
+func convertStarlarkNumber(x starlark.Int, base int, fmtPre string) (starlark.Value, error) {
+	var (
+		s    string
+		n    = x.BigInt()
+		sign = n.Sign()
+	)
+	if sign == 0 {
+		s = fmtPre + "0"
+	} else {
+		signPre := ""
+		if sign < 0 {
+			signPre = "-"
+			n.Neg(n)
+		}
+		s = signPre + fmtPre + n.Text(base)
+	}
+	return starlark.String(s), nil
 }
 
 // sleep sleeps for the given number of seconds.
