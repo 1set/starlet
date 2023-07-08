@@ -137,6 +137,10 @@ func TestUnmarshal(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	set := starlark.NewSet(10)
+	set.Insert(starlark.String("Hello"))
+	set.Insert(starlark.String("World"))
+
 	cases := []struct {
 		in   starlark.Value
 		want interface{}
@@ -167,6 +171,7 @@ func TestUnmarshal(t *testing.T) {
 		{strDictCT, map[string]interface{}{"foo": 42, "bar": &customType{42}}, ""},
 		{starlark.NewList([]starlark.Value{starlark.MakeInt(42), ct}), []interface{}{42, &customType{42}}, ""},
 		{starlark.Tuple{starlark.String("foo"), starlark.MakeInt(42)}, []interface{}{"foo", 42}, ""},
+		{set, []interface{}{"Hello", "World"}, ""},
 	}
 
 	for i, c := range cases {

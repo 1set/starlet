@@ -138,8 +138,22 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 		}
 		val = value
 	case *starlark.Set:
-		fmt.Println("errnotdone: SET")
-		err = fmt.Errorf("sets aren't yet supported")
+		var (
+			i      int
+			setVal starlark.Value
+			iter   = v.Iterate()
+			value  = make([]interface{}, v.Len())
+		)
+
+		defer iter.Done()
+		for iter.Next(&setVal) {
+			value[i], err = Unmarshal(setVal)
+			if err != nil {
+				return
+			}
+			i++
+		}
+		val = value
 	case *starlarkstruct.Struct:
 		if _var, ok := v.Constructor().(Unmarshaler); ok {
 			err = _var.UnmarshalStarlark(x)
