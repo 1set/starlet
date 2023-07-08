@@ -57,6 +57,84 @@ print(sum([1, 2, 3], 10))
 # Output: 16
 ```
 
+### `hex(x)`
+
+Convert an integer number to a lowercase hexadecimal string prefixed with `0x`.
+
+#### Examples
+
+**Basic**
+
+Convert an integer to a hexadecimal string.
+
+```python
+load("go_idiomatic", "hex")
+print(hex(255))
+# Output: 0xff
+```
+
+**Negative**
+
+Convert a negative integer to a hexadecimal string.
+
+```python
+load("go_idiomatic", "hex")
+print(hex(-42))
+# Output: -0x2a
+```
+
+### `oct(x)`
+
+Convert an integer number to an octal string prefixed with `0o`.
+
+#### Examples
+
+**Basic**
+
+Convert an integer to an octal string.
+
+```python
+load("go_idiomatic", "oct")
+print(oct(255))
+# Output: 0o377
+```
+
+**Negative**
+
+Convert a negative integer to an octal string.
+
+```python
+load("go_idiomatic", "oct")
+print(oct(-56))
+# Output: -0o70
+```
+
+### `bin(x)`
+
+Convert an integer number to a binary string prefixed with `0b`.
+
+#### Examples
+
+**Basic**
+
+Convert an integer to a binary string.
+
+```python
+load("go_idiomatic", "bin")
+print(bin(255))
+# Output: 0b11111111
+```
+
+**Negative**
+
+Convert a negative integer to a binary string.
+
+```python
+load("go_idiomatic", "bin")
+print(bin(-10))
+# Output: -0b1010
+```
+
 ### `sleep(secs)`
 
 Sleeps for the given number of seconds.
