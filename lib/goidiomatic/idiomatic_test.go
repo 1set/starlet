@@ -336,6 +336,33 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				assert.eq('0o25002121274216244622344125302630165706706267707144', oct(468409683456048976340589328520898324578930276))
 			`),
 		},
+		{
+			name: `bin()`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'bin')
+				bin()
+			`),
+			wantErr: `bin: missing argument for x`,
+		},
+		{
+			name: `bin(>1)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'bin')
+				bin(1, 2)
+			`),
+			wantErr: `bin: got 2 arguments, want at most 1`,
+		},
+		{
+			name: `bin(1)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'bin')
+				assert.eq('0b0', bin(0))
+				assert.eq('0b111', bin(7))
+				assert.eq('0b1000', bin(8))
+				assert.eq('-0b11111111', bin(-255))
+				assert.eq('0b11010010001011001101100001001101010001011101111000010100001101100000101000111010101101010100001100011011101101110011100010000', bin(34921340912409213842304823423424456464))
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

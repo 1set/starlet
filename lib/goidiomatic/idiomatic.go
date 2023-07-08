@@ -25,6 +25,7 @@ func LoadModule() (starlark.StringDict, error) {
 		"sum":    starlark.NewBuiltin("sum", sum),
 		"oct":    starlark.NewBuiltin("oct", oct),
 		"hex":    starlark.NewBuiltin("hex", hex),
+		"bin":    starlark.NewBuiltin("bin", bin),
 		"sleep":  starlark.NewBuiltin("sleep", sleep),
 		"exit":   starlark.NewBuiltin("exit", exit),
 		"quit":   starlark.NewBuiltin("quit", exit), // alias for exit
@@ -102,6 +103,15 @@ func oct(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwar
 		return none, err
 	}
 	return convertStarlarkNumber(x, 8, "0o")
+}
+
+// bin returns the binary representation of the given value.
+func bin(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var x starlark.Int
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "x", &x); err != nil {
+		return none, err
+	}
+	return convertStarlarkNumber(x, 2, "0b")
 }
 
 // convertStarlarkNumber converts the given starlark.Int number to the given base string.
