@@ -4,6 +4,7 @@ package internal
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"time"
 
@@ -167,18 +168,48 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 			err = fmt.Errorf("constructor object from *starlarkstruct.Struct not supported Marshaler to starlark object: %s", v.Constructor().Type())
 		}
 	case *convert.GoSlice:
+		if IsInterfaceNil(v) {
+			err = fmt.Errorf("nil GoSlice")
+			return
+		}
 		val = v.Value().Interface()
 	case *convert.GoMap:
+		if IsInterfaceNil(v) {
+			err = fmt.Errorf("nil GoMap")
+			return
+		}
 		val = v.Value().Interface()
 	case *convert.GoStruct:
+		if IsInterfaceNil(v) {
+			err = fmt.Errorf("nil GoStruct")
+			return
+		}
 		val = v.Value().Interface()
 	case *convert.GoInterface:
+		if IsInterfaceNil(v) {
+			err = fmt.Errorf("nil GoInterface")
+			return
+		}
 		val = v.Value().Interface()
 	default:
-		fmt.Println("errbadtype:", x.Type())
-		err = fmt.Errorf("unrecognized starlark type: %s", x.Type())
+		//fmt.Println("errbadtype:", x.Type())
+		//err = fmt.Errorf("unrecognized starlark type: %s", x.Type())
+		err = fmt.Errorf("unrecognized starlark type: %T", x)
 	}
 	return
+}
+
+// IsInterfaceNil returns true if the given interface is nil.
+func IsInterfaceNil(i interface{}) bool {
+	if i == nil {
+		return true
+	}
+	//defer func() { recover() }()
+	switch reflect.TypeOf(i).Kind() {
+	case reflect.Ptr, reflect.UnsafePointer, reflect.Interface, reflect.Struct, reflect.Slice, reflect.Map, reflect.Chan, reflect.Func:
+		return reflect.ValueOf(i).IsNil()
+	}
+	return false
 }
 
 // Marshal turns go values into Starlark types.

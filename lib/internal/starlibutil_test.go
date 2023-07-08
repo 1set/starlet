@@ -147,11 +147,19 @@ func TestUnmarshal(t *testing.T) {
 		Times   int
 	}{"Aloha", 100}
 
+	var (
+		nilGs  *convert.GoSlice
+		nilGm  *convert.GoMap
+		nilGst *convert.GoStruct
+		nilGif *convert.GoInterface
+	)
+
 	cases := []struct {
 		in   starlark.Value
 		want interface{}
 		err  string
 	}{
+		{nil, nil, "unrecognized starlark type: <nil>"},
 		{starlark.None, nil, ""},
 		{starlark.True, true, ""},
 		{starlark.String("foo"), "foo", ""},
@@ -183,8 +191,15 @@ func TestUnmarshal(t *testing.T) {
 		{convert.NewGoMap(map[string]int{"foo": 42}), map[string]int{"foo": 42}, ""},
 		{convert.NewStruct(gs), gs, ""},
 		{convert.MakeGoInterface("Hello, World!"), "Hello, World!", ""},
+		{(*convert.GoSlice)(nil), nil, "nil GoSlice"},
+		{nilGs, nil, "nil GoSlice"},
+		{(*convert.GoMap)(nil), nil, "nil GoMap"},
+		{nilGm, nil, "nil GoMap"},
+		{(*convert.GoStruct)(nil), nil, "nil GoStruct"},
+		{nilGst, nil, "nil GoStruct"},
+		{(*convert.GoInterface)(nil), nil, "nil GoInterface"},
+		{nilGif, nil, "nil GoInterface"},
 	}
-
 	for i, c := range cases {
 		got, err := Unmarshal(c.in)
 		if !(err == nil && c.err == "" || err != nil && err.Error() == c.err) {
