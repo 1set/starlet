@@ -102,6 +102,14 @@ func TestLoadModule_HTTP(t *testing.T) {
 		wantErr string
 	}{
 		{
+			name: `Invalid URL`,
+			script: itn.HereDoc(`
+				load('http', 'get')
+				res = get(123)
+			`),
+			wantErr: `http.get: for parameter url: got int, want string`,
+		},
+		{
 			name: `Simple GET`,
 			script: itn.HereDoc(`
 				load('http', 'get')
