@@ -19,6 +19,7 @@ func TestLoadModule_Hash(t *testing.T) {
 				load('hash', 'md5')
 				assert.eq(md5(""), "d41d8cd98f00b204e9800998ecf8427e")
 				assert.eq(md5("Aloha!"), "de424bf3e7dcba091c27d652ada485fb")
+				assert.eq(md5(b"Aloha!"), "de424bf3e7dcba091c27d652ada485fb")
 			`),
 		},
 		{
@@ -46,13 +47,21 @@ func TestLoadModule_Hash(t *testing.T) {
 			`),
 		},
 		{
+			name: `Invalid Argument Count`,
+			script: itn.HereDoc(`
+				load('hash', 'md5')
+				md5("Aloha!", "Hello!")
+			`),
+			wantErr: "hash.md5 takes exactly 1 argument",
+		},
+		{
 			name: `Invalid Input Type`,
 			script: itn.HereDoc(`
 				load('hash', 'md5')
 				md5(123)
 				assert.fail("should not reach here")
 			`),
-			wantErr: "hash.md5: for parameter 1: got int, want string",
+			wantErr: "hash.md5 takes a string or bytes argument",
 		},
 	}
 	for _, tt := range tests {
