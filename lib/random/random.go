@@ -41,10 +41,10 @@ func LoadModule() (starlark.StringDict, error) {
 }
 
 // randbytes(n) returns a random byte string of length n.
-func randbytes(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func randbytes(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// precondition checks
 	var n starlark.Int
-	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "n?", &n); err != nil {
+	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "n?", &n); err != nil {
 		return nil, err
 	}
 	// set default value if n is not provided correctly
@@ -88,10 +88,10 @@ func randint(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 }
 
 // choice returns a random element from the non-empty sequence seq. If seq is empty, raises a ValueError.
-func choice(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func choice(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// precondition checks
 	var seq starlark.Indexable
-	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "seq", &seq); err != nil {
+	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "seq", &seq); err != nil {
 		return starlark.None, err
 	}
 	l := seq.Len()
@@ -108,10 +108,10 @@ func choice(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 }
 
 // shuffle(x) shuffles the sequence x in place.
-func shuffle(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func shuffle(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// precondition checks
 	var seq starlark.HasSetIndex
-	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "seq", &seq); err != nil {
+	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "seq", &seq); err != nil {
 		return starlark.None, err
 	}
 	// nothing to do if seq is empty or has only one element
