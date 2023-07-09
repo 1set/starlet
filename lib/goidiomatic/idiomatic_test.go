@@ -369,7 +369,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'bytes_hex')
 				bytes_hex()
 			`),
-			wantErr: `bytes_hex: missing argument for x`,
+			wantErr: `bytes_hex: missing argument for bytes`,
 		},
 		{
 			name: `bytes_hex(>3)`,

@@ -104,14 +104,27 @@ func bytesToHex(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tupl
 	if !ok {
 		return none, fmt.Errorf("invalid bytes_per_sep: %v", bps)
 	}
-	// convert the bytes to hexadecimal
-	var rs strings.Builder
-	for i, v := range []byte(bs) {
-		if i > 0 && bytesPerSep != 0 && i%int(bytesPerSep) == 0 {
-			rs.WriteString(string(sep))
-		}
-		rs.WriteString(fmt.Sprintf("%02x", v))
+	// convert the bytes to hexadecimal, positive values calculate the separator position from the right, negative values from the left.
+	var (
+		bpsInt   = int(bytesPerSep)
+		sepStr   = string(sep)
+		hexBytes = make([]string, len(bs))
+	)
+	for i, b := range bs {
+		hexBytes[i] = fmt.Sprintf("%02x", b)
 	}
+	if bpsInt > 0 { // for downto
+		for i := len(hexBytes) - bpsInt; i > 0; i -= bpsInt {
+			hexBytes[i] = sepStr + hexBytes[i]
+		}
+	} else if bpsInt < 0 { // for to
+		for i := -bpsInt; i < len(hexBytes); i -= bpsInt {
+			hexBytes[i] = sepStr + hexBytes[i]
+		}
+	}
+	// compile the result
+	var rs strings.Builder
+	rs.WriteString(strings.Join(hexBytes, ""))
 	return starlark.String(rs.String()), nil
 }
 
