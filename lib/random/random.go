@@ -27,12 +27,12 @@ func LoadModule() (starlark.StringDict, error) {
 			"random": &starlarkstruct.Module{
 				Name: "random",
 				Members: starlark.StringDict{
-					"randbytes": starlark.NewBuiltin("randbytes", randbytes),
-					"randint":   starlark.NewBuiltin("randint", randint),
-					"choice":    starlark.NewBuiltin("choice", choice),
-					"shuffle":   starlark.NewBuiltin("shuffle", shuffle),
-					"random":    starlark.NewBuiltin("random", random),
-					"uniform":   starlark.NewBuiltin("uniform", uniform),
+					"randbytes": starlark.NewBuiltin("random.randbytes", randbytes),
+					"randint":   starlark.NewBuiltin("random.randint", randint),
+					"choice":    starlark.NewBuiltin("random.choice", choice),
+					"shuffle":   starlark.NewBuiltin("random.shuffle", shuffle),
+					"random":    starlark.NewBuiltin("random.random", random),
+					"uniform":   starlark.NewBuiltin("random.uniform", uniform),
 				},
 			},
 		}
@@ -41,10 +41,10 @@ func LoadModule() (starlark.StringDict, error) {
 }
 
 // randbytes(n) returns a random byte string of length n.
-func randbytes(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func randbytes(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// precondition checks
 	var n starlark.Int
-	if err := starlark.UnpackArgs("randbytes", args, kwargs, "n?", &n); err != nil {
+	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "n?", &n); err != nil {
 		return nil, err
 	}
 	// set default value if n is not provided correctly
@@ -61,10 +61,10 @@ func randbytes(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple
 }
 
 // randint(a, b) returns a random integer N such that a <= N <= b. Alias for randrange(a, b+1).
-func randint(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func randint(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// precondition checks
 	var a, b starlark.Int
-	if err := starlark.UnpackArgs("randint", args, kwargs, "a", &a, "b", &b); err != nil {
+	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "a", &a, "b", &b); err != nil {
 		return nil, err
 	}
 	// a <= b, then a - b <= 0
@@ -88,10 +88,10 @@ func randint(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, 
 }
 
 // choice returns a random element from the non-empty sequence seq. If seq is empty, raises a ValueError.
-func choice(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func choice(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// precondition checks
 	var seq starlark.Indexable
-	if err := starlark.UnpackArgs("choice", args, kwargs, "seq", &seq); err != nil {
+	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "seq", &seq); err != nil {
 		return starlark.None, err
 	}
 	l := seq.Len()
@@ -108,10 +108,10 @@ func choice(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, k
 }
 
 // shuffle(x) shuffles the sequence x in place.
-func shuffle(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func shuffle(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// precondition checks
 	var seq starlark.HasSetIndex
-	if err := starlark.UnpackArgs("shuffle", args, kwargs, "seq", &seq); err != nil {
+	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "seq", &seq); err != nil {
 		return starlark.None, err
 	}
 	// nothing to do if seq is empty or has only one element
@@ -163,10 +163,10 @@ func random(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, k
 }
 
 // uniform(a, b) returns a random floating point number N such that a <= N <= b for a <= b and b <= N <= a for b < a. The end-point value b may or may not be included in the range depending on floating-point rounding in the equation a + (b-a) * random().
-func uniform(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func uniform(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// precondition checks
 	var a, b itn.FloatOrInt
-	if err := starlark.UnpackArgs("uniform", args, kwargs, "a", &a, "b", &b); err != nil {
+	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "a", &a, "b", &b); err != nil {
 		return starlark.None, err
 	}
 	// get random float

@@ -75,20 +75,20 @@ func (m *Module) Struct() *starlarkstruct.Struct {
 // StringDict returns all module methods in a starlark.StringDict
 func (m *Module) StringDict() starlark.StringDict {
 	return starlark.StringDict{
-		"get":      starlark.NewBuiltin("get", m.reqMethod("get")),
-		"put":      starlark.NewBuiltin("put", m.reqMethod("put")),
-		"post":     starlark.NewBuiltin("post", m.reqMethod("post")),
-		"postForm": starlark.NewBuiltin("postForm", m.reqMethod("postForm")),
-		"delete":   starlark.NewBuiltin("delete", m.reqMethod("delete")),
-		"head":     starlark.NewBuiltin("head", m.reqMethod("head")),
-		"patch":    starlark.NewBuiltin("patch", m.reqMethod("patch")),
-		"options":  starlark.NewBuiltin("options", m.reqMethod("options")),
+		"get":      starlark.NewBuiltin("http.get", m.reqMethod("get")),
+		"put":      starlark.NewBuiltin("http.put", m.reqMethod("put")),
+		"post":     starlark.NewBuiltin("http.post", m.reqMethod("post")),
+		"postForm": starlark.NewBuiltin("http.postForm", m.reqMethod("postForm")),
+		"delete":   starlark.NewBuiltin("http.delete", m.reqMethod("delete")),
+		"head":     starlark.NewBuiltin("http.head", m.reqMethod("head")),
+		"patch":    starlark.NewBuiltin("http.patch", m.reqMethod("patch")),
+		"options":  starlark.NewBuiltin("http.options", m.reqMethod("options")),
 	}
 }
 
 // reqMethod is a factory function for generating starlark builtin functions for different http request methods
-func (m *Module) reqMethod(method string) func(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	return func(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var (
 			urlv          starlark.String
 			params        = &starlark.Dict{}
@@ -103,7 +103,7 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, _ *starl
 			verifySSL     = starlark.Bool(!SkipInsecureVerify)
 		)
 
-		if err := starlark.UnpackArgs(method, args, kwargs, "url", &urlv, "params?", &params, "headers", &headers, "body", &body, "form_body", &formBody, "form_encoding", &formEncoding, "json_body", &jsonBody,
+		if err := starlark.UnpackArgs(b.Name(), args, kwargs, "url", &urlv, "params?", &params, "headers", &headers, "body", &body, "form_body", &formBody, "form_encoding", &formEncoding, "json_body", &jsonBody,
 			"auth", &auth, "timeout?", &timeout, "allow_redirects?", &allowRedirect, "verify?", &verifySSL); err != nil {
 			return nil, err
 		}

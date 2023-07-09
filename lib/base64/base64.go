@@ -20,7 +20,8 @@ var (
 	base64Module starlark.StringDict
 )
 
-// Encodings is a map of strings to encoding formats
+// Encodings is a map of strings to encoding formats. It is used to select the encoding format for the base64 module.
+// You can add your own encoding formats to this map.
 var Encodings = map[string]*gobase64.Encoding{
 	// StdEncoding is the standard base64 encoding, as defined in RFC 4648.
 	"standard": gobase64.StdEncoding,
@@ -45,8 +46,8 @@ func LoadModule() (starlark.StringDict, error) {
 			"base64": &starlarkstruct.Module{
 				Name: "base64",
 				Members: starlark.StringDict{
-					"encode": starlark.NewBuiltin("encode", encodeString),
-					"decode": starlark.NewBuiltin("decode", decodeString),
+					"encode": starlark.NewBuiltin("base64.encode", encodeString),
+					"decode": starlark.NewBuiltin("base64.decode", decodeString),
 				},
 			},
 		}
@@ -65,9 +66,9 @@ func selectEncoder(encoding starlark.String) (encoder *gobase64.Encoding, err er
 	return
 }
 
-func encodeString(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func encodeString(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var data, encoding starlark.String
-	if err := starlark.UnpackArgs("encode", args, kwargs, "data", &data, "encoding?", &encoding); err != nil {
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "data", &data, "encoding?", &encoding); err != nil {
 		return starlark.None, err
 	}
 
@@ -80,9 +81,9 @@ func encodeString(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tu
 	return starlark.String(enc), nil
 }
 
-func decodeString(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func decodeString(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var data, encoding starlark.String
-	if err := starlark.UnpackArgs("decode", args, kwargs, "data", &data, "encoding?", &encoding); err != nil {
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "data", &data, "encoding?", &encoding); err != nil {
 		return starlark.None, err
 	}
 

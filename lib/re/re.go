@@ -32,16 +32,16 @@ func LoadModule() (starlark.StringDict, error) {
 			"re": &starlarkstruct.Module{
 				Name: "re",
 				Members: starlark.StringDict{
-					"compile": starlark.NewBuiltin("compile", compile),
-					"search":  starlark.NewBuiltin("search", search),
-					"match":   starlark.NewBuiltin("match", match),
-					// "fullmatch": starlark.NewBuiltin("fullmatch", fullmatch),
-					"split":   starlark.NewBuiltin("split", split),
-					"findall": starlark.NewBuiltin("findall", findall),
-					// "finditer":  starlark.NewBuiltin("finditer", finditer),
-					"sub": starlark.NewBuiltin("sub", sub),
-					// "subn":      starlark.NewBuiltin("subn", subn),
-					// "escape":    starlark.NewBuiltin("escape", escape),
+					"compile": starlark.NewBuiltin("re.compile", compile),
+					"search":  starlark.NewBuiltin("re.search", search),
+					"match":   starlark.NewBuiltin("re.match", match),
+					// "fullmatch": starlark.NewBuiltin("re.fullmatch", fullmatch),
+					"split":   starlark.NewBuiltin("re.split", split),
+					"findall": starlark.NewBuiltin("re.findall", findall),
+					// "finditer":  starlark.NewBuiltin("re.finditer", finditer),
+					"sub": starlark.NewBuiltin("re.sub", sub),
+					// "subn":      starlark.NewBuiltin("re.subn", subn),
+					// "escape":    starlark.NewBuiltin("re.escape", escape),
 				},
 			},
 		}
@@ -56,13 +56,13 @@ func LoadModule() (starlark.StringDict, error) {
 // The expression’s behaviour can be modified by specifying a flags value.
 // Values can be any of the following variables, combined using bitwise OR
 // (the | operator).
-func compile(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func compile(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		pattern starlark.String
 		flags   starlark.Int
 	)
 
-	if err := starlark.UnpackArgs("compile", args, kwargs, "pattern", &pattern, "flags?", &flags); err != nil {
+	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "pattern", &pattern, "flags?", &flags); err != nil {
 		return starlark.None, err
 	}
 
@@ -73,12 +73,12 @@ func compile(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, 
 // Scan through string looking for the first location where the regular expression pattern produces a match,
 // and return a corresponding match object. Return None if no position in the string matches the pattern;
 // note that this is different from finding a zero-length match at some point in the string.
-func search(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func search(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		pattern, str starlark.String
 		flags        starlark.Int
 	)
-	if err := starlark.UnpackArgs("search", args, kwargs, "pattern", &pattern, "string", &str, "flags?", &flags); err != nil {
+	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "pattern", &pattern, "string", &str, "flags?", &flags); err != nil {
 		return starlark.None, err
 	}
 	re, err := newGoRegex(pattern)
@@ -109,12 +109,12 @@ func reSearch(re *regexp.Regexp, str starlark.String, flags starlark.Int) (starl
 // note that this is different from a zero-length match.
 // Note that even in MULTILINE mode, re.match() will only match at the beginning of the string and not at the beginning of each line.
 // If you want to locate a match anywhere in string, use search() instead.
-func match(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func match(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		pattern, str starlark.String
 		flags        starlark.Int
 	)
-	if err := starlark.UnpackArgs("match", args, kwargs, "pattern", &pattern, "string", &str, "flags?", &flags); err != nil {
+	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "pattern", &pattern, "string", &str, "flags?", &flags); err != nil {
 		return starlark.None, err
 	}
 
@@ -153,12 +153,12 @@ func reMatch(re *regexp.Regexp, str starlark.String, flags starlark.Int) (starla
 // then the text of all groups in the pattern are also returned as part of the resulting list.
 // If maxsplit is nonzero, at most maxsplit splits occur, and the remainder of the string
 // is returned as the final element of the list.
-func split(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func split(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		pattern, str    starlark.String
 		maxSplit, flags starlark.Int
 	)
-	if err := starlark.UnpackArgs("split", args, kwargs, "pattern", &pattern, "string", &str, "maxsplit?", &maxSplit, "flags", &flags); err != nil {
+	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "pattern", &pattern, "string", &str, "maxsplit?", &maxSplit, "flags", &flags); err != nil {
 		return starlark.None, err
 	}
 
@@ -187,13 +187,13 @@ func reSplit(re *regexp.Regexp, str starlark.String, maxSplit, flags starlark.In
 // If one or more groups are present in the pattern, return a list of groups;
 // this will be a list of tuples if the pattern has more than one group.
 // Empty matches are included in the result.
-func findall(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func findall(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		pattern starlark.String
 		str     starlark.String
 		flags   starlark.Int
 	)
-	if err := starlark.UnpackArgs("findall", args, kwargs, "pattern", &pattern, "string", &str, "flags?", &flags); err != nil {
+	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "pattern", &pattern, "string", &str, "flags?", &flags); err != nil {
 		return starlark.None, err
 	}
 
@@ -224,12 +224,12 @@ func reFindall(re *regexp.Regexp, str starlark.String, flags starlark.Int) (star
 // repl can be a string or a function; if it is a string, any backslash escapes in it are processed.
 // That is, \n is converted to a single newline character, \r is converted to a carriage return, and so forth.
 // Unknown escapes such as \& are left alone. Backreferences, such as \6, are replaced with the substring matched by group 6 in the pattern.
-func sub(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func sub(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		pattern, repl, str starlark.String
 		count, flags       starlark.Int
 	)
-	if err := starlark.UnpackArgs("sub", args, kwargs, "pattern", &pattern, "repl", &repl, "string", &str, "count?", &count, "flags", &flags); err != nil {
+	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "pattern", &pattern, "repl", &repl, "string", &str, "count?", &count, "flags", &flags); err != nil {
 		return starlark.None, err
 	}
 
