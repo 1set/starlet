@@ -135,6 +135,53 @@ print(bin(-10))
 # Output: -0b1010
 ```
 
+### `bytes_hex(bytes,sep="",bytes_per_sep=1)`
+
+Return a string containing two hexadecimal digits for each byte in the instance.
+If you want to make the hex string easier to read, you can specify a single character separator sep parameter to include in the output.
+By default, this separator will be included between each byte.
+A second optional bytes_per_sep parameter controls the spacing. Positive values calculate the separator position from the right, negative values from the left.
+
+#### Parameters
+
+| name            | type     | description                        |
+|-----------------|----------|------------------------------------|
+| `bytes`         | `bytes`  | The bytes to convert.              |
+| `sep`           | `string` | The separator to use.              |
+| `bytes_per_sep` | `int`    | The number of bytes per separator. |
+
+#### Examples
+
+**Basic**
+
+Convert bytes to a hexadecimal string.
+
+```python
+load("go_idiomatic", "bytes_hex")
+print(bytes_hex(b"hello"))
+# Output: 68656c6c6f
+```
+
+**Separator**
+
+Convert bytes to a hexadecimal string with a separator.
+
+```python
+load("go_idiomatic", "bytes_hex")
+print(bytes_hex(b"hello", sep=":"))
+# Output: 68:65:6c:6c:6f
+```
+
+**Bytes per separator**
+
+Convert bytes to a hexadecimal string with a separator and bytes per separator.
+
+```python
+load("go_idiomatic", "bytes_hex")
+print(bytes_hex(b"hello", sep=":", bytes_per_sep=2))
+# Output: 68:656c:6c6f
+```
+
 ### `sleep(secs)`
 
 Sleeps for the given number of seconds.
