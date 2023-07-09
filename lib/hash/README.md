@@ -4,9 +4,9 @@
 
 ## Functions
 
-### `md5(string) string`
+### `md5(data) string`
 
-Returns an MD5 hash for a string.
+Returns an MD5 hash for a string or bytes.
 
 #### Examples
 
@@ -21,9 +21,9 @@ print(sum)
 # Output: fc3ff98e8c6a0d3087d515c0473f8677
 ```
 
-### `sha1(string) string`
+### `sha1(data) string`
 
-Returns a SHA-1 hash for a string.
+Returns a SHA-1 hash for a string or bytes.
 
 #### Examples
 
@@ -38,9 +38,9 @@ print(sum)
 # Output: 430ce34d020724ed75a196dfc2ad67c77772d169
 ```
 
-### `sha256(string) string`
+### `sha256(data) string`
 
-Returns an SHA-256 hash for a string.
+Returns an SHA-256 hash for a string or bytes.
 
 #### Examples
 
@@ -55,9 +55,9 @@ print(sum)
 # Output: 7509e5bda0c762d2bac7f90d758b5b2263fa01ccbc542ab5e3df163be08e6ca9
 ```
 
-### `sha512(string) string`
+### `sha512(data) string`
 
-Returns an SHA-512 hash for a string.
+Returns an SHA-512 hash for a string or bytes.
 
 #### Examples
 

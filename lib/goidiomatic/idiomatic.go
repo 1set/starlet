@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -18,14 +19,18 @@ const ModuleName = "go_idiomatic"
 // LoadModule loads the Go idiomatic module.
 func LoadModule() (starlark.StringDict, error) {
 	return starlark.StringDict{
-		"true":   starlark.True,
-		"false":  starlark.False,
-		"nil":    starlark.None,
-		"length": starlark.NewBuiltin("length", length),
-		"sum":    starlark.NewBuiltin("sum", sum),
-		"sleep":  starlark.NewBuiltin("sleep", sleep),
-		"exit":   starlark.NewBuiltin("exit", exit),
-		"quit":   starlark.NewBuiltin("quit", exit), // alias for exit
+		"true":      starlark.True,
+		"false":     starlark.False,
+		"nil":       starlark.None,
+		"length":    starlark.NewBuiltin("length", length),
+		"sum":       starlark.NewBuiltin("sum", sum),
+		"oct":       starlark.NewBuiltin("oct", oct),
+		"hex":       starlark.NewBuiltin("hex", hex),
+		"bytes_hex": starlark.NewBuiltin("bytes_hex", bytesToHex),
+		"bin":       starlark.NewBuiltin("bin", bin),
+		"sleep":     starlark.NewBuiltin("sleep", sleep),
+		"exit":      starlark.NewBuiltin("exit", exit),
+		"quit":      starlark.NewBuiltin("quit", exit), // alias for exit
 	}, nil
 }
 
@@ -82,6 +87,92 @@ func sum(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwar
 
 	// return the result
 	return total.Value(), nil
+}
+
+// bytesToHex returns the hexadecimal representation of the given bytes.
+func bytesToHex(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// parse and set the arguments
+	var (
+		bs  starlark.Bytes
+		sep starlark.String
+		bps = starlark.MakeInt(1)
+	)
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "bytes", &bs, "sep?", &sep, "bytes_per_sep?", &bps); err != nil {
+		return none, err
+	}
+	bytesPerSep, ok := bps.Int64()
+	if !ok {
+		return none, fmt.Errorf("invalid bytes_per_sep: %v", bps)
+	}
+	// convert the bytes to hexadecimal, positive values calculate the separator position from the right, negative values from the left.
+	var (
+		bpsInt   = int(bytesPerSep)
+		sepStr   = string(sep)
+		hexBytes = make([]string, len(bs))
+	)
+	for i, b := range bs {
+		hexBytes[i] = fmt.Sprintf("%02x", b)
+	}
+	if bpsInt > 0 { // for downto
+		for i := len(hexBytes) - bpsInt; i > 0; i -= bpsInt {
+			hexBytes[i] = sepStr + hexBytes[i]
+		}
+	} else if bpsInt < 0 { // for to
+		for i := -bpsInt; i < len(hexBytes); i -= bpsInt {
+			hexBytes[i] = sepStr + hexBytes[i]
+		}
+	}
+	// compile the result
+	var rs strings.Builder
+	rs.WriteString(strings.Join(hexBytes, ""))
+	return starlark.String(rs.String()), nil
+}
+
+// hex returns the hexadecimal representation of the given value.
+func hex(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var x starlark.Int
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "x", &x); err != nil {
+		return none, err
+	}
+	return convertStarlarkNumber(x, 16, "0x")
+}
+
+// oct returns the octal representation of the given value.
+func oct(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var x starlark.Int
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "x", &x); err != nil {
+		return none, err
+	}
+	return convertStarlarkNumber(x, 8, "0o")
+}
+
+// bin returns the binary representation of the given value.
+func bin(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var x starlark.Int
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "x", &x); err != nil {
+		return none, err
+	}
+	return convertStarlarkNumber(x, 2, "0b")
+}
+
+// convertStarlarkNumber converts the given starlark.Int number to the given base string.
+func convertStarlarkNumber(x starlark.Int, base int, fmtPre string) (starlark.Value, error) {
+	var (
+		s    string
+		n    = x.BigInt()
+		sign = n.Sign()
+	)
+	if sign == 0 {
+		s = fmtPre + "0"
+	} else {
+		signPre := ""
+		if sign < 0 {
+			signPre = "-"
+			n.Neg(n)
+		}
+		s = signPre + fmtPre + n.Text(base)
+	}
+	return starlark.String(s), nil
 }
 
 // sleep sleeps for the given number of seconds.

@@ -57,6 +57,131 @@ print(sum([1, 2, 3], 10))
 # Output: 16
 ```
 
+### `hex(x)`
+
+Convert an integer number to a lowercase hexadecimal string prefixed with `0x`.
+
+#### Examples
+
+**Basic**
+
+Convert an integer to a hexadecimal string.
+
+```python
+load("go_idiomatic", "hex")
+print(hex(255))
+# Output: 0xff
+```
+
+**Negative**
+
+Convert a negative integer to a hexadecimal string.
+
+```python
+load("go_idiomatic", "hex")
+print(hex(-42))
+# Output: -0x2a
+```
+
+### `oct(x)`
+
+Convert an integer number to an octal string prefixed with `0o`.
+
+#### Examples
+
+**Basic**
+
+Convert an integer to an octal string.
+
+```python
+load("go_idiomatic", "oct")
+print(oct(255))
+# Output: 0o377
+```
+
+**Negative**
+
+Convert a negative integer to an octal string.
+
+```python
+load("go_idiomatic", "oct")
+print(oct(-56))
+# Output: -0o70
+```
+
+### `bin(x)`
+
+Convert an integer number to a binary string prefixed with `0b`.
+
+#### Examples
+
+**Basic**
+
+Convert an integer to a binary string.
+
+```python
+load("go_idiomatic", "bin")
+print(bin(255))
+# Output: 0b11111111
+```
+
+**Negative**
+
+Convert a negative integer to a binary string.
+
+```python
+load("go_idiomatic", "bin")
+print(bin(-10))
+# Output: -0b1010
+```
+
+### `bytes_hex(bytes,sep="",bytes_per_sep=1)`
+
+Return a string containing two hexadecimal digits for each byte in the instance.
+If you want to make the hex string easier to read, you can specify a single character separator sep parameter to include in the output.
+By default, this separator will be included between each byte.
+A second optional bytes_per_sep parameter controls the spacing. Positive values calculate the separator position from the right, negative values from the left.
+
+#### Parameters
+
+| name            | type     | description                        |
+|-----------------|----------|------------------------------------|
+| `bytes`         | `bytes`  | The bytes to convert.              |
+| `sep`           | `string` | The separator to use.              |
+| `bytes_per_sep` | `int`    | The number of bytes per separator. |
+
+#### Examples
+
+**Basic**
+
+Convert bytes to a hexadecimal string.
+
+```python
+load("go_idiomatic", "bytes_hex")
+print(bytes_hex(b"hello"))
+# Output: 68656c6c6f
+```
+
+**Separator**
+
+Convert bytes to a hexadecimal string with a separator.
+
+```python
+load("go_idiomatic", "bytes_hex")
+print(bytes_hex(b"hello", sep=":"))
+# Output: 68:65:6c:6c:6f
+```
+
+**Bytes per separator**
+
+Convert bytes to a hexadecimal string with a separator and bytes per separator.
+
+```python
+load("go_idiomatic", "bytes_hex")
+print(bytes_hex(b"hello", sep=":", bytes_per_sep=2))
+# Output: 68:656c:6c6f
+```
+
 ### `sleep(secs)`
 
 Sleeps for the given number of seconds.

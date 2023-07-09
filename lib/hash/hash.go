@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
+	"fmt"
 	"hash"
 	"io"
 	"sync"
@@ -47,13 +48,25 @@ func LoadModule() (starlark.StringDict, error) {
 
 func fnHash(algo func() hash.Hash) func(*starlark.Thread, *starlark.Builtin, starlark.Tuple, []starlark.Tuple) (starlark.Value, error) {
 	return func(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		var s starlark.String
-		if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 1, &s); err != nil {
-			return nil, err
+		// check args
+		if !(len(args) == 1 && len(kwargs) == 0) {
+			return starlark.None, fmt.Errorf("%s takes exactly 1 argument", fn.Name())
 		}
 
+		// convert arg to string
+		var s string
+		switch v := args[0].(type) {
+		case starlark.String:
+			s = v.GoString()
+		case starlark.Bytes:
+			s = string(v)
+		default:
+			return starlark.None, fmt.Errorf("%s takes a string or bytes argument", fn.Name())
+		}
+
+		// get hash
 		h := algo()
-		_, err := io.WriteString(h, s.GoString())
+		_, err := io.WriteString(h, s)
 		if err != nil {
 			return starlark.None, err
 		}
