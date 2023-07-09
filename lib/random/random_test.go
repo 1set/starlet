@@ -8,7 +8,7 @@ import (
 	"go.starlark.net/starlark"
 )
 
-func TestLoadModule_Hash(t *testing.T) {
+func TestLoadModule_Random(t *testing.T) {
 	var (
 		repeatTimes = 20
 		one         = starlark.MakeInt(1)
@@ -27,7 +27,7 @@ func TestLoadModule_Hash(t *testing.T) {
 				load('random', 'choice')
 				choice()
 			`),
-			wantErr: `choice: missing argument for seq`,
+			wantErr: `random.choice: missing argument for seq`,
 		},
 		{
 			name: `no choice`,
@@ -43,7 +43,7 @@ func TestLoadModule_Hash(t *testing.T) {
 				load('random', 'choice')
 				choice(123)
 			`),
-			wantErr: `choice: for parameter seq: got int, want starlark.Indexable`,
+			wantErr: `random.choice: for parameter seq: got int, want starlark.Indexable`,
 		},
 		{
 			name: `one choice`,
@@ -94,7 +94,7 @@ func TestLoadModule_Hash(t *testing.T) {
 				x = 123
 				shuffle(x)
 			`),
-			wantErr: `shuffle: for parameter seq: got int, want starlark.HasSetIndex`,
+			wantErr: `random.shuffle: for parameter seq: got int, want starlark.HasSetIndex`,
 		},
 		{
 			name: "shuffle with immutable type",
@@ -103,7 +103,7 @@ func TestLoadModule_Hash(t *testing.T) {
 				x = (1, 2, 3)
 				shuffle(x)
 			`),
-			wantErr: `shuffle: for parameter seq: got tuple, want starlark.HasSetIndex`,
+			wantErr: `random.shuffle: for parameter seq: got tuple, want starlark.HasSetIndex`,
 		},
 		{
 			name: "shuffle with empty type",
@@ -159,7 +159,7 @@ func TestLoadModule_Hash(t *testing.T) {
 				load('random', 'randint')
 				randint()
 			`),
-			wantErr: `randint: missing argument for a`,
+			wantErr: `random.randint: missing argument for a`,
 		},
 		{
 			name: "randint with more than 2 args",
@@ -167,7 +167,7 @@ func TestLoadModule_Hash(t *testing.T) {
 				load('random', 'randint')
 				randint(1, 2, 3)
 			`),
-			wantErr: `randint: got 3 arguments, want at most 2`,
+			wantErr: `random.randint: got 3 arguments, want at most 2`,
 		},
 		{
 			name: "randint with invalid type",
@@ -175,7 +175,7 @@ func TestLoadModule_Hash(t *testing.T) {
 				load('random', 'randint')
 				randint(1, '2')
 			`),
-			wantErr: `randint: for parameter b: got string, want int`,
+			wantErr: `random.randint: for parameter b: got string, want int`,
 		},
 		{
 			name: "randint with invalid range",
@@ -240,7 +240,7 @@ func TestLoadModule_Hash(t *testing.T) {
 				load('random', 'randbytes')
 				randbytes('1')
 			`),
-			wantErr: `randbytes: for parameter n: got string, want int`,
+			wantErr: `random.randbytes: for parameter n: got string, want int`,
 		},
 		{
 			name: "randbytes with 1",
@@ -277,7 +277,7 @@ func TestLoadModule_Hash(t *testing.T) {
 				load('random', 'uniform')
 				uniform()
 			`),
-			wantErr: `uniform: missing argument for a`,
+			wantErr: `random.uniform: missing argument for a`,
 		},
 		{
 			name: "uniform with more than 2 args",
@@ -285,7 +285,7 @@ func TestLoadModule_Hash(t *testing.T) {
 				load('random', 'uniform')
 				uniform(1, 2, 3)	
 			`),
-			wantErr: `uniform: got 3 arguments, want at most 2`,
+			wantErr: `random.uniform: got 3 arguments, want at most 2`,
 		},
 		{
 			name: "uniform with invalid type",
@@ -293,7 +293,7 @@ func TestLoadModule_Hash(t *testing.T) {
 				load('random', 'uniform')
 				uniform('1', '2')
 			`),
-			wantErr: `uniform: for parameter a: got string, want float`,
+			wantErr: `random.uniform: for parameter a: got string, want float`,
 		},
 		{
 			name: "uniform with int",
