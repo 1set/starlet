@@ -3,6 +3,7 @@ package internal
 // Based on https://github.com/qri-io/starlib/tree/master/util with some modifications and additions
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -38,6 +39,23 @@ func IsInterfaceNil(i interface{}) bool {
 		return reflect.ValueOf(i).IsNil()
 	}
 	return false
+}
+
+var (
+	emptyStr string
+)
+
+// MarshalStarlarkJSON marshals a starlark.Value into a JSON string.
+func MarshalStarlarkJSON(data starlark.Value) (string, error) {
+	v, err := Unmarshal(data)
+	if err != nil {
+		return emptyStr, err
+	}
+	bs, err := json.Marshal(v)
+	if err != nil {
+		return emptyStr, err
+	}
+	return string(bs), nil
 }
 
 // Unmarshal decodes a starlark.Value into it's Golang counterpart.

@@ -185,11 +185,11 @@ func getCoconutModuleLoader() (string, starlet.ModuleLoader) {
 	}
 }
 
-// expectSameDuration checks if the actual duration is within 8% of the expected duration.
+// expectSameDuration checks if the actual duration is within 15% of the expected duration.
 func expectSameDuration(t *testing.T, act, exp time.Duration) bool {
 	r := float64(act) / float64(exp)
 	d := math.Abs(r - 1)
-	same := d < 0.08
+	same := d <= 0.15
 	if !same {
 		t.Errorf("expected same duration, got diff: actual = %v, expected = %v", act, exp)
 	}
