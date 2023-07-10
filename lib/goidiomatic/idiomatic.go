@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	itn "github.com/1set/starlet/lib/internal"
+	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 )
 
@@ -27,6 +28,7 @@ func LoadModule() (starlark.StringDict, error) {
 		"oct":       starlark.NewBuiltin("oct", oct),
 		"hex":       starlark.NewBuiltin("hex", hex),
 		"bytes_hex": starlark.NewBuiltin("bytes_hex", bytesToHex),
+		"is_nil":    starlark.NewBuiltin("is_nil", isNil),
 		"bin":       starlark.NewBuiltin("bin", bin),
 		"sleep":     starlark.NewBuiltin("sleep", sleep),
 		"exit":      starlark.NewBuiltin("exit", exit),
@@ -38,6 +40,28 @@ func LoadModule() (starlark.StringDict, error) {
 var (
 	none = starlark.None
 )
+
+// isNil returns true if the given value is nil or wraps nil inside.
+func isNil(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var x starlark.Value
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "x", &x); err != nil {
+		return none, err
+	}
+	switch t := x.(type) {
+	case starlark.NoneType:
+		return starlark.True, nil
+	case *convert.GoSlice:
+		return starlark.Bool(itn.IsInterfaceNil(t)), nil
+	case *convert.GoMap:
+		return starlark.Bool(itn.IsInterfaceNil(t)), nil
+	case *convert.GoStruct:
+		return starlark.Bool(itn.IsInterfaceNil(t)), nil
+	case *convert.GoInterface:
+		return starlark.Bool(itn.IsInterfaceNil(t)), nil
+	default:
+		return none, fmt.Errorf("unsupported type: %T", t)
+	}
+}
 
 // length returns the length of the given value.
 func length(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

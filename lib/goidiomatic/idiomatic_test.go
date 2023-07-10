@@ -9,7 +9,25 @@ import (
 	"go.starlark.net/starlark"
 )
 
+type testStruct struct {
+	Slice  []string
+	Map    map[string]string
+	Struct *struct {
+		A string
+		B string
+	}
+	NestedStruct *struct {
+		Child *struct {
+			C string
+			D string
+		}
+	}
+	Pointer interface{}
+}
+
 func TestLoadModule_GoIdiomatic(t *testing.T) {
+	starlark.Universe["custom_struct"] = convert.NewStruct(testStruct{})
+
 	// test cases
 	tests := []struct {
 		name    string
@@ -29,6 +47,18 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 			script: itn.HereDoc(`
 				load('go_idiomatic', 'nil')
 				assert.eq(nil, None)
+			`),
+		},
+		{
+			name: `is_nil`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'is_nil')
+				cs = custom_struct
+				print(is_nil(cs))
+				print(is_nil(cs.NestedStruct))
+				print(is_nil(cs.NestedStruct.Child))
+				assert.eq(is_nil(cs), False)
+				assert.eq(is_nil(cs.Pointer), True)
 			`),
 		},
 		{
