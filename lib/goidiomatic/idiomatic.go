@@ -47,12 +47,11 @@ func isNil(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kw
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "x", &x); err != nil {
 		return none, err
 	}
-	// Starlark's NoneType is the only type that can be nil.
-	if _, ok := x.(starlark.NoneType); ok {
-		return starlark.True, nil
-	}
-	// Go types that wrap nil inside.
 	switch t := x.(type) {
+	// Starlark's NoneType is the only type that can be treated as nil.
+	case starlark.NoneType:
+		return starlark.True, nil
+	// Go types that wrap nil inside.
 	case *convert.GoSlice:
 		return starlark.Bool(itn.IsInterfaceNil(t) || itn.IsInterfaceNil(t.Value().Interface())), nil
 	case *convert.GoMap:
