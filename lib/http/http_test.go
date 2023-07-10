@@ -10,6 +10,7 @@ import (
 	"time"
 
 	itn "github.com/1set/starlet/lib/internal"
+	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarktest"
 )
@@ -95,6 +96,16 @@ func TestLoadModule_HTTP(t *testing.T) {
 	defer ts2.Close()
 	starlark.Universe["test_server_url_ssl"] = starlark.String(ts2.URL)
 
+	starlark.Universe["test_custom_data"] = convert.NewStruct(struct {
+		A string
+		B int
+		C bool
+	}{
+		A: "foo",
+		B: 123,
+		C: true,
+	})
+
 	tests := []struct {
 		name    string
 		preset  func()
@@ -137,7 +148,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 			`),
 		},
 		{
-			name: `POST JSON`,
+			name: `POST JSON Native`,
 			script: itn.HereDoc(`
 				load('http', 'post')
 				res = post(test_server_url, json_body={ "a" : "b", "c" : "d"})
@@ -145,6 +156,19 @@ func TestLoadModule_HTTP(t *testing.T) {
 				b = res.body()
 				assert.eq(b.startswith("POST "), True)
 				assert.eq('/json' in b, True)
+				assert.eq('{"a":"b","c":"d"}' in b, True)
+			`),
+		},
+		{
+			name: `POST JSON Converted`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				res = post(test_server_url, json_body=test_custom_data)
+				assert.eq(res.status_code, 200)
+				b = res.body()
+				assert.eq(b.startswith("POST "), True)
+				assert.eq('/json' in b, True)
+				assert.eq('{"A":"foo","B":123,"C":true}' in b, True)
 			`),
 		},
 		{
