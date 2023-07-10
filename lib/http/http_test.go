@@ -101,7 +101,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 		B int
 		C bool
 	}{
-		A: "foo",
+		A: "我爱你",
 		B: 123,
 		C: true,
 	})
@@ -168,7 +168,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 				b = res.body()
 				assert.eq(b.startswith("POST "), True)
 				assert.eq('/json' in b, True)
-				assert.eq('{"A":"foo","B":123,"C":true}' in b, True)
+				assert.eq('{"A":"我爱你","B":123,"C":true}' in b, True)
 			`),
 		},
 		{

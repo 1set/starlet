@@ -45,13 +45,13 @@ func IsInterfaceNil(i interface{}) bool {
 
 // MarshalStarlarkJSON marshals a starlark.Value into a JSON string.
 func MarshalStarlarkJSON(data starlark.Value) (string, error) {
-	// convert starlark to a go value
+	// convert starlark value to a go value
 	v, err := Unmarshal(data)
 	if err != nil {
 		return emptyStr, err
 	}
 
-	// prepare encoder
+	// prepare json encoder
 	var bf bytes.Buffer
 	enc := json.NewEncoder(&bf)
 	enc.SetEscapeHTML(false)
