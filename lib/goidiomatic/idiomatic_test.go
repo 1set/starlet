@@ -51,10 +51,27 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 			`),
 		},
 		{
+			name: `is_nil()`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'is_nil')
+				is_nil()
+			`),
+			wantErr: `is_nil: missing argument for x`,
+		},
+		{
+			name: `is_nil(123)`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'is_nil')
+				is_nil(123)
+			`),
+			wantErr: `is_nil: unsupported type: starlark.Int`,
+		},
+		{
 			name: `is_nil struct`,
 			script: itn.HereDoc(`
 				load('go_idiomatic', 'is_nil')
 				cs = custom_struct
+				assert.eq(is_nil(None), True)
 				assert.eq(is_nil(cs), False)
 				assert.eq(is_nil(cs.Slice), True)
 				assert.eq(is_nil(cs.Map), True)

@@ -61,7 +61,7 @@ func isNil(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kw
 	case *convert.GoInterface:
 		return starlark.Bool(itn.IsInterfaceNil(t) || itn.IsInterfaceNil(t.Value().Interface())), nil
 	default:
-		return none, fmt.Errorf("unsupported type: %T", t)
+		return none, fmt.Errorf("%s: unsupported type: %T", b.Name(), t)
 	}
 }
 
