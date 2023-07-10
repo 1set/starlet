@@ -51,13 +51,13 @@ func isNil(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kw
 	case starlark.NoneType:
 		return starlark.True, nil
 	case *convert.GoSlice:
-		return starlark.Bool(itn.IsInterfaceNil(t)), nil
+		return starlark.Bool(itn.IsInterfaceNil(t) || itn.IsInterfaceNil(t.Value().Interface())), nil
 	case *convert.GoMap:
-		return starlark.Bool(itn.IsInterfaceNil(t)), nil
+		return starlark.Bool(itn.IsInterfaceNil(t) || itn.IsInterfaceNil(t.Value().Interface())), nil
 	case *convert.GoStruct:
-		return starlark.Bool(itn.IsInterfaceNil(t)), nil
+		return starlark.Bool(itn.IsInterfaceNil(t) || itn.IsInterfaceNil(t.Value().Interface())), nil
 	case *convert.GoInterface:
-		return starlark.Bool(itn.IsInterfaceNil(t)), nil
+		return starlark.Bool(itn.IsInterfaceNil(t) || itn.IsInterfaceNil(t.Value().Interface())), nil
 	default:
 		return none, fmt.Errorf("unsupported type: %T", t)
 	}

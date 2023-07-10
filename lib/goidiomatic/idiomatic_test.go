@@ -27,6 +27,7 @@ type testStruct struct {
 
 func TestLoadModule_GoIdiomatic(t *testing.T) {
 	starlark.Universe["custom_struct"] = convert.NewStruct(testStruct{})
+	starlark.Universe["custom_struct_pointer"] = convert.NewStruct(&testStruct{})
 
 	// test cases
 	tests := []struct {
@@ -50,14 +51,28 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 			`),
 		},
 		{
-			name: `is_nil`,
+			name: `is_nil struct`,
 			script: itn.HereDoc(`
 				load('go_idiomatic', 'is_nil')
 				cs = custom_struct
-				print(is_nil(cs))
-				print(is_nil(cs.NestedStruct))
-				print(is_nil(cs.NestedStruct.Child))
 				assert.eq(is_nil(cs), False)
+				assert.eq(is_nil(cs.Slice), True)
+				assert.eq(is_nil(cs.Map), True)
+				assert.eq(is_nil(cs.Struct), True)
+				assert.eq(is_nil(cs.NestedStruct), True)
+				assert.eq(is_nil(cs.Pointer), True)
+			`),
+		},
+		{
+			name: `is_nil pointer`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'is_nil')
+				cs = custom_struct_pointer
+				assert.eq(is_nil(cs), False)
+				assert.eq(is_nil(cs.Slice), True)
+				assert.eq(is_nil(cs.Map), True)
+				assert.eq(is_nil(cs.Struct), True)
+				assert.eq(is_nil(cs.NestedStruct), True)
 				assert.eq(is_nil(cs.Pointer), True)
 			`),
 		},
