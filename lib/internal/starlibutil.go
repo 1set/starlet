@@ -3,9 +3,12 @@ package internal
 // Based on https://github.com/qri-io/starlib/tree/master/util with some modifications and additions
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/1set/starlight/convert"
@@ -38,6 +41,26 @@ func IsInterfaceNil(i interface{}) bool {
 		return reflect.ValueOf(i).IsNil()
 	}
 	return false
+}
+
+// MarshalStarlarkJSON marshals a starlark.Value into a JSON string.
+func MarshalStarlarkJSON(data starlark.Value) (string, error) {
+	// convert starlark value to a go value
+	v, err := Unmarshal(data)
+	if err != nil {
+		return emptyStr, err
+	}
+
+	// prepare json encoder
+	var bf bytes.Buffer
+	enc := json.NewEncoder(&bf)
+	enc.SetEscapeHTML(false)
+
+	// convert go to string
+	if err = enc.Encode(v); err != nil {
+		return emptyStr, err
+	}
+	return strings.TrimSpace(bf.String()), nil
 }
 
 // Unmarshal decodes a starlark.Value into it's Golang counterpart.

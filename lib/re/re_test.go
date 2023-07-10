@@ -30,7 +30,7 @@ func TestLoadModule_Re(t *testing.T) {
 			load('re', 'match')
 			match(123, "foo")
 			`),
-			wantErr: `match: for parameter pattern: got int, want string`,
+			wantErr: `re.match: for parameter pattern: got int, want string`,
 		},
 		{
 			name: `match error string`,
@@ -38,7 +38,7 @@ func TestLoadModule_Re(t *testing.T) {
 			load('re', 'match')
 			match("foobar", 2)
 			`),
-			wantErr: `match: for parameter string: got int, want string`,
+			wantErr: `re.match: for parameter string: got int, want string`,
 		},
 		{
 			name: `search`,
@@ -56,7 +56,7 @@ func TestLoadModule_Re(t *testing.T) {
 			load('re', 'search')
 			search(123, "foo")
 			`),
-			wantErr: `search: for parameter pattern: got int, want string`,
+			wantErr: `re.search: for parameter pattern: got int, want string`,
 		},
 		{
 			name: `compile`,
@@ -77,7 +77,7 @@ func TestLoadModule_Re(t *testing.T) {
 			load('re', 'compile')
 			compile(123)
 			`),
-			wantErr: `compile: for parameter pattern: got int, want string`,
+			wantErr: `re.compile: for parameter pattern: got int, want string`,
 		},
 		{
 			name: `compile fail`,
@@ -104,7 +104,7 @@ func TestLoadModule_Re(t *testing.T) {
 			load('re', 'sub')
 			sub(123, "", "foo")
 			`),
-			wantErr: `sub: for parameter pattern: got int, want string`,
+			wantErr: `re.sub: for parameter pattern: got int, want string`,
 		},
 		{
 			name: `split`,
@@ -122,7 +122,7 @@ func TestLoadModule_Re(t *testing.T) {
 			load('re', 'split')
 			split(123, "foo")
 			`),
-			wantErr: `split: for parameter pattern: got int, want string`,
+			wantErr: `re.split: for parameter pattern: got int, want string`,
 		},
 		{
 			name: `findall`,
@@ -140,7 +140,7 @@ func TestLoadModule_Re(t *testing.T) {
 			load('re', 'findall')
 			findall(123, "foo")
 			`),
-			wantErr: `findall: for parameter pattern: got int, want string`,
+			wantErr: `re.findall: for parameter pattern: got int, want string`,
 		},
 	}
 	for _, tt := range tests {

@@ -243,6 +243,117 @@ func TestUnmarshal(t *testing.T) {
 	}
 }
 
+func TestMarshalStarlarkJSON(t *testing.T) {
+	now := time.Now()
+	sd := starlark.NewDict(1)
+	sd.SetKey(starlark.String("foo"), starlark.MakeInt(42))
+	ss := starlark.NewSet(1)
+	ss.Insert(starlark.String("foo"))
+	ss.Insert(starlark.String("bar"))
+
+	tests := []struct {
+		name    string
+		data    starlark.Value
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "none",
+			data: starlark.None,
+			want: "null",
+		},
+		{
+			name: "true",
+			data: starlark.Bool(true),
+			want: "true",
+		},
+		{
+			name: "false",
+			data: starlark.Bool(false),
+			want: "false",
+		},
+		{
+			name: "int",
+			data: starlark.MakeInt(42),
+			want: "42",
+		},
+		{
+			name: "float",
+			data: starlark.Float(1.23),
+			want: "1.23",
+		},
+		{
+			name: "string",
+			data: starlark.String("Aloha!"),
+			want: `"Aloha!"`,
+		},
+		{
+			name: "time",
+			data: startime.Time(now),
+			want: fmt.Sprintf("%q", now.Format(time.RFC3339Nano)),
+		},
+		{
+			name: "dict",
+			data: sd,
+			want: `{"foo":42}`,
+		},
+		{
+			name: "list",
+			data: starlark.NewList([]starlark.Value{starlark.MakeInt(43), starlark.String("foo")}),
+			want: `[43,"foo"]`,
+		},
+		{
+			name: "tuple",
+			data: starlark.Tuple{starlark.MakeInt(60), starlark.String("bar")},
+			want: `[60,"bar"]`,
+		},
+		{
+			name: "set",
+			data: ss,
+			want: `["foo","bar"]`,
+		},
+		{
+			name:    "struct",
+			data:    &starlarkstruct.Struct{},
+			wantErr: true,
+		},
+		{
+			name: "go slice",
+			data: convert.NewGoSlice([]int{1, 2, 3}),
+			want: `[1,2,3]`,
+		},
+		{
+			name: "go map",
+			data: convert.NewGoMap(map[string]int{"foo": 42}),
+			want: `{"foo":42}`,
+		},
+		{
+			name: "go struct",
+			data: convert.NewStruct(struct {
+				Ace int `json:"a"`
+			}{42}),
+			want: `{"a":42}`,
+		},
+		{
+			name: "go interface",
+			data: convert.MakeGoInterface(42),
+			want: `42`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := MarshalStarlarkJSON(tt.data)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("MarshalStarlarkJSON() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("MarshalStarlarkJSON() got = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 type invalidCustomType struct {
 	Foo int64
 }
