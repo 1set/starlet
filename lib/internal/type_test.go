@@ -78,6 +78,44 @@ func TestStringOrBytes_Unpack(t *testing.T) {
 	}
 }
 
+func TestStringOrBytes_Stringer(t *testing.T) {
+	tests := []struct {
+		name     string
+		v        StringOrBytes
+		wantGo   string
+		wantStar starlark.String
+	}{
+		{
+			name:     "empty",
+			v:        "",
+			wantGo:   "",
+			wantStar: starlark.String(""),
+		},
+		{
+			name:     "string",
+			v:        "foo",
+			wantGo:   "foo",
+			wantStar: starlark.String("foo"),
+		},
+		{
+			name:     "bytes",
+			v:        "bar",
+			wantGo:   "bar",
+			wantStar: starlark.String("bar"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.v.GoString(); got != tt.wantGo {
+				t.Errorf("StringOrBytes.GoString() = %v, want %v", got, tt.wantGo)
+			}
+			if got := tt.v.StarlarkString(); got != tt.wantStar {
+				t.Errorf("StringOrBytes.StarlarkString() = %v, want %v", got, tt.wantStar)
+			}
+		})
+	}
+}
+
 func TestNumericValue(t *testing.T) {
 	integer := func(n int) starlark.Value { return starlark.MakeInt(n) }
 	double := func(n float64) starlark.Value { return starlark.Float(n) }
