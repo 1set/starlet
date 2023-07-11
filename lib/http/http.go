@@ -96,7 +96,7 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 			formBody      = &starlark.Dict{}
 			formEncoding  starlark.String
 			auth          starlark.Tuple
-			body          starlark.String
+			body          itn.StringOrBytes
 			jsonBody      starlark.Value
 			timeout       = itn.FloatOrInt(TimeoutSecond)
 			allowRedirect = starlark.Bool(!DisableRedirect)
@@ -133,7 +133,7 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 		if err = setAuth(req, auth); err != nil {
 			return nil, err
 		}
-		if err = setBody(req, body, formBody, formEncoding, jsonBody); err != nil {
+		if err = setBody(req, body.StarlarkString(), formBody, formEncoding, jsonBody); err != nil {
 			return nil, err
 		}
 

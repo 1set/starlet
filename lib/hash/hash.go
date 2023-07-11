@@ -56,7 +56,7 @@ func fnHash(algo func() hash.Hash) func(*starlark.Thread, *starlark.Builtin, sta
 
 		// get hash
 		h := algo()
-		_, err := io.WriteString(h, string(sb))
+		_, err := io.WriteString(h, sb.GoString())
 		if err != nil {
 			return starlark.None, err
 		}

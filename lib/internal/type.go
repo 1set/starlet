@@ -45,6 +45,16 @@ func (p *StringOrBytes) Unpack(v starlark.Value) error {
 	return fmt.Errorf("got %s, want string or bytes", v.Type())
 }
 
+// GoString returns the Go string representation of the StringOrBytes.
+func (p StringOrBytes) GoString() string {
+	return string(p)
+}
+
+// StarlarkString returns the Starlark string representation of the StringOrBytes.
+func (p StringOrBytes) StarlarkString() starlark.String {
+	return starlark.String(p)
+}
+
 // NumericValue holds a Starlark numeric value and tracks its type.
 // It can represent an integer or a float, and it prefers integers over floats.
 type NumericValue struct {
