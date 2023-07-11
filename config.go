@@ -19,11 +19,6 @@ var allBuiltinModules = ModuleLoaderMap{
 	libgoid.ModuleName: func() (starlark.StringDict, error) {
 		return libgoid.LoadModule()
 	},
-	// "json": func() (starlark.StringDict, error) {
-	// 	return starlark.StringDict{
-	// 		"json": stdjson.Module,
-	// 	}, nil
-	// },
 	"math": func() (starlark.StringDict, error) {
 		return starlark.StringDict{
 			"math": stdmath.Module,
