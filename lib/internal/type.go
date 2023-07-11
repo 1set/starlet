@@ -28,6 +28,23 @@ func (p *FloatOrInt) Unpack(v starlark.Value) error {
 	return fmt.Errorf("got %s, want float or int", v.Type())
 }
 
+// StringOrBytes is an Unpacker that converts a Starlark string or bytes to Go's string.
+// It works because Go Starlark strings and bytes are both represented as Go strings.
+type StringOrBytes string
+
+// Unpack implements Unpacker.
+func (p *StringOrBytes) Unpack(v starlark.Value) error {
+	switch v := v.(type) {
+	case starlark.String:
+		*p = StringOrBytes(v)
+		return nil
+	case starlark.Bytes:
+		*p = StringOrBytes(v)
+		return nil
+	}
+	return fmt.Errorf("got %s, want string or bytes", v.Type())
+}
+
 // NumericValue holds a Starlark numeric value and tracks its type.
 // It can represent an integer or a float, and it prefers integers over floats.
 type NumericValue struct {

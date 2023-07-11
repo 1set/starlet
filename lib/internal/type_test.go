@@ -33,10 +33,46 @@ func TestFloatOrInt_Unpack(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var p FloatOrInt
 			if err := p.Unpack(tt.v); (err != nil) != tt.wantErr {
-				t.Errorf("Unpack() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("FloatOrInt.Unpack() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if !tt.wantErr && p != tt.wantNum {
-				t.Errorf("Unpack() got = %v, want %v", p, tt.wantNum)
+				t.Errorf("FloatOrInt.Unpack() got = %v, want %v", p, tt.wantNum)
+			}
+		})
+	}
+}
+
+func TestStringOrBytes_Unpack(t *testing.T) {
+	tests := []struct {
+		name    string
+		v       starlark.Value
+		wantStr StringOrBytes
+		wantErr bool
+	}{
+		{
+			name:    "string",
+			v:       starlark.String("foo"),
+			wantStr: "foo",
+		},
+		{
+			name:    "bytes",
+			v:       starlark.Bytes("foo"),
+			wantStr: "foo",
+		},
+		{
+			name:    "int",
+			v:       starlark.MakeInt(1),
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var p StringOrBytes
+			if err := p.Unpack(tt.v); (err != nil) != tt.wantErr {
+				t.Errorf("StringOrBytes.Unpack() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !tt.wantErr && p != tt.wantStr {
+				t.Errorf("StringOrBytes.Unpack() got = %v, want %v", p, tt.wantStr)
 			}
 		})
 	}
