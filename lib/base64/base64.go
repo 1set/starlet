@@ -6,6 +6,7 @@ package base64
 import (
 	gobase64 "encoding/base64"
 	"fmt"
+	itn "github.com/1set/starlet/lib/internal"
 	"sync"
 
 	"go.starlark.net/starlark"
@@ -67,7 +68,10 @@ func selectEncoder(encoding starlark.String) (encoder *gobase64.Encoding, err er
 }
 
 func encodeString(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var data, encoding starlark.String
+	var (
+		data     itn.StringOrBytes
+		encoding starlark.String
+	)
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "data", &data, "encoding?", &encoding); err != nil {
 		return starlark.None, err
 	}
@@ -82,7 +86,10 @@ func encodeString(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tu
 }
 
 func decodeString(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var data, encoding starlark.String
+	var (
+		data     itn.StringOrBytes
+		encoding starlark.String
+	)
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "data", &data, "encoding?", &encoding); err != nil {
 		return starlark.None, err
 	}
