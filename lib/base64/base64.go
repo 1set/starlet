@@ -6,9 +6,9 @@ package base64
 import (
 	gobase64 "encoding/base64"
 	"fmt"
-	itn "github.com/1set/starlet/lib/internal"
 	"sync"
 
+	itn "github.com/1set/starlet/lib/internal"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
