@@ -33,10 +33,84 @@ func TestFloatOrInt_Unpack(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var p FloatOrInt
 			if err := p.Unpack(tt.v); (err != nil) != tt.wantErr {
-				t.Errorf("Unpack() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("FloatOrInt.Unpack() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if !tt.wantErr && p != tt.wantNum {
-				t.Errorf("Unpack() got = %v, want %v", p, tt.wantNum)
+				t.Errorf("FloatOrInt.Unpack() got = %v, want %v", p, tt.wantNum)
+			}
+		})
+	}
+}
+
+func TestStringOrBytes_Unpack(t *testing.T) {
+	tests := []struct {
+		name    string
+		v       starlark.Value
+		wantStr StringOrBytes
+		wantErr bool
+	}{
+		{
+			name:    "string",
+			v:       starlark.String("foo"),
+			wantStr: "foo",
+		},
+		{
+			name:    "bytes",
+			v:       starlark.Bytes("foo"),
+			wantStr: "foo",
+		},
+		{
+			name:    "int",
+			v:       starlark.MakeInt(1),
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var p StringOrBytes
+			if err := p.Unpack(tt.v); (err != nil) != tt.wantErr {
+				t.Errorf("StringOrBytes.Unpack() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !tt.wantErr && p != tt.wantStr {
+				t.Errorf("StringOrBytes.Unpack() got = %v, want %v", p, tt.wantStr)
+			}
+		})
+	}
+}
+
+func TestStringOrBytes_Stringer(t *testing.T) {
+	tests := []struct {
+		name     string
+		v        StringOrBytes
+		wantGo   string
+		wantStar starlark.String
+	}{
+		{
+			name:     "empty",
+			v:        "",
+			wantGo:   "",
+			wantStar: starlark.String(""),
+		},
+		{
+			name:     "string",
+			v:        "foo",
+			wantGo:   "foo",
+			wantStar: starlark.String("foo"),
+		},
+		{
+			name:     "bytes",
+			v:        "bar",
+			wantGo:   "bar",
+			wantStar: starlark.String("bar"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.v.GoString(); got != tt.wantGo {
+				t.Errorf("StringOrBytes.GoString() = %v, want %v", got, tt.wantGo)
+			}
+			if got := tt.v.StarlarkString(); got != tt.wantStar {
+				t.Errorf("StringOrBytes.StarlarkString() = %v, want %v", got, tt.wantStar)
 			}
 		})
 	}

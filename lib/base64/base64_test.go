@@ -37,7 +37,7 @@ func TestLoadModule_Base64(t *testing.T) {
 				load('base64', 'encode')
 				encode(123)
 			`),
-			wantErr: `base64.encode: for parameter data: got int, want string`,
+			wantErr: `base64.encode: for parameter data: got int, want string or bytes`,
 		},
 		{
 			name: `decode`,
@@ -63,7 +63,7 @@ func TestLoadModule_Base64(t *testing.T) {
 				load('base64', 'decode')
 				decode(123)
 			`),
-			wantErr: `base64.decode: for parameter data: got int, want string`,
+			wantErr: `base64.decode: for parameter data: got int, want string or bytes`,
 		},
 		{
 			name: `decode fail`,

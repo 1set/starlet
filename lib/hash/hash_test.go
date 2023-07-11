@@ -52,7 +52,7 @@ func TestLoadModule_Hash(t *testing.T) {
 				load('hash', 'md5')
 				md5("Aloha!", "Hello!")
 			`),
-			wantErr: "hash.md5 takes exactly 1 argument",
+			wantErr: "hash.md5: got 2 arguments, want at most 1",
 		},
 		{
 			name: `Invalid Input Type`,
@@ -61,7 +61,7 @@ func TestLoadModule_Hash(t *testing.T) {
 				md5(123)
 				assert.fail("should not reach here")
 			`),
-			wantErr: "hash.md5 takes a string or bytes argument",
+			wantErr: "hash.md5: for parameter data: got int, want string or bytes",
 		},
 	}
 	for _, tt := range tests {

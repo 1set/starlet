@@ -9,11 +9,11 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
-	"fmt"
 	"hash"
 	"io"
 	"sync"
 
+	itn "github.com/1set/starlet/lib/internal"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
@@ -49,24 +49,14 @@ func LoadModule() (starlark.StringDict, error) {
 func fnHash(algo func() hash.Hash) func(*starlark.Thread, *starlark.Builtin, starlark.Tuple, []starlark.Tuple) (starlark.Value, error) {
 	return func(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		// check args
-		if !(len(args) == 1 && len(kwargs) == 0) {
-			return starlark.None, fmt.Errorf("%s takes exactly 1 argument", fn.Name())
-		}
-
-		// convert arg to string
-		var s string
-		switch v := args[0].(type) {
-		case starlark.String:
-			s = v.GoString()
-		case starlark.Bytes:
-			s = string(v)
-		default:
-			return starlark.None, fmt.Errorf("%s takes a string or bytes argument", fn.Name())
+		var sb itn.StringOrBytes
+		if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "data", &sb); err != nil {
+			return starlark.None, err
 		}
 
 		// get hash
 		h := algo()
-		_, err := io.WriteString(h, s)
+		_, err := io.WriteString(h, sb.GoString())
 		if err != nil {
 			return starlark.None, err
 		}
