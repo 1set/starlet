@@ -39,11 +39,22 @@ func LoadModule() (starlark.StringDict, error) {
 }
 
 func dumps(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var obj starlark.Value
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "obj", &obj); err != nil {
+	var (
+		obj    starlark.Value
+		indent = starlark.MakeInt(0)
+	)
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "obj", &obj, "indent?", &indent); err != nil {
 		return starlark.None, err
 	}
-	data, err := itn.MarshalStarlarkJSON(obj)
+
+	// use 0 as default indent if failed to unpack indent
+	it, ok := indent.Int64()
+	if !ok || it < 0 {
+		it = 0
+	}
+
+	// use internal marshaler to support starlark types
+	data, err := itn.MarshalStarlarkJSON(obj, int(it))
 	if err != nil {
 		return starlark.None, err
 	}
