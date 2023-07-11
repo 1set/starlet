@@ -57,7 +57,7 @@ func LoadModule() (starlark.StringDict, error) {
 
 func selectEncoder(encoding starlark.String) (encoder *gobase64.Encoding, err error) {
 	if encoding == "" {
-		encoding = starlark.String("standard")
+		encoding = "standard"
 	}
 	encoder = Encodings[string(encoding)]
 	if encoder == nil {
@@ -77,7 +77,7 @@ func encodeString(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tu
 		return starlark.None, err
 	}
 
-	enc := encoder.EncodeToString([]byte(string(data)))
+	enc := encoder.EncodeToString([]byte(data))
 	return starlark.String(enc), nil
 }
 
@@ -96,5 +96,5 @@ func decodeString(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tu
 	if err != nil {
 		return starlark.None, err
 	}
-	return starlark.String(string(dec)), nil
+	return starlark.String(dec), nil
 }
