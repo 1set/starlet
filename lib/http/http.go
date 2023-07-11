@@ -26,7 +26,7 @@ const ModuleName = "http"
 
 var (
 	// UserAgent is the default user agent for http requests, override with a custom value before calling LoadModule.
-	UserAgent = "Starlet-http-client/v0.0.1"
+	UserAgent = "Starlet-http-client/" + itn.StarletVersion
 	// TimeoutSecond is the default timeout in seconds for http requests, override with a custom value before calling LoadModule.
 	TimeoutSecond = 30
 	// SkipInsecureVerify controls whether to skip TLS verification, override with a custom value before calling LoadModule.
