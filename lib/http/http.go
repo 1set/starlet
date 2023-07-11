@@ -408,18 +408,46 @@ func (r *Response) Text(thread *starlark.Thread, _ *starlark.Builtin, args starl
 
 // JSON attempts to parse the response body as JSON
 func (r *Response) JSON(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var data interface{}
-
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return nil, err
 	}
 
+	var data interface{}
 	if err := json.Unmarshal(body, &data); err != nil {
 		return nil, err
 	}
 	r.Body.Close()
+
+	// convert all floats to ints
+	data = convertFloatsToInts(data)
+
 	// reset reader to allow multiple calls
 	r.Body = ioutil.NopCloser(bytes.NewReader(body))
 	return itn.Marshal(data)
+}
+
+func convertFloatsToInts(data interface{}) interface{} {
+	switch v := data.(type) {
+	case float64:
+		if v == float64(int(v)) {
+			return int(v)
+		} else {
+			return v
+		}
+	case map[string]interface{}:
+		newMap := make(map[string]interface{})
+		for key, value := range v {
+			newMap[key] = convertFloatsToInts(value)
+		}
+		return newMap
+	case []interface{}:
+		newSlice := make([]interface{}, len(v))
+		for i, value := range v {
+			newSlice[i] = convertFloatsToInts(value)
+		}
+		return newSlice
+	default:
+		return v
+	}
 }
