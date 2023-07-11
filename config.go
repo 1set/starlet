@@ -5,9 +5,9 @@ import (
 	libgoid "github.com/1set/starlet/lib/goidiomatic"
 	libhash "github.com/1set/starlet/lib/hash"
 	libhttp "github.com/1set/starlet/lib/http"
+	libjson "github.com/1set/starlet/lib/json"
 	librand "github.com/1set/starlet/lib/random"
 	libre "github.com/1set/starlet/lib/re"
-	stdjson "go.starlark.net/lib/json"
 	stdmath "go.starlark.net/lib/math"
 	stdtime "go.starlark.net/lib/time"
 	"go.starlark.net/resolve"
@@ -18,11 +18,6 @@ import (
 var allBuiltinModules = ModuleLoaderMap{
 	libgoid.ModuleName: func() (starlark.StringDict, error) {
 		return libgoid.LoadModule()
-	},
-	"json": func() (starlark.StringDict, error) {
-		return starlark.StringDict{
-			"json": stdjson.Module,
-		}, nil
 	},
 	"math": func() (starlark.StringDict, error) {
 		return starlark.StringDict{
@@ -45,6 +40,7 @@ var allBuiltinModules = ModuleLoaderMap{
 	libre.ModuleName:   libre.LoadModule,
 	libb64.ModuleName:  libb64.LoadModule,
 	librand.ModuleName: librand.LoadModule,
+	libjson.ModuleName: libjson.LoadModule,
 }
 
 // GetAllBuiltinModuleNames returns a list of all builtin module names.

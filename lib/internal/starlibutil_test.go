@@ -254,6 +254,7 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 	tests := []struct {
 		name    string
 		data    starlark.Value
+		indent  int
 		want    string
 		wantErr bool
 	}{
@@ -339,10 +340,25 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 			data: convert.MakeGoInterface(42),
 			want: `42`,
 		},
+		{
+			name:   "plain indent",
+			data:   starlark.String("Aloha!"),
+			indent: 2,
+			want:   `"Aloha!"`,
+		},
+		{
+			name:   "dict indent",
+			data:   sd,
+			indent: 2,
+			want: HereDoc(`
+				{
+				  "foo": 42
+				}`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := MarshalStarlarkJSON(tt.data)
+			got, err := MarshalStarlarkJSON(tt.data, tt.indent)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("MarshalStarlarkJSON() error = %v, wantErr %v", err, tt.wantErr)
 				return

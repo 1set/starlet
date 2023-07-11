@@ -44,7 +44,7 @@ func IsInterfaceNil(i interface{}) bool {
 }
 
 // MarshalStarlarkJSON marshals a starlark.Value into a JSON string.
-func MarshalStarlarkJSON(data starlark.Value) (string, error) {
+func MarshalStarlarkJSON(data starlark.Value, indent int) (string, error) {
 	// convert starlark value to a go value
 	v, err := Unmarshal(data)
 	if err != nil {
@@ -55,6 +55,9 @@ func MarshalStarlarkJSON(data starlark.Value) (string, error) {
 	var bf bytes.Buffer
 	enc := json.NewEncoder(&bf)
 	enc.SetEscapeHTML(false)
+	if indent > 0 {
+		enc.SetIndent("", strings.Repeat(" ", indent))
+	}
 
 	// convert go to string
 	if err = enc.Encode(v); err != nil {
