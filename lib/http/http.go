@@ -419,7 +419,7 @@ func (r *Response) JSON(thread *starlark.Thread, _ *starlark.Builtin, args starl
 	}
 	r.Body.Close()
 
-	// convert all floats to ints
+	// convert all suitable floats to ints
 	data = convertFloatsToInts(data)
 
 	// reset reader to allow multiple calls
@@ -430,24 +430,27 @@ func (r *Response) JSON(thread *starlark.Thread, _ *starlark.Builtin, args starl
 func convertFloatsToInts(data interface{}) interface{} {
 	switch v := data.(type) {
 	case float64:
+		// If the float is actually an int, return an int.
 		if v == float64(int(v)) {
 			return int(v)
-		} else {
-			return v
 		}
+		return v
 	case map[string]interface{}:
+		// If the value is a map, recursively call this function on all map values.
 		newMap := make(map[string]interface{})
 		for key, value := range v {
 			newMap[key] = convertFloatsToInts(value)
 		}
 		return newMap
 	case []interface{}:
+		// If the value is a slice, recursively call this function on all slice values.
 		newSlice := make([]interface{}, len(v))
 		for i, value := range v {
 			newSlice[i] = convertFloatsToInts(value)
 		}
 		return newSlice
 	default:
+		// Otherwise, just return the value.
 		return v
 	}
 }
