@@ -79,11 +79,11 @@ It accepts one required positional parameter, the Starlark value, and one option
 
 **Basic**
 
-Dump a Starlark dict to a JSON string.
+Dump a Starlark dict to a JSON string with indentation.
 
 ```python
 load('json', 'dumps')
-print(dumps({'a': 10, 'b': 20}, indent="  "))
+print(dumps({'a': 10, 'b': 20}, indent=2))
 # Output:
 # {
 #   "a": 10,
