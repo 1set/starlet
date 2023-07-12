@@ -275,7 +275,16 @@ func TestLoadModule_HTTP(t *testing.T) {
 				load('http', 'post')
 				res = post(test_server_url, headers={ "Task" : "JSON"})
 				assert.eq(res.status_code, 200)
-				print(res.body())
+				data = res.json()
+				print(data)
+				[assert.eq(type(i), "int") for i in data['ArrayInteger']]
+				assert.eq(type(data['ArrayDouble'][0]), "int")
+				assert.eq(type(data['ArrayDouble'][1]), "float")
+				assert.eq(type(data['ArrayDouble'][2]), "float")
+				assert.eq(type(data['Double']), "float")
+				assert.eq(type(data['Integer']), "int")
+				assert.eq(type(data['Bool']), "bool")
+				assert.eq(data['Bool'], True)
 			`),
 		},
 	}
