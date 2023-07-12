@@ -1,5 +1,3 @@
-// Package internal contains types and utilities that are not part of the public API, and may change without notice.
-// It should be only imported by the custom Starlark modules under starlet/lib folders, and not by the Starlet main package to avoid cyclic import.
 package internal
 
 import (
@@ -8,9 +6,7 @@ import (
 	"go.starlark.net/starlark"
 )
 
-var (
-	emptyStr string
-)
+var emptyStr string
 
 // FloatOrInt is an Unpacker that converts a Starlark int or float to Go's float64.
 type FloatOrInt float64

@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -86,7 +87,33 @@ func TestLoadModule_HTTP(t *testing.T) {
 		}
 		t.Logf("Web server received request: [[%s]]", b)
 		time.Sleep(50 * time.Millisecond)
-		w.Write(b)
+		if r.Header.Get("Task") == "JSON" {
+			s := struct {
+				Word         string
+				ArrayInteger []int
+				ArrayDouble  []float64
+				Double       float64
+				Integer      int
+				Bool         bool
+				Nothing      interface{}
+				Anything     interface{}
+			}{
+				Word:         "hello",
+				ArrayInteger: []int{1, 2, 3},
+				ArrayDouble:  []float64{1.0, 2.1, 3.2},
+				Double:       1.2345,
+				Integer:      12345,
+				Bool:         true,
+				Nothing:      nil,
+				Anything: map[string]interface{}{
+					"foo": "bar",
+				},
+			}
+			ss, _ := json.Marshal(s)
+			w.Write(ss)
+		} else {
+			w.Write(b)
+		}
 	})
 	ts := httptest.NewServer(httpHand)
 	defer ts.Close()
@@ -241,6 +268,35 @@ func TestLoadModule_HTTP(t *testing.T) {
 				load('http', 'get')
 				res = get(test_server_url_ssl, verify=False)
 			`),
+		},
+		{
+			name: `POST JSON Marshal`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				res = post(test_server_url, headers={ "Task" : "JSON"})
+				assert.eq(res.status_code, 200)
+				data = res.json()
+				print(data)
+				[assert.eq(type(i), "int") for i in data['ArrayInteger']]
+				assert.eq(type(data['ArrayDouble'][0]), "int")
+				assert.eq(type(data['ArrayDouble'][1]), "float")
+				assert.eq(type(data['ArrayDouble'][2]), "float")
+				assert.eq(type(data['Double']), "float")
+				assert.eq(type(data['Integer']), "int")
+				assert.eq(type(data['Bool']), "bool")
+				assert.eq(data['Bool'], True)
+			`),
+		},
+		{
+			name: `POST JSON Marshal Error`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				res = post(test_server_url, headers={ "Task" : "JSONError"})
+				assert.eq(res.status_code, 200)
+				data = res.json()
+				print(data)
+			`),
+			wantErr: `invalid character 'P' looking for beginning of value`,
 		},
 	}
 	for _, tt := range tests {

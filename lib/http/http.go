@@ -26,7 +26,7 @@ const ModuleName = "http"
 
 var (
 	// UserAgent is the default user agent for http requests, override with a custom value before calling LoadModule.
-	UserAgent = "Starlet-http-client/v0.0.1"
+	UserAgent = "Starlet-http-client/" + itn.StarletVersion
 	// TimeoutSecond is the default timeout in seconds for http requests, override with a custom value before calling LoadModule.
 	TimeoutSecond = 30
 	// SkipInsecureVerify controls whether to skip TLS verification, override with a custom value before calling LoadModule.
@@ -408,18 +408,49 @@ func (r *Response) Text(thread *starlark.Thread, _ *starlark.Builtin, args starl
 
 // JSON attempts to parse the response body as JSON
 func (r *Response) JSON(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var data interface{}
-
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return nil, err
 	}
 
+	var data interface{}
 	if err := json.Unmarshal(body, &data); err != nil {
 		return nil, err
 	}
 	r.Body.Close()
+
+	// convert all suitable floats to ints
+	data = convertFloatsToInts(data)
+
 	// reset reader to allow multiple calls
 	r.Body = ioutil.NopCloser(bytes.NewReader(body))
 	return itn.Marshal(data)
+}
+
+func convertFloatsToInts(data interface{}) interface{} {
+	switch v := data.(type) {
+	case float64:
+		// If the float is actually an int, return an int.
+		if v == float64(int(v)) {
+			return int(v)
+		}
+		return v
+	case map[string]interface{}:
+		// If the value is a map, recursively call this function on all map values.
+		newMap := make(map[string]interface{})
+		for key, value := range v {
+			newMap[key] = convertFloatsToInts(value)
+		}
+		return newMap
+	case []interface{}:
+		// If the value is a slice, recursively call this function on all slice values.
+		newSlice := make([]interface{}, len(v))
+		for i, value := range v {
+			newSlice[i] = convertFloatsToInts(value)
+		}
+		return newSlice
+	default:
+		// Otherwise, just return the value.
+		return v
+	}
 }
