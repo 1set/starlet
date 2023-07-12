@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -86,7 +87,27 @@ func TestLoadModule_HTTP(t *testing.T) {
 		}
 		t.Logf("Web server received request: [[%s]]", b)
 		time.Sleep(50 * time.Millisecond)
-		w.Write(b)
+		if r.Header.Get("Task") == "JSON" {
+			s := struct {
+				Word         string
+				ArrayInteger []int
+				ArrayDouble  []float64
+				Double       float64
+				Integer      int
+				Bool         bool
+			}{
+				Word:         "hello",
+				ArrayInteger: []int{1, 2, 3},
+				ArrayDouble:  []float64{1.0, 2.1, 3.2},
+				Double:       1.2345,
+				Integer:      12345,
+				Bool:         true,
+			}
+			ss, _ := json.Marshal(s)
+			w.Write(ss)
+		} else {
+			w.Write(b)
+		}
 	})
 	ts := httptest.NewServer(httpHand)
 	defer ts.Close()
