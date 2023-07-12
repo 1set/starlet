@@ -287,6 +287,17 @@ func TestLoadModule_HTTP(t *testing.T) {
 				assert.eq(data['Bool'], True)
 			`),
 		},
+		{
+			name: `POST JSON Marshal Error`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				res = post(test_server_url, headers={ "Task" : "JSONError"})
+				assert.eq(res.status_code, 200)
+				data = res.json()
+				print(data)
+			`),
+			wantErr: `invalid character 'P' looking for beginning of value`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
