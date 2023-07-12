@@ -95,6 +95,8 @@ func TestLoadModule_HTTP(t *testing.T) {
 				Double       float64
 				Integer      int
 				Bool         bool
+				Nothing      interface{}
+				Anything     interface{}
 			}{
 				Word:         "hello",
 				ArrayInteger: []int{1, 2, 3},
@@ -102,6 +104,10 @@ func TestLoadModule_HTTP(t *testing.T) {
 				Double:       1.2345,
 				Integer:      12345,
 				Bool:         true,
+				Nothing:      nil,
+				Anything: map[string]interface{}{
+					"foo": "bar",
+				},
 			}
 			ss, _ := json.Marshal(s)
 			w.Write(ss)
@@ -261,6 +267,15 @@ func TestLoadModule_HTTP(t *testing.T) {
 			script: itn.HereDoc(`
 				load('http', 'get')
 				res = get(test_server_url_ssl, verify=False)
+			`),
+		},
+		{
+			name: `POST JSON Marshal`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				res = post(test_server_url, headers={ "Task" : "JSON"})
+				assert.eq(res.status_code, 200)
+				print(res.body())
 			`),
 		},
 	}
