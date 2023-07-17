@@ -415,16 +415,22 @@ func (r *Response) JSON(thread *starlark.Thread, _ *starlark.Builtin, args starl
 	}
 	r.Body.Close()
 
-	// convert all suitable floats to ints
-	data = convertFloatsToInts(data)
+	// convert all values to their appropriate types
+	data = typedConvert(data)
 
 	// reset reader to allow multiple calls
 	r.Body = ioutil.NopCloser(bytes.NewReader(body))
 	return itn.Marshal(data)
 }
 
-func convertFloatsToInts(data interface{}) interface{} {
+func typedConvert(data interface{}) interface{} {
 	switch v := data.(type) {
+	case string:
+		// If the string is a valid time, return a time.Time.
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			return t
+		}
+		return v
 	case float64:
 		// If the float is actually an int, return an int.
 		if v == float64(int(v)) {
@@ -435,14 +441,14 @@ func convertFloatsToInts(data interface{}) interface{} {
 		// If the value is a map, recursively call this function on all map values.
 		newMap := make(map[string]interface{})
 		for key, value := range v {
-			newMap[key] = convertFloatsToInts(value)
+			newMap[key] = typedConvert(value)
 		}
 		return newMap
 	case []interface{}:
 		// If the value is a slice, recursively call this function on all slice values.
 		newSlice := make([]interface{}, len(v))
 		for i, value := range v {
-			newSlice[i] = convertFloatsToInts(value)
+			newSlice[i] = typedConvert(value)
 		}
 		return newSlice
 	default:

@@ -287,7 +287,12 @@ func TestLoadModule_HTTP(t *testing.T) {
 				assert.eq(type(data['Integer']), "int")
 				assert.eq(type(data['Bool']), "bool")
 				assert.eq(data['Bool'], True)
-				assert.eq(data['then'], "2023-07-15T09:30:00Z")
+				
+				t = data['then']
+				assert.eq(type(t), "time.time")
+				assert.eq(t.year, 2023)
+				assert.eq(t.month, 7)
+				assert.eq(t.day, 15)
 			`),
 		},
 		{
