@@ -44,6 +44,7 @@ func IsInterfaceNil(i interface{}) bool {
 }
 
 // MarshalStarlarkJSON marshals a starlark.Value into a JSON string.
+// It first converts the starlark.Value into a Golang value, then marshals it into JSON.
 func MarshalStarlarkJSON(data starlark.Value, indent int) (string, error) {
 	// convert starlark value to a go value
 	v, err := Unmarshal(data)

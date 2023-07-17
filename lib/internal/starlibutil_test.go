@@ -67,6 +67,7 @@ func TestMarshal(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	now := time.Now()
 	cases := []struct {
 		in   interface{}
 		want starlark.Value
@@ -90,6 +91,7 @@ func TestMarshal(t *testing.T) {
 		{float32(42), starlark.Float(42), ""},
 		{42., starlark.Float(42), ""},
 		{time.Unix(1588540633, 0), startime.Time(time.Unix(1588540633, 0)), ""},
+		{now, startime.Time(now), ""},
 		{[]interface{}{42}, starlark.NewList([]starlark.Value{starlark.MakeInt(42)}), ""},
 		{map[string]interface{}{"foo": 42}, expectedStringDict, ""},
 		{map[interface{}]interface{}{"foo": 42}, expectedStringDict, ""},
@@ -120,6 +122,8 @@ func TestMarshal(t *testing.T) {
 }
 
 func TestUnmarshal(t *testing.T) {
+	now := time.Now()
+
 	strDict := starlark.NewDict(1)
 	if err := strDict.SetKey(starlark.String("foo"), starlark.MakeInt(42)); err != nil {
 		t.Fatal(err)
@@ -154,7 +158,6 @@ func TestUnmarshal(t *testing.T) {
 		nilGst *convert.GoStruct
 		nilGif *convert.GoInterface
 	)
-
 	cases := []struct {
 		in   starlark.Value
 		want interface{}
@@ -179,6 +182,7 @@ func TestUnmarshal(t *testing.T) {
 		{starlark.Float(42), float32(42), ""},
 		{starlark.Float(42), 42., ""},
 		{startime.Time(time.Unix(1588540633, 0)), time.Unix(1588540633, 0), ""},
+		{startime.Time(now), now, ""},
 		{starlark.NewList([]starlark.Value{starlark.MakeInt(42)}), []interface{}{42}, ""},
 		{strDict, map[string]interface{}{"foo": 42}, ""},
 		{intDict, map[interface{}]interface{}{42 * 2: 42}, ""},
