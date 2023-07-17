@@ -74,16 +74,12 @@ func (m *Module) Struct() *starlarkstruct.Struct {
 
 // StringDict returns all module methods in a starlark.StringDict
 func (m *Module) StringDict() starlark.StringDict {
-	return starlark.StringDict{
-		"get":      starlark.NewBuiltin("http.get", m.reqMethod("get")),
-		"put":      starlark.NewBuiltin("http.put", m.reqMethod("put")),
-		"post":     starlark.NewBuiltin("http.post", m.reqMethod("post")),
-		"postForm": starlark.NewBuiltin("http.postForm", m.reqMethod("postForm")),
-		"delete":   starlark.NewBuiltin("http.delete", m.reqMethod("delete")),
-		"head":     starlark.NewBuiltin("http.head", m.reqMethod("head")),
-		"patch":    starlark.NewBuiltin("http.patch", m.reqMethod("patch")),
-		"options":  starlark.NewBuiltin("http.options", m.reqMethod("options")),
+	methods := []string{"get", "put", "post", "postForm", "delete", "head", "patch", "options"}
+	sd := make(starlark.StringDict, len(methods))
+	for _, name := range methods {
+		sd[name] = starlark.NewBuiltin(ModuleName+"."+name, m.reqMethod(name))
 	}
+	return sd
 }
 
 // reqMethod is a factory function for generating starlark builtin functions for different http request methods
