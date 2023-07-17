@@ -97,6 +97,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 				Bool         bool
 				Nothing      interface{}
 				Anything     interface{}
+				Later        time.Time `json:"then"`
 			}{
 				Word:         "hello",
 				ArrayInteger: []int{1, 2, 3},
@@ -108,6 +109,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 				Anything: map[string]interface{}{
 					"foo": "bar",
 				},
+				Later: time.Date(2023, 7, 15, 9, 30, 0, 0, time.UTC),
 			}
 			ss, _ := json.Marshal(s)
 			w.Write(ss)
@@ -285,6 +287,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 				assert.eq(type(data['Integer']), "int")
 				assert.eq(type(data['Bool']), "bool")
 				assert.eq(data['Bool'], True)
+				assert.eq(data['then'], "2023-07-15T09:30:00Z")
 			`),
 		},
 		{
