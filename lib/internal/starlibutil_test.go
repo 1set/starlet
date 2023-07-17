@@ -147,6 +147,12 @@ func TestUnmarshal(t *testing.T) {
 	ss.Insert(starlark.String("Hello"))
 	ss.Insert(starlark.String("World"))
 
+	srt := starlarkstruct.FromStringDict(starlarkstruct.Default, map[string]starlark.Value{
+		"Message": starlark.String("Aloha"),
+		"Times":   starlark.MakeInt(100),
+		"Later":   startime.Time(now),
+	})
+
 	gs := struct {
 		Message string
 		Times   int
@@ -191,7 +197,8 @@ func TestUnmarshal(t *testing.T) {
 		{starlark.NewList([]starlark.Value{starlark.MakeInt(42), ct}), []interface{}{42, &customType{42}}, ""},
 		{starlark.Tuple{starlark.String("foo"), starlark.MakeInt(42)}, []interface{}{"foo", 42}, ""},
 		{ss, []interface{}{"Hello", "World"}, ""},
-		{&starlarkstruct.Struct{}, nil, "constructor object from *starlarkstruct.Struct not supported Marshaler to starlark object: <nil>"},
+		{&starlarkstruct.Struct{}, map[string]interface{}{}, ""},
+		{srt, map[string]interface{}{"Message": "Aloha", "Times": 100, "Later": now}, ""},
 		{starlarkjson.Module, nil, "unrecognized starlark type: *starlarkstruct.Module"},
 		{convert.NewGoSlice([]int{1, 2, 3}), []int{1, 2, 3}, ""},
 		{convert.NewGoSlice([]string{"Hello", "World"}), []string{"Hello", "World"}, ""},
@@ -210,7 +217,7 @@ func TestUnmarshal(t *testing.T) {
 	for i, c := range cases {
 		got, err := Unmarshal(c.in)
 		if !(err == nil && c.err == "" || err != nil && err.Error() == c.err) {
-			t.Errorf("case %d. error mismatch. expected: %q, got: %q, %T -> %T", i, c.err, err, c.in, c.want)
+			t.Errorf("case %d. error mismatch. expected: %q, got: %v, %T -> %T", i, c.err, err, c.in, c.want)
 			continue
 		}
 
@@ -330,9 +337,17 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 			want: `["foo","bar"]`,
 		},
 		{
-			name:    "starlark struct",
-			data:    &starlarkstruct.Struct{},
-			wantErr: true,
+			name: "starlark struct nil",
+			data: &starlarkstruct.Struct{},
+			want: `{}`,
+		},
+		{
+			name: "starlark struct",
+			data: starlarkstruct.FromStringDict(starlarkstruct.Default, starlark.StringDict{
+				"foo": starlark.String("Hello, World!"),
+				"bar": starlark.MakeInt(42),
+			}),
+			want: `{"bar":42,"foo":"Hello, World!"}`,
 		},
 		{
 			name: "go slice",

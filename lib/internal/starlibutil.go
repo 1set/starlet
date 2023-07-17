@@ -205,7 +205,19 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 			}
 			val = _var
 		} else {
-			err = fmt.Errorf("constructor object from *starlarkstruct.Struct not supported Marshaler to starlark object: %T", v.Constructor())
+			jo := make(map[string]interface{})
+			for _, name := range v.AttrNames() {
+				sv, err := v.Attr(name)
+				if err != nil {
+					return nil, err
+				}
+				jo[name], err = Unmarshal(sv)
+				if err != nil {
+					return nil, err
+				}
+			}
+			val = jo
+			//err = fmt.Errorf("constructor object from *starlarkstruct.Struct not supported Marshaler to starlark object: %T", v.Constructor())
 		}
 	case *convert.GoSlice:
 		if IsInterfaceNil(v) {
