@@ -255,6 +255,18 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 	ss.Insert(starlark.String("foo"))
 	ss.Insert(starlark.String("bar"))
 
+	stime := time.Unix(1689384600, 0)
+	stime = stime.In(time.FixedZone("CST", 8*60*60))
+	st := struct {
+		Foo   string    `json:"foo"`
+		Bar   int       `json:"bar"`
+		Later time.Time `json:"later"`
+	}{
+		Foo:   "Hello, World!",
+		Bar:   42,
+		Later: stime,
+	}
+
 	tests := []struct {
 		name    string
 		data    starlark.Value
@@ -318,7 +330,7 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 			want: `["foo","bar"]`,
 		},
 		{
-			name:    "struct",
+			name:    "starlark struct",
 			data:    &starlarkstruct.Struct{},
 			wantErr: true,
 		},
@@ -338,6 +350,11 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 				Ace int `json:"a"`
 			}{42}),
 			want: `{"a":42}`,
+		},
+		{
+			name: "go struct more",
+			data: convert.NewStruct(st),
+			want: `{"foo":"Hello, World!","bar":42,"later":"2023-07-15T09:30:00+08:00"}`,
 		},
 		{
 			name: "go interface",
