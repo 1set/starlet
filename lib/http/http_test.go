@@ -97,6 +97,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 				Bool         bool
 				Nothing      interface{}
 				Anything     interface{}
+				Later        time.Time `json:"then"`
 			}{
 				Word:         "hello",
 				ArrayInteger: []int{1, 2, 3},
@@ -108,6 +109,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 				Anything: map[string]interface{}{
 					"foo": "bar",
 				},
+				Later: time.Date(2023, 7, 15, 9, 30, 0, 0, time.UTC),
 			}
 			ss, _ := json.Marshal(s)
 			w.Write(ss)
@@ -175,7 +177,19 @@ func TestLoadModule_HTTP(t *testing.T) {
 			`),
 		},
 		{
-			name: `POST JSON Native`,
+			name: `POST JSON String`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				res = post(test_server_url, json_body="Hello")
+				assert.eq(res.status_code, 200)
+				b = res.body()
+				assert.eq(b.startswith("POST "), True)
+				assert.eq('/json' in b, True)
+				assert.eq('"Hello"' in b, True)
+			`),
+		},
+		{
+			name: `POST JSON Dict`,
 			script: itn.HereDoc(`
 				load('http', 'post')
 				res = post(test_server_url, json_body={ "a" : "b", "c" : "d"})
@@ -187,7 +201,21 @@ func TestLoadModule_HTTP(t *testing.T) {
 			`),
 		},
 		{
-			name: `POST JSON Converted`,
+			name: `POST JSON Struct`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				load('struct.star', 'struct')
+				s = struct(a = 'bee', c = 'dee')
+				res = post(test_server_url, json_body=s)
+				assert.eq(res.status_code, 200)
+				b = res.body()
+				assert.eq(b.startswith("POST "), True)
+				assert.eq('/json' in b, True)
+				assert.eq('{"a":"bee","c":"dee"}' in b, True)
+			`),
+		},
+		{
+			name: `POST JSON Starlight`,
 			script: itn.HereDoc(`
 				load('http', 'post')
 				res = post(test_server_url, json_body=test_custom_data)
@@ -285,6 +313,12 @@ func TestLoadModule_HTTP(t *testing.T) {
 				assert.eq(type(data['Integer']), "int")
 				assert.eq(type(data['Bool']), "bool")
 				assert.eq(data['Bool'], True)
+				
+				t = data['then']
+				assert.eq(type(t), "time.time")
+				assert.eq(t.year, 2023)
+				assert.eq(t.month, 7)
+				assert.eq(t.day, 15)
 			`),
 		},
 		{

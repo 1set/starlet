@@ -44,6 +44,7 @@ func IsInterfaceNil(i interface{}) bool {
 }
 
 // MarshalStarlarkJSON marshals a starlark.Value into a JSON string.
+// It first converts the starlark.Value into a Golang value, then marshals it into JSON.
 func MarshalStarlarkJSON(data starlark.Value, indent int) (string, error) {
 	// convert starlark value to a go value
 	v, err := Unmarshal(data)
@@ -97,7 +98,6 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 			// key as interface if found one key is not a string
 			ki bool
 		)
-
 		for _, k := range v.Keys() {
 			dictVal, _, err = v.Get(k)
 			if err != nil {
@@ -126,10 +126,8 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 		}
 
 		// prepare result
-
 		rs := map[string]interface{}{}
 		ri := map[interface{}]interface{}{}
-
 		for i, key := range keys {
 			// key as interface
 			if ki {
@@ -204,7 +202,19 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 			}
 			val = _var
 		} else {
-			err = fmt.Errorf("constructor object from *starlarkstruct.Struct not supported Marshaler to starlark object: %T", v.Constructor())
+			jo := make(map[string]interface{})
+			for _, name := range v.AttrNames() {
+				sv, err := v.Attr(name)
+				if err != nil {
+					return nil, err
+				}
+				jo[name], err = Unmarshal(sv)
+				if err != nil {
+					return nil, err
+				}
+			}
+			val = jo
+			//err = fmt.Errorf("constructor object from *starlarkstruct.Struct not supported Marshaler to starlark object: %T", v.Constructor())
 		}
 	case *convert.GoSlice:
 		if IsInterfaceNil(v) {
@@ -238,7 +248,7 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 	return
 }
 
-// Marshal turns go values into Starlark types.
+// Marshal turns Go values into Starlark types. It only supports common Go types, won't wrap any custom types like Starlight does.
 func Marshal(data interface{}) (v starlark.Value, err error) {
 	switch x := data.(type) {
 	case nil:

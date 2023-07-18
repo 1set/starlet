@@ -14,6 +14,58 @@ import (
 	"go.starlark.net/syntax"
 )
 
+func TestNewAssertLoader(t *testing.T) {
+	// Dummy ModuleLoadFunc that returns a fixed StringDict
+	moduleLoadFunc := func() (starlark.StringDict, error) {
+		return starlark.StringDict{
+			"dummy": starlarkstruct.FromStringDict(starlark.String("dummy"), starlark.StringDict{
+				"foo": starlark.String("bar"),
+			}),
+		}, nil
+	}
+
+	tests := []struct {
+		name          string
+		moduleName    string
+		loadFunc      ModuleLoadFunc
+		expectedError string
+	}{
+		{
+			name:       "Load dummy module",
+			moduleName: "dummy",
+			loadFunc:   moduleLoadFunc,
+		},
+		{
+			name:       "Load struct.star module",
+			moduleName: "struct.star",
+			loadFunc:   moduleLoadFunc,
+		},
+		{
+			name:       "Load assert.star module",
+			moduleName: "assert.star",
+			loadFunc:   moduleLoadFunc,
+		},
+		{
+			name:          "Invalid module",
+			moduleName:    "invalid",
+			loadFunc:      moduleLoadFunc,
+			expectedError: "invalid module",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			loader := NewAssertLoader(test.moduleName, test.loadFunc)
+			thread := &starlark.Thread{Name: "main"}
+			_, err := loader(thread, test.moduleName)
+
+			if err != nil && err.Error() != test.expectedError {
+				t.Errorf("expected error %s, got %s", test.expectedError, err)
+			}
+		})
+	}
+}
+
 func TestIsEmptyString(t *testing.T) {
 	if !IsEmptyString(starlark.String("")) {
 		t.Error("empty string should equal true")
@@ -67,6 +119,7 @@ func TestMarshal(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	now := time.Now()
 	cases := []struct {
 		in   interface{}
 		want starlark.Value
@@ -90,6 +143,7 @@ func TestMarshal(t *testing.T) {
 		{float32(42), starlark.Float(42), ""},
 		{42., starlark.Float(42), ""},
 		{time.Unix(1588540633, 0), startime.Time(time.Unix(1588540633, 0)), ""},
+		{now, startime.Time(now), ""},
 		{[]interface{}{42}, starlark.NewList([]starlark.Value{starlark.MakeInt(42)}), ""},
 		{map[string]interface{}{"foo": 42}, expectedStringDict, ""},
 		{map[interface{}]interface{}{"foo": 42}, expectedStringDict, ""},
@@ -120,13 +174,18 @@ func TestMarshal(t *testing.T) {
 }
 
 func TestUnmarshal(t *testing.T) {
+	now := time.Now()
+
 	strDict := starlark.NewDict(1)
 	if err := strDict.SetKey(starlark.String("foo"), starlark.MakeInt(42)); err != nil {
 		t.Fatal(err)
 	}
-
 	intDict := starlark.NewDict(1)
 	if err := intDict.SetKey(starlark.MakeInt(42*2), starlark.MakeInt(42)); err != nil {
+		t.Fatal(err)
+	}
+	nilDict := starlark.NewDict(1)
+	if err := nilDict.SetKey(starlark.String("foo"), nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -143,6 +202,15 @@ func TestUnmarshal(t *testing.T) {
 	ss.Insert(starlark.String("Hello"))
 	ss.Insert(starlark.String("World"))
 
+	srt := starlarkstruct.FromStringDict(starlarkstruct.Default, map[string]starlark.Value{
+		"Message": starlark.String("Aloha"),
+		"Times":   starlark.MakeInt(100),
+		"Later":   startime.Time(now),
+	})
+	srtNil := starlarkstruct.FromStringDict(starlarkstruct.Default, map[string]starlark.Value{
+		"Null": nil,
+	})
+
 	gs := struct {
 		Message string
 		Times   int
@@ -154,13 +222,16 @@ func TestUnmarshal(t *testing.T) {
 		nilGst *convert.GoStruct
 		nilGif *convert.GoInterface
 	)
-
 	cases := []struct {
 		in   starlark.Value
 		want interface{}
 		err  string
 	}{
 		{nil, nil, "unrecognized starlark type: <nil>"},
+		{nilDict, nil, "unmarshaling starlark value: unrecognized starlark type: <nil>"},
+		{srtNil, nil, "unrecognized starlark type: <nil>"},
+		{starlark.NewList([]starlark.Value{starlark.MakeInt(42), nil}), nil, "unrecognized starlark type: <nil>"},
+		{starlark.Tuple([]starlark.Value{starlark.MakeInt(42), nil}), nil, "unrecognized starlark type: <nil>"},
 		{starlark.None, nil, ""},
 		{starlark.True, true, ""},
 		{starlark.String("foo"), "foo", ""},
@@ -179,6 +250,7 @@ func TestUnmarshal(t *testing.T) {
 		{starlark.Float(42), float32(42), ""},
 		{starlark.Float(42), 42., ""},
 		{startime.Time(time.Unix(1588540633, 0)), time.Unix(1588540633, 0), ""},
+		{startime.Time(now), now, ""},
 		{starlark.NewList([]starlark.Value{starlark.MakeInt(42)}), []interface{}{42}, ""},
 		{strDict, map[string]interface{}{"foo": 42}, ""},
 		{intDict, map[interface{}]interface{}{42 * 2: 42}, ""},
@@ -187,7 +259,8 @@ func TestUnmarshal(t *testing.T) {
 		{starlark.NewList([]starlark.Value{starlark.MakeInt(42), ct}), []interface{}{42, &customType{42}}, ""},
 		{starlark.Tuple{starlark.String("foo"), starlark.MakeInt(42)}, []interface{}{"foo", 42}, ""},
 		{ss, []interface{}{"Hello", "World"}, ""},
-		{&starlarkstruct.Struct{}, nil, "constructor object from *starlarkstruct.Struct not supported Marshaler to starlark object: <nil>"},
+		{&starlarkstruct.Struct{}, map[string]interface{}{}, ""},
+		{srt, map[string]interface{}{"Message": "Aloha", "Times": 100, "Later": now}, ""},
 		{starlarkjson.Module, nil, "unrecognized starlark type: *starlarkstruct.Module"},
 		{convert.NewGoSlice([]int{1, 2, 3}), []int{1, 2, 3}, ""},
 		{convert.NewGoSlice([]string{"Hello", "World"}), []string{"Hello", "World"}, ""},
@@ -206,7 +279,7 @@ func TestUnmarshal(t *testing.T) {
 	for i, c := range cases {
 		got, err := Unmarshal(c.in)
 		if !(err == nil && c.err == "" || err != nil && err.Error() == c.err) {
-			t.Errorf("case %d. error mismatch. expected: %q, got: %q, %T -> %T", i, c.err, err, c.in, c.want)
+			t.Errorf("case %d. error mismatch. expected: %q, got: %v, %T -> %T", i, c.err, err, c.in, c.want)
 			continue
 		}
 
@@ -250,6 +323,18 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 	ss := starlark.NewSet(1)
 	ss.Insert(starlark.String("foo"))
 	ss.Insert(starlark.String("bar"))
+
+	stime := time.Unix(1689384600, 0)
+	stime = stime.In(time.FixedZone("CST", 8*60*60))
+	st := struct {
+		Foo   string    `json:"foo"`
+		Bar   int       `json:"bar"`
+		Later time.Time `json:"later"`
+	}{
+		Foo:   "Hello, World!",
+		Bar:   42,
+		Later: stime,
+	}
 
 	tests := []struct {
 		name    string
@@ -314,9 +399,17 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 			want: `["foo","bar"]`,
 		},
 		{
-			name:    "struct",
-			data:    &starlarkstruct.Struct{},
-			wantErr: true,
+			name: "starlark struct nil",
+			data: &starlarkstruct.Struct{},
+			want: `{}`,
+		},
+		{
+			name: "starlark struct",
+			data: starlarkstruct.FromStringDict(starlarkstruct.Default, starlark.StringDict{
+				"foo": starlark.String("Hello, World!"),
+				"bar": starlark.MakeInt(42),
+			}),
+			want: `{"bar":42,"foo":"Hello, World!"}`,
 		},
 		{
 			name: "go slice",
@@ -334,6 +427,11 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 				Ace int `json:"a"`
 			}{42}),
 			want: `{"a":42}`,
+		},
+		{
+			name: "go struct more",
+			data: convert.NewStruct(st),
+			want: `{"foo":"Hello, World!","bar":42,"later":"2023-07-15T09:30:00+08:00"}`,
 		},
 		{
 			name: "go interface",
