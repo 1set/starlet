@@ -98,7 +98,6 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 			// key as interface if found one key is not a string
 			ki bool
 		)
-
 		for _, k := range v.Keys() {
 			dictVal, _, err = v.Get(k)
 			if err != nil {
