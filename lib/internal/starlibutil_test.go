@@ -152,6 +152,9 @@ func TestUnmarshal(t *testing.T) {
 		"Times":   starlark.MakeInt(100),
 		"Later":   startime.Time(now),
 	})
+	strEmt := starlarkstruct.FromStringDict(starlarkstruct.Default, map[string]starlark.Value{
+		"Null": nil,
+	})
 
 	gs := struct {
 		Message string
@@ -199,6 +202,7 @@ func TestUnmarshal(t *testing.T) {
 		{ss, []interface{}{"Hello", "World"}, ""},
 		{&starlarkstruct.Struct{}, map[string]interface{}{}, ""},
 		{srt, map[string]interface{}{"Message": "Aloha", "Times": 100, "Later": now}, ""},
+		{strEmt, nil, "unrecognized starlark type: <nil>"},
 		{starlarkjson.Module, nil, "unrecognized starlark type: *starlarkstruct.Module"},
 		{convert.NewGoSlice([]int{1, 2, 3}), []int{1, 2, 3}, ""},
 		{convert.NewGoSlice([]string{"Hello", "World"}), []string{"Hello", "World"}, ""},
