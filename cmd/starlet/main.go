@@ -68,11 +68,25 @@ func processArgs() int {
 	switch {
 	case webPort > 0:
 		// run web server
-		if !hasCode {
+		var setCode func(m *starlet.Machine)
+		if hasCode {
+			// run code string from argument
+			setCode = func(m *starlet.Machine) {
+				m.SetScript("web.star", []byte(codeContent), incFS)
+			}
+		} else if nargs == 1 {
+			// run code from file
+			fileName := flag.Arg(0)
+			setCode = func(m *starlet.Machine) {
+				m.SetScript(fileName, nil, incFS)
+			}
+		} else {
+			// no code to run
 			PrintError(fmt.Errorf("no code to run as web server"))
 			return 1
 		}
-		if err := runWebServer(webPort, []byte(codeContent), incFS); err != nil {
+		// start web server
+		if err := runWebServer(webPort, setCode); err != nil {
 			PrintError(err)
 			return 1
 		}
@@ -114,7 +128,7 @@ func processArgs() int {
 	return 0
 }
 
-func runWebServer(port uint16, code []byte, incFS fs.FS) error {
+func runWebServer(port uint16, setCode func(m *starlet.Machine)) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		glb := starlet.StringAnyMap{
@@ -124,7 +138,8 @@ func runWebServer(port uint16, code []byte, incFS fs.FS) error {
 		}
 
 		mac := starlet.NewWithNames(glb, preloadModules, lazyLoadModules)
-		mac.SetScript("web.star", code, incFS)
+		setCode(mac)
+		//mac.SetScript("web.star", code, incFS)
 		if _, err := mac.Run(); err != nil {
 			log.Printf("Runtime Error: %v\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
