@@ -4,6 +4,8 @@ package main
 import (
 	"fmt"
 	"io/fs"
+	"log"
+	"net/http"
 	"os"
 
 	"bitbucket.org/neiku/winornot"
@@ -21,6 +23,7 @@ var (
 	lazyLoadModules     []string
 	includePath         string
 	codeContent         string
+	webPort             uint16
 )
 
 var (
@@ -34,6 +37,7 @@ func init() {
 	flag.StringSliceVarP(&lazyLoadModules, "lazyload", "l", defaultPreloadModules, "lazy load modules when executing Starlark code")
 	flag.StringVarP(&includePath, "include", "i", ".", "include path for Starlark code to load modules from")
 	flag.StringVarP(&codeContent, "code", "c", "", "Starlark code to execute")
+	flag.Uint16VarP(&webPort, "web", "w", 0, "run web server on specified port, it provides reader,writer,fprintf functions for Starlark code to use")
 	flag.Parse()
 
 	// fix for Windows terminal output
@@ -62,6 +66,30 @@ func processArgs() int {
 	nargs := flag.NArg()
 	hasCode := ystring.IsNotBlank(codeContent)
 	switch {
+	case webPort > 0:
+		// run web server
+		var setCode func(m *starlet.Machine)
+		if hasCode {
+			// run code string from argument
+			setCode = func(m *starlet.Machine) {
+				m.SetScript("web.star", []byte(codeContent), incFS)
+			}
+		} else if nargs == 1 {
+			// run code from file
+			fileName := flag.Arg(0)
+			setCode = func(m *starlet.Machine) {
+				m.SetScript(fileName, nil, incFS)
+			}
+		} else {
+			// no code to run
+			PrintError(fmt.Errorf("no code to run as web server"))
+			return 1
+		}
+		// start web server
+		if err := runWebServer(webPort, setCode); err != nil {
+			PrintError(err)
+			return 1
+		}
 	case nargs == 0 && hasCode:
 		// run code string from argument
 		mac.SetScript("direct.star", []byte(codeContent), incFS)
@@ -98,6 +126,36 @@ func processArgs() int {
 		return 1
 	}
 	return 0
+}
+
+func runWebServer(port uint16, setCode func(m *starlet.Machine)) error {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		glb := starlet.StringAnyMap{
+			"reader":  r,
+			"writer":  w,
+			"fprintf": fmt.Fprintf,
+		}
+
+		mac := starlet.NewWithNames(glb, preloadModules, lazyLoadModules)
+		setCode(mac)
+		//mac.SetScript("web.star", code, incFS)
+		if _, err := mac.Run(); err != nil {
+			log.Printf("Runtime Error: %v\n", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			if _, err := fmt.Fprintf(w, "Runtime Error: %v", err); err != nil {
+				log.Printf("Error writing response: %v", err)
+			}
+			return
+		}
+	})
+
+	log.Printf("Server is starting on port: %d\n", port)
+	err := http.ListenAndServe(fmt.Sprintf(":%d", port), mux)
+	if err != nil {
+		log.Fatalf("Server failed to start: %v", err)
+	}
+	return err
 }
 
 // PrintError prints the error to stderr,
