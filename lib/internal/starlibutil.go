@@ -251,7 +251,7 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 	return
 }
 
-// Marshal turns go values into Starlark types.
+// Marshal turns Go values into Starlark types. It only supports common Go types, won't wrap any custom types like Starlight does.
 func Marshal(data interface{}) (v starlark.Value, err error) {
 	switch x := data.(type) {
 	case nil:
