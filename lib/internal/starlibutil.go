@@ -127,10 +127,8 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 		}
 
 		// prepare result
-
 		rs := map[string]interface{}{}
 		ri := map[interface{}]interface{}{}
-
 		for i, key := range keys {
 			// key as interface
 			if ki {
