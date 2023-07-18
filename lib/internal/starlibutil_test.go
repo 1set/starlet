@@ -128,9 +128,12 @@ func TestUnmarshal(t *testing.T) {
 	if err := strDict.SetKey(starlark.String("foo"), starlark.MakeInt(42)); err != nil {
 		t.Fatal(err)
 	}
-
 	intDict := starlark.NewDict(1)
 	if err := intDict.SetKey(starlark.MakeInt(42*2), starlark.MakeInt(42)); err != nil {
+		t.Fatal(err)
+	}
+	nilDict := starlark.NewDict(1)
+	if err := nilDict.SetKey(starlark.String("foo"), nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -152,7 +155,7 @@ func TestUnmarshal(t *testing.T) {
 		"Times":   starlark.MakeInt(100),
 		"Later":   startime.Time(now),
 	})
-	strEmt := starlarkstruct.FromStringDict(starlarkstruct.Default, map[string]starlark.Value{
+	srtNil := starlarkstruct.FromStringDict(starlarkstruct.Default, map[string]starlark.Value{
 		"Null": nil,
 	})
 
@@ -173,6 +176,10 @@ func TestUnmarshal(t *testing.T) {
 		err  string
 	}{
 		{nil, nil, "unrecognized starlark type: <nil>"},
+		{nilDict, nil, "unmarshaling starlark value: unrecognized starlark type: <nil>"},
+		{srtNil, nil, "unrecognized starlark type: <nil>"},
+		{starlark.NewList([]starlark.Value{starlark.MakeInt(42), nil}), nil, "unrecognized starlark type: <nil>"},
+		{starlark.Tuple([]starlark.Value{starlark.MakeInt(42), nil}), nil, "unrecognized starlark type: <nil>"},
 		{starlark.None, nil, ""},
 		{starlark.True, true, ""},
 		{starlark.String("foo"), "foo", ""},
@@ -202,7 +209,6 @@ func TestUnmarshal(t *testing.T) {
 		{ss, []interface{}{"Hello", "World"}, ""},
 		{&starlarkstruct.Struct{}, map[string]interface{}{}, ""},
 		{srt, map[string]interface{}{"Message": "Aloha", "Times": 100, "Later": now}, ""},
-		{strEmt, nil, "unrecognized starlark type: <nil>"},
 		{starlarkjson.Module, nil, "unrecognized starlark type: *starlarkstruct.Module"},
 		{convert.NewGoSlice([]int{1, 2, 3}), []int{1, 2, 3}, ""},
 		{convert.NewGoSlice([]string{"Hello", "World"}), []string{"Hello", "World"}, ""},
