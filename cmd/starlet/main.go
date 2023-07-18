@@ -4,6 +4,7 @@ package main
 import (
 	"fmt"
 	"io/fs"
+	"log"
 	"net/http"
 	"os"
 
@@ -114,21 +115,32 @@ func processArgs() int {
 }
 
 func runWebServer(port uint16, code []byte, incFS fs.FS) error {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		glb := starlet.StringAnyMap{
 			"reader":  r,
 			"writer":  w,
 			"fprintf": fmt.Fprintf,
 		}
+
 		mac := starlet.NewWithNames(glb, preloadModules, lazyLoadModules)
 		mac.SetScript("web.star", code, incFS)
-		_, err := mac.Run()
-		if err != nil {
+		if _, err := mac.Run(); err != nil {
+			log.Printf("Runtime Error: %v\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("Runtime Error: %v", err)))
+			if _, err := fmt.Fprintf(w, "Runtime Error: %v", err); err != nil {
+				log.Printf("Error writing response: %v", err)
+			}
+			return
 		}
 	})
-	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+
+	log.Printf("Server is starting on port: %d\n", port)
+	err := http.ListenAndServe(fmt.Sprintf(":%d", port), mux)
+	if err != nil {
+		log.Fatalf("Server failed to start: %v", err)
+	}
+	return err
 }
 
 // PrintError prints the error to stderr,
