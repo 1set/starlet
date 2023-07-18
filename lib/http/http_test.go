@@ -177,6 +177,18 @@ func TestLoadModule_HTTP(t *testing.T) {
 			`),
 		},
 		{
+			name: `POST JSON String`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				res = post(test_server_url, json_body="Hello")
+				assert.eq(res.status_code, 200)
+				b = res.body()
+				assert.eq(b.startswith("POST "), True)
+				assert.eq('/json' in b, True)
+				assert.eq('"Hello"' in b, True)
+			`),
+		},
+		{
 			name: `POST JSON Dict`,
 			script: itn.HereDoc(`
 				load('http', 'post')
@@ -203,7 +215,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 			`),
 		},
 		{
-			name: `POST JSON Converted`,
+			name: `POST JSON Starlight`,
 			script: itn.HereDoc(`
 				load('http', 'post')
 				res = post(test_server_url, json_body=test_custom_data)
