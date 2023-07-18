@@ -2,6 +2,7 @@ package starlet
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"sync"
 	"time"
@@ -175,7 +176,11 @@ func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap) (out Str
 	}
 
 	// handle result and convert
-	out = convert.FromStringDict(res)
+	if m.enableOutConv {
+		out = convert.FromStringDict(res)
+	} else {
+		out = stringDictToAny(res)
+	}
 	if err != nil {
 		// for exit code
 		if err.Error() == goidiomatic.ErrSystemExit.Error() {
@@ -211,10 +216,21 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 		if err = m.preloadMods.LoadAll(m.predeclared); err != nil {
 			return errorStarletError("preload", err)
 		}
-		esd, err := convert.MakeStringDict(extras)
-		if err != nil {
-			return errorStarlightConvert("extras", err)
+
+		// convert extras or not
+		var esd starlark.StringDict
+		if m.enableInConv {
+			esd, err = convert.MakeStringDict(extras)
+			if err != nil {
+				return errorStarlightConvert("extras", err)
+			}
+		} else {
+			esd, err = stringAnyToDict(extras)
+			if err != nil {
+				return errorStarlightConvert("extras", err)
+			}
 		}
+		// merge extras
 		for k, v := range esd {
 			m.predeclared[k] = v
 		}
@@ -253,4 +269,24 @@ func (m *Machine) Reset() {
 	m.thread = nil
 	m.loadCache = nil
 	m.predeclared = nil
+}
+
+func stringDictToAny(m starlark.StringDict) StringAnyMap {
+	ret := make(StringAnyMap, len(m))
+	for k, v := range m {
+		ret[k] = v
+	}
+	return ret
+}
+
+func stringAnyToDict(m StringAnyMap) (starlark.StringDict, error) {
+	ret := make(starlark.StringDict, len(m))
+	for k := range m {
+		if sv, ok := m[k].(starlark.Value); ok {
+			ret[k] = sv
+			continue
+		}
+		return nil, fmt.Errorf("value of key %q is not a starlark.Value", k)
+	}
+	return ret, nil
 }
