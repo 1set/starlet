@@ -43,6 +43,10 @@ func NewAssertLoader(moduleName string, loader ModuleLoadFunc) ThreadLoadFunc {
 				}
 			}
 			return d, nil
+		case "struct.star":
+			return starlark.StringDict{
+				"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
+			}, nil
 		case "assert.star":
 			starlarktest.DataFile = func(pkgdir, filename string) string {
 				_, currFileName, _, ok := runtime.Caller(1)

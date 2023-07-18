@@ -177,7 +177,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 			`),
 		},
 		{
-			name: `POST JSON Native`,
+			name: `POST JSON Dict`,
 			script: itn.HereDoc(`
 				load('http', 'post')
 				res = post(test_server_url, json_body={ "a" : "b", "c" : "d"})
@@ -186,6 +186,20 @@ func TestLoadModule_HTTP(t *testing.T) {
 				assert.eq(b.startswith("POST "), True)
 				assert.eq('/json' in b, True)
 				assert.eq('{"a":"b","c":"d"}' in b, True)
+			`),
+		},
+		{
+			name: `POST JSON Struct`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				load('struct.star', 'struct')
+				s = struct(a = 'bee', c = 'dee')
+				res = post(test_server_url, json_body=s)
+				assert.eq(res.status_code, 200)
+				b = res.body()
+				assert.eq(b.startswith("POST "), True)
+				assert.eq('/json' in b, True)
+				assert.eq('{"a":"bee","c":"dee"}' in b, True)
 			`),
 		},
 		{
