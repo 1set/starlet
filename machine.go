@@ -230,7 +230,7 @@ func (m *Machine) SetScript(name string, content []byte, fileSys fs.FS) {
 	m.scriptFS = fileSys
 }
 
-// EnableInputConversion enables the input conversion of the Starlark variables into Starlight wrappers.
+// EnableInputConversion enables the conversion of Starlark variables from input into Starlight wrappers.
 func (m *Machine) EnableInputConversion() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -238,7 +238,7 @@ func (m *Machine) EnableInputConversion() {
 	m.enableInConv = true
 }
 
-// DisableInputConversion disables the input conversion of the Starlark variables into Starlight wrappers.
+// DisableInputConversion disables the conversion of Starlark variables from input into Starlight wrappers.
 func (m *Machine) DisableInputConversion() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -246,7 +246,7 @@ func (m *Machine) DisableInputConversion() {
 	m.enableInConv = false
 }
 
-// EnableOutputConversion enables the output conversion of the Starlark variables into Starlight wrappers.
+// EnableOutputConversion enables the conversion of Starlark variables from output into Starlight wrappers.
 func (m *Machine) EnableOutputConversion() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -254,7 +254,7 @@ func (m *Machine) EnableOutputConversion() {
 	m.enableOutConv = true
 }
 
-// DisableOutputConversion disables the output conversion of the Starlark variables into Starlight wrappers.
+// DisableOutputConversion disables the conversion of Starlark variables from output into Starlight wrappers.
 func (m *Machine) DisableOutputConversion() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
