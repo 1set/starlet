@@ -179,7 +179,7 @@ func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap) (out Str
 	if m.enableOutConv {
 		out = convert.FromStringDict(res)
 	} else {
-		out = convertStringDictToAnyMap(res)
+		out = castStringDictToAnyMap(res)
 	}
 	if err != nil {
 		// for exit code
@@ -225,7 +225,7 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 				return errorStarlightConvert("extras", err)
 			}
 		} else {
-			esd, err = convertStringAnyMapToStringDict(extras)
+			esd, err = castStringAnyMapToStringDict(extras)
 			if err != nil {
 				return errorStarlightConvert("extras", err)
 			}
@@ -271,8 +271,8 @@ func (m *Machine) Reset() {
 	m.predeclared = nil
 }
 
-// convertStringDictToAnyMap converts a starlark.StringDict to a StringAnyMap.
-func convertStringDictToAnyMap(m starlark.StringDict) StringAnyMap {
+// castStringDictToAnyMap converts a starlark.StringDict to a StringAnyMap without any Starlight conversion.
+func castStringDictToAnyMap(m starlark.StringDict) StringAnyMap {
 	ret := make(StringAnyMap, len(m))
 	for k, v := range m {
 		ret[k] = v
@@ -280,8 +280,9 @@ func convertStringDictToAnyMap(m starlark.StringDict) StringAnyMap {
 	return ret
 }
 
-// convertStringAnyMapToStringDict converts a StringAnyMap to a starlark.StringDict, if all values are starlark.Value.
-func convertStringAnyMapToStringDict(m StringAnyMap) (starlark.StringDict, error) {
+// castStringAnyMapToStringDict converts a StringAnyMap to a starlark.StringDict without any Starlight conversion.
+// It fails if any values are not starlark.Value.
+func castStringAnyMapToStringDict(m StringAnyMap) (starlark.StringDict, error) {
 	ret := make(starlark.StringDict, len(m))
 	for k, v := range m {
 		sv, ok := v.(starlark.Value)
