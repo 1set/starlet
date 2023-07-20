@@ -283,12 +283,12 @@ func convertStringDictToAnyMap(m starlark.StringDict) StringAnyMap {
 // convertStringAnyMapToStringDict converts a StringAnyMap to a starlark.StringDict, if all values are starlark.Value.
 func convertStringAnyMapToStringDict(m StringAnyMap) (starlark.StringDict, error) {
 	ret := make(starlark.StringDict, len(m))
-	for k := range m {
-		if sv, ok := m[k].(starlark.Value); ok {
-			ret[k] = sv
-			continue
+	for k, v := range m {
+		sv, ok := v.(starlark.Value)
+		if !ok {
+			return nil, fmt.Errorf("value of key %q is not a starlark.Value", k)
 		}
-		return nil, fmt.Errorf("value of key %q is not a starlark.Value", k)
+		ret[k] = sv
 	}
 	return ret, nil
 }
