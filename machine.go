@@ -229,16 +229,16 @@ func (m *Machine) SetScript(name string, content []byte, fileSys fs.FS) {
 	m.scriptFS = fileSys
 }
 
-// SetInputEnabled controls the conversion of Starlark variables from input into Starlight wrappers.
-func (m *Machine) SetInputEnabled(enabled bool) {
+// SetInputConversionEnabled controls the conversion of Starlark variables from input into Starlight wrappers.
+func (m *Machine) SetInputConversionEnabled(enabled bool) {
 	m.mu.Lock() // Locking to avoid concurrent access
 	defer m.mu.Unlock()
 
 	m.enableInConv = enabled
 }
 
-// SetOutputEnabled controls the conversion of Starlark variables from output into Starlight wrappers.
-func (m *Machine) SetOutputEnabled(enabled bool) {
+// SetOutputConversionEnabled controls the conversion of Starlark variables from output into Starlight wrappers.
+func (m *Machine) SetOutputConversionEnabled(enabled bool) {
 	m.mu.Lock() // Locking to avoid concurrent access
 	defer m.mu.Unlock()
 
