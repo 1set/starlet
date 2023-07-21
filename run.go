@@ -176,11 +176,7 @@ func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap) (out Str
 	}
 
 	// handle result and convert
-	if m.enableOutConv {
-		out = convert.FromStringDict(res)
-	} else {
-		out = castStringDictToAnyMap(res)
-	}
+	out = m.convertOutput(res)
 	if err != nil {
 		// for exit code
 		if err.Error() == goidiomatic.ErrSystemExit.Error() {
@@ -210,7 +206,7 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 	if m.thread == nil {
 		// -- for the first run
 		// preset globals + preload modules + extras -> predeclared
-		if m.predeclared, err = convert.MakeStringDict(m.globals); err != nil {
+		if m.predeclared, err = m.convertInput(m.globals); err != nil {
 			return errorStarlightConvert("globals", err)
 		}
 		if err = m.preloadMods.LoadAll(m.predeclared); err != nil {
@@ -218,17 +214,9 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 		}
 
 		// convert extras or not
-		var esd starlark.StringDict
-		if m.enableInConv {
-			esd, err = convert.MakeStringDict(extras)
-			if err != nil {
-				return errorStarlightConvert("extras", err)
-			}
-		} else {
-			esd, err = castStringAnyMapToStringDict(extras)
-			if err != nil {
-				return errorStarlightConvert("extras", err)
-			}
+		esd, err := m.convertInput(extras)
+		if err != nil {
+			return errorStarlightConvert("extras", err)
 		}
 		// merge extras
 		for k, v := range esd {

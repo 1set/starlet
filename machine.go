@@ -10,7 +10,6 @@ import (
 	"io/fs"
 	"sync"
 
-	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 )
 
@@ -250,7 +249,7 @@ func (m *Machine) Export() StringAnyMap {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	return convert.FromStringDict(m.predeclared)
+	return m.convertOutput(m.predeclared)
 }
 
 // StringAnyMap type is a map of string to interface{} and is used to store global variables like StringDict of Starlark, but not a Starlark type.
