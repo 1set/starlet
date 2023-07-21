@@ -64,3 +64,37 @@ func TestCastStringAnyMapToStringDict(t *testing.T) {
 		t.Errorf("Expected error, got nil")
 	}
 }
+
+func TestSetInputConversionEnabled(t *testing.T) {
+	m := NewDefault()
+	if m.enableInConv != true {
+		t.Errorf("Expected input conversion to be enabled by default, but it wasn't")
+	}
+
+	m.SetInputConversionEnabled(false)
+	if m.enableInConv != false {
+		t.Errorf("Expected input conversion to be disabled, but it wasn't")
+	}
+
+	m.SetInputConversionEnabled(true)
+	if m.enableInConv != true {
+		t.Errorf("Expected input conversion to be enabled, but it wasn't")
+	}
+}
+
+func TestSetOutputConversionEnabled(t *testing.T) {
+	m := NewDefault()
+	if m.enableOutConv != true {
+		t.Errorf("Expected output conversion to be enabled by default, but it wasn't")
+	}
+
+	m.SetOutputConversionEnabled(false)
+	if m.enableOutConv != false {
+		t.Errorf("Expected output conversion to be disabled, but it wasn't")
+	}
+
+	m.SetOutputConversionEnabled(true)
+	if m.enableOutConv != true {
+		t.Errorf("Expected output conversion to be enabled, but it wasn't")
+	}
+}
