@@ -10,7 +10,6 @@ import (
 	"io/fs"
 	"sync"
 
-	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 )
 
@@ -31,14 +30,15 @@ import (
 // The result of each run is cached and written back to the environment, so that it can be used in the next run of the script.
 //
 // The environment can be reset, allowing the script to be run again with a fresh set of variables and modules.
-//
 type Machine struct {
 	mu sync.RWMutex
 	// set variables
-	globals      StringAnyMap
-	preloadMods  ModuleLoaderList
-	lazyloadMods ModuleLoaderMap
-	printFunc    PrintFunc
+	globals       StringAnyMap
+	preloadMods   ModuleLoaderList
+	lazyloadMods  ModuleLoaderMap
+	printFunc     PrintFunc
+	enableInConv  bool
+	enableOutConv bool
 	// source code
 	scriptName    string
 	scriptContent []byte
@@ -69,22 +69,26 @@ type LoadFunc func(thread *starlark.Thread, module string) (starlark.StringDict,
 
 // NewDefault creates a new Starlark runtime environment.
 func NewDefault() *Machine {
-	return &Machine{}
+	return &Machine{enableInConv: true, enableOutConv: true}
 }
 
 // NewWithGlobals creates a new Starlark runtime environment with given global variables.
 func NewWithGlobals(globals StringAnyMap) *Machine {
 	return &Machine{
-		globals: globals,
+		enableInConv:  true,
+		enableOutConv: true,
+		globals:       globals,
 	}
 }
 
 // NewWithLoaders creates a new Starlark runtime environment with given global variables and preload & lazyload module loaders.
 func NewWithLoaders(globals StringAnyMap, preload ModuleLoaderList, lazyload ModuleLoaderMap) *Machine {
 	return &Machine{
-		globals:      globals,
-		preloadMods:  preload,
-		lazyloadMods: lazyload,
+		enableInConv:  true,
+		enableOutConv: true,
+		globals:       globals,
+		preloadMods:   preload,
+		lazyloadMods:  lazyload,
 	}
 }
 
@@ -94,9 +98,11 @@ func NewWithBuiltins(globals StringAnyMap, additionalPreload ModuleLoaderList, a
 	lazy := GetBuiltinModuleMap()
 	lazy.Merge(additionalLazyload)
 	return &Machine{
-		globals:      globals,
-		preloadMods:  pre,
-		lazyloadMods: lazy,
+		enableInConv:  true,
+		enableOutConv: true,
+		globals:       globals,
+		preloadMods:   pre,
+		lazyloadMods:  lazy,
 	}
 }
 
@@ -112,9 +118,11 @@ func NewWithNames(globals StringAnyMap, preloads []string, lazyloads []string) *
 		panic(err)
 	}
 	return &Machine{
-		globals:      globals,
-		preloadMods:  pre,
-		lazyloadMods: lazy,
+		enableInConv:  true,
+		enableOutConv: true,
+		globals:       globals,
+		preloadMods:   pre,
+		lazyloadMods:  lazy,
 	}
 }
 
@@ -220,12 +228,28 @@ func (m *Machine) SetScript(name string, content []byte, fileSys fs.FS) {
 	m.scriptFS = fileSys
 }
 
+// SetInputConversionEnabled controls the conversion of Starlark variables from input into Starlight wrappers.
+func (m *Machine) SetInputConversionEnabled(enabled bool) {
+	m.mu.Lock() // Locking to avoid concurrent access
+	defer m.mu.Unlock()
+
+	m.enableInConv = enabled
+}
+
+// SetOutputConversionEnabled controls the conversion of Starlark variables from output into Starlight wrappers.
+func (m *Machine) SetOutputConversionEnabled(enabled bool) {
+	m.mu.Lock() // Locking to avoid concurrent access
+	defer m.mu.Unlock()
+
+	m.enableOutConv = enabled
+}
+
 // Export returns the current variables of the Starlark runtime environment.
 func (m *Machine) Export() StringAnyMap {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	return convert.FromStringDict(m.predeclared)
+	return m.convertOutput(m.predeclared)
 }
 
 // StringAnyMap type is a map of string to interface{} and is used to store global variables like StringDict of Starlark, but not a Starlark type.

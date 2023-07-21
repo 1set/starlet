@@ -2,6 +2,7 @@ package starlet
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"sync"
 	"time"
@@ -175,7 +176,7 @@ func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap) (out Str
 	}
 
 	// handle result and convert
-	out = convert.FromStringDict(res)
+	out = m.convertOutput(res)
 	if err != nil {
 		// for exit code
 		if err.Error() == goidiomatic.ErrSystemExit.Error() {
@@ -205,16 +206,19 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 	if m.thread == nil {
 		// -- for the first run
 		// preset globals + preload modules + extras -> predeclared
-		if m.predeclared, err = convert.MakeStringDict(m.globals); err != nil {
+		if m.predeclared, err = m.convertInput(m.globals); err != nil {
 			return errorStarlightConvert("globals", err)
 		}
 		if err = m.preloadMods.LoadAll(m.predeclared); err != nil {
 			return errorStarletError("preload", err)
 		}
-		esd, err := convert.MakeStringDict(extras)
+
+		// convert extras or not
+		esd, err := m.convertInput(extras)
 		if err != nil {
 			return errorStarlightConvert("extras", err)
 		}
+		// merge extras
 		for k, v := range esd {
 			m.predeclared[k] = v
 		}
@@ -253,4 +257,45 @@ func (m *Machine) Reset() {
 	m.thread = nil
 	m.loadCache = nil
 	m.predeclared = nil
+}
+
+// convertInput converts a StringAnyMap to a starlark.StringDict, usually for output variable.
+func (m *Machine) convertInput(a StringAnyMap) (starlark.StringDict, error) {
+	if m.enableInConv {
+		return convert.MakeStringDict(a)
+	} else {
+		return castStringAnyMapToStringDict(a)
+	}
+}
+
+// convertOutput converts a starlark.StringDict to a StringAnyMap, usually for output variable.
+func (m *Machine) convertOutput(d starlark.StringDict) StringAnyMap {
+	if m.enableOutConv {
+		return convert.FromStringDict(d)
+	} else {
+		return castStringDictToAnyMap(d)
+	}
+}
+
+// castStringDictToAnyMap converts a starlark.StringDict to a StringAnyMap without any Starlight conversion.
+func castStringDictToAnyMap(m starlark.StringDict) StringAnyMap {
+	ret := make(StringAnyMap, len(m))
+	for k, v := range m {
+		ret[k] = v
+	}
+	return ret
+}
+
+// castStringAnyMapToStringDict converts a StringAnyMap to a starlark.StringDict without any Starlight conversion.
+// It fails if any values are not starlark.Value.
+func castStringAnyMapToStringDict(m StringAnyMap) (starlark.StringDict, error) {
+	ret := make(starlark.StringDict, len(m))
+	for k, v := range m {
+		sv, ok := v.(starlark.Value)
+		if !ok {
+			return nil, fmt.Errorf("value of key %q is not a starlark.Value", k)
+		}
+		ret[k] = sv
+	}
+	return ret, nil
 }

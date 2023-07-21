@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/1set/starlet"
+	"go.starlark.net/starlark"
 )
 
 func TestNewDefault(t *testing.T) {
@@ -307,6 +308,158 @@ func TestMachine_Export_Run(t *testing.T) {
 		if _, ok := ed[k]; !ok {
 			t.Errorf("expected key %s, got none", k)
 			return
+		}
+	}
+}
+
+func TestMachine_DisableInputConversion(t *testing.T) {
+	getMac := func(g starlet.StringAnyMap, code string) *starlet.Machine {
+		m := starlet.NewWithGlobals(g)
+		m.SetInputConversionEnabled(false)
+		m.SetScript("test", []byte(code), nil)
+		return m
+	}
+
+	// nil input
+	{
+		m := getMac(nil, `a = 1`)
+		_, err := m.Run()
+		if err != nil {
+			t.Errorf("expected no error for nil input, got %v", err)
+		}
+	}
+
+	// empty input
+	{
+		m := getMac(starlet.StringAnyMap{}, `a = 1`)
+		_, err := m.Run()
+		if err != nil {
+			t.Errorf("expected no error for empty input, got %v", err)
+		}
+	}
+
+	// converted
+	{
+		m := getMac(starlet.StringAnyMap{"a": starlark.MakeInt(100)}, `b = a + 1`)
+		res, err := m.Run()
+		if err != nil {
+			t.Errorf("expected no error for converted input, got %v", err)
+		}
+		if exp := starlet.StringAnyMap(map[string]interface{}{"b": int64(101)}); !expectEqualStringAnyMap(t, res, exp) {
+			t.Errorf("expected result of converted input %v, got %v", exp, res)
+			return
+		}
+	}
+
+	// unconverted -- error
+	{
+		m := getMac(starlet.StringAnyMap{"a": 100}, `b = a + 1`)
+		_, err := m.Run()
+		if err == nil {
+			t.Errorf("expected error for unconverted input, got none")
+		}
+	}
+}
+
+func TestMachine_DisableOutputConversion(t *testing.T) {
+	getMac := func(code string) *starlet.Machine {
+		g := starlet.StringAnyMap{"a": 100}
+		m := starlet.NewWithGlobals(g)
+		m.SetOutputConversionEnabled(false)
+		m.SetScript("test", []byte(code), nil)
+		return m
+	}
+
+	// empty output
+	{
+		m := getMac(`a + 100`)
+		res, err := m.Run()
+		if err != nil {
+			t.Errorf("expected no error for empty output, got %v", err)
+		}
+		if len(res) != 0 {
+			t.Errorf("expected empty result for empty output, got %v", res)
+		}
+	}
+
+	// has output
+	{
+		m := getMac(`b = a << 3`)
+		res, err := m.Run()
+		if err != nil {
+			t.Errorf("expected no error for output, got %v", err)
+		}
+		if exp := starlet.StringAnyMap(map[string]interface{}{"b": starlark.MakeInt(800)}); !expectEqualStringAnyMap(t, res, exp) {
+			t.Errorf("expected result for output %v, got %v", exp, res)
+			return
+		}
+	}
+
+	// for export
+	{
+		m := getMac(`b = a << 2`)
+		res, err := m.Run()
+		if err != nil {
+			t.Errorf("expected no error for output, got %v", err)
+		}
+		if exp := starlet.StringAnyMap(map[string]interface{}{"b": starlark.MakeInt(400)}); !expectEqualStringAnyMap(t, res, exp) {
+			t.Errorf("expected result for output %v, got %v", exp, res)
+			return
+		}
+		ed := m.Export()
+		if exp := starlet.StringAnyMap(map[string]interface{}{"a": starlark.MakeInt(100), "b": starlark.MakeInt(400)}); !expectEqualStringAnyMap(t, ed, exp) {
+			t.Errorf("expected export for output %v, got %v", exp, ed)
+			return
+		}
+	}
+}
+
+func TestMachine_DisableBothConversion(t *testing.T) {
+	getMac := func(g starlet.StringAnyMap, code string) *starlet.Machine {
+		m := starlet.NewWithGlobals(g)
+		m.SetInputConversionEnabled(false)
+		m.SetOutputConversionEnabled(false)
+		m.SetScript("test", []byte(code), nil)
+		return m
+	}
+
+	// nil input
+	{
+		m := getMac(nil, `a = 1`)
+		_, err := m.Run()
+		if err != nil {
+			t.Errorf("expected no error for nil input, got %v", err)
+		}
+	}
+
+	// empty input
+	{
+		m := getMac(starlet.StringAnyMap{}, `a = 1`)
+		_, err := m.Run()
+		if err != nil {
+			t.Errorf("expected no error for empty input, got %v", err)
+		}
+	}
+
+	// converted
+	{
+		m := getMac(starlet.StringAnyMap{"a": starlark.MakeInt(100)}, `b = a * 2`)
+		res, err := m.Run()
+		if err != nil {
+			t.Errorf("expected no error for converted input, got %v", err)
+		}
+		if exp := starlet.StringAnyMap(map[string]interface{}{"b": starlark.MakeInt(200)}); !expectEqualStringAnyMap(t, res, exp) {
+			t.Errorf("expected result of converted input %v, got %v", exp, res)
+			return
+		}
+	}
+
+	// unconverted -- error
+	{
+		m := getMac(starlet.StringAnyMap{"a": 100}, `b = a + 1`)
+		_, err := m.Run()
+		if err == nil {
+			t.Errorf("expected error for unconverted input, got none")
 		}
 	}
 }

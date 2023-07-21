@@ -8,7 +8,7 @@ require (
 	github.com/1set/gut v0.0.0-20201117175203-a82363231997
 	github.com/1set/starlet v0.0.2
 	github.com/spf13/pflag v1.0.5
-	go.starlark.net v0.0.0-20230612165344-9532f5667272
+	go.starlark.net v0.0.0-20230718153141-1c3ac63bd217
 	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467
 )
 
