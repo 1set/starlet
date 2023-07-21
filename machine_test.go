@@ -394,6 +394,24 @@ func TestMachine_DisableOutputConversion(t *testing.T) {
 			return
 		}
 	}
+
+	// for export
+	{
+		m := getMac(`b = a << 2`)
+		res, err := m.Run()
+		if err != nil {
+			t.Errorf("expected no error for output, got %v", err)
+		}
+		if exp := starlet.StringAnyMap(map[string]interface{}{"b": starlark.MakeInt(400)}); !expectEqualStringAnyMap(t, res, exp) {
+			t.Errorf("expected result for output %v, got %v", exp, res)
+			return
+		}
+		ed := m.Export()
+		if exp := starlet.StringAnyMap(map[string]interface{}{"a": starlark.MakeInt(100), "b": starlark.MakeInt(400)}); !expectEqualStringAnyMap(t, ed, exp) {
+			t.Errorf("expected export for output %v, got %v", exp, ed)
+			return
+		}
+	}
 }
 
 func TestMachine_DisableBothConversion(t *testing.T) {
