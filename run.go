@@ -271,6 +271,24 @@ func (m *Machine) Reset() {
 	m.predeclared = nil
 }
 
+// convertInput converts a StringAnyMap to a starlark.StringDict, usually for output variable.
+func (m *Machine) convertInput(a StringAnyMap) (starlark.StringDict, error) {
+	if m.enableInConv {
+		return convert.MakeStringDict(a)
+	} else {
+		return castStringAnyMapToStringDict(a)
+	}
+}
+
+// convertOutput converts a starlark.StringDict to a StringAnyMap, usually for output variable.
+func (m *Machine) convertOutput(d starlark.StringDict) StringAnyMap {
+	if m.enableOutConv {
+		return convert.FromStringDict(d)
+	} else {
+		return castStringDictToAnyMap(d)
+	}
+}
+
 // castStringDictToAnyMap converts a starlark.StringDict to a StringAnyMap without any Starlight conversion.
 func castStringDictToAnyMap(m starlark.StringDict) StringAnyMap {
 	ret := make(StringAnyMap, len(m))
