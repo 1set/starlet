@@ -31,7 +31,6 @@ import (
 // The result of each run is cached and written back to the environment, so that it can be used in the next run of the script.
 //
 // The environment can be reset, allowing the script to be run again with a fresh set of variables and modules.
-//
 type Machine struct {
 	mu sync.RWMutex
 	// set variables
@@ -230,36 +229,20 @@ func (m *Machine) SetScript(name string, content []byte, fileSys fs.FS) {
 	m.scriptFS = fileSys
 }
 
-// EnableInputConversion enables the conversion of Starlark variables from input into Starlight wrappers.
-func (m *Machine) EnableInputConversion() {
-	m.mu.Lock()
+// SetInputEnabled controls the conversion of Starlark variables from input into Starlight wrappers.
+func (m *Machine) SetInputEnabled(enabled bool) {
+	m.mu.Lock() // Locking to avoid concurrent access
 	defer m.mu.Unlock()
 
-	m.enableInConv = true
+	m.enableInConv = enabled
 }
 
-// DisableInputConversion disables the conversion of Starlark variables from input into Starlight wrappers.
-func (m *Machine) DisableInputConversion() {
-	m.mu.Lock()
+// SetOutputEnabled controls the conversion of Starlark variables from output into Starlight wrappers.
+func (m *Machine) SetOutputEnabled(enabled bool) {
+	m.mu.Lock() // Locking to avoid concurrent access
 	defer m.mu.Unlock()
 
-	m.enableInConv = false
-}
-
-// EnableOutputConversion enables the conversion of Starlark variables from output into Starlight wrappers.
-func (m *Machine) EnableOutputConversion() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.enableOutConv = true
-}
-
-// DisableOutputConversion disables the conversion of Starlark variables from output into Starlight wrappers.
-func (m *Machine) DisableOutputConversion() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.enableOutConv = false
+	m.enableOutConv = enabled
 }
 
 // Export returns the current variables of the Starlark runtime environment.
