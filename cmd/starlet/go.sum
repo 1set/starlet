@@ -5,8 +5,8 @@ bitbucket.org/neiku/winornot v0.0.4/go.mod h1:xzKlwxkpGIumHbxwUrB41kFIra8gz/ZZgJ
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 github.com/1set/gut v0.0.0-20201117175203-a82363231997 h1:za2jSkE1Rx56hTzBko3ZZ4gA/nq+rA/jVovWuAF4jyo=
 github.com/1set/gut v0.0.0-20201117175203-a82363231997/go.mod h1:DpCCAL0dgBMQdiqPUIIRpdU9zNcIZwJjW+L/8Mb30mw=
-github.com/1set/starlight v0.0.5 h1:FfYaF1EIa+WixfrmYbUb3nolwbIcpbS4FamhYhQr+Oc=
-github.com/1set/starlight v0.0.5/go.mod h1:Aih2Bxp+TTSa2DPSGfDW51pPVHLKoroAAO225ktOkgM=
+github.com/1set/starlight v0.0.6 h1:pF0BUoGuE4Ni9wjK8JQByKqU6KGsf4sEpnB7ES2m3EU=
+github.com/1set/starlight v0.0.6/go.mod h1:Dh/+wQGuhu4GngosT4Otzn5S5Hj+GVlVbeJJmZYX5Wo=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/aymanbagabas/go-osc52 v1.0.3 h1:DTwqENW7X9arYimJrPeGZcV0ln14sGMt3pHZspWD+Mg=
 github.com/aymanbagabas/go-osc52 v1.0.3/go.mod h1:zT8H+Rk4VSabYN90pWyugflM3ZhpTZNC7cASDfUCdT4=
@@ -54,8 +54,8 @@ github.com/rodolfoag/gow32 v0.0.0-20160917004320-d95ff468acf8 h1:p7tJTb+Rqvp8dS8
 github.com/rodolfoag/gow32 v0.0.0-20160917004320-d95ff468acf8/go.mod h1:w/ebPUfAcyZMYjstwPIWTEGSahChHx5R3Y+xElrvxDc=
 github.com/spf13/pflag v1.0.5 h1:iy+VFUOCP1a+8yFto/drg2CJ5u0yRoB7fZw3DKv/JXA=
 github.com/spf13/pflag v1.0.5/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An2Bg=
-go.starlark.net v0.0.0-20230718153141-1c3ac63bd217 h1:PZww6GnYa6qc38W5SJu0iPhSCmW+ca3MuNO1FVe6aPw=
-go.starlark.net v0.0.0-20230718153141-1c3ac63bd217/go.mod h1:jxU+3+j+71eXOW14274+SmmuW82qJzl6iZSeqEtTGds=
+go.starlark.net v0.0.0-20230814145427-12f4cb8177e4 h1:Ydko8M6UfXgvSpGOnbAjRMQDIvBheUsjBjkm6Azcpf4=
+go.starlark.net v0.0.0-20230814145427-12f4cb8177e4/go.mod h1:jxU+3+j+71eXOW14274+SmmuW82qJzl6iZSeqEtTGds=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/exp v0.0.0-20190121172915-509febef88a4/go.mod h1:CJ0aWSM057203Lf6IL+f9T1iT9GByDxfZKAQTCR3kQA=
 golang.org/x/lint v0.0.0-20181026193005-c67002cb31c3/go.mod h1:UVdnD1Gm6xHRNCYTkRU2/jEulfH38KcIWyp/GAMgvoE=
