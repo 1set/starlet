@@ -21,7 +21,7 @@ func (m *Machine) REPL() {
 		repl.PrintError(err)
 		return
 	}
-	repl.REPL(m.thread, m.predeclared)
+	repl.REPLOptions(m.getFileOptions(), m.thread, m.predeclared)
 }
 
 // RunScript initiates a Machine, executes a script with extra variables, and returns the Machine and the execution result.
@@ -168,7 +168,7 @@ func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap) (out Str
 
 	// run with everything prepared
 	m.runTimes++
-	res, err := starlark.ExecFileOptions(m.getExecOptions(), m.thread, scriptName, source, m.predeclared)
+	res, err := starlark.ExecFileOptions(m.getFileOptions(), m.thread, scriptName, source, m.predeclared)
 	done <- struct{}{}
 
 	// merge result as predeclared for next run
@@ -276,8 +276,8 @@ func (m *Machine) convertOutput(d starlark.StringDict) StringAnyMap {
 	return castStringDictToAnyMap(d)
 }
 
-// getExecOptions gets the exec options from the config.
-func (m *Machine) getExecOptions() *syntax.FileOptions {
+// getFileOptions gets the exec options from the config.
+func (m *Machine) getFileOptions() *syntax.FileOptions {
 	opt := syntax.FileOptions{
 		Set: true,
 	}
