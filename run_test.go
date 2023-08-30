@@ -511,13 +511,9 @@ a = nil == None
 }
 
 func Test_Machine_Run_LazyLoad_Override_Globals(t *testing.T) {
-	// enable global reassign only for this test, if it's not enabled, it will fail for: local variable fibonacci referenced before assignment
-	starlet.EnableGlobalReassign()
-	defer func() {
-		starlet.DisableGlobalReassign()
-	}()
 	// create machine
 	m := starlet.NewWithNames(map[string]interface{}{"fibonacci": 123}, nil, nil)
+	m.EnableGlobalReassign() // enable global reassign only for this test, if it's not enabled, it will fail for: local variable fibonacci referenced before assignment
 	// set code
 	code := `
 x = fibonacci * 2
@@ -566,13 +562,9 @@ z = fib(num)[-1]
 }
 
 func Test_Machine_Run_PreLoad_Override_Globals(t *testing.T) {
-	// enable global reassign only for this test, if it's not enabled, it will fail for: local variable coins referenced before assignment
-	starlet.EnableGlobalReassign()
-	defer func() {
-		starlet.DisableGlobalReassign()
-	}()
 	// create machine
 	m := starlet.NewWithLoaders(map[string]interface{}{"num": 10}, starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("coins.star", os.DirFS("testdata"), nil)}, nil)
+	m.EnableGlobalReassign() // enable global reassign only for this test, if it's not enabled, it will fail for: local variable coins referenced before assignment
 	// set code
 	code := `
 num = 100
@@ -745,7 +737,6 @@ coins = 50
 		},
 	}
 
-	//starlet.EnableGlobalReassign()
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			defer func() {
