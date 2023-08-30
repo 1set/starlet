@@ -50,13 +50,15 @@ func main() {
 
 func processArgs() int {
 	// get starlet machine
+	mac := starlet.NewWithNames(nil, preloadModules, lazyLoadModules)
 	if allowRecursion {
-		starlet.EnableRecursionSupport()
+		mac.EnableRecursionSupport()
 	}
 	if allowGlobalReassign {
-		starlet.EnableGlobalReassign()
+		mac.EnableGlobalReassign()
 	}
-	mac := starlet.NewWithNames(nil, preloadModules, lazyLoadModules)
+
+	// for local modules
 	var incFS fs.FS
 	if ystring.IsNotBlank(includePath) {
 		incFS = os.DirFS(includePath)

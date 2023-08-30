@@ -11,6 +11,7 @@ import (
 	"github.com/1set/starlight/convert"
 	"go.starlark.net/repl"
 	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
 )
 
 // REPL is a Read-Eval-Print-Loop for Starlark.
@@ -20,7 +21,7 @@ func (m *Machine) REPL() {
 		repl.PrintError(err)
 		return
 	}
-	repl.REPL(m.thread, m.predeclared)
+	repl.REPLOptions(m.getFileOptions(), m.thread, m.predeclared)
 }
 
 // RunScript initiates a Machine, executes a script with extra variables, and returns the Machine and the execution result.
@@ -167,7 +168,7 @@ func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap) (out Str
 
 	// run with everything prepared
 	m.runTimes++
-	res, err := starlark.ExecFile(m.thread, scriptName, source, m.predeclared)
+	res, err := starlark.ExecFileOptions(m.getFileOptions(), m.thread, scriptName, source, m.predeclared)
 	done <- struct{}{}
 
 	// merge result as predeclared for next run
@@ -263,18 +264,32 @@ func (m *Machine) Reset() {
 func (m *Machine) convertInput(a StringAnyMap) (starlark.StringDict, error) {
 	if m.enableInConv {
 		return convert.MakeStringDict(a)
-	} else {
-		return castStringAnyMapToStringDict(a)
 	}
+	return castStringAnyMapToStringDict(a)
 }
 
 // convertOutput converts a starlark.StringDict to a StringAnyMap, usually for output variable.
 func (m *Machine) convertOutput(d starlark.StringDict) StringAnyMap {
 	if m.enableOutConv {
 		return convert.FromStringDict(d)
-	} else {
-		return castStringDictToAnyMap(d)
 	}
+	return castStringDictToAnyMap(d)
+}
+
+// getFileOptions gets the exec options from the config.
+func (m *Machine) getFileOptions() *syntax.FileOptions {
+	opt := syntax.FileOptions{
+		Set: true,
+	}
+	if m.allowRecursion {
+		opt.Recursion = true
+	}
+	if m.allowGlobalReassign {
+		opt.GlobalReassign = true
+		opt.TopLevelControl = true
+		opt.While = true
+	}
+	return &opt
 }
 
 // castStringDictToAnyMap converts a starlark.StringDict to a StringAnyMap without any Starlight conversion.

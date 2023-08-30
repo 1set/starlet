@@ -33,12 +33,14 @@ import (
 type Machine struct {
 	mu sync.RWMutex
 	// set variables
-	globals       StringAnyMap
-	preloadMods   ModuleLoaderList
-	lazyloadMods  ModuleLoaderMap
-	printFunc     PrintFunc
-	enableInConv  bool
-	enableOutConv bool
+	globals             StringAnyMap
+	preloadMods         ModuleLoaderList
+	lazyloadMods        ModuleLoaderMap
+	printFunc           PrintFunc
+	allowGlobalReassign bool
+	allowRecursion      bool
+	enableInConv        bool
+	enableOutConv       bool
 	// source code
 	scriptName    string
 	scriptContent []byte
@@ -252,34 +254,34 @@ func (m *Machine) Export() StringAnyMap {
 	return m.convertOutput(m.predeclared)
 }
 
-// StringAnyMap type is a map of string to interface{} and is used to store global variables like StringDict of Starlark, but not a Starlark type.
-type StringAnyMap map[string]interface{}
+// EnableRecursionSupport enables recursion support in all Starlark environments.
+func (m *Machine) EnableRecursionSupport() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
-// Clone returns a copy of the data store.
-func (d StringAnyMap) Clone() StringAnyMap {
-	clone := make(StringAnyMap)
-	for k, v := range d {
-		clone[k] = v
-	}
-	return clone
+	m.allowRecursion = true
 }
 
-// Merge merges the given data store into the current data store. It does nothing if the current data store is nil.
-func (d StringAnyMap) Merge(other StringAnyMap) {
-	if d == nil {
-		return
-	}
-	for k, v := range other {
-		d[k] = v
-	}
+// DisableRecursionSupport disables recursion support in all Starlark environments.
+func (m *Machine) DisableRecursionSupport() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.allowRecursion = false
 }
 
-// MergeDict merges the given string dict into the current data store.
-func (d StringAnyMap) MergeDict(other starlark.StringDict) {
-	if d == nil {
-		return
-	}
-	for k, v := range other {
-		d[k] = v
-	}
+// EnableGlobalReassign enables global reassignment in all Starlark environments.
+func (m *Machine) EnableGlobalReassign() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.allowGlobalReassign = true
+}
+
+// DisableGlobalReassign disables global reassignment in all Starlark environments.
+func (m *Machine) DisableGlobalReassign() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.allowGlobalReassign = false
 }

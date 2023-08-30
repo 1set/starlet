@@ -511,13 +511,9 @@ a = nil == None
 }
 
 func Test_Machine_Run_LazyLoad_Override_Globals(t *testing.T) {
-	// enable global reassign only for this test, if it's not enabled, it will fail for: local variable fibonacci referenced before assignment
-	starlet.EnableGlobalReassign()
-	defer func() {
-		starlet.DisableGlobalReassign()
-	}()
 	// create machine
 	m := starlet.NewWithNames(map[string]interface{}{"fibonacci": 123}, nil, nil)
+	m.EnableGlobalReassign() // enable global reassign only for this test, if it's not enabled, it will fail for: local variable fibonacci referenced before assignment
 	// set code
 	code := `
 x = fibonacci * 2
@@ -566,13 +562,9 @@ z = fib(num)[-1]
 }
 
 func Test_Machine_Run_PreLoad_Override_Globals(t *testing.T) {
-	// enable global reassign only for this test, if it's not enabled, it will fail for: local variable coins referenced before assignment
-	starlet.EnableGlobalReassign()
-	defer func() {
-		starlet.DisableGlobalReassign()
-	}()
 	// create machine
 	m := starlet.NewWithLoaders(map[string]interface{}{"num": 10}, starlet.ModuleLoaderList{starlet.MakeModuleLoaderFromFile("coins.star", os.DirFS("testdata"), nil)}, nil)
+	m.EnableGlobalReassign() // enable global reassign only for this test, if it's not enabled, it will fail for: local variable coins referenced before assignment
 	// set code
 	code := `
 num = 100
@@ -593,6 +585,11 @@ coins = 50
 	} else if out["x"] != int64(525) || out["num"] != int64(100) || out["coins"] != int64(50) {
 		t.Errorf("unexpected output: %v", out)
 	}
+
+	// disable global reassign to test that it fails
+	m.DisableGlobalReassign()
+	_, err = m.Run()
+	expectErr(t, err, `starlark: exec: global variable coins referenced before assignment`)
 }
 
 func Test_Machine_Run_LoadCycle(t *testing.T) {
@@ -605,6 +602,37 @@ func Test_Machine_Run_LoadCycle(t *testing.T) {
 	m.SetScript("circle2.star", nil, os.DirFS("testdata"))
 	_, err = m.Run()
 	expectErr(t, err, `starlark: exec: cannot load circle1.star: cannot load circle2.star: cycle in load graph`)
+}
+
+func Test_Machine_Run_Recursion(t *testing.T) {
+	// create machine
+	m := starlet.NewDefault()
+	m.EnableRecursionSupport() // enable recursion support only for this test, if it's not enabled, it will fail for: function fib called recursively
+	// set code
+	code := `
+def fib(n):
+	if n < 2:
+		return n
+	return fib(n-1) + fib(n-2)
+x = fib(10)
+`
+	m.SetScript("test.star", []byte(code), nil)
+	// run
+	out, err := m.Run()
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	// check result
+	if out == nil {
+		t.Errorf("unexpected nil output")
+	} else if out["x"] != int64(55) {
+		t.Errorf("unexpected output: %v", out)
+	}
+
+	// disable to test recursion error
+	m.DisableRecursionSupport()
+	_, err = m.Run()
+	expectErr(t, err, `starlark: exec: function fib called recursively`)
 }
 
 func Test_Machine_Run_LoadErrors(t *testing.T) {
@@ -745,7 +773,6 @@ coins = 50
 		},
 	}
 
-	//starlet.EnableGlobalReassign()
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			defer func() {
