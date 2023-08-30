@@ -3,7 +3,7 @@ package starlet
 import (
 	libb64 "github.com/1set/starlet/lib/base64"
 	libgoid "github.com/1set/starlet/lib/goidiomatic"
-	libhash "github.com/1set/starlet/lib/hash"
+	libhash "github.com/1set/starlet/lib/hashlib"
 	libhttp "github.com/1set/starlet/lib/http"
 	libjson "github.com/1set/starlet/lib/json"
 	librand "github.com/1set/starlet/lib/random"

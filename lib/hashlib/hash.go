@@ -1,7 +1,7 @@
-// Package hash defines hash primitives for Starlark.
+// Package hashlib defines hash primitives for Starlark.
 //
 // Migrated from: https://github.com/qri-io/starlib/tree/master/hash
-package hash
+package hashlib
 
 import (
 	"crypto/md5"
