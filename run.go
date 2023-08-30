@@ -264,18 +264,16 @@ func (m *Machine) Reset() {
 func (m *Machine) convertInput(a StringAnyMap) (starlark.StringDict, error) {
 	if m.enableInConv {
 		return convert.MakeStringDict(a)
-	} else {
-		return castStringAnyMapToStringDict(a)
 	}
+	return castStringAnyMapToStringDict(a)
 }
 
 // convertOutput converts a starlark.StringDict to a StringAnyMap, usually for output variable.
 func (m *Machine) convertOutput(d starlark.StringDict) StringAnyMap {
 	if m.enableOutConv {
 		return convert.FromStringDict(d)
-	} else {
-		return castStringDictToAnyMap(d)
 	}
+	return castStringDictToAnyMap(d)
 }
 
 // getExecOptions gets the exec options from the config.
