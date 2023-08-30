@@ -10,7 +10,6 @@ import (
 	libre "github.com/1set/starlet/lib/re"
 	stdmath "go.starlark.net/lib/math"
 	stdtime "go.starlark.net/lib/time"
-	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 	stdstruct "go.starlark.net/starlarkstruct"
 )
@@ -61,24 +60,4 @@ func GetBuiltinModuleMap() ModuleLoaderMap {
 // GetBuiltinModule returns the builtin module with the given name.
 func GetBuiltinModule(name string) ModuleLoader {
 	return allBuiltinModules[name]
-}
-
-// EnableRecursionSupport enables recursion support in all Starlark environments.
-func EnableRecursionSupport() {
-	resolve.AllowRecursion = true
-}
-
-// DisableRecursionSupport disables recursion support in all Starlark environments.
-func DisableRecursionSupport() {
-	resolve.AllowRecursion = false
-}
-
-// EnableGlobalReassign enables global reassignment in all Starlark environments.
-func EnableGlobalReassign() {
-	resolve.AllowGlobalReassign = true
-}
-
-// DisableGlobalReassign disables global reassignment in all Starlark environments.
-func DisableGlobalReassign() {
-	resolve.AllowGlobalReassign = false
 }

@@ -33,12 +33,14 @@ import (
 type Machine struct {
 	mu sync.RWMutex
 	// set variables
-	globals       StringAnyMap
-	preloadMods   ModuleLoaderList
-	lazyloadMods  ModuleLoaderMap
-	printFunc     PrintFunc
-	enableInConv  bool
-	enableOutConv bool
+	globals             StringAnyMap
+	preloadMods         ModuleLoaderList
+	lazyloadMods        ModuleLoaderMap
+	printFunc           PrintFunc
+	allowGlobalReassign bool
+	allowRecursion      bool
+	enableInConv        bool
+	enableOutConv       bool
 	// source code
 	scriptName    string
 	scriptContent []byte
@@ -250,6 +252,38 @@ func (m *Machine) Export() StringAnyMap {
 	defer m.mu.RUnlock()
 
 	return m.convertOutput(m.predeclared)
+}
+
+// EnableRecursionSupport enables recursion support in all Starlark environments.
+func (m *Machine) EnableRecursionSupport() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.allowRecursion = true
+}
+
+// DisableRecursionSupport disables recursion support in all Starlark environments.
+func (m *Machine) DisableRecursionSupport() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.allowRecursion = false
+}
+
+// EnableGlobalReassign enables global reassignment in all Starlark environments.
+func (m *Machine) EnableGlobalReassign() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.allowGlobalReassign = true
+}
+
+// DisableGlobalReassign disables global reassignment in all Starlark environments.
+func (m *Machine) DisableGlobalReassign() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.allowGlobalReassign = false
 }
 
 // StringAnyMap type is a map of string to interface{} and is used to store global variables like StringDict of Starlark, but not a Starlark type.

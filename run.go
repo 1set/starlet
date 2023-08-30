@@ -3,6 +3,7 @@ package starlet
 import (
 	"context"
 	"fmt"
+	"go.starlark.net/syntax"
 	"io/fs"
 	"sync"
 	"time"
@@ -167,7 +168,7 @@ func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap) (out Str
 
 	// run with everything prepared
 	m.runTimes++
-	res, err := starlark.ExecFile(m.thread, scriptName, source, m.predeclared)
+	res, err := starlark.ExecFileOptions(m.getExecOptions(), m.thread, scriptName, source, m.predeclared)
 	done <- struct{}{}
 
 	// merge result as predeclared for next run
@@ -275,6 +276,22 @@ func (m *Machine) convertOutput(d starlark.StringDict) StringAnyMap {
 	} else {
 		return castStringDictToAnyMap(d)
 	}
+}
+
+// getExecOptions gets the exec options from the config.
+func (m *Machine) getExecOptions() *syntax.FileOptions {
+	opt := syntax.FileOptions{
+		Set: true,
+	}
+	if m.allowRecursion {
+		opt.Recursion = true
+	}
+	if m.allowGlobalReassign {
+		opt.GlobalReassign = true
+		opt.TopLevelControl = true
+		opt.While = true
+	}
+	return &opt
 }
 
 // castStringDictToAnyMap converts a starlark.StringDict to a StringAnyMap without any Starlight conversion.
