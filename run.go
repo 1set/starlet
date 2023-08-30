@@ -3,7 +3,6 @@ package starlet
 import (
 	"context"
 	"fmt"
-	"go.starlark.net/syntax"
 	"io/fs"
 	"sync"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"github.com/1set/starlight/convert"
 	"go.starlark.net/repl"
 	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
 )
 
 // REPL is a Read-Eval-Print-Loop for Starlark.
