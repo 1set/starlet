@@ -3,4 +3,4 @@
 package internal
 
 // StarletVersion is the current version of Starlet.
-const StarletVersion = "v0.0.3"
+const StarletVersion = "v0.0.5"
