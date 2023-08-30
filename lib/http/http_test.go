@@ -283,6 +283,16 @@ func TestLoadModule_HTTP(t *testing.T) {
 			wantErr: `context deadline exceeded (Client.Timeout exceeded while awaiting headers)`,
 		},
 		{
+			name: `GET Not Timeout`,
+			script: itn.HereDoc(`
+				load('http', 'get')
+				res = get(test_server_url, timeout=0.5)
+				assert.eq(res.status_code, 200)
+				b = res.body()
+				assert.eq(b.startswith("GET /"), True)
+			`),
+		},
+		{
 			name: `GET SSL Error`,
 			script: itn.HereDoc(`
 				load('http', 'get')
