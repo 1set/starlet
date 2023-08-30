@@ -585,6 +585,11 @@ coins = 50
 	} else if out["x"] != int64(525) || out["num"] != int64(100) || out["coins"] != int64(50) {
 		t.Errorf("unexpected output: %v", out)
 	}
+
+	// disable global reassign to test that it fails
+	m.DisableGlobalReassign()
+	_, err = m.Run()
+	expectErr(t, err, `starlark: exec: global variable coins referenced before assignment`)
 }
 
 func Test_Machine_Run_LoadCycle(t *testing.T) {
@@ -623,6 +628,11 @@ x = fib(10)
 	} else if out["x"] != int64(55) {
 		t.Errorf("unexpected output: %v", out)
 	}
+
+	// disable to test recursion error
+	m.DisableRecursionSupport()
+	_, err = m.Run()
+	expectErr(t, err, `starlark: exec: function fib called recursively`)
 }
 
 func Test_Machine_Run_LoadErrors(t *testing.T) {
