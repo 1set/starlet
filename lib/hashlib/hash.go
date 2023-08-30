@@ -19,8 +19,8 @@ import (
 )
 
 // ModuleName defines the expected name for this Module when used
-// in starlark's load() function, eg: load('hash', 'md5')
-const ModuleName = "hash"
+// in starlark's load() function, eg: load('hashlib', 'md5')
+const ModuleName = "hashlib"
 
 var (
 	once       sync.Once
@@ -32,8 +32,8 @@ var (
 func LoadModule() (starlark.StringDict, error) {
 	once.Do(func() {
 		hashModule = starlark.StringDict{
-			"hash": &starlarkstruct.Module{
-				Name: "hash",
+			"hashlib": &starlarkstruct.Module{
+				Name: "hashlib",
 				Members: starlark.StringDict{
 					"md5":    starlark.NewBuiltin("hash.md5", fnHash(md5.New)),
 					"sha1":   starlark.NewBuiltin("hash.sha1", fnHash(sha1.New)),
