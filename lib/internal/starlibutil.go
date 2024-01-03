@@ -52,6 +52,15 @@ func MarshalStarlarkJSON(data starlark.Value, indent int) (string, error) {
 		return emptyStr, err
 	}
 
+	// fix map[interface {}]interface {}
+	if m, ok := v.(map[interface{}]interface{}); ok {
+		mm := make(map[string]interface{})
+		for k, v := range m {
+			mm[fmt.Sprintf("%v", k)] = v
+		}
+		v = mm
+	}
+
 	// prepare json encoder
 	var bf bytes.Buffer
 	enc := json.NewEncoder(&bf)
