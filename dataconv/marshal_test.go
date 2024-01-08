@@ -80,6 +80,10 @@ func TestMarshal(t *testing.T) {
 		{[]interface{}{fnoop}, starlark.None, "unrecognized type: (func())"},
 		{map[string]func(){"foo": fnoop}, starlark.None, "unrecognized type: map[string]func()"},
 		{map[string]interface{}{"foo": fnow}, starlark.None, "unrecognized type: (func() time.Time)"},
+		{map[string]complex64{"foo": 1 + 2i}, starlark.None, `unrecognized type: map[string]complex64{"foo":(1+2i)}`},
+		{map[complex64]complex64{1 + 2i: 3 + 4i}, starlark.None, "unrecognized type: map[complex64]complex64{(1+2i):(3+4i)}"},
+		{map[interface{}]interface{}{complex(1, 2): 34}, starlark.None, "unrecognized type: (1+2i)"},
+		{map[interface{}]interface{}{12: complex(3, 4)}, starlark.None, "unrecognized type: (3+4i)"},
 	}
 
 	for i, c := range cases {
