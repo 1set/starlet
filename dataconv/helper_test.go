@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/1set/starlet/internal"
+	itn "github.com/1set/starlet/internal"
 	"github.com/1set/starlight/convert"
 	startime "go.starlark.net/lib/time"
 	"go.starlark.net/starlark"
@@ -177,7 +177,7 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 			name:   "dict indent",
 			data:   sd,
 			indent: 2,
-			want: internal.HereDoc(`
+			want: itn.HereDoc(`
 				{
 				  "foo": 42
 				}`),

@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/1set/starlet/dataconv"
-	"github.com/1set/starlet/internal"
+	itn "github.com/1set/starlet/internal"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
@@ -27,7 +27,7 @@ const ModuleName = "http"
 
 var (
 	// UserAgent is the default user agent for http requests, override with a custom value before calling LoadModule.
-	UserAgent = "Starlet-http-client/" + internal.StarletVersion
+	UserAgent = "Starlet-http-client/" + itn.StarletVersion
 	// TimeoutSecond is the default timeout in seconds for http requests, override with a custom value before calling LoadModule.
 	TimeoutSecond = 30
 	// SkipInsecureVerify controls whether to skip TLS verification, override with a custom value before calling LoadModule.
@@ -93,9 +93,9 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 			formBody      = &starlark.Dict{}
 			formEncoding  starlark.String
 			auth          starlark.Tuple
-			body          internal.StringOrBytes
+			body          itn.StringOrBytes
 			jsonBody      starlark.Value
-			timeout       = internal.FloatOrInt(TimeoutSecond)
+			timeout       = itn.FloatOrInt(TimeoutSecond)
 			allowRedirect = starlark.Bool(!DisableRedirect)
 			verifySSL     = starlark.Bool(!SkipInsecureVerify)
 		)
