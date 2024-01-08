@@ -96,6 +96,8 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 	sb := mockStarlarkBuiltin("foobar")
 	sd4 := starlark.NewDict(1)
 	sd4.SetKey(starlark.String("foo"), gf)
+	sd5 := starlark.NewDict(1)
+	sd5.SetKey(starlark.String("bar"), sf)
 
 	stime := time.Unix(1689384600, 0)
 	stime = stime.In(time.FixedZone("CST", 8*60*60))
@@ -169,6 +171,11 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 		{
 			name:    "dict4",
 			data:    sd4,
+			wantErr: true,
+		},
+		{
+			name:    "dict5",
+			data:    sd5,
 			wantErr: true,
 		},
 		{
