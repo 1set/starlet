@@ -86,11 +86,14 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 	ss.Insert(starlark.String("foo"))
 	ss.Insert(starlark.String("bar"))
 
+	gf := convert.MakeStarFn("sqr", func(x int) int { return x * 2 })
 	sf := asStarlarkFunc("foobar", itn.HereDoc(`
 		def foobar(x):
 			return x*2
 	`))
 	sb := mockStarlarkBuiltin("foobar")
+	sd4 := starlark.NewDict(1)
+	sd4.SetKey(starlark.String("foo"), gf)
 
 	stime := time.Unix(1689384600, 0)
 	stime = stime.In(time.FixedZone("CST", 8*60*60))
@@ -160,6 +163,11 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 			name: "dict3",
 			data: sd3,
 			want: `{"true":42}`,
+		},
+		{
+			name:    "dict4",
+			data:    sd4,
+			wantErr: true,
 		},
 		{
 			name: "list",
