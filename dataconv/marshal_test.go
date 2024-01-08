@@ -73,8 +73,8 @@ func TestMarshal(t *testing.T) {
 		{map[interface{}]interface{}{"foo": 42, "bar": &customType{42}}, expectedStrDictCustomType, ""},
 		{[]interface{}{42, &customType{42}}, starlark.NewList([]starlark.Value{starlark.MakeInt(42), ct}), ""},
 		{&invalidCustomType{42}, starlark.None, "unrecognized type: &dataconv.invalidCustomType{Foo:42}"},
-		{&anotherCustomType{customType{42}, nil}, ct, ""},
-		{&anotherCustomType{customType{42}, fmt.Errorf("foo foo")}, starlark.None, "foo foo"},
+		{&anotherCustomType{customType{42}, nil, nil}, ct, ""},
+		{&anotherCustomType{customType{42}, fmt.Errorf("foo foo"), nil}, starlark.None, "foo foo"},
 		{complex(1, 2), starlark.None, "unrecognized type: (1+2i)"},
 		{fnoop, starlark.None, "unrecognized type: (func())"},
 		{fnow, starlark.None, "unrecognized type: (func() time.Time)"},
@@ -304,7 +304,8 @@ type customType invalidCustomType
 
 type anotherCustomType struct {
 	customType
-	Err error
+	ErrMar error
+	ErrUnm error
 }
 
 var (
@@ -369,15 +370,15 @@ func (c customType) Hash() (uint32, error) {
 }
 
 func (a *anotherCustomType) UnmarshalStarlark(v starlark.Value) error {
-	if a != nil && a.Err != nil {
-		return a.Err
+	if a != nil && a.ErrUnm != nil {
+		return a.ErrUnm
 	}
 	return a.customType.UnmarshalStarlark(v)
 }
 
 func (a *anotherCustomType) MarshalStarlark() (starlark.Value, error) {
-	if a != nil && a.Err != nil {
-		return nil, a.Err
+	if a != nil && a.ErrMar != nil {
+		return nil, a.ErrMar
 	}
 	return a.customType.MarshalStarlark()
 }
