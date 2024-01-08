@@ -51,6 +51,8 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 	sd.SetKey(starlark.String("foo"), starlark.MakeInt(42))
 	sd2 := starlark.NewDict(1)
 	sd2.SetKey(starlark.MakeUint(42), starlark.String("foo"))
+	sd3 := starlark.NewDict(1)
+	sd3.SetKey(starlark.Bool(true), starlark.MakeInt(42))
 
 	ss := starlark.NewSet(1)
 	ss.Insert(starlark.String("foo"))
@@ -119,6 +121,11 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 			name: "dict2",
 			data: sd2,
 			want: `{"42":"foo"}`,
+		},
+		{
+			name: "dict3",
+			data: sd3,
+			want: `{"true":42}`,
 		},
 		{
 			name: "list",
