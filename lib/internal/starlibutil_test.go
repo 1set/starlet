@@ -3,6 +3,7 @@ package internal
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
@@ -13,6 +14,11 @@ import (
 	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/syntax"
 )
+
+// asString unquotes a starlark string value
+func asString(x starlark.Value) (string, error) {
+	return strconv.Unquote(x.String())
+}
 
 func TestNewAssertLoader(t *testing.T) {
 	// Dummy ModuleLoadFunc that returns a fixed StringDict

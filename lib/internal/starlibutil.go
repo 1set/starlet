@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
@@ -16,11 +15,6 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
-
-// asString unquotes a starlark string value
-func asString(x starlark.Value) (string, error) {
-	return strconv.Unquote(x.String())
-}
 
 // IsEmptyString checks is a starlark string is empty ("" for a go string)
 // starlark.String.String performs repr-style quotation, which is necessary
