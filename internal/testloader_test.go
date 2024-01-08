@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	"testing"
 
 	"go.starlark.net/starlark"
@@ -15,6 +16,9 @@ func TestNewAssertLoader(t *testing.T) {
 				"foo": starlark.String("bar"),
 			}),
 		}, nil
+	}
+	errLoadFunc := func() (starlark.StringDict, error) {
+		return nil, fmt.Errorf("invalid loader")
 	}
 
 	tests := []struct {
@@ -43,6 +47,18 @@ func TestNewAssertLoader(t *testing.T) {
 			moduleName:    "invalid",
 			loadFunc:      moduleLoadFunc,
 			expectedError: "invalid module",
+		},
+		{
+			name:          "Nil module",
+			moduleName:    "nil",
+			loadFunc:      nil,
+			expectedError: "nil module",
+		},
+		{
+			name:          "Error module",
+			moduleName:    "error",
+			loadFunc:      errLoadFunc,
+			expectedError: "invalid loader",
 		},
 	}
 

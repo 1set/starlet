@@ -23,6 +23,9 @@ func NewAssertLoader(moduleName string, loader ModuleLoadFunc) ThreadLoadFunc {
 	return func(thread *starlark.Thread, module string) (starlark.StringDict, error) {
 		switch module {
 		case moduleName:
+			if loader == nil {
+				return nil, fmt.Errorf("nil module")
+			}
 			d, err := loader()
 			if err != nil {
 				// failed to load
