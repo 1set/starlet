@@ -3,11 +3,7 @@ package dataconv
 // Based on https://github.com/qri-io/starlib/tree/master/util with some modifications and additions
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"reflect"
-	"strings"
 	"time"
 
 	"github.com/1set/starlight/convert"
@@ -15,64 +11,6 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
-
-// IsEmptyString checks is a starlark string is empty ("" for a go string)
-// starlark.String.String performs repr-style quotation, which is necessary
-// for the starlark.Value contract but a frequent source of errors in API
-// clients. This helper method makes sure it'll work properly
-func IsEmptyString(s starlark.String) bool {
-	return s.String() == `""`
-}
-
-// IsInterfaceNil returns true if the given interface is nil.
-func IsInterfaceNil(i interface{}) bool {
-	if i == nil {
-		return true
-	}
-	defer func() { recover() }()
-	switch reflect.TypeOf(i).Kind() {
-	case reflect.Ptr, reflect.UnsafePointer, reflect.Interface, reflect.Struct, reflect.Slice, reflect.Map, reflect.Chan, reflect.Func:
-		return reflect.ValueOf(i).IsNil()
-	}
-	return false
-}
-
-var (
-	emptyStr string
-)
-
-// MarshalStarlarkJSON marshals a starlark.Value into a JSON string.
-// It first converts the starlark.Value into a Golang value, then marshals it into JSON.
-func MarshalStarlarkJSON(data starlark.Value, indent int) (string, error) {
-	// convert starlark value to a go value
-	v, err := Unmarshal(data)
-	if err != nil {
-		return emptyStr, err
-	}
-
-	// fix map[interface {}]interface {}
-	if m, ok := v.(map[interface{}]interface{}); ok {
-		mm := make(map[string]interface{})
-		for k, v := range m {
-			mm[fmt.Sprintf("%v", k)] = v
-		}
-		v = mm
-	}
-
-	// prepare json encoder
-	var bf bytes.Buffer
-	enc := json.NewEncoder(&bf)
-	enc.SetEscapeHTML(false)
-	if indent > 0 {
-		enc.SetIndent("", strings.Repeat(" ", indent))
-	}
-
-	// convert go to string
-	if err = enc.Encode(v); err != nil {
-		return emptyStr, err
-	}
-	return strings.TrimSpace(bf.String()), nil
-}
 
 // Unmarshal decodes a starlark.Value into it's Golang counterpart.
 func Unmarshal(x starlark.Value) (val interface{}, err error) {
@@ -337,16 +275,4 @@ func Marshal(data interface{}) (v starlark.Value, err error) {
 		return starlark.None, fmt.Errorf("unrecognized type: %#v", x)
 	}
 	return
-}
-
-// Unmarshaler is the interface use to unmarshal Starlark custom types.
-type Unmarshaler interface {
-	// UnmarshalStarlark unmarshal a starlark object to custom type.
-	UnmarshalStarlark(starlark.Value) error
-}
-
-// Marshaler is the interface use to marshal Starlark custom types.
-type Marshaler interface {
-	// MarshalStarlark marshal a custom type to starlark object.
-	MarshalStarlark() (starlark.Value, error)
 }
