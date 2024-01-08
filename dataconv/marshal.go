@@ -12,7 +12,7 @@ import (
 	"go.starlark.net/starlarkstruct"
 )
 
-// Unmarshal decodes a starlark.Value into it's Golang counterpart.
+// Unmarshal converts a starlark.Value into it's Golang counterpart.
 func Unmarshal(x starlark.Value) (val interface{}, err error) {
 	switch v := x.(type) {
 	case starlark.NoneType:
@@ -40,7 +40,7 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 			kval    interface{}
 			keys    []interface{}
 			vals    []interface{}
-			// key as interface if found one key is not a string
+			// use interface{} as key type if found one key is not a string
 			ki bool
 		)
 		for _, k := range v.Keys() {
@@ -159,7 +159,7 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 				}
 			}
 			val = jo
-			//err = fmt.Errorf("constructor object from *starlarkstruct.Struct not supported Marshaler to starlark object: %T", v.Constructor())
+			//err = fmt.Errorf("constructor object from *starlarkstruct.Struct not supported Marshaler to Starlark object: %T", v.Constructor())
 		}
 	case *convert.GoSlice:
 		if IsInterfaceNil(v) {
@@ -193,7 +193,7 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 	return
 }
 
-// Marshal turns Go values into Starlark types. It only supports common Go types, won't wrap any custom types like Starlight does.
+// Marshal converts Go values into Starlark types. It only supports common Go types, won't wrap any custom types like Starlight does.
 func Marshal(data interface{}) (v starlark.Value, err error) {
 	switch x := data.(type) {
 	case nil:

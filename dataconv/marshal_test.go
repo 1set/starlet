@@ -267,7 +267,6 @@ func (c *customType) UnmarshalStarlark(v starlark.Value) error {
 	}
 
 	// TODO: refactoring transform data
-
 	mustInt64 := func(sv starlark.Value) int64 {
 		i, _ := sv.(starlark.Int).Int64()
 		return i
