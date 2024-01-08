@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	itn "github.com/1set/starlet/lib/internal"
+	itn "github.com/1set/starlet/internal"
 	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarktest"

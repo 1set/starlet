@@ -12,7 +12,7 @@ import (
 	"sort"
 	"sync"
 
-	itn "github.com/1set/starlet/lib/internal"
+	itn "github.com/1set/starlet/dataconv"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )

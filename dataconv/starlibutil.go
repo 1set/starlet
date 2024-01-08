@@ -1,4 +1,4 @@
-package internal
+package dataconv
 
 // Based on https://github.com/qri-io/starlib/tree/master/util with some modifications and additions
 
@@ -36,6 +36,10 @@ func IsInterfaceNil(i interface{}) bool {
 	}
 	return false
 }
+
+var (
+	emptyStr string
+)
 
 // MarshalStarlarkJSON marshals a starlark.Value into a JSON string.
 // It first converts the starlark.Value into a Golang value, then marshals it into JSON.

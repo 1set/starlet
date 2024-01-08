@@ -3,8 +3,8 @@ package base64_test
 import (
 	"testing"
 
+	itn "github.com/1set/starlet/internal"
 	"github.com/1set/starlet/lib/base64"
-	itn "github.com/1set/starlet/lib/internal"
 )
 
 func TestLoadModule_Base64(t *testing.T) {

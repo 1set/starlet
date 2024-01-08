@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"sync"
 
-	itn "github.com/1set/starlet/lib/internal"
+	itn "github.com/1set/starlet/internal"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )

@@ -1,4 +1,4 @@
-package internal
+package dataconv
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	itn "github.com/1set/starlet/internal"
 	"github.com/1set/starlight/convert"
 	startime "go.starlark.net/lib/time"
 	"go.starlark.net/starlark"
@@ -33,7 +34,7 @@ func TestNewAssertLoader(t *testing.T) {
 	tests := []struct {
 		name          string
 		moduleName    string
-		loadFunc      ModuleLoadFunc
+		loadFunc      itn.ModuleLoadFunc
 		expectedError string
 	}{
 		{
@@ -61,7 +62,7 @@ func TestNewAssertLoader(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			loader := NewAssertLoader(test.moduleName, test.loadFunc)
+			loader := itn.NewAssertLoader(test.moduleName, test.loadFunc)
 			thread := &starlark.Thread{Name: "main"}
 			_, err := loader(thread, test.moduleName)
 
@@ -158,7 +159,7 @@ func TestMarshal(t *testing.T) {
 		{map[string]interface{}{"foo": 42, "bar": &customType{42}}, expectedStrDictCustomType, ""},
 		{map[interface{}]interface{}{"foo": 42, "bar": &customType{42}}, expectedStrDictCustomType, ""},
 		{[]interface{}{42, &customType{42}}, starlark.NewList([]starlark.Value{starlark.MakeInt(42), ct}), ""},
-		{&invalidCustomType{42}, starlark.None, "unrecognized type: &internal.invalidCustomType{Foo:42}"},
+		{&invalidCustomType{42}, starlark.None, "unrecognized type: &dataconv.invalidCustomType{Foo:42}"},
 	}
 
 	for i, c := range cases {
@@ -454,7 +455,7 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 			name:   "dict indent",
 			data:   sd,
 			indent: 2,
-			want: HereDoc(`
+			want: itn.HereDoc(`
 				{
 				  "foo": 42
 				}`),

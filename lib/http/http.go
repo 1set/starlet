@@ -15,7 +15,8 @@ import (
 	"strings"
 	"time"
 
-	itn "github.com/1set/starlet/lib/internal"
+	"github.com/1set/starlet/dataconv"
+	"github.com/1set/starlet/internal"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
@@ -26,7 +27,7 @@ const ModuleName = "http"
 
 var (
 	// UserAgent is the default user agent for http requests, override with a custom value before calling LoadModule.
-	UserAgent = "Starlet-http-client/" + itn.StarletVersion
+	UserAgent = "Starlet-http-client/" + internal.StarletVersion
 	// TimeoutSecond is the default timeout in seconds for http requests, override with a custom value before calling LoadModule.
 	TimeoutSecond = 30
 	// SkipInsecureVerify controls whether to skip TLS verification, override with a custom value before calling LoadModule.
@@ -92,9 +93,9 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 			formBody      = &starlark.Dict{}
 			formEncoding  starlark.String
 			auth          starlark.Tuple
-			body          itn.StringOrBytes
+			body          internal.StringOrBytes
 			jsonBody      starlark.Value
-			timeout       = itn.FloatOrInt(TimeoutSecond)
+			timeout       = internal.FloatOrInt(TimeoutSecond)
 			allowRedirect = starlark.Bool(!DisableRedirect)
 			verifySSL     = starlark.Bool(!SkipInsecureVerify)
 		)
@@ -274,7 +275,7 @@ func setHeaders(req *http.Request, headers *starlark.Dict) error {
 }
 
 func setBody(req *http.Request, body starlark.String, formData *starlark.Dict, formEncoding starlark.String, jsondata starlark.Value) error {
-	if !itn.IsEmptyString(body) {
+	if !dataconv.IsEmptyString(body) {
 		uq, err := strconv.Unquote(body.String())
 		if err != nil {
 			return err
@@ -289,7 +290,7 @@ func setBody(req *http.Request, body starlark.String, formData *starlark.Dict, f
 
 	if jsondata != nil && jsondata.String() != "" {
 		req.Header.Set("Content-Type", "application/json")
-		data, err := itn.MarshalStarlarkJSON(jsondata, 0)
+		data, err := dataconv.MarshalStarlarkJSON(jsondata, 0)
 		if err != nil {
 			return err
 		}
@@ -420,7 +421,7 @@ func (r *Response) JSON(thread *starlark.Thread, _ *starlark.Builtin, args starl
 
 	// reset reader to allow multiple calls
 	r.Body = ioutil.NopCloser(bytes.NewReader(body))
-	return itn.Marshal(data)
+	return dataconv.Marshal(data)
 }
 
 func typedConvert(data interface{}) interface{} {

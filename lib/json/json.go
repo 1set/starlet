@@ -4,7 +4,7 @@ package json
 import (
 	"sync"
 
-	itn "github.com/1set/starlet/lib/internal"
+	itn "github.com/1set/starlet/dataconv"
 	stdjson "go.starlark.net/lib/json"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
