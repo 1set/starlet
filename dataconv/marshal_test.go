@@ -15,11 +15,6 @@ import (
 	"go.starlark.net/syntax"
 )
 
-// asString unquotes a starlark string value
-func asString(x starlark.Value) (string, error) {
-	return strconv.Unquote(x.String())
-}
-
 func TestMarshal(t *testing.T) {
 	expectedStringDict := starlark.NewDict(1)
 	if err := expectedStringDict.SetKey(starlark.String("foo"), starlark.MakeInt(42)); err != nil {
@@ -235,6 +230,28 @@ func TestUnmarshal(t *testing.T) {
 			t.Errorf("case %d. expected: %#v (%T), got: %#v (%T), %T -> %T", i, c.want, c.want, got, got, c.in, c.want)
 		}
 	}
+}
+
+// asString unquotes a starlark string value
+func asString(x starlark.Value) (string, error) {
+	return strconv.Unquote(x.String())
+}
+
+// asStarlarkFunc returns a starlark function from a string for testing.
+func asStarlarkFunc(fname, code string) *starlark.Function {
+	thread := &starlark.Thread{Name: "test"}
+	globals, err := starlark.ExecFile(thread, fname+".star", code, nil)
+	if err != nil {
+		panic(err)
+	}
+	return globals[fname].(*starlark.Function)
+}
+
+// mockStarlarkBuiltin returns a starlark builtin function for testing.
+func mockStarlarkBuiltin(fname string) *starlark.Builtin {
+	return starlark.NewBuiltin(fname, func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		return starlark.String("aloha " + fname), nil
+	})
 }
 
 type invalidCustomType struct {

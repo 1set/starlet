@@ -58,6 +58,12 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 	ss.Insert(starlark.String("foo"))
 	ss.Insert(starlark.String("bar"))
 
+	sf := asStarlarkFunc("foobar", itn.HereDoc(`
+		def foobar(x):
+			return x*2
+	`))
+	sb := mockStarlarkBuiltin("foobar")
+
 	stime := time.Unix(1689384600, 0)
 	stime = stime.In(time.FixedZone("CST", 8*60*60))
 	st := struct {
@@ -196,6 +202,16 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 				{
 				  "foo": 42
 				}`),
+		},
+		{
+			name:    "function",
+			data:    sf,
+			wantErr: true,
+		},
+		{
+			name:    "builtin",
+			data:    sb,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
