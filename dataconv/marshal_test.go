@@ -125,6 +125,17 @@ func TestUnmarshal(t *testing.T) {
 	ss.Insert(starlark.String("Hello"))
 	ss.Insert(starlark.String("World"))
 
+	msb := mockStarlarkBuiltin("foo")
+	sf := asStarlarkFunc("foo", `def foo(): return "foo"`)
+	sse := starlark.NewSet(10)
+	sse.Insert(msb)
+	sle := starlark.NewList([]starlark.Value{msb})
+	ste := starlark.Tuple{msb}
+	sdke := starlark.NewDict(10)
+	sdke.SetKey(msb, starlark.MakeInt(42))
+	sdve := starlark.NewDict(10)
+	sdve.SetKey(starlark.String("foo"), msb)
+
 	srt := starlarkstruct.FromStringDict(starlarkstruct.Default, map[string]starlark.Value{
 		"Message": starlark.String("Aloha"),
 		"Times":   starlark.MakeInt(100),
@@ -198,8 +209,13 @@ func TestUnmarshal(t *testing.T) {
 		{nilGst, nil, "nil GoStruct"},
 		{(*convert.GoInterface)(nil), nil, "nil GoInterface"},
 		{nilGif, nil, "nil GoInterface"},
-		{mockStarlarkBuiltin("foo"), nil, "unrecognized starlark type: *starlark.Builtin"},
-		{asStarlarkFunc("foo", `def foo(): return "foo"`), nil, "unrecognized starlark type: *starlark.Function"},
+		{msb, nil, "unrecognized starlark type: *starlark.Builtin"},
+		{sf, nil, "unrecognized starlark type: *starlark.Function"},
+		{sse, nil, "unrecognized starlark type: *starlark.Builtin"},
+		{sle, nil, "unrecognized starlark type: *starlark.Builtin"},
+		{ste, nil, "unrecognized starlark type: *starlark.Builtin"},
+		{sdke, nil, "unmarshaling starlark key: unrecognized starlark type: *starlark.Builtin"},
+		{sdve, nil, "unmarshaling starlark value: unrecognized starlark type: *starlark.Builtin"},
 	}
 	for i, c := range cases {
 		got, err := Unmarshal(c.in)
