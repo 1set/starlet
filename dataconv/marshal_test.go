@@ -69,6 +69,7 @@ func TestMarshal(t *testing.T) {
 		{map[interface{}]interface{}{"foo": 42, "bar": &customType{42}}, expectedStrDictCustomType, ""},
 		{[]interface{}{42, &customType{42}}, starlark.NewList([]starlark.Value{starlark.MakeInt(42), ct}), ""},
 		{&invalidCustomType{42}, starlark.None, "unrecognized type: &dataconv.invalidCustomType{Foo:42}"},
+		{complex(1, 2), starlark.None, "unrecognized type: (1+2i)"},
 	}
 
 	for i, c := range cases {
@@ -191,6 +192,8 @@ func TestUnmarshal(t *testing.T) {
 		{nilGst, nil, "nil GoStruct"},
 		{(*convert.GoInterface)(nil), nil, "nil GoInterface"},
 		{nilGif, nil, "nil GoInterface"},
+		{mockStarlarkBuiltin("foo"), nil, "unrecognized starlark type: *starlark.Builtin"},
+		{asStarlarkFunc("foo", `def foo(): return "foo"`), nil, "unrecognized starlark type: *starlark.Function"},
 	}
 	for i, c := range cases {
 		got, err := Unmarshal(c.in)
