@@ -49,6 +49,9 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 	now := time.Now()
 	sd := starlark.NewDict(1)
 	sd.SetKey(starlark.String("foo"), starlark.MakeInt(42))
+	sd2 := starlark.NewDict(1)
+	sd2.SetKey(starlark.MakeUint(42), starlark.String("foo"))
+
 	ss := starlark.NewSet(1)
 	ss.Insert(starlark.String("foo"))
 	ss.Insert(starlark.String("bar"))
@@ -111,6 +114,11 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 			name: "dict",
 			data: sd,
 			want: `{"foo":42}`,
+		},
+		{
+			name: "dict2",
+			data: sd2,
+			want: `{"42":"foo"}`,
 		},
 		{
 			name: "list",
