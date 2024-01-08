@@ -73,6 +73,8 @@ func TestMarshal(t *testing.T) {
 		{map[interface{}]interface{}{"foo": 42, "bar": &customType{42}}, expectedStrDictCustomType, ""},
 		{[]interface{}{42, &customType{42}}, starlark.NewList([]starlark.Value{starlark.MakeInt(42), ct}), ""},
 		{&invalidCustomType{42}, starlark.None, "unrecognized type: &dataconv.invalidCustomType{Foo:42}"},
+		{&anotherCustomType{customType{42}, nil}, ct, ""},
+		{&anotherCustomType{customType{42}, fmt.Errorf("foo foo")}, starlark.None, "foo foo"},
 		{complex(1, 2), starlark.None, "unrecognized type: (1+2i)"},
 		{fnoop, starlark.None, "unrecognized type: (func())"},
 		{fnow, starlark.None, "unrecognized type: (func() time.Time)"},
@@ -131,6 +133,7 @@ func TestUnmarshal(t *testing.T) {
 	if err := strDictCT.SetKey(starlark.String("bar"), ct); err != nil {
 		t.Fatal(err)
 	}
+	act, _ := (&anotherCustomType{customType: customType{43}}).MarshalStarlark()
 
 	ss := starlark.NewSet(10)
 	ss.Insert(starlark.String("Hello"))
@@ -202,6 +205,7 @@ func TestUnmarshal(t *testing.T) {
 		{strDict, map[string]interface{}{"foo": 42}, ""},
 		{intDict, map[interface{}]interface{}{42 * 2: 42}, ""},
 		{ct, &customType{42}, ""},
+		{act, &customType{43}, ""},
 		{strDictCT, map[string]interface{}{"foo": 42, "bar": &customType{42}}, ""},
 		{starlark.NewList([]starlark.Value{starlark.MakeInt(42), ct}), []interface{}{42, &customType{42}}, ""},
 		{starlark.Tuple{starlark.String("foo"), starlark.MakeInt(42)}, []interface{}{"foo", 42}, ""},
@@ -298,6 +302,11 @@ type invalidCustomType struct {
 
 type customType invalidCustomType
 
+type anotherCustomType struct {
+	customType
+	Err error
+}
+
 var (
 	_ Unmarshaler    = (*customType)(nil)
 	_ Marshaler      = (*customType)(nil)
@@ -357,4 +366,18 @@ func (c customType) Truth() starlark.Bool {
 
 func (c customType) Hash() (uint32, error) {
 	return 0, fmt.Errorf("unhashable: %s", c.Type())
+}
+
+func (a *anotherCustomType) UnmarshalStarlark(v starlark.Value) error {
+	if a != nil && a.Err != nil {
+		return a.Err
+	}
+	return a.customType.UnmarshalStarlark(v)
+}
+
+func (a *anotherCustomType) MarshalStarlark() (starlark.Value, error) {
+	if a != nil && a.Err != nil {
+		return nil, a.Err
+	}
+	return a.customType.MarshalStarlark()
 }
