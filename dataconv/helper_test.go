@@ -22,6 +22,34 @@ func TestIsEmptyString(t *testing.T) {
 	}
 }
 
+func TestIsInterfaceNil(t *testing.T) {
+	var (
+		ei  interface{}
+		es  fmt.Stringer
+		esp *customType
+		est customType
+	)
+	tests := []struct {
+		name string
+		i    interface{}
+		want bool
+	}{
+		{"nil", nil, true},
+		{"nil interface", ei, true},
+		{"nil stringer", es, true},
+		{"nil pointer", esp, true},
+		{"string", "1", false},
+		{"custom type", est, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsInterfaceNil(tt.i); got != tt.want {
+				t.Errorf("IsInterfaceNil(%v) = %v, want %v", tt.i, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestAsString(t *testing.T) {
 	cases := []struct {
 		in       starlark.Value

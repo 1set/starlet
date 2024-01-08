@@ -1,5 +1,5 @@
 // Package dataconv provides helper functions to convert between Starlark and Go types.
-// It works like package starlight, but only supports common Starlark and Go types, and won't wrap any custom Go types or functions.
+// It works like package starlight, but only supports common Starlark and Go types, and won't wrap any custom types or functions.
 package dataconv
 
 import "go.starlark.net/starlark"
