@@ -76,12 +76,19 @@ func TestMarshal(t *testing.T) {
 		{complex(1, 2), starlark.None, "unrecognized type: (1+2i)"},
 		{fnoop, starlark.None, "unrecognized type: (func())"},
 		{fnow, starlark.None, "unrecognized type: (func() time.Time)"},
+		{[]func(){fnoop}, starlark.None, "unrecognized type: []func(){(func())"},
+		{[]interface{}{fnoop}, starlark.None, "unrecognized type: (func())"},
+		{map[string]func(){"foo": fnoop}, starlark.None, "unrecognized type: map[string]func()"},
+		{map[string]interface{}{"foo": fnow}, starlark.None, "unrecognized type: (func() time.Time)"},
 	}
 
 	for i, c := range cases {
 		got, err := Marshal(c.in)
 		if !(err == nil && c.err == "" || err != nil && err.Error() == c.err || err != nil && strings.HasPrefix(err.Error(), c.err)) {
 			t.Errorf("case %d. error mismatch. expected: %q, got: %q (%T -> %T)", i, c.err, err, c.in, c.want)
+			continue
+		}
+		if err != nil {
 			continue
 		}
 
