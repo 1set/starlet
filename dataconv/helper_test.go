@@ -25,6 +25,7 @@ func TestIsEmptyString(t *testing.T) {
 func TestIsInterfaceNil(t *testing.T) {
 	var (
 		ei  interface{}
+		em  map[string]struct{}
 		es  fmt.Stringer
 		esp *customType
 		est customType
@@ -36,6 +37,7 @@ func TestIsInterfaceNil(t *testing.T) {
 	}{
 		{"nil", nil, true},
 		{"nil interface", ei, true},
+		{"nil map", em, true},
 		{"nil stringer", es, true},
 		{"nil pointer", esp, true},
 		{"string", "1", false},
