@@ -12,7 +12,8 @@ import (
 	"go.starlark.net/starlarkstruct"
 )
 
-// Marshal converts Go values into Starlark types. It only supports common Go types, won't wrap any custom types like Starlight does.
+// Marshal converts Go values into Starlark types, like ToValue() of package starlight does.
+// It only supports common Go types, won't wrap any custom types like Starlight does.
 func Marshal(data interface{}) (v starlark.Value, err error) {
 	switch x := data.(type) {
 	case nil:
@@ -96,7 +97,7 @@ func Marshal(data interface{}) (v starlark.Value, err error) {
 	return
 }
 
-// Unmarshal converts a starlark.Value into it's Golang counterpart.
+// Unmarshal converts a starlark.Value into it's Golang counterpart, like FromValue() of package starlight does.
 func Unmarshal(x starlark.Value) (val interface{}, err error) {
 	switch v := x.(type) {
 	case starlark.NoneType:

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -34,6 +35,9 @@ func TestMarshal(t *testing.T) {
 	if err := expectedStrDictCustomType.SetKey(starlark.String("bar"), ct); err != nil {
 		t.Fatal(err)
 	}
+
+	fnoop := func() {}
+	fnow := time.Now
 
 	now := time.Now()
 	cases := []struct {
@@ -70,11 +74,13 @@ func TestMarshal(t *testing.T) {
 		{[]interface{}{42, &customType{42}}, starlark.NewList([]starlark.Value{starlark.MakeInt(42), ct}), ""},
 		{&invalidCustomType{42}, starlark.None, "unrecognized type: &dataconv.invalidCustomType{Foo:42}"},
 		{complex(1, 2), starlark.None, "unrecognized type: (1+2i)"},
+		{fnoop, starlark.None, "unrecognized type: (func())"},
+		{fnow, starlark.None, "unrecognized type: (func() time.Time)"},
 	}
 
 	for i, c := range cases {
 		got, err := Marshal(c.in)
-		if !(err == nil && c.err == "" || err != nil && err.Error() == c.err) {
+		if !(err == nil && c.err == "" || err != nil && err.Error() == c.err || err != nil && strings.HasPrefix(err.Error(), c.err)) {
 			t.Errorf("case %d. error mismatch. expected: %q, got: %q (%T -> %T)", i, c.err, err, c.in, c.want)
 			continue
 		}
