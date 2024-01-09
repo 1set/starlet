@@ -3,8 +3,8 @@ package goidiomatic_test
 import (
 	"testing"
 
+	itn "github.com/1set/starlet/internal"
 	"github.com/1set/starlet/lib/goidiomatic"
-	itn "github.com/1set/starlet/lib/internal"
 	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 )

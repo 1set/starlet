@@ -9,7 +9,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	itn "github.com/1set/starlet/lib/internal"
+	"github.com/1set/starlet/dataconv"
+	itn "github.com/1set/starlet/internal"
 	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 )
@@ -53,13 +54,13 @@ func isNil(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kw
 		return starlark.True, nil
 	// Go types that wrap nil inside.
 	case *convert.GoSlice:
-		return starlark.Bool(itn.IsInterfaceNil(t) || itn.IsInterfaceNil(t.Value().Interface())), nil
+		return starlark.Bool(dataconv.IsInterfaceNil(t) || dataconv.IsInterfaceNil(t.Value().Interface())), nil
 	case *convert.GoMap:
-		return starlark.Bool(itn.IsInterfaceNil(t) || itn.IsInterfaceNil(t.Value().Interface())), nil
+		return starlark.Bool(dataconv.IsInterfaceNil(t) || dataconv.IsInterfaceNil(t.Value().Interface())), nil
 	case *convert.GoStruct:
-		return starlark.Bool(itn.IsInterfaceNil(t) || itn.IsInterfaceNil(t.Value().Interface())), nil
+		return starlark.Bool(dataconv.IsInterfaceNil(t) || dataconv.IsInterfaceNil(t.Value().Interface())), nil
 	case *convert.GoInterface:
-		return starlark.Bool(itn.IsInterfaceNil(t) || itn.IsInterfaceNil(t.Value().Interface())), nil
+		return starlark.Bool(dataconv.IsInterfaceNil(t) || dataconv.IsInterfaceNil(t.Value().Interface())), nil
 	default:
 		return none, fmt.Errorf("%s: unsupported type: %T", b.Name(), t)
 	}

@@ -3,7 +3,7 @@ package json_test
 import (
 	"testing"
 
-	itn "github.com/1set/starlet/lib/internal"
+	itn "github.com/1set/starlet/internal"
 	"github.com/1set/starlet/lib/json"
 )
 
@@ -55,6 +55,43 @@ func TestLoadModule_JSON(t *testing.T) {
 			script: itn.HereDoc(`
 				load('json', 'dumps')
 				assert.eq(dumps(1, indent=2), '1')
+			`),
+		},
+		{
+			name: `dumps(def)`,
+			script: itn.HereDoc(`
+				load('json', 'dumps')
+				def f(): pass
+				d = { "a" : "b", "f" : f}
+				dumps(d)
+			`),
+			wantErr: `unmarshaling starlark value: unrecognized starlark type: *starlark.Function`,
+		},
+		{
+			name: `dumps(dict)`,
+			script: itn.HereDoc(`
+				load('json', 'dumps')
+				d = { "a" : "b", "c" : "d"}
+				s = '''{"a":"b","c":"d"}'''
+				assert.eq(dumps(d), s)
+			`),
+		},
+		{
+			name: `dumps(dict, indent=0)`,
+			script: itn.HereDoc(`
+				load('json', 'dumps')
+				d = { "a" : "b", "c" : "d"}
+				s = '''{"a":"b","c":"d"}'''
+				assert.eq(dumps(d, indent=0), s)
+			`),
+		},
+		{
+			name: `dumps(dict, indent=-2)`,
+			script: itn.HereDoc(`
+				load('json', 'dumps')
+				d = { "a" : "b", "c" : "d"}
+				s = '''{"a":"b","c":"d"}'''
+				assert.eq(dumps(d, indent=-2), s)
 			`),
 		},
 		{

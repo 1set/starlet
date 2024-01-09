@@ -3,8 +3,8 @@ package hashlib_test
 import (
 	"testing"
 
+	itn "github.com/1set/starlet/internal"
 	"github.com/1set/starlet/lib/hashlib"
-	itn "github.com/1set/starlet/lib/internal"
 )
 
 func TestLoadModule_Hash(t *testing.T) {

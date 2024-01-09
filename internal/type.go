@@ -6,8 +6,6 @@ import (
 	"go.starlark.net/starlark"
 )
 
-var emptyStr string
-
 // FloatOrInt is an Unpacker that converts a Starlark int or float to Go's float64.
 type FloatOrInt float64
 

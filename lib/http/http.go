@@ -15,7 +15,8 @@ import (
 	"strings"
 	"time"
 
-	itn "github.com/1set/starlet/lib/internal"
+	"github.com/1set/starlet/dataconv"
+	itn "github.com/1set/starlet/internal"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
@@ -274,7 +275,7 @@ func setHeaders(req *http.Request, headers *starlark.Dict) error {
 }
 
 func setBody(req *http.Request, body starlark.String, formData *starlark.Dict, formEncoding starlark.String, jsondata starlark.Value) error {
-	if !itn.IsEmptyString(body) {
+	if !dataconv.IsEmptyString(body) {
 		uq, err := strconv.Unquote(body.String())
 		if err != nil {
 			return err
@@ -289,7 +290,7 @@ func setBody(req *http.Request, body starlark.String, formData *starlark.Dict, f
 
 	if jsondata != nil && jsondata.String() != "" {
 		req.Header.Set("Content-Type", "application/json")
-		data, err := itn.MarshalStarlarkJSON(jsondata, 0)
+		data, err := dataconv.MarshalStarlarkJSON(jsondata, 0)
 		if err != nil {
 			return err
 		}
@@ -420,7 +421,7 @@ func (r *Response) JSON(thread *starlark.Thread, _ *starlark.Builtin, args starl
 
 	// reset reader to allow multiple calls
 	r.Body = ioutil.NopCloser(bytes.NewReader(body))
-	return itn.Marshal(data)
+	return dataconv.Marshal(data)
 }
 
 func typedConvert(data interface{}) interface{} {
