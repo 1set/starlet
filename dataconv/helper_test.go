@@ -110,6 +110,13 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 		Bar:   42,
 		Later: stime,
 	}
+	ste := struct {
+		Foo string   `json:"foo"`
+		Car chan int `json:"car"`
+	}{
+		Foo: "Goodbye!",
+		Car: make(chan int, 10),
+	}
 
 	tests := []struct {
 		name    string
@@ -227,6 +234,11 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 			name: "go struct more",
 			data: convert.NewStruct(st),
 			want: `{"foo":"Hello, World!","bar":42,"later":"2023-07-15T09:30:00+08:00"}`,
+		},
+		{
+			name:    "go struct chan",
+			data:    convert.NewStruct(ste),
+			wantErr: true,
 		},
 		{
 			name: "go interface",
