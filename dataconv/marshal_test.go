@@ -27,6 +27,11 @@ func TestMarshal(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	expectedFloatDict := starlark.NewDict(1)
+	if err := expectedFloatDict.SetKey(starlark.Float(10), starlark.MakeInt(32)); err != nil {
+		t.Fatal(err)
+	}
+
 	ct, _ := (&customType{42}).MarshalStarlark()
 	expectedStrDictCustomType := starlark.NewDict(2)
 	if err := expectedStrDictCustomType.SetKey(starlark.String("foo"), starlark.MakeInt(42)); err != nil {
@@ -86,12 +91,13 @@ func TestMarshal(t *testing.T) {
 		{map[complex64]complex64{1 + 2i: 3 + 4i}, starlark.None, "unrecognized type: map[complex64]complex64{(1+2i):(3+4i)}"},
 		{map[interface{}]interface{}{complex(1, 2): 34}, starlark.None, "unrecognized type: (1+2i)"},
 		{map[interface{}]interface{}{12: complex(3, 4)}, starlark.None, "unrecognized type: (3+4i)"},
+		{map[interface{}]interface{}{float32(10): 32, float64(10): 32}, expectedFloatDict, ""},
 	}
 
 	for i, c := range cases {
 		got, err := Marshal(c.in)
 		if !(err == nil && c.err == "" || err != nil && err.Error() == c.err || err != nil && strings.HasPrefix(err.Error(), c.err)) {
-			t.Errorf("case %d. error mismatch. expected: %q, got: %q (%T -> %T)", i, c.err, err, c.in, c.want)
+			t.Errorf("case %d. error mismatch. expected: %v, got: %v (%T -> %T)", i, c.err, err, c.in, c.want)
 			continue
 		}
 		if err != nil {
