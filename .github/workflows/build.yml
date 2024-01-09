@@ -10,6 +10,8 @@ defaults:
   run:
     shell: bash
 
+permissions: read-all
+
 jobs:
   build:
     name: Test with ${{ matrix.go-version }} on ${{ matrix.vm-os }}
@@ -31,6 +33,8 @@ jobs:
           1.20.12,
           1.21.5,
         ]
+    permissions:
+      contents: read
     # Steps to execute
     steps:
       - uses: actions/checkout@v3
