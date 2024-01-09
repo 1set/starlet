@@ -58,6 +58,16 @@ func TestLoadModule_JSON(t *testing.T) {
 			`),
 		},
 		{
+			name: `dumps(def)`,
+			script: itn.HereDoc(`
+				load('json', 'dumps')
+				def f(): pass
+				d = { "a" : "b", "f" : f}
+				dumps(d)
+			`),
+			wantErr: `unmarshaling starlark value: unrecognized starlark type: *starlark.Function`,
+		},
+		{
 			name: `dumps(dict)`,
 			script: itn.HereDoc(`
 				load('json', 'dumps')
