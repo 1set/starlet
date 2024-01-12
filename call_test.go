@@ -53,6 +53,11 @@ func TestMachine_Call_Preconditions(t *testing.T) {
 }
 
 func TestMachine_Call_Functions(t *testing.T) {
+	type mockData struct {
+		Apple   string `json:"app"`
+		Banana  int64  `json:"bana"`
+		Coconut bool   `json:"coco"`
+	}
 	tests := []struct {
 		name    string
 		code    string
@@ -165,12 +170,24 @@ def work(x, y):
 			args:    []interface{}{1, 2},
 			wantErr: `starlark: call: panic: as expected`,
 		},
+		{
+			name: "custom tag for arg",
+			args: []interface{}{
+				mockData{Apple: "red", Banana: 2, Coconut: true},
+			},
+			code: `
+def work(x):
+	return "apple is " + x.app + ", banana is " + str(x.bana) + ", coconut is " + str(x.coco)
+`,
+			want: "apple is red, banana is 2, coconut is True",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// prepare to load
 			m := starlet.NewDefault()
+			m.SetCustomTag("json")
 			_, err := m.RunScript([]byte(tt.code), map[string]interface{}{
 				"panic": starlark.NewBuiltin("panic", func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 					panic(errors.New("as expected"))

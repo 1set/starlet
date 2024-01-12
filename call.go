@@ -36,7 +36,7 @@ func (m *Machine) Call(name string, args ...interface{}) (out interface{}, err e
 	// convert arguments
 	sl := starlark.Tuple{}
 	for _, arg := range args {
-		sv, err := convert.ToValue(arg)
+		sv, err := convert.ToValueWithTag(arg, m.customTag)
 		if err != nil {
 			return nil, errorStarlightConvert("args", err)
 		}

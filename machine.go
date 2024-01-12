@@ -41,6 +41,7 @@ type Machine struct {
 	allowRecursion      bool
 	enableInConv        bool
 	enableOutConv       bool
+	customTag           string
 	// source code
 	scriptName    string
 	scriptContent []byte
@@ -244,6 +245,14 @@ func (m *Machine) SetOutputConversionEnabled(enabled bool) {
 	defer m.mu.Unlock()
 
 	m.enableOutConv = enabled
+}
+
+// SetCustomTag sets the custom annotation tag of Go struct fields for Starlark.
+func (m *Machine) SetCustomTag(tag string) {
+	m.mu.Lock() // Locking to avoid concurrent access
+	defer m.mu.Unlock()
+
+	m.customTag = tag
 }
 
 // Export returns the current variables of the Starlark runtime environment.

@@ -263,7 +263,7 @@ func (m *Machine) Reset() {
 // convertInput converts a StringAnyMap to a starlark.StringDict, usually for output variable.
 func (m *Machine) convertInput(a StringAnyMap) (starlark.StringDict, error) {
 	if m.enableInConv {
-		return convert.MakeStringDict(a)
+		return convert.MakeStringDictWithTag(a, m.customTag)
 	}
 	return castStringAnyMapToStringDict(a)
 }

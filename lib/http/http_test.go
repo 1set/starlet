@@ -201,6 +201,18 @@ func TestLoadModule_HTTP(t *testing.T) {
 			`),
 		},
 		{
+			name: `POST JSON Dict Number`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				res = post(test_server_url, json_body={ 123: 456, 789: 0.123})
+				assert.eq(res.status_code, 200)
+				b = res.body()
+				assert.eq(b.startswith("POST "), True)
+				assert.eq('/json' in b, True)
+				assert.eq('{"123":456,"789":0.123}' in b, True)
+			`),
+		},
+		{
 			name: `POST JSON Struct`,
 			script: itn.HereDoc(`
 				load('http', 'post')
