@@ -189,17 +189,24 @@ func Test_DefaultMachine_Run_LoadNonExist(t *testing.T) {
 }
 
 func Test_Machine_Run_Globals(t *testing.T) {
+	type dataMore struct {
+		More  string `json:"one"`
+		Extra int    `json:"two"`
+	}
 	sm := starlark.NewDict(1)
 	_ = sm.SetKey(starlark.String("bee"), starlark.MakeInt(2))
 	m := starlet.NewWithNames(map[string]interface{}{
 		"a": 2,
 		"c": sm,
+		"d": &dataMore{More: "more", Extra: 5},
 	}, nil, nil)
 	// set code
 	code := `
 c = 100
 b = a * 10 + c
+e = d.one + str(d.two)
 `
+	m.SetCustomTag("json")
 	m.SetScript("test.star", []byte(code), nil)
 	// run
 	out, err := m.Run()
@@ -209,7 +216,9 @@ b = a * 10 + c
 	if out == nil {
 		t.Errorf("unexpected nil output")
 	} else if out["b"].(int64) != int64(120) {
-		t.Errorf("unexpected output: %v", out)
+		t.Errorf("unexpected output b: %v", out)
+	} else if out["e"].(string) != "more5" {
+		t.Errorf("unexpected output e: %v", out)
 	}
 }
 
