@@ -13,7 +13,7 @@ require (
 )
 
 require (
-	github.com/1set/starlight v0.0.7 // indirect
+	github.com/1set/starlight v0.0.8 // indirect
 	github.com/aymanbagabas/go-osc52 v1.0.3 // indirect
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e // indirect
 	github.com/gonutz/w32 v1.0.0 // indirect
