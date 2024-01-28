@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 )
 
@@ -66,4 +67,18 @@ func MarshalStarlarkJSON(data starlark.Value, indent int) (string, error) {
 		return emptyStr, err
 	}
 	return strings.TrimSpace(bf.String()), nil
+}
+
+// ConvertStruct converts a struct to a Starlark wrapper.
+func ConvertStruct(v interface{}, tagName string) starlark.Value {
+	// if not a pointer, convert to pointer
+	if reflect.TypeOf(v).Kind() != reflect.Ptr {
+		panic("v must be a pointer")
+	}
+	return convert.NewStructWithTag(v, tagName)
+}
+
+// ConvertJSONStruct converts a struct to a Starlark wrapper with JSON tag.
+func ConvertJSONStruct(v interface{}) starlark.Value {
+	return ConvertStruct(v, "json")
 }
