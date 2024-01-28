@@ -231,6 +231,15 @@ func (m *Machine) SetScript(name string, content []byte, fileSys fs.FS) {
 	m.scriptFS = fileSys
 }
 
+// SetScriptContent sets the script content of the Starlark runtime environment.
+// It differs from SetScript in that it does not change the script name and filesystem.
+func (m *Machine) SetScriptContent(content []byte) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.scriptContent = content
+}
+
 // SetInputConversionEnabled controls the conversion of Starlark variables from input into Starlight wrappers.
 func (m *Machine) SetInputConversionEnabled(enabled bool) {
 	m.mu.Lock() // Locking to avoid concurrent access
