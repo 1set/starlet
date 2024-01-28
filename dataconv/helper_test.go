@@ -284,3 +284,57 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertStruct(t *testing.T) {
+	type record1 struct {
+		Name  string `sl:"name"`
+		Index uint   `sl:"idx"`
+	}
+	v1 := ConvertStruct(&record1{Name: "foo", Index: 42}, "sl")
+	j1, err := MarshalStarlarkJSON(v1, 0)
+	if err != nil {
+		t.Errorf("MarshalStarlarkJSON() error = %v", err)
+		return
+	}
+	t.Logf(j1)
+}
+
+func TestConvertStructPanic(t *testing.T) {
+	type record1 struct {
+		Name  string `sl:"name"`
+		Index uint   `sl:"idx"`
+	}
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("ConvertStruct() should panic")
+		}
+	}()
+	ConvertStruct(record1{Name: "foo", Index: 42}, "sl")
+}
+
+func TestConvertJSONStruct(t *testing.T) {
+	type record2 struct {
+		Name  string `json:"name"`
+		Index uint   `json:"idx"`
+	}
+	v2 := ConvertJSONStruct(&record2{Name: "bar", Index: 64})
+	j2, err := MarshalStarlarkJSON(v2, 0)
+	if err != nil {
+		t.Errorf("MarshalStarlarkJSON() error = %v", err)
+		return
+	}
+	t.Logf(j2)
+}
+
+func TestConvertJSONStructPanic(t *testing.T) {
+	type record2 struct {
+		Name  string `json:"name"`
+		Index uint   `json:"idx"`
+	}
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("ConvertJSONStruct() should panic")
+		}
+	}()
+	ConvertJSONStruct(record2{Name: "bar", Index: 64})
+}
