@@ -161,15 +161,33 @@ func Test_DefaultMachine_Run_LoadFunc(t *testing.T) {
 	code := `load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]`
 	m.SetScript("test.star", []byte(code), os.DirFS("testdata"))
 	// run
-	out, err := m.Run()
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+	{
+		out, err := m.Run()
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		// check result
+		if out == nil {
+			t.Errorf("unexpected nil output")
+		} else if out["val"] != int64(55) {
+			t.Errorf("unexpected output: %v", out)
+		}
 	}
-	// check result
-	if out == nil {
-		t.Errorf("unexpected nil output")
-	} else if out["val"] != int64(55) {
-		t.Errorf("unexpected output: %v", out)
+	// update code only
+	code = `load("fibonacci.star", "fibonacci"); val = fibonacci(20)[-1]`
+	m.SetScriptContent([]byte(code))
+	// run
+	{
+		out, err := m.Run()
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		// check result
+		if out == nil {
+			t.Errorf("unexpected nil output")
+		} else if out["val"] != int64(6765) {
+			t.Errorf("unexpected output: %v", out)
+		}
 	}
 }
 

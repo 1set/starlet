@@ -284,3 +284,91 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertStruct(t *testing.T) {
+	type record1 struct {
+		Name  string `sl:"name"`
+		Index uint   `sl:"idx"`
+	}
+	v1 := ConvertStruct(&record1{Name: "foo", Index: 42}, "sl")
+	j1, err := MarshalStarlarkJSON(v1, 0)
+	if err != nil {
+		t.Errorf("MarshalStarlarkJSON() error = %v", err)
+		return
+	}
+	t.Logf(j1)
+}
+
+func TestConvertStructPanic(t *testing.T) {
+	type record1 struct {
+		Name  string `sl:"name"`
+		Index uint   `sl:"idx"`
+	}
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("ConvertStruct() should panic")
+		}
+	}()
+	ConvertStruct(record1{Name: "foo", Index: 42}, "sl")
+}
+
+func TestConvertJSONStruct(t *testing.T) {
+	type record2 struct {
+		Name  string `json:"name"`
+		Index uint   `json:"idx"`
+	}
+	v2 := ConvertJSONStruct(&record2{Name: "bar", Index: 64})
+	j2, err := MarshalStarlarkJSON(v2, 0)
+	if err != nil {
+		t.Errorf("MarshalStarlarkJSON() error = %v", err)
+		return
+	}
+	t.Logf(j2)
+}
+
+func TestConvertJSONStructPanic(t *testing.T) {
+	type record2 struct {
+		Name  string `json:"name"`
+		Index uint   `json:"idx"`
+	}
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("ConvertJSONStruct() should panic")
+		}
+	}()
+	ConvertJSONStruct(record2{Name: "bar", Index: 64})
+}
+
+func TestWrapModuleData(t *testing.T) {
+	name := "test_module"
+	data := starlark.StringDict{
+		"foo": starlark.String("bar"),
+		"baz": starlark.MakeInt(42),
+	}
+
+	wrapFunc := WrapModuleData(name, data)
+	result, err := wrapFunc()
+	if err != nil {
+		t.Errorf("WrapModuleData() returned an error: %v", err)
+	}
+
+	module, ok := result[name].(*starlarkstruct.Module)
+	if !ok {
+		t.Errorf("WrapModuleData() did not return a module")
+	}
+	if module.Name != name {
+		t.Errorf("WrapModuleData() returned a module with incorrect name. Expected: %s, Got: %s", name, module.Name)
+	}
+	if len(module.Members) != len(data) {
+		t.Errorf("WrapModuleData() returned a module with incorrect number of members. Expected: %d, Got: %d", len(data), len(module.Members))
+	}
+	for key, value := range data {
+		member, found := module.Members[key]
+		if !found {
+			t.Errorf("WrapModuleData() returned a module without the expected member: %s", key)
+		}
+		if member != value {
+			t.Errorf("WrapModuleData() returned a module with incorrect member value. Key: %s, Expected: %v, Got: %v", key, value, member)
+		}
+	}
+}
