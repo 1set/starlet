@@ -9,6 +9,7 @@ import (
 
 	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 )
 
 var (
@@ -81,4 +82,17 @@ func ConvertStruct(v interface{}, tagName string) starlark.Value {
 // ConvertJSONStruct converts a struct to a Starlark wrapper with JSON tag.
 func ConvertJSONStruct(v interface{}) starlark.Value {
 	return ConvertStruct(v, "json")
+}
+
+// WrapDataModule wraps a starlark.StringDict into a Starlark module loader, which can be used to load the module into a Starlark interpreter.
+// i.e. access via `load("name", "data_key")`.
+func WrapDataModule(name string, data starlark.StringDict) func() (starlark.StringDict, error) {
+	return func() (starlark.StringDict, error) {
+		return starlark.StringDict{
+			name: &starlarkstruct.Module{
+				Name:    name,
+				Members: data,
+			},
+		}, nil
+	}
 }
