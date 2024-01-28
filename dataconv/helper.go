@@ -84,9 +84,8 @@ func ConvertJSONStruct(v interface{}) starlark.Value {
 	return ConvertStruct(v, "json")
 }
 
-// WrapDataModule wraps a starlark.StringDict into a Starlark module loader, which can be used to load the module into a Starlark interpreter.
-// i.e. access via `load("name", "data_key")`.
-func WrapDataModule(name string, data starlark.StringDict) func() (starlark.StringDict, error) {
+// WrapModuleData wraps data from the given starlark.StringDict into a Starlark module loader, which can be used to load the module into a Starlark interpreter and accessed via `load("name", "data_key")`.
+func WrapModuleData(name string, data starlark.StringDict) func() (starlark.StringDict, error) {
 	return func() (starlark.StringDict, error) {
 		return starlark.StringDict{
 			name: &starlarkstruct.Module{
