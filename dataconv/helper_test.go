@@ -348,7 +348,6 @@ func TestWrapModuleData(t *testing.T) {
 
 	wrapFunc := WrapModuleData(name, data)
 	result, err := wrapFunc()
-
 	if err != nil {
 		t.Errorf("WrapModuleData() returned an error: %v", err)
 	}
@@ -357,21 +356,17 @@ func TestWrapModuleData(t *testing.T) {
 	if !ok {
 		t.Errorf("WrapModuleData() did not return a module")
 	}
-
 	if module.Name != name {
 		t.Errorf("WrapModuleData() returned a module with incorrect name. Expected: %s, Got: %s", name, module.Name)
 	}
-
 	if len(module.Members) != len(data) {
 		t.Errorf("WrapModuleData() returned a module with incorrect number of members. Expected: %d, Got: %d", len(data), len(module.Members))
 	}
-
 	for key, value := range data {
 		member, found := module.Members[key]
 		if !found {
 			t.Errorf("WrapModuleData() returned a module without the expected member: %s", key)
 		}
-
 		if member != value {
 			t.Errorf("WrapModuleData() returned a module with incorrect member value. Key: %s, Expected: %v, Got: %v", key, value, member)
 		}
