@@ -146,6 +146,7 @@ func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap) (out Str
 		ctx = context.TODO()
 	}
 	m.thread.SetLocal("context", ctx)
+	m.thread.SetLocal("predeclared", m.predeclared)
 
 	// wait for the routine to finish, or cancel it when context cancelled
 	var wg sync.WaitGroup

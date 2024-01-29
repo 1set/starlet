@@ -34,6 +34,7 @@ func LoadModule() (starlark.StringDict, error) {
 		"sleep":     starlark.NewBuiltin("sleep", sleep),
 		"exit":      starlark.NewBuiltin("exit", exit),
 		"quit":      starlark.NewBuiltin("quit", exit), // alias for exit
+		"dir_env":   starlark.NewBuiltin("dir_env", dirEnv),
 	}, nil
 }
 
@@ -200,6 +201,26 @@ func convertStarlarkNumber(x starlark.Int, base int, fmtPre string) (starlark.Va
 		s = signPre + fmtPre + n.Text(base)
 	}
 	return starlark.String(s), nil
+}
+
+// dirEnv lists the environment variables.
+func dirEnv(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// get the environment variables
+	env := thread.Local("predeclared")
+	if env == nil {
+		env = starlark.StringDict{}
+	}
+	envMap, ok := env.(starlark.StringDict)
+	if !ok {
+		return none, fmt.Errorf("invalid environment variables: %#v", env)
+	}
+
+	// compile the result
+	var names []starlark.Value
+	for k := range envMap {
+		names = append(names, starlark.String(k))
+	}
+	return starlark.NewList(names), nil
 }
 
 // sleep sleeps for the given number of seconds.
