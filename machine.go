@@ -264,6 +264,24 @@ func (m *Machine) SetCustomTag(tag string) {
 	m.customTag = tag
 }
 
+// GetStarlarkThread returns the Starlark thread of the Starlark runtime environment.
+// It's for advanced usage only, don't use it unless you know what you are doing.
+func (m *Machine) GetStarlarkThread() *starlark.Thread {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return m.thread
+}
+
+// GetStarlarkPredeclared returns the Starlark predeclared names of the Starlark runtime environment.
+// It's for advanced usage only, don't use it unless you know what you are doing.
+func (m *Machine) GetStarlarkPredeclared() starlark.StringDict {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return m.predeclared
+}
+
 // Export returns the current variables of the Starlark runtime environment.
 func (m *Machine) Export() StringAnyMap {
 	m.mu.RLock()
