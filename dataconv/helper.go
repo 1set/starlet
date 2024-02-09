@@ -129,7 +129,6 @@ func TypeConvert(data interface{}) interface{} {
 
 	case float64:
 		// Check for exact int match
-		// if float64(int64(v)) == v {
 		if math.Floor(v) == v {
 			return int(v)
 		}

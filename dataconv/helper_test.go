@@ -403,9 +403,24 @@ func TestTypeConvert(t *testing.T) {
 			want:  10,
 		},
 		{
+			name:  "test float to int 2",
+			input: float64(-20),
+			want:  -20,
+		},
+		{
 			name:  "test float remains same",
 			input: 10.5,
 			want:  10.5,
+		},
+		{
+			name:  "test float remains same 2",
+			input: -12.3,
+			want:  -12.3,
+		},
+		{
+			name:  "test float remains same 3",
+			input: -12.8,
+			want:  -12.8,
 		},
 		{
 			name:  "json number to int",
