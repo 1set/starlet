@@ -2,6 +2,7 @@ package dataconv
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -370,5 +371,61 @@ func TestWrapModuleData(t *testing.T) {
 		if member != value {
 			t.Errorf("WrapModuleData() returned a module with incorrect member value. Key: %s, Expected: %v, Got: %v", key, value, member)
 		}
+	}
+}
+
+func TestTypingConvert(t *testing.T) {
+	timestr := "2021-09-07T21:30:43Z"
+	timestamp, _ := time.Parse(time.RFC3339, timestr)
+	tests := []struct {
+		name  string
+		input interface{}
+		want  interface{}
+	}{
+		{
+			name:  "test float to int",
+			input: float64(10),
+			want:  10,
+		},
+		{
+			name:  "test float remains same",
+			input: 10.5,
+			want:  10.5,
+		},
+		{
+			name:  "valid time string to time.Time",
+			input: timestr,
+			want:  timestamp,
+		},
+		{
+			name:  "normal string",
+			input: "test string",
+			want:  "test string",
+		},
+		{
+			name:  "array of different values",
+			input: []interface{}{float64(20), timestr, "test string"},
+			want:  []interface{}{20, timestamp, "test string"},
+		},
+		{
+			name:  "map of different values",
+			input: map[string]interface{}{"age": float64(30), "dob": timestr, "name": "John Doe"},
+			want:  map[string]interface{}{"age": 30, "dob": timestamp, "name": "John Doe"},
+		},
+		{
+			name:  "boolean value",
+			input: true,
+			want:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := TypingConvert(tt.input)
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("TypingConvert() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"math"
 	"reflect"
 	"strings"
 	"time"
@@ -133,6 +132,7 @@ func TypingConvert(data interface{}) interface{} {
 	}
 }
 
+/*
 func TypeConvert(data interface{}) interface{} {
 	switch v := data.(type) {
 	case string:
@@ -190,3 +190,4 @@ func TypeConvert(data interface{}) interface{} {
 		return v
 	}
 }
+*/
