@@ -376,7 +376,17 @@ func TestWrapModuleData(t *testing.T) {
 
 func TestTypingConvert(t *testing.T) {
 	timestr := "2021-09-07T21:30:43Z"
-	timestamp, _ := time.Parse(time.RFC3339, timestr)
+	timestr2 := "2024-02-09T23:39:52.377667+08:00"
+	timestamp, err := time.Parse(time.RFC3339, timestr)
+	if err != nil {
+		t.Fatalf("time.Parse() error = %v", err)
+	}
+	t.Logf("timestamp: %s -> %v", timestr, timestamp)
+	timestamp2, err := time.Parse(time.RFC3339, timestr2)
+	if err != nil {
+		t.Fatalf("time.Parse() error = %v", err)
+	}
+	t.Logf("timestamp2: %s -> %v", timestr2, timestamp2)
 	tests := []struct {
 		name  string
 		input interface{}
@@ -401,6 +411,11 @@ func TestTypingConvert(t *testing.T) {
 			name:  "valid time string to time.Time",
 			input: timestr,
 			want:  timestamp,
+		},
+		{
+			name:  "another valid time",
+			input: timestr2,
+			want:  timestamp2,
 		},
 		{
 			name:  "normal string",
