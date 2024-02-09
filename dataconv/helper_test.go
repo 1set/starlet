@@ -435,17 +435,32 @@ func TestTypeConvert(t *testing.T) {
 		{
 			name:  "json number to float",
 			input: "123.456",
-			want:  123.456,
+			want:  "123.456",
 		},
 		{
 			name:  "json number to float 2",
 			input: "128.0",
-			want:  128.,
+			want:  "128.0",
 		},
 		{
 			name:  "json number to float 3",
 			input: "150e-1",
-			want:  15.,
+			want:  "150e-1",
+		},
+		{
+			name:  "json number large 1",
+			input: "1234567890123456789",
+			want:  int64(1234567890123456789),
+		},
+		{
+			name:  "json number large 2",
+			input: "12345678901234567890",
+			want:  "12345678901234567890",
+		},
+		{
+			name:  "json number large 3",
+			input: "123456789012345678901234567890",
+			want:  "123456789012345678901234567890",
 		},
 		{
 			name:  "valid time string to time.Time",

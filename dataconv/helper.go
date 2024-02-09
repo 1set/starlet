@@ -111,16 +111,7 @@ func TypeConvert(data interface{}) interface{} {
 		// Attempt to parse as JSON number (int or float)
 		var num json.Number
 		if err := json.Unmarshal([]byte(v), &num); err == nil {
-			nf, ef := num.Float64()
-			ni, ei := num.Int64()
-			if ef == nil && ei == nil {
-				if int64(nf) == ni {
-					return ni
-				}
-				return nf
-			} else if ef == nil {
-				return nf
-			} else if ei == nil {
+			if ni, ei := num.Int64(); ei == nil {
 				return ni
 			}
 		}
