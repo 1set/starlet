@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 	"reflect"
 	"strings"
 	"time"
@@ -128,6 +129,64 @@ func TypingConvert(data interface{}) interface{} {
 		return newSlice
 	default:
 		// Otherwise, just return the value.
+		return v
+	}
+}
+
+func TypeConvert(data interface{}) interface{} {
+	switch v := data.(type) {
+	case string:
+		// Attempt parsing in different formats
+		for _, format := range []string{time.RFC3339, time.RFC3339Nano, time.RFC822, time.RFC1123} {
+			if t, err := time.Parse(format, v); err == nil {
+				return t
+			}
+		}
+		// Attempt to parse as JSON number (int or float)
+		var num json.Number
+		if err := json.Unmarshal([]byte(v), &num); err == nil {
+			nf, ef := num.Float64()
+			ni, ei := num.Int64()
+			if ef == nil && ei == nil {
+				if int64(nf) == ni {
+					return ni
+				}
+				return nf
+			} else if ef == nil {
+				return nf
+			} else if ei == nil {
+				return ni
+			}
+		}
+		// If not a time or number, return the original string
+		return v
+
+	case float64:
+		// Check for exact int match
+		// if float64(int64(v)) == v {
+		if math.Floor(v) == v {
+			return int64(v)
+		}
+		return v
+
+	case map[string]interface{}:
+		// If the value is a map, recursively call this function on all map values.
+		newMap := make(map[string]interface{}, len(v))
+		for key, value := range v {
+			newMap[key] = TypeConvert(value)
+		}
+		return newMap
+
+	case []interface{}:
+		// If the value is a slice, recursively call this function on all slice values.
+		newSlice := make([]interface{}, len(v))
+		for i, value := range v {
+			newSlice[i] = TypeConvert(value)
+		}
+		return newSlice
+
+	default:
+		// Return original value for other types
 		return v
 	}
 }
