@@ -375,18 +375,28 @@ func TestWrapModuleData(t *testing.T) {
 }
 
 func TestTypeConvert(t *testing.T) {
-	timestr := "2021-09-07T21:30:43Z"
+	timestr0 := "2021-09-07T21:30:00Z"
+	timestr1 := "2021-09-07T21:30:43Z"
 	timestr2 := "2024-02-09T23:39:52.377667+08:00"
-	timestamp, err := time.Parse(time.RFC3339, timestr)
+
+	timestamp0, err := time.Parse(time.RFC3339, timestr0)
 	if err != nil {
 		t.Fatalf("time.Parse() error = %v", err)
 	}
-	t.Logf("timestamp: %s -> %v", timestr, timestamp)
+	t.Logf("timestamp0: %s -> %v", timestr0, timestamp0)
+
+	timestamp1, err := time.Parse(time.RFC3339, timestr1)
+	if err != nil {
+		t.Fatalf("time.Parse() error = %v", err)
+	}
+	t.Logf("timestamp1: %s -> %v", timestr1, timestamp1)
+
 	timestamp2, err := time.Parse(time.RFC3339, timestr2)
 	if err != nil {
 		t.Fatalf("time.Parse() error = %v", err)
 	}
 	t.Logf("timestamp2: %s -> %v", timestr2, timestamp2)
+
 	tests := []struct {
 		name  string
 		input interface{}
@@ -464,13 +474,23 @@ func TestTypeConvert(t *testing.T) {
 		},
 		{
 			name:  "valid time string to time.Time",
-			input: timestr,
-			want:  timestamp,
+			input: timestr1,
+			want:  timestamp1,
 		},
 		{
 			name:  "another valid time",
 			input: timestr2,
 			want:  timestamp2,
+		},
+		{
+			name:  "various time format 1",
+			input: "07 Sep 21 21:30 UTC",
+			want:  timestamp0,
+		},
+		{
+			name:  "various time format 2",
+			input: "Tue, 07 Sep 2021 21:30:43 UTC",
+			want:  timestamp1,
 		},
 		{
 			name:  "normal string",
@@ -479,13 +499,13 @@ func TestTypeConvert(t *testing.T) {
 		},
 		{
 			name:  "array of different values",
-			input: []interface{}{float64(20), timestr, "test string"},
-			want:  []interface{}{20, timestamp, "test string"},
+			input: []interface{}{float64(20), timestr1, "test string"},
+			want:  []interface{}{20, timestamp1, "test string"},
 		},
 		{
 			name:  "map of different values",
-			input: map[string]interface{}{"age": float64(30), "dob": timestr, "name": "John Doe"},
-			want:  map[string]interface{}{"age": 30, "dob": timestamp, "name": "John Doe"},
+			input: map[string]interface{}{"age": float64(30), "dob": timestr1, "name": "John Doe"},
+			want:  map[string]interface{}{"age": 30, "dob": timestamp1, "name": "John Doe"},
 		},
 		{
 			name: "nested map",
