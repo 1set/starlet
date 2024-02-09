@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 	"reflect"
 	"strings"
 	"time"
@@ -97,42 +98,7 @@ func WrapModuleData(name string, data starlark.StringDict) func() (starlark.Stri
 	}
 }
 
-// TypingConvert converts all values to their appropriate types.
-func TypingConvert(data interface{}) interface{} {
-	switch v := data.(type) {
-	case string:
-		// If the string is a valid time, return a time.Time.
-		if t, err := time.Parse(time.RFC3339, v); err == nil {
-			return t
-		}
-		return v
-	case float64:
-		// If the float is actually an int, return an int.
-		if v == float64(int(v)) {
-			return int(v)
-		}
-		return v
-	case map[string]interface{}:
-		// If the value is a map, recursively call this function on all map values.
-		newMap := make(map[string]interface{})
-		for key, value := range v {
-			newMap[key] = TypingConvert(value)
-		}
-		return newMap
-	case []interface{}:
-		// If the value is a slice, recursively call this function on all slice values.
-		newSlice := make([]interface{}, len(v))
-		for i, value := range v {
-			newSlice[i] = TypingConvert(value)
-		}
-		return newSlice
-	default:
-		// Otherwise, just return the value.
-		return v
-	}
-}
-
-/*
+// TypeConvert converts JSON decoded values to their appropriate types.
 func TypeConvert(data interface{}) interface{} {
 	switch v := data.(type) {
 	case string:
@@ -165,7 +131,7 @@ func TypeConvert(data interface{}) interface{} {
 		// Check for exact int match
 		// if float64(int64(v)) == v {
 		if math.Floor(v) == v {
-			return int64(v)
+			return int(v)
 		}
 		return v
 
@@ -190,4 +156,3 @@ func TypeConvert(data interface{}) interface{} {
 		return v
 	}
 }
-*/

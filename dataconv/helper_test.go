@@ -374,7 +374,7 @@ func TestWrapModuleData(t *testing.T) {
 	}
 }
 
-func TestTypingConvert(t *testing.T) {
+func TestTypeConvert(t *testing.T) {
 	timestr := "2021-09-07T21:30:43Z"
 	timestr2 := "2024-02-09T23:39:52.377667+08:00"
 	timestamp, err := time.Parse(time.RFC3339, timestr)
@@ -406,6 +406,31 @@ func TestTypingConvert(t *testing.T) {
 			name:  "test float remains same",
 			input: 10.5,
 			want:  10.5,
+		},
+		{
+			name:  "json number to int",
+			input: "123",
+			want:  int64(123),
+		},
+		{
+			name:  "json number to int 2",
+			input: "128",
+			want:  int64(128),
+		},
+		{
+			name:  "json number to float",
+			input: "123.456",
+			want:  123.456,
+		},
+		{
+			name:  "json number to float 2",
+			input: "128.0",
+			want:  128.,
+		},
+		{
+			name:  "json number to float 3",
+			input: "150e-1",
+			want:  15.,
 		},
 		{
 			name:  "valid time string to time.Time",
@@ -471,10 +496,10 @@ func TestTypingConvert(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := TypingConvert(tt.input)
+			got := TypeConvert(tt.input)
 
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Fatalf("TypingConvert() = %v, want %v", got, tt.want)
+				t.Fatalf("TypeConvert() = %v, want %v", got, tt.want)
 			}
 		})
 	}

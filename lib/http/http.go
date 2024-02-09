@@ -417,7 +417,7 @@ func (r *Response) JSON(thread *starlark.Thread, _ *starlark.Builtin, args starl
 	r.Body.Close()
 
 	// convert all values to their appropriate types
-	data = dataconv.TypingConvert(data)
+	data = dataconv.TypeConvert(data)
 
 	// reset reader to allow multiple calls
 	r.Body = ioutil.NopCloser(bytes.NewReader(body))
