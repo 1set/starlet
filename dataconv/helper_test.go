@@ -383,6 +383,11 @@ func TestTypingConvert(t *testing.T) {
 		want  interface{}
 	}{
 		{
+			name:  "nil",
+			input: nil,
+			want:  nil,
+		},
+		{
 			name:  "test float to int",
 			input: float64(10),
 			want:  10,
@@ -411,6 +416,36 @@ func TestTypingConvert(t *testing.T) {
 			name:  "map of different values",
 			input: map[string]interface{}{"age": float64(30), "dob": timestr, "name": "John Doe"},
 			want:  map[string]interface{}{"age": 30, "dob": timestamp, "name": "John Doe"},
+		},
+		{
+			name: "nested map",
+			input: map[string]interface{}{
+				"nested": map[string]interface{}{
+					"nestedAge":    30,
+					"nestedHeight": 5.9,
+				},
+			},
+			want: map[string]interface{}{
+				"nested": map[string]interface{}{
+					"nestedAge":    int(30),
+					"nestedHeight": float64(5.9),
+				},
+			},
+		},
+		{
+			name: "nested slice",
+			input: []interface{}{
+				map[string]interface{}{
+					"nestedAge":    30,
+					"nestedHeight": 5.9,
+				},
+			},
+			want: []interface{}{
+				map[string]interface{}{
+					"nestedAge":    int(30),
+					"nestedHeight": float64(5.9),
+				},
+			},
 		},
 		{
 			name:  "boolean value",
