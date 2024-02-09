@@ -2,6 +2,7 @@ package dataconv
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -370,5 +371,186 @@ func TestWrapModuleData(t *testing.T) {
 		if member != value {
 			t.Errorf("WrapModuleData() returned a module with incorrect member value. Key: %s, Expected: %v, Got: %v", key, value, member)
 		}
+	}
+}
+
+func TestTypeConvert(t *testing.T) {
+	timestr0 := "2021-09-07T21:30:00Z"
+	timestr1 := "2021-09-07T21:30:43Z"
+	timestr2 := "2024-02-09T23:39:52.377667+08:00"
+
+	timestamp0, err := time.Parse(time.RFC3339, timestr0)
+	if err != nil {
+		t.Fatalf("time.Parse() error = %v", err)
+	}
+	t.Logf("timestamp0: %s -> %v", timestr0, timestamp0)
+
+	timestamp1, err := time.Parse(time.RFC3339, timestr1)
+	if err != nil {
+		t.Fatalf("time.Parse() error = %v", err)
+	}
+	t.Logf("timestamp1: %s -> %v", timestr1, timestamp1)
+
+	timestamp2, err := time.Parse(time.RFC3339, timestr2)
+	if err != nil {
+		t.Fatalf("time.Parse() error = %v", err)
+	}
+	t.Logf("timestamp2: %s -> %v", timestr2, timestamp2)
+
+	tests := []struct {
+		name  string
+		input interface{}
+		want  interface{}
+	}{
+		{
+			name:  "nil",
+			input: nil,
+			want:  nil,
+		},
+		{
+			name:  "test float to int",
+			input: float64(10),
+			want:  10,
+		},
+		{
+			name:  "test float to int 2",
+			input: float64(-20),
+			want:  -20,
+		},
+		{
+			name:  "test float remains same",
+			input: 10.5,
+			want:  10.5,
+		},
+		{
+			name:  "test float remains same 2",
+			input: -12.3,
+			want:  -12.3,
+		},
+		{
+			name:  "test float remains same 3",
+			input: -12.8,
+			want:  -12.8,
+		},
+		{
+			name:  "json number to int",
+			input: "123",
+			want:  int64(123),
+		},
+		{
+			name:  "json number to int 2",
+			input: "128",
+			want:  int64(128),
+		},
+		{
+			name:  "json number to float",
+			input: "123.456",
+			want:  "123.456",
+		},
+		{
+			name:  "json number to float 2",
+			input: "128.0",
+			want:  "128.0",
+		},
+		{
+			name:  "json number to float 3",
+			input: "150e-1",
+			want:  "150e-1",
+		},
+		{
+			name:  "json number large 1",
+			input: "1234567890123456789",
+			want:  int64(1234567890123456789),
+		},
+		{
+			name:  "json number large 2",
+			input: "12345678901234567890",
+			want:  "12345678901234567890",
+		},
+		{
+			name:  "json number large 3",
+			input: "123456789012345678901234567890",
+			want:  "123456789012345678901234567890",
+		},
+		{
+			name:  "valid time string to time.Time",
+			input: timestr1,
+			want:  timestamp1,
+		},
+		{
+			name:  "another valid time",
+			input: timestr2,
+			want:  timestamp2,
+		},
+		{
+			name:  "various time format 1",
+			input: "07 Sep 21 21:30 UTC",
+			want:  timestamp0,
+		},
+		{
+			name:  "various time format 2",
+			input: "Tue, 07 Sep 2021 21:30:43 UTC",
+			want:  timestamp1,
+		},
+		{
+			name:  "normal string",
+			input: "test string",
+			want:  "test string",
+		},
+		{
+			name:  "array of different values",
+			input: []interface{}{float64(20), timestr1, "test string"},
+			want:  []interface{}{20, timestamp1, "test string"},
+		},
+		{
+			name:  "map of different values",
+			input: map[string]interface{}{"age": float64(30), "dob": timestr1, "name": "John Doe"},
+			want:  map[string]interface{}{"age": 30, "dob": timestamp1, "name": "John Doe"},
+		},
+		{
+			name: "nested map",
+			input: map[string]interface{}{
+				"nested": map[string]interface{}{
+					"nestedAge":    30,
+					"nestedHeight": 5.9,
+				},
+			},
+			want: map[string]interface{}{
+				"nested": map[string]interface{}{
+					"nestedAge":    int(30),
+					"nestedHeight": float64(5.9),
+				},
+			},
+		},
+		{
+			name: "nested slice",
+			input: []interface{}{
+				map[string]interface{}{
+					"nestedAge":    30,
+					"nestedHeight": 5.9,
+				},
+			},
+			want: []interface{}{
+				map[string]interface{}{
+					"nestedAge":    int(30),
+					"nestedHeight": float64(5.9),
+				},
+			},
+		},
+		{
+			name:  "boolean value",
+			input: true,
+			want:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := TypeConvert(tt.input)
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("TypeConvert() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

@@ -463,3 +463,39 @@ func TestMachine_DisableBothConversion(t *testing.T) {
 		}
 	}
 }
+
+func TestMachine_GetStarlarkPredeclared(t *testing.T) {
+	m := starlet.NewDefault()
+	pd := m.GetStarlarkPredeclared()
+	if pd != nil {
+		t.Errorf("expected nil, got %v", pd)
+	}
+	_, err := m.RunScript([]byte(`a = 1 + 2`), nil)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	pd = m.GetStarlarkPredeclared()
+	if pd == nil {
+		t.Errorf("expected not nil, got nil")
+	} else {
+		if _, ok := pd["a"]; !ok {
+			t.Errorf("expected 'a' in predeclared, got none")
+		}
+	}
+}
+
+func TestMachine_GetStarlarkThread(t *testing.T) {
+	m := starlet.NewDefault()
+	th := m.GetStarlarkThread()
+	if th != nil {
+		t.Errorf("expected nil, got %v", th)
+	}
+	_, err := m.RunScript([]byte(`a = 1 + 2`), nil)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	th = m.GetStarlarkThread()
+	if th == nil {
+		t.Errorf("expected not nil, got nil")
+	}
+}

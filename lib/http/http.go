@@ -417,43 +417,9 @@ func (r *Response) JSON(thread *starlark.Thread, _ *starlark.Builtin, args starl
 	r.Body.Close()
 
 	// convert all values to their appropriate types
-	data = typedConvert(data)
+	data = dataconv.TypeConvert(data)
 
 	// reset reader to allow multiple calls
 	r.Body = ioutil.NopCloser(bytes.NewReader(body))
 	return dataconv.Marshal(data)
-}
-
-func typedConvert(data interface{}) interface{} {
-	switch v := data.(type) {
-	case string:
-		// If the string is a valid time, return a time.Time.
-		if t, err := time.Parse(time.RFC3339, v); err == nil {
-			return t
-		}
-		return v
-	case float64:
-		// If the float is actually an int, return an int.
-		if v == float64(int(v)) {
-			return int(v)
-		}
-		return v
-	case map[string]interface{}:
-		// If the value is a map, recursively call this function on all map values.
-		newMap := make(map[string]interface{})
-		for key, value := range v {
-			newMap[key] = typedConvert(value)
-		}
-		return newMap
-	case []interface{}:
-		// If the value is a slice, recursively call this function on all slice values.
-		newSlice := make([]interface{}, len(v))
-		for i, value := range v {
-			newSlice[i] = typedConvert(value)
-		}
-		return newSlice
-	default:
-		// Otherwise, just return the value.
-		return v
-	}
 }

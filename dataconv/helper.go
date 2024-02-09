@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
@@ -93,5 +95,54 @@ func WrapModuleData(name string, data starlark.StringDict) func() (starlark.Stri
 				Members: data,
 			},
 		}, nil
+	}
+}
+
+// TypeConvert converts JSON decoded values to their appropriate types.
+func TypeConvert(data interface{}) interface{} {
+	switch v := data.(type) {
+	case string:
+		// Attempt parsing in different formats
+		for _, format := range []string{time.RFC3339, time.RFC3339Nano, time.RFC822, time.RFC1123} {
+			if t, err := time.Parse(format, v); err == nil {
+				return t
+			}
+		}
+		// Attempt to parse as JSON number (integer only)
+		var num json.Number
+		if err := json.Unmarshal([]byte(v), &num); err == nil {
+			if ni, ei := num.Int64(); ei == nil {
+				return ni
+			}
+		}
+		// If not a time or number, return the original string
+		return v
+
+	case float64:
+		// Check for exact int match
+		if math.Floor(v) == v {
+			return int(v)
+		}
+		return v
+
+	case map[string]interface{}:
+		// If the value is a map, recursively call this function on all map values.
+		newMap := make(map[string]interface{}, len(v))
+		for key, value := range v {
+			newMap[key] = TypeConvert(value)
+		}
+		return newMap
+
+	case []interface{}:
+		// If the value is a slice, recursively call this function on all slice values.
+		newSlice := make([]interface{}, len(v))
+		for i, value := range v {
+			newSlice[i] = TypeConvert(value)
+		}
+		return newSlice
+
+	default:
+		// Return original value for other types
+		return v
 	}
 }
