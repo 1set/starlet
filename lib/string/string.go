@@ -4,10 +4,11 @@ package string
 
 import (
 	"fmt"
-	"go.starlark.net/starlark"
-	"go.starlark.net/starlarkstruct"
 	"sync"
 	"unicode/utf8"
+
+	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 )
 
 // ModuleName defines the expected name for this Module when used
@@ -39,9 +40,9 @@ func LoadModule() (starlark.StringDict, error) {
 				Name: ModuleName,
 				Members: starlark.StringDict{
 					// constants
-					"ascii_letters":   starlark.String(asciiLetters),
 					"ascii_lowercase": starlark.String(asciiLowerCase),
 					"ascii_uppercase": starlark.String(asciiUpperCase),
+					"ascii_letters":   starlark.String(asciiLetters),
 					"digits":          starlark.String(decDigits),
 					"hexdigits":       starlark.String(hexDigits),
 					"octdigits":       starlark.String(octDigits),
