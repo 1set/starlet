@@ -78,6 +78,16 @@ func TestLoadModule_String(t *testing.T) {
 				print('printable', s)
 			`),
 		},
+		{
+			name: `length`,
+			script: itn.HereDoc(`
+				load('string', 'length')
+				assert.eq(length(''), 0)
+				assert.eq(length('a'), 1)
+				assert.eq(length('abc'), 3)
+				assert.eq(length('我爱你'), 3)
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
