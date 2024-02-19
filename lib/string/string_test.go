@@ -91,6 +91,14 @@ func TestLoadModule_String(t *testing.T) {
 			`),
 		},
 		{
+			name: `length with missing args`,
+			script: itn.HereDoc(`
+				load('string', 'length')
+				length()
+			`),
+			wantErr: `length() takes exactly one argument (0 given)`,
+		},
+		{
 			name: `length with invalid args`,
 			script: itn.HereDoc(`
 				load('string', 'length')
@@ -111,12 +119,28 @@ func TestLoadModule_String(t *testing.T) {
 			`),
 		},
 		{
+			name: `reverse with missing args`,
+			script: itn.HereDoc(`
+				load('string', 'reverse')
+				reverse()
+			`),
+			wantErr: `reverse() takes exactly one argument (0 given)`,
+		},
+		{
 			name: `reverse with invalid args`,
 			script: itn.HereDoc(`
 				load('string', 'reverse')
 				reverse(123)
 			`),
 			wantErr: `reverse() function isn't supported for 'int' type object`,
+		},
+		{
+			name: `escape with missing args`,
+			script: itn.HereDoc(`
+				load('string', 'escape')
+				escape()
+			`),
+			wantErr: `escape() takes exactly one argument (0 given)`,
 		},
 		{
 			name: `escape with invalid args`,
