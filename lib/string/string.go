@@ -91,7 +91,7 @@ func length(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		if sv, ok := v.(starlark.Sequence); ok {
 			return starlark.MakeInt(sv.Len()), nil
 		}
-		return none, fmt.Errorf(`object of type '%s' has no length()`, v.Type())
+		return none, fmt.Errorf(`length() function isn't supported for '%s' type object`, v.Type())
 	}
 }
 
@@ -115,7 +115,7 @@ func reverse(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, 
 		}
 		return starlark.Bytes(bs), nil
 	default:
-		return none, fmt.Errorf(`object of type '%s' has no reverse()`, v.Type())
+		return none, fmt.Errorf(`reverse() function isn't supported for '%s' type object`, v.Type())
 	}
 }
 
@@ -132,7 +132,7 @@ func genStarStrBuiltin(fn string, opFn func(string) string) *starlark.Builtin {
 		case starlark.Bytes:
 			return starlark.Bytes(opFn(string(v))), nil
 		default:
-			return none, fmt.Errorf(`object of type '%s' has no %s()`, v.Type(), fn)
+			return none, fmt.Errorf(`%s() function isn't supported for '%s' type object`, fn, v.Type())
 		}
 	}
 	return starlark.NewBuiltin(ModuleName+"."+fn, sf)

@@ -96,7 +96,7 @@ func TestLoadModule_String(t *testing.T) {
 				load('string', 'length')
 				length(123)
 			`),
-			wantErr: `object of type 'int' has no length()`,
+			wantErr: `length() function isn't supported for 'int' type object`,
 		},
 		{
 			name: `reverse`,
@@ -108,6 +108,76 @@ func TestLoadModule_String(t *testing.T) {
 				assert.eq(reverse('我爱你'), '你爱我')
 				assert.eq(reverse("☕"), "☕")
 				assert.eq(reverse(b"☕"), b"\x95\x98\xe2")
+			`),
+		},
+		{
+			name: `reverse with invalid args`,
+			script: itn.HereDoc(`
+				load('string', 'reverse')
+				reverse(123)
+			`),
+			wantErr: `reverse() function isn't supported for 'int' type object`,
+		},
+		{
+			name: `escape with invalid args`,
+			script: itn.HereDoc(`
+				load('string', 'escape')
+				escape(123)
+			`),
+			wantErr: `escape() function isn't supported for 'int' type object`,
+		},
+		{
+			name: `escape`,
+			script: itn.HereDoc(`
+				load('string', 'escape')
+				assert.eq(escape(''), '')
+				assert.eq(escape('abc'), 'abc')
+				assert.eq(escape("☕"), "☕")
+				assert.eq(escape(b"☕"), b"☕")
+				assert.eq(escape('我爱你'), '我爱你')
+				assert.eq(escape('我&你'), '我&amp;你')
+				assert.eq(escape('<&>'), '&lt;&amp;&gt;')
+			`),
+		},
+		{
+			name: `unescape`,
+			script: itn.HereDoc(`
+				load('string', 'unescape')
+				assert.eq(unescape(''), '')
+				assert.eq(unescape('abc'), 'abc')
+				assert.eq(unescape("☕"), "☕")
+				assert.eq(unescape(b"☕"), b"☕")
+				assert.eq(unescape('我爱你'), '我爱你')
+				assert.eq(unescape('我&amp;你'), '我&你')
+				assert.eq(unescape('&lt;&amp;&gt;'), '<&>')
+			`),
+		},
+		{
+			name: `quote`,
+			script: itn.HereDoc(`
+				load('string', 'quote')
+				assert.eq(quote(''), '""')
+				assert.eq(quote('abc'), '"abc"')
+				assert.eq(quote("☕"), '"☕"')
+				assert.eq(quote('我爱你'), '"我爱你"')
+				assert.eq(quote('我&你'), '"我&你"')
+				assert.eq(quote('<&>'), '"<&>"')
+			`),
+		},
+		{
+			name: `unquote`,
+			script: itn.HereDoc(`
+				load('string', 'unquote')
+				assert.eq(unquote(''), '')
+				assert.eq(unquote('""'), '')
+				assert.eq(unquote('"abc"'), 'abc')
+				assert.eq(unquote('"☕"'), '☕')
+				assert.eq(unquote('我爱你'), '我爱你')
+				assert.eq(unquote('"我爱你'), '"我爱你')
+				assert.eq(unquote('我爱你"'), '我爱你"')
+				assert.eq(unquote('"我爱你"'), '我爱你')
+				assert.eq(unquote('"我&你"'), '我&你')
+				assert.eq(unquote('"<&>"'), '<&>')
 			`),
 		},
 	}

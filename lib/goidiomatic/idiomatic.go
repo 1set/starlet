@@ -81,7 +81,7 @@ func length(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		if sv, ok := v.(starlark.Sequence); ok {
 			return starlark.MakeInt(sv.Len()), nil
 		}
-		return none, fmt.Errorf(`object of type '%s' has no length()`, v.Type())
+		return none, fmt.Errorf(`length() function isn't supported for '%s' type object`, v.Type())
 	}
 }
 
