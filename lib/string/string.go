@@ -4,6 +4,8 @@ package string
 
 import (
 	"fmt"
+	"html"
+	"strconv"
 	"sync"
 	"unicode/utf8"
 
@@ -51,8 +53,12 @@ func LoadModule() (starlark.StringDict, error) {
 					"printable":       starlark.String(printable),
 
 					// functions
-					"length":  starlark.NewBuiltin(ModuleName+".length", length),
-					"reverse": starlark.NewBuiltin(ModuleName+".reverse", reverse),
+					"length":   starlark.NewBuiltin(ModuleName+".length", length),
+					"reverse":  starlark.NewBuiltin(ModuleName+".reverse", reverse),
+					"escape":   genStarStrBuiltin("escape", html.EscapeString),
+					"unescape": genStarStrBuiltin("unescape", html.UnescapeString),
+					"quote":    genStarStrBuiltin("quote", strconv.Quote),
+					"unquote":  genStarStrBuiltin("unquote", robustUnquote),
 				},
 			},
 		}
@@ -64,6 +70,10 @@ func LoadModule() (starlark.StringDict, error) {
 var (
 	emptyStr string
 	none     = starlark.None
+)
+
+type (
+	starFn func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)
 )
 
 // length returns the length of the given value.
@@ -107,4 +117,45 @@ func reverse(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, 
 	default:
 		return none, fmt.Errorf(`object of type '%s' has no reverse()`, v.Type())
 	}
+}
+
+// genStarStrBuiltin generates the string operation builtin for Starlark.
+func genStarStrBuiltin(fn string, opFn func(string) string) *starlark.Builtin {
+	sf := func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		if l := len(args); l != 1 {
+			return none, fmt.Errorf(`%s() takes exactly one argument (%d given)`, fn, l)
+		}
+
+		switch r := args[0]; v := r.(type) {
+		case starlark.String:
+			return starlark.String(opFn(v.GoString())), nil
+		case starlark.Bytes:
+			return starlark.Bytes(opFn(string(v))), nil
+		default:
+			return none, fmt.Errorf(`object of type '%s' has no %s()`, v.Type(), fn)
+		}
+	}
+	return starlark.NewBuiltin(ModuleName+"."+fn, sf)
+}
+
+// robustUnquote unquotes a string, even if it's not quoted.
+func robustUnquote(s string) string {
+	if len(s) < 2 {
+		return s
+	}
+
+	// if it's not quoted, quote it
+	old := s
+	if !(s[0] == '"' && s[len(s)-1] == '"') {
+		s = `"` + s + `"`
+	}
+
+	// try to unquote
+	ns, err := strconv.Unquote(s)
+	if err != nil {
+		// if failed, return original string
+		return old
+	}
+	// return unmodified string
+	return ns
 }
