@@ -260,6 +260,14 @@ func TestLoadModule_Random(t *testing.T) {
 			`),
 		},
 		{
+			name: "randstr with less than 1 args",
+			script: itn.HereDoc(`
+				load('random', 'randstr')
+				x = randstr()
+			`),
+			wantErr: `random.randstr: missing argument for alphabet`,
+		},
+		{
 			name: "random",
 			script: itn.HereDoc(`
 				load('random', 'random')

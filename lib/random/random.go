@@ -43,8 +43,9 @@ func LoadModule() (starlark.StringDict, error) {
 
 // for convenience
 var (
-	emptyStr string
-	none     = starlark.None
+	emptyStr    string
+	none        = starlark.None
+	defaultLenN = big.NewInt(10)
 )
 
 // randbytes(n) returns a random byte string of length n.
@@ -57,7 +58,7 @@ func randbytes(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tupl
 	// set default value if n is not provided correctly
 	nInt := n.BigInt()
 	if nInt.Sign() <= 0 {
-		nInt = big.NewInt(10)
+		nInt = defaultLenN
 	}
 	// get random bytes
 	buf := make([]byte, nInt.Int64())
@@ -74,13 +75,13 @@ func randstr(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 		ab starlark.String
 		n  starlark.Int
 	)
-	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "alphabet?", &ab, "n?", &n); err != nil {
+	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "alphabet", &ab, "n?", &n); err != nil {
 		return nil, err
 	}
 	// set default value if n is not provided correctly
 	nInt := n.BigInt()
 	if nInt.Sign() <= 0 {
-		nInt = big.NewInt(10)
+		nInt = defaultLenN
 	}
 	// get random strings
 	s, err := getRandStr(ab.GoString(), nInt.Int64())
