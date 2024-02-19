@@ -268,6 +268,61 @@ func TestLoadModule_Random(t *testing.T) {
 			wantErr: `random.randstr: missing argument for alphabet`,
 		},
 		{
+			name: "randstr with invalid args",
+			script: itn.HereDoc(`
+				load('random', 'randstr')
+				x = randstr(123)
+			`),
+			wantErr: `random.randstr: for parameter alphabet: got int, want string`,
+		},
+		{
+			name: "randstr with invalid N",
+			script: itn.HereDoc(`
+				load('random', 'randstr')
+				x = randstr('abc', -2)
+				assert.eq(len(x), 10)
+				y = randstr('abc', 0)
+				assert.eq(len(y), 10)
+			`),
+		},
+		{
+			name: "randstr with empty alphabet",
+			script: itn.HereDoc(`
+				load('random', 'randstr')
+				x = randstr('', 10)
+			`),
+			wantErr: `alphabet must not be empty`,
+		},
+		{
+			name: "randstr with 1",
+			script: itn.HereDoc(`
+				load('random', 'randstr')
+				x = randstr('abc', 1)
+				assert.eq(len(x), 1)
+				print(x)
+			`),
+		},
+		{
+			name: "randstr with same",
+			script: itn.HereDoc(`
+				load('random', 'randstr')
+				x = randstr('AAA', 10)
+				assert.eq(len(x), 10)
+				assert.eq(x, 'AAAAAAAAAA')
+			`),
+		},
+		{
+			name: "randstr for cjk",
+			script: itn.HereDoc(`
+				load('random', 'randstr')
+				x = randstr('你好', 2)
+				assert.eq(len(x), 6)
+				cs = ["你好", "好你", "好好", "你你"]
+				assert.true(x in cs)
+				print(x)
+			`),
+		},
+		{
 			name: "random",
 			script: itn.HereDoc(`
 				load('random', 'random')
