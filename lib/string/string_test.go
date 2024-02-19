@@ -86,6 +86,28 @@ func TestLoadModule_String(t *testing.T) {
 				assert.eq(length('a'), 1)
 				assert.eq(length('abc'), 3)
 				assert.eq(length('我爱你'), 3)
+				assert.eq(length("☕"), 1)
+				assert.eq(length(b"☕"), 3)
+			`),
+		},
+		{
+			name: `length with invalid args`,
+			script: itn.HereDoc(`
+				load('string', 'length')
+				length(123)
+			`),
+			wantErr: `object of type 'int' has no length()`,
+		},
+		{
+			name: `reverse`,
+			script: itn.HereDoc(`
+				load('string', 'reverse')
+				assert.eq(reverse(''), '')
+				assert.eq(reverse('a'), 'a')
+				assert.eq(reverse('abc'), 'cba')
+				assert.eq(reverse('我爱你'), '你爱我')
+				assert.eq(reverse("☕"), "☕")
+				assert.eq(reverse(b"☕"), b"\x95\x98\xe2")
 			`),
 		},
 	}

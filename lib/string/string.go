@@ -51,7 +51,8 @@ func LoadModule() (starlark.StringDict, error) {
 					"printable":       starlark.String(printable),
 
 					// functions
-					"length": starlark.NewBuiltin(ModuleName+".length", length),
+					"length":  starlark.NewBuiltin(ModuleName+".length", length),
+					"reverse": starlark.NewBuiltin(ModuleName+".reverse", reverse),
 				},
 			},
 		}
@@ -81,5 +82,29 @@ func length(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 			return starlark.MakeInt(sv.Len()), nil
 		}
 		return none, fmt.Errorf(`object of type '%s' has no length()`, v.Type())
+	}
+}
+
+// reverse returns the reversed string of the given value.
+func reverse(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if l := len(args); l != 1 {
+		return none, fmt.Errorf(`reverse() takes exactly one argument (%d given)`, l)
+	}
+
+	switch r := args[0]; v := r.(type) {
+	case starlark.String:
+		rs := []rune(v.GoString())
+		for i, j := 0, len(rs)-1; i < j; i, j = i+1, j-1 {
+			rs[i], rs[j] = rs[j], rs[i]
+		}
+		return starlark.String(rs), nil
+	case starlark.Bytes:
+		bs := []byte(v)
+		for i, j := 0, len(v)-1; i < j; i, j = i+1, j-1 {
+			bs[i], bs[j] = bs[j], bs[i]
+		}
+		return starlark.Bytes(bs), nil
+	default:
+		return none, fmt.Errorf(`object of type '%s' has no reverse()`, v.Type())
 	}
 }
