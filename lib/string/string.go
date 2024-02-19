@@ -21,7 +21,7 @@ var (
 )
 
 const (
-	whitespace     = ` \t\n\r\v\f`
+	whitespace     = " \t\n\r\v\f"
 	asciiLowerCase = `abcdefghijklmnopqrstuvwxyz`
 	asciiUpperCase = `ABCDEFGHIJKLMNOPQRSTUVWXYZ`
 	asciiLetters   = asciiLowerCase + asciiUpperCase

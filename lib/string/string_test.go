@@ -34,6 +34,50 @@ func TestLoadModule_String(t *testing.T) {
 				assert.eq(s, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 			`),
 		},
+		{
+			name: `digits`,
+			script: itn.HereDoc(`
+				load('string', s='digits')
+				assert.eq(s, "0123456789")
+			`),
+		},
+		{
+			name: `hexdigits`,
+			script: itn.HereDoc(`
+				load('string', s='hexdigits')
+				assert.eq(s, "0123456789abcdefABCDEF")
+			`),
+		},
+		{
+			name: `octdigits`,
+			script: itn.HereDoc(`
+				load('string', s='octdigits')
+				assert.eq(s, "01234567")
+			`),
+		},
+		{
+			name: `punctuation`,
+			script: itn.HereDoc(`
+				load('string', s='punctuation')
+				assert.eq(s, r"""!"#$%&'()*+,-./:;<=>?@[\]^_{|}~` + "`" + `""")
+				print('punctuation', s)
+			`),
+		},
+		{
+			name: `whitespace`,
+			script: itn.HereDoc(`
+				load('string', s='whitespace')
+				assert.eq(s, ' \t\n\r\v\f')
+			`),
+		},
+		{
+			name: `printable`,
+			script: itn.HereDoc(`
+				load('string', s='printable')
+				assert.eq(s, r"""0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"#$%&'()*+,-./:;<=>?@[\]^_{|}~` + "`" + `""" + ' \t\n\r\v\f')
+				print('printable', s)
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
