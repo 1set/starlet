@@ -29,6 +29,7 @@ func LoadModule() (starlark.StringDict, error) {
 				Members: starlark.StringDict{
 					"randbytes": starlark.NewBuiltin("random.randbytes", randbytes),
 					"randint":   starlark.NewBuiltin("random.randint", randint),
+					"randstr":   starlark.NewBuiltin("random.randstr", randstr),
 					"choice":    starlark.NewBuiltin("random.choice", choice),
 					"shuffle":   starlark.NewBuiltin("random.shuffle", shuffle),
 					"random":    starlark.NewBuiltin("random.random", random),
@@ -39,6 +40,12 @@ func LoadModule() (starlark.StringDict, error) {
 	})
 	return module, nil
 }
+
+// for convenience
+var (
+	emptyStr string
+	none     = starlark.None
+)
 
 // randbytes(n) returns a random byte string of length n.
 func randbytes(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -192,6 +199,7 @@ func getRandomInt(max int) (int, error) {
 	return int(n.Int64()), nil
 }
 
+// getRandomFloat returns a random floating point number in the range [0.0, 1.0).
 func getRandomFloat(prec int64) (n float64, err error) {
 	if prec <= 0 {
 		return 0, errors.New(`prec must be > 0`)
@@ -202,4 +210,51 @@ func getRandomFloat(prec int64) (n float64, err error) {
 		return 0, err
 	}
 	return float64(nBig.Int64()) / float64(prec), nil
+}
+
+// getRandStr returns a random string of given length from given characters.
+func getRandStr(alphabet string, length int64) (string, error) {
+	// basic checks
+	if length <= 0 {
+		return emptyStr, errors.New(`length must be > 0`)
+	}
+	if alphabet == emptyStr {
+		return emptyStr, errors.New(`alphabet must not be empty`)
+	}
+
+	// split alphabet into runes
+	runes := []rune(alphabet)
+	rc := len(runes)
+
+	// get random runes
+	buf := make([]rune, length)
+	for i := range buf {
+		idx, err := getRandomInt(rc)
+		if err != nil {
+			return emptyStr, err
+		}
+		buf[i] = runes[idx]
+	}
+
+	// convert to string
+	return string(buf), nil
+}
+
+// randstr(a, l) returns a random string of given length from given characters.
+func randstr(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// precondition checks
+	var (
+		ab starlark.String
+		l  starlark.Int
+	)
+	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "alphabet", &ab, "len", &l); err != nil {
+		return nil, err
+	}
+	// get random strings
+	li := l.BigInt()
+	s, err := getRandStr(ab.GoString(), li.Int64())
+	if err != nil {
+		return none, err
+	}
+	return starlark.String(s), nil
 }
