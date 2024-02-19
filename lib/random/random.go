@@ -28,6 +28,7 @@ func LoadModule() (starlark.StringDict, error) {
 				Name: "random",
 				Members: starlark.StringDict{
 					"randbytes": starlark.NewBuiltin("random.randbytes", randbytes),
+					"randstr":   starlark.NewBuiltin("random.randstr", randstr),
 					"randint":   starlark.NewBuiltin("random.randint", randint),
 					"choice":    starlark.NewBuiltin("random.choice", choice),
 					"shuffle":   starlark.NewBuiltin("random.shuffle", shuffle),
@@ -40,6 +41,13 @@ func LoadModule() (starlark.StringDict, error) {
 	return module, nil
 }
 
+// for convenience
+var (
+	emptyStr    string
+	none        = starlark.None
+	defaultLenN = big.NewInt(10)
+)
+
 // randbytes(n) returns a random byte string of length n.
 func randbytes(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// precondition checks
@@ -50,7 +58,7 @@ func randbytes(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tupl
 	// set default value if n is not provided correctly
 	nInt := n.BigInt()
 	if nInt.Sign() <= 0 {
-		nInt = big.NewInt(10)
+		nInt = defaultLenN
 	}
 	// get random bytes
 	buf := make([]byte, nInt.Int64())
@@ -58,6 +66,29 @@ func randbytes(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tupl
 		return nil, err
 	}
 	return starlark.Bytes(buf), nil
+}
+
+// randstr(chars, n) returns a random string of given length from given characters.
+func randstr(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// precondition checks
+	var (
+		ab starlark.String
+		n  starlark.Int
+	)
+	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "chars", &ab, "n?", &n); err != nil {
+		return nil, err
+	}
+	// set default value if n is not provided correctly
+	nInt := n.BigInt()
+	if nInt.Sign() <= 0 {
+		nInt = defaultLenN
+	}
+	// get random strings
+	s, err := getRandStr(ab.GoString(), nInt.Int64())
+	if err != nil {
+		return nil, err
+	}
+	return starlark.String(s), nil
 }
 
 // randint(a, b) returns a random integer N such that a <= N <= b. Alias for randrange(a, b+1).
@@ -92,16 +123,16 @@ func choice(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, 
 	// precondition checks
 	var seq starlark.Indexable
 	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "seq", &seq); err != nil {
-		return starlark.None, err
+		return nil, err
 	}
 	l := seq.Len()
 	if l == 0 {
-		return starlark.None, errors.New(`cannot choose from an empty sequence`)
+		return nil, errors.New(`cannot choose from an empty sequence`)
 	}
 	// get random index
 	i, err := getRandomInt(l)
 	if err != nil {
-		return starlark.None, err
+		return nil, err
 	}
 	// return element at index
 	return seq.Index(i), nil
@@ -112,12 +143,12 @@ func shuffle(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 	// precondition checks
 	var seq starlark.HasSetIndex
 	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "seq", &seq); err != nil {
-		return starlark.None, err
+		return nil, err
 	}
 	// nothing to do if seq is empty or has only one element
 	l := seq.Len()
 	if l <= 1 {
-		return starlark.None, nil
+		return none, nil
 	}
 	// The shuffle algorithm is the Fisher-Yates Shuffle and its complexity is O(n).
 	var (
@@ -137,7 +168,7 @@ func shuffle(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 	)
 	for i := uint64(l - 1); i > 0; {
 		if _, err := rand.Read(randBytes); err != nil {
-			return starlark.None, err
+			return nil, err
 		}
 		randBig.SetBytes(randBytes)
 		for num := randBig.Uint64(); num > i && i > 0; i-- {
@@ -145,19 +176,19 @@ func shuffle(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 			j := int(num % max)
 			num /= max
 			if e := swap(int(i), j); e != nil {
-				return starlark.None, e
+				return nil, e
 			}
 		}
 	}
 	// done
-	return starlark.None, nil
+	return none, nil
 }
 
 // random() returns a random floating point number in the range 0.0 <= X < 1.0.
 func random(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	f, err := getRandomFloat(1 << 53)
 	if err != nil {
-		return starlark.None, err
+		return nil, err
 	}
 	return starlark.Float(f), nil
 }
@@ -167,12 +198,12 @@ func uniform(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 	// precondition checks
 	var a, b itn.FloatOrInt
 	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "a", &a, "b", &b); err != nil {
-		return starlark.None, err
+		return nil, err
 	}
 	// get random float
 	f, err := getRandomFloat(1 << 53)
 	if err != nil {
-		return starlark.None, err
+		return nil, err
 	}
 	// a + (b-a) * random()
 	diff := float64(b - a)
@@ -192,6 +223,7 @@ func getRandomInt(max int) (int, error) {
 	return int(n.Int64()), nil
 }
 
+// getRandomFloat returns a random floating point number in the range [0.0, 1.0).
 func getRandomFloat(prec int64) (n float64, err error) {
 	if prec <= 0 {
 		return 0, errors.New(`prec must be > 0`)
@@ -202,4 +234,32 @@ func getRandomFloat(prec int64) (n float64, err error) {
 		return 0, err
 	}
 	return float64(nBig.Int64()) / float64(prec), nil
+}
+
+// getRandStr returns a random string of given length from given characters.
+func getRandStr(chars string, length int64) (string, error) {
+	// basic checks
+	if length <= 0 {
+		return emptyStr, errors.New(`length must be > 0`)
+	}
+	if chars == emptyStr {
+		return emptyStr, errors.New(`chars must not be empty`)
+	}
+
+	// split chars into runes
+	runes := []rune(chars)
+	rc := len(runes)
+
+	// get random runes
+	buf := make([]rune, length)
+	for i := range buf {
+		idx, err := getRandomInt(rc)
+		if err != nil {
+			return emptyStr, err
+		}
+		buf[i] = runes[idx]
+	}
+
+	// convert to string
+	return string(buf), nil
 }

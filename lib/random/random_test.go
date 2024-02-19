@@ -260,6 +260,72 @@ func TestLoadModule_Random(t *testing.T) {
 			`),
 		},
 		{
+			name: "randstr with less than 1 args",
+			script: itn.HereDoc(`
+				load('random', 'randstr')
+				x = randstr()
+			`),
+			wantErr: `random.randstr: missing argument for chars`,
+		},
+		{
+			name: "randstr with invalid args",
+			script: itn.HereDoc(`
+				load('random', 'randstr')
+				x = randstr(123)
+			`),
+			wantErr: `random.randstr: for parameter chars: got int, want string`,
+		},
+		{
+			name: "randstr with invalid N",
+			script: itn.HereDoc(`
+				load('random', 'randstr')
+				x = randstr('abc', -2)
+				assert.eq(len(x), 10)
+				y = randstr('abc', 0)
+				assert.eq(len(y), 10)
+			`),
+		},
+		{
+			name: "randstr with empty chars",
+			script: itn.HereDoc(`
+				load('random', 'randstr')
+				x = randstr('', 10)
+			`),
+			wantErr: `chars must not be empty`,
+		},
+		{
+			name: "randstr with n=1",
+			script: itn.HereDoc(`
+				load('random', 'randstr')
+				x = randstr('我爱你', 1)
+				assert.eq(len(x), 3)
+				cs = ["我", "爱", "你"]
+				assert.true(x in cs)
+				print(x)
+			`),
+		},
+		{
+			name: "randstr with same chars",
+			script: itn.HereDoc(`
+				load('random', 'randstr')
+				x = randstr('AAA', 10)
+				assert.eq(len(x), 10)
+				assert.eq(x, 'AAAAAAAAAA')
+			`),
+		},
+		{
+			name: "randstr for unicode",
+			script: itn.HereDoc(`
+				load('random', 'randstr')
+				x = randstr('你好', 2)
+				assert.eq(len(x), 6)
+				cs = ["你好", "好你", "好好", "你你"]
+				assert.true(x in cs)
+				print(x)
+				print(randstr("abcdefghijklmnopqrstuvwxyz", 10))
+			`),
+		},
+		{
 			name: "random",
 			script: itn.HereDoc(`
 				load('random', 'random')
