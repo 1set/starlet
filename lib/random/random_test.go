@@ -294,16 +294,18 @@ func TestLoadModule_Random(t *testing.T) {
 			wantErr: `chars must not be empty`,
 		},
 		{
-			name: "randstr with 1",
+			name: "randstr with n=1",
 			script: itn.HereDoc(`
 				load('random', 'randstr')
-				x = randstr('abc', 1)
-				assert.eq(len(x), 1)
+				x = randstr('我爱你', 1)
+				assert.eq(len(x), 3)
+				cs = ["我", "爱", "你"]
+				assert.true(x in cs)
 				print(x)
 			`),
 		},
 		{
-			name: "randstr with same",
+			name: "randstr with same chars",
 			script: itn.HereDoc(`
 				load('random', 'randstr')
 				x = randstr('AAA', 10)
