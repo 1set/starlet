@@ -27,6 +27,30 @@ print(b)
 # Output: b'K\xaa\xbb4\xbaEh0\x19\x9c'
 ```
 
+### `randstr(chars, n)`
+
+Generate a random string containing n number of unicode characters from the given unicode string.
+
+#### Parameters
+
+| name    | type     | description                                                                                   |
+|---------|----------|-----------------------------------------------------------------------------------------------|
+| `chars` | `string` | The characters to choose from.                                                                |
+| `n`     | `int`    | The length of the string. If n is non-positive or not supplied, a reasonable default is used. |
+
+#### Examples
+
+**basic**
+
+Generate a random string containing 10 characters from the given unicode string.
+
+```python
+load("random", "randstr")
+s = randstr("abcdefghijklmnopqrstuvwxyz", 10)
+print(s)
+# Output: "enfknqfbra"
+```
+
 ### `randint(a,b)`
 
 Return a random integer N such that a <= N <= b.
