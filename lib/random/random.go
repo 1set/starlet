@@ -28,8 +28,8 @@ func LoadModule() (starlark.StringDict, error) {
 				Name: "random",
 				Members: starlark.StringDict{
 					"randbytes": starlark.NewBuiltin("random.randbytes", randbytes),
-					"randint":   starlark.NewBuiltin("random.randint", randint),
 					"randstr":   starlark.NewBuiltin("random.randstr", randstr),
+					"randint":   starlark.NewBuiltin("random.randint", randint),
 					"choice":    starlark.NewBuiltin("random.choice", choice),
 					"shuffle":   starlark.NewBuiltin("random.shuffle", shuffle),
 					"random":    starlark.NewBuiltin("random.random", random),
@@ -65,6 +65,29 @@ func randbytes(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tupl
 		return nil, err
 	}
 	return starlark.Bytes(buf), nil
+}
+
+// randstr(a, l) returns a random string of given length from given characters.
+func randstr(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// precondition checks
+	var (
+		ab starlark.String
+		n  starlark.Int
+	)
+	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "alphabet?", &ab, "n?", &n); err != nil {
+		return nil, err
+	}
+	// set default value if n is not provided correctly
+	nInt := n.BigInt()
+	if nInt.Sign() <= 0 {
+		nInt = big.NewInt(10)
+	}
+	// get random strings
+	s, err := getRandStr(ab.GoString(), nInt.Int64())
+	if err != nil {
+		return none, err
+	}
+	return starlark.String(s), nil
 }
 
 // randint(a, b) returns a random integer N such that a <= N <= b. Alias for randrange(a, b+1).
@@ -238,23 +261,4 @@ func getRandStr(alphabet string, length int64) (string, error) {
 
 	// convert to string
 	return string(buf), nil
-}
-
-// randstr(a, l) returns a random string of given length from given characters.
-func randstr(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	// precondition checks
-	var (
-		ab starlark.String
-		l  starlark.Int
-	)
-	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "alphabet", &ab, "len", &l); err != nil {
-		return nil, err
-	}
-	// get random strings
-	li := l.BigInt()
-	s, err := getRandStr(ab.GoString(), li.Int64())
-	if err != nil {
-		return none, err
-	}
-	return starlark.String(s), nil
 }
