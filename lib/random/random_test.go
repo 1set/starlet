@@ -265,7 +265,7 @@ func TestLoadModule_Random(t *testing.T) {
 				load('random', 'randstr')
 				x = randstr()
 			`),
-			wantErr: `random.randstr: missing argument for alphabet`,
+			wantErr: `random.randstr: missing argument for chars`,
 		},
 		{
 			name: "randstr with invalid args",
@@ -273,7 +273,7 @@ func TestLoadModule_Random(t *testing.T) {
 				load('random', 'randstr')
 				x = randstr(123)
 			`),
-			wantErr: `random.randstr: for parameter alphabet: got int, want string`,
+			wantErr: `random.randstr: for parameter chars: got int, want string`,
 		},
 		{
 			name: "randstr with invalid N",
@@ -286,12 +286,12 @@ func TestLoadModule_Random(t *testing.T) {
 			`),
 		},
 		{
-			name: "randstr with empty alphabet",
+			name: "randstr with empty chars",
 			script: itn.HereDoc(`
 				load('random', 'randstr')
 				x = randstr('', 10)
 			`),
-			wantErr: `alphabet must not be empty`,
+			wantErr: `chars must not be empty`,
 		},
 		{
 			name: "randstr with 1",
@@ -312,7 +312,7 @@ func TestLoadModule_Random(t *testing.T) {
 			`),
 		},
 		{
-			name: "randstr for cjk",
+			name: "randstr for unicode",
 			script: itn.HereDoc(`
 				load('random', 'randstr')
 				x = randstr('你好', 2)
@@ -320,6 +320,7 @@ func TestLoadModule_Random(t *testing.T) {
 				cs = ["你好", "好你", "好好", "你你"]
 				assert.true(x in cs)
 				print(x)
+				print(randstr("abcdefghijklmnopqrstuvwxyz", 10))
 			`),
 		},
 		{

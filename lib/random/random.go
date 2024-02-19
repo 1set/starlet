@@ -68,14 +68,14 @@ func randbytes(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tupl
 	return starlark.Bytes(buf), nil
 }
 
-// randstr(a, l) returns a random string of given length from given characters.
+// randstr(chars, n) returns a random string of given length from given characters.
 func randstr(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// precondition checks
 	var (
 		ab starlark.String
 		n  starlark.Int
 	)
-	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "alphabet", &ab, "n?", &n); err != nil {
+	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "chars", &ab, "n?", &n); err != nil {
 		return nil, err
 	}
 	// set default value if n is not provided correctly
@@ -237,17 +237,17 @@ func getRandomFloat(prec int64) (n float64, err error) {
 }
 
 // getRandStr returns a random string of given length from given characters.
-func getRandStr(alphabet string, length int64) (string, error) {
+func getRandStr(chars string, length int64) (string, error) {
 	// basic checks
 	if length <= 0 {
 		return emptyStr, errors.New(`length must be > 0`)
 	}
-	if alphabet == emptyStr {
-		return emptyStr, errors.New(`alphabet must not be empty`)
+	if chars == emptyStr {
+		return emptyStr, errors.New(`chars must not be empty`)
 	}
 
-	// split alphabet into runes
-	runes := []rune(alphabet)
+	// split chars into runes
+	runes := []rune(chars)
 	rc := len(runes)
 
 	// get random runes
