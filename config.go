@@ -8,6 +8,7 @@ import (
 	libjson "github.com/1set/starlet/lib/json"
 	librand "github.com/1set/starlet/lib/random"
 	libre "github.com/1set/starlet/lib/re"
+	libstr "github.com/1set/starlet/lib/string"
 	stdmath "go.starlark.net/lib/math"
 	stdtime "go.starlark.net/lib/time"
 	"go.starlark.net/resolve"
@@ -41,6 +42,7 @@ var allBuiltinModules = ModuleLoaderMap{
 	libb64.ModuleName:  libb64.LoadModule,
 	librand.ModuleName: librand.LoadModule,
 	libjson.ModuleName: libjson.LoadModule,
+	libstr.ModuleName:  libstr.LoadModule,
 }
 
 // GetAllBuiltinModuleNames returns a list of all builtin module names.
