@@ -88,6 +88,7 @@ func TestLoadModule_String(t *testing.T) {
 				assert.eq(length('我爱你'), 3)
 				assert.eq(length("☕"), 1)
 				assert.eq(length(b"☕"), 3)
+				assert.eq(length([1, 2, "#", True, None]), 5)
 			`),
 		},
 		{
