@@ -259,7 +259,7 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'length')
 				length(True)
 			`),
-			wantErr: `object of type 'bool' has no length()`,
+			wantErr: `length() function isn't supported for 'bool' type object`,
 		},
 		{
 			name: `sum()`,

@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	builtinModules = []string{"base64", "go_idiomatic", "hashlib", "http", "json", "math", "random", "re", "struct", "time"}
+	builtinModules = []string{"base64", "go_idiomatic", "hashlib", "http", "json", "math", "random", "re", "string", "struct", "time"}
 )
 
 func TestListBuiltinModules(t *testing.T) {
