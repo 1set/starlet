@@ -137,6 +137,7 @@ func TestLoadModule_String(t *testing.T) {
 				assert.eq(escape('我爱你'), '我爱你')
 				assert.eq(escape('我&你'), '我&amp;你')
 				assert.eq(escape('<&>'), '&lt;&amp;&gt;')
+				assert.eq(escape(b'<&>'), b'&lt;&amp;&gt;')
 			`),
 		},
 		{
@@ -150,6 +151,7 @@ func TestLoadModule_String(t *testing.T) {
 				assert.eq(unescape('我爱你'), '我爱你')
 				assert.eq(unescape('我&amp;你'), '我&你')
 				assert.eq(unescape('&lt;&amp;&gt;'), '<&>')
+				assert.eq(unescape(b'&lt;&amp;&gt;'), b'<&>')
 			`),
 		},
 		{
@@ -162,6 +164,7 @@ func TestLoadModule_String(t *testing.T) {
 				assert.eq(quote('我爱你'), '"我爱你"')
 				assert.eq(quote('我&你'), '"我&你"')
 				assert.eq(quote('<&>'), '"<&>"')
+				assert.eq(quote(b'<&>'), b'"<&>"')
 			`),
 		},
 		{
@@ -178,6 +181,7 @@ func TestLoadModule_String(t *testing.T) {
 				assert.eq(unquote('"我爱你"'), '我爱你')
 				assert.eq(unquote('"我&你"'), '我&你')
 				assert.eq(unquote('"<&>"'), '<&>')
+				assert.eq(unquote(b'"<&>"'), b'<&>')
 			`),
 		},
 	}
