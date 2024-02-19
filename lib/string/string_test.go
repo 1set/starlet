@@ -165,6 +165,7 @@ func TestLoadModule_String(t *testing.T) {
 				assert.eq(quote('我&你'), '"我&你"')
 				assert.eq(quote('<&>'), '"<&>"')
 				assert.eq(quote(b'<&>'), b'"<&>"')
+				assert.eq(quote('\n1'), '"\\n1"')
 			`),
 		},
 		{
@@ -182,6 +183,8 @@ func TestLoadModule_String(t *testing.T) {
 				assert.eq(unquote('"我&你"'), '我&你')
 				assert.eq(unquote('"<&>"'), '<&>')
 				assert.eq(unquote(b'"<&>"'), b'<&>')
+				assert.eq(unquote('\\n1'), '\n1')
+				print("{"+unquote('\\n1')+"}")
 			`),
 		},
 	}
