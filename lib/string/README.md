@@ -55,9 +55,9 @@ Reverse a string.
 
 ```python
 load("string", "reverse")
-s = "abcdef"
+s = "123我爱你"
 print(reverse(s))
-# Output: "fedcba"
+# Output: 你爱我321
 ```
 
 ### `escape(str) string`
@@ -80,7 +80,7 @@ Escape a string.
 load("string", "escape")
 s = "Hello<World>"
 print(escape(s))
-# Output: "Hello&lt;World&gt;"
+# Output: Hello&lt;World&gt;
 ```
 
 ### `unescape(str) string`
@@ -101,9 +101,9 @@ Unescape a string.
 
 ```python
 load("string", "unescape")
-s = "Hello&amp;World"
+s = "You&amp;Me"
 print(unescape(s))
-# Output: "Hello&World"
+# Output: "You&Me"
 ```
 
 ### `quote(str) string`
@@ -126,7 +126,7 @@ Quote a string.
 load("string", "quote")
 s = "Hello World"
 print(quote(s))
-# Output: '"Hello World"'
+# Output: "Hello World"
 ```
 
 ### `unquote(str) string`
@@ -147,7 +147,7 @@ Unquote a string.
 
 ```python
 load("string", "unquote")
-s = '"Hello World"'
+s = '"Hello\tWorld"'
 print(unquote(s))
-# Output: 'Hello World'
+World
 ```
