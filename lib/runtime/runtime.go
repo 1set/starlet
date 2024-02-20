@@ -33,6 +33,7 @@ func LoadModule() (starlark.StringDict, error) {
 					"workdir":   starlark.String(pwd),
 					"os":        starlark.String(grt.GOOS),
 					"arch":      starlark.String(grt.GOARCH),
+					"gover":     starlark.String(grt.Version()),
 					"pid":       starlark.MakeInt(os.Getpid()),
 					"app_start": stdtime.Time(appStart),
 					"uptime":    starlark.NewBuiltin(ModuleName+".uptime", getUpTime),
