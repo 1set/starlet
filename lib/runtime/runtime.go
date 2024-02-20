@@ -5,8 +5,8 @@ import (
 	"os"
 	grt "runtime"
 	"sync"
+	"time"
 
-	"bitbucket.org/ai69/amoy"
 	stdtime "go.starlark.net/lib/time"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
@@ -34,11 +34,20 @@ func LoadModule() (starlark.StringDict, error) {
 					"os":         starlark.String(grt.GOOS),
 					"arch":       starlark.String(grt.GOARCH),
 					"pid":        starlark.MakeInt(os.Getpid()),
-					"app_start":  stdtime.Time(amoy.AppStartTime()),
-					"app_uptime": stdtime.Duration(amoy.AppUpTime()),
+					"app_start":  stdtime.Time(appStart),
+					"app_uptime": stdtime.Duration(getUpTime()),
 				},
 			},
 		}
 	})
 	return moduleData, nil
+}
+
+var (
+	appStart = time.Now()
+)
+
+// getUpTime returns time elapsed since the app started.
+func getUpTime() time.Duration {
+	return time.Since(appStart)
 }
