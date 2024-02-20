@@ -1,4 +1,4 @@
-// Package runtime implements the Starlark module for runtime information.
+// Package runtime implements the Starlark module for Go and app runtime information.
 package runtime
 
 import (
