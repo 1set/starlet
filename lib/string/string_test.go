@@ -217,7 +217,7 @@ func TestLoadModule_String(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			res, err := itn.ExecModuleWithErrorTest(t, ls.ModuleName, ls.LoadModule, tt.script, tt.wantErr)
 			if (err != nil) != (tt.wantErr != "") {
-				t.Errorf("hash(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
+				t.Errorf("string(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
 				return
 			}
 		})
