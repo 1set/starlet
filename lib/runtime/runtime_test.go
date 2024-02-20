@@ -25,8 +25,8 @@ func TestLoadModule_Runtime(t *testing.T) {
 		{
 			name: `process`,
 			script: itn.HereDoc(`
-				load('runtime', 'pid', 'ppid', 'uid')
-				si = [pid, ppid, uid]
+				load('runtime', 'pid', 'ppid', 'uid', 'gid')
+				si = [pid, ppid, uid, gid]
 				print(si)
 				_ = [assert.eq(type(s), "int") for s in si]
 			`),

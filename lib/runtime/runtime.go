@@ -46,6 +46,7 @@ func LoadModule() (starlark.StringDict, error) {
 					"pid":       starlark.MakeInt(os.Getpid()),
 					"ppid":      starlark.MakeInt(os.Getppid()),
 					"uid":       starlark.MakeInt(os.Getuid()),
+					"gid":       starlark.MakeInt(os.Getgid()),
 					"app_start": stdtime.Time(appStart),
 					"uptime":    starlark.NewBuiltin(ModuleName+".uptime", getUpTime),
 				},
