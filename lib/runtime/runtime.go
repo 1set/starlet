@@ -22,9 +22,18 @@ var (
 
 // LoadModule loads the runtime module. It is concurrency-safe and idempotent.
 func LoadModule() (starlark.StringDict, error) {
+	var e error
 	once.Do(func() {
-		host, _ := os.Hostname()
-		pwd, _ := os.Getwd()
+		host, err := os.Hostname()
+		if err != nil {
+			e = err
+			return
+		}
+		pwd, err := os.Getwd()
+		if err != nil {
+			e = err
+			return
+		}
 		moduleData = starlark.StringDict{
 			ModuleName: &starlarkstruct.Module{
 				Name: ModuleName,
@@ -41,7 +50,7 @@ func LoadModule() (starlark.StringDict, error) {
 			},
 		}
 	})
-	return moduleData, nil
+	return moduleData, e
 }
 
 var (
