@@ -34,8 +34,9 @@ func TestLoadModule_Runtime(t *testing.T) {
 		{
 			name: `app`,
 			script: itn.HereDoc(`
-				load('runtime', s='app_start', u='app_uptime')
+				load('runtime', s='app_start', ut='uptime')
 				assert.eq(type(s), "time.time")
+				u = ut()
 				assert.eq(type(u), "time.duration")
 				print(s, u)
 			`),

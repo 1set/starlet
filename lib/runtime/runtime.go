@@ -29,13 +29,13 @@ func LoadModule() (starlark.StringDict, error) {
 			ModuleName: &starlarkstruct.Module{
 				Name: ModuleName,
 				Members: starlark.StringDict{
-					"hostname":   starlark.String(host),
-					"workdir":    starlark.String(pwd),
-					"os":         starlark.String(grt.GOOS),
-					"arch":       starlark.String(grt.GOARCH),
-					"pid":        starlark.MakeInt(os.Getpid()),
-					"app_start":  stdtime.Time(appStart),
-					"app_uptime": stdtime.Duration(getUpTime()),
+					"hostname":  starlark.String(host),
+					"workdir":   starlark.String(pwd),
+					"os":        starlark.String(grt.GOOS),
+					"arch":      starlark.String(grt.GOARCH),
+					"pid":       starlark.MakeInt(os.Getpid()),
+					"app_start": stdtime.Time(appStart),
+					"uptime":    starlark.NewBuiltin(ModuleName+".uptime", getUpTime),
 				},
 			},
 		}
@@ -48,6 +48,6 @@ var (
 )
 
 // getUpTime returns time elapsed since the app started.
-func getUpTime() time.Duration {
-	return time.Since(appStart)
+func getUpTime(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return stdtime.Duration(time.Since(appStart)), nil
 }
