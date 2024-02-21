@@ -94,6 +94,27 @@ func randstr(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 	return starlark.String(s), nil
 }
 
+// randb32(n) returns a random base32 string of length n.
+func randb32(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// precondition checks
+	var n starlark.Int
+	if err := starlark.UnpackArgs("randbase32", args, kwargs, "n?", &n); err != nil {
+		return nil, err
+	}
+	// set default value if n is not provided correctly
+	nInt := n.BigInt()
+	if nInt.Sign() <= 0 {
+		nInt = defaultLenN
+	}
+	// get random strings
+	const ab = `ABCDEFGHIJKLMNOPQRSTUVWXYZ234567` // standard base32 encoding, as defined in RFC 4648.
+	s, err := getRandStr(ab, nInt.Int64())
+	if err != nil {
+		return nil, err
+	}
+	return starlark.String(s), nil
+}
+
 // randint(a, b) returns a random integer N such that a <= N <= b. Alias for randrange(a, b+1).
 func randint(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// precondition checks
@@ -200,27 +221,6 @@ func random(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, k
 func uuid(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	u := guuid.New()
 	return starlark.String(u.String()), nil
-}
-
-// randb32(n) returns a random base32 string of length n.
-func randb32(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	// precondition checks
-	var n starlark.Int
-	if err := starlark.UnpackArgs("randbase32", args, kwargs, "n", &n); err != nil {
-		return nil, err
-	}
-	// set default value if n is not provided correctly
-	nInt := n.BigInt()
-	if nInt.Sign() <= 0 {
-		nInt = defaultLenN
-	}
-	// get random strings
-	const ab = `ABCDEFGHIJKLMNOPQRSTUVWXYZ234567` // standard base32 encoding, as defined in RFC 4648.
-	s, err := getRandStr(ab, nInt.Int64())
-	if err != nil {
-		return nil, err
-	}
-	return starlark.String(s), nil
 }
 
 // uniform(a, b) returns a random floating point number N such that a <= N <= b for a <= b and b <= N <= a for b < a. The end-point value b may or may not be included in the range depending on floating-point rounding in the equation a + (b-a) * random().
