@@ -205,6 +205,14 @@ func TestSharedDict_Functions(t *testing.T) {
 			`),
 		},
 		{
+			name: `attr: custom len -- invalid args`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd.len(123)
+			`),
+			wantErr: `len: got 1 arguments, want 0`,
+		},
+		{
 			name: `attr: custom perform`,
 			script: itn.HereDoc(`
 				load('share', 'sd')
@@ -214,6 +222,22 @@ func TestSharedDict_Functions(t *testing.T) {
 				sd.perform(act)
 				print(sd)
 			`),
+		},
+		{
+			name: `attr: custom perform -- invalid args`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd.perform()
+			`),
+			wantErr: `perform: missing argument for fn`,
+		},
+		{
+			name: `attr: custom perform -- invalid type`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd.perform(123)
+			`),
+			wantErr: `perform: not callable type: int`,
 		},
 	}
 	for _, tt := range tests {

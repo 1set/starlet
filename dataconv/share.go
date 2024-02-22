@@ -272,6 +272,6 @@ func shardDictPerform(thread *starlark.Thread, b *starlark.Builtin, args starlar
 	case starlark.Callable:
 		return pr.CallInternal(thread, starlark.Tuple{d}, nil)
 	default:
-		return nil, fmt.Errorf("unsupported callable type: %s", pr.Type())
+		return nil, fmt.Errorf("%s: not callable type: %s", b.Name(), pr.Type())
 	}
 }
