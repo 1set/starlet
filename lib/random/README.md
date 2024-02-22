@@ -57,10 +57,10 @@ Generate a random base32 string containing n number of bytes with optional separ
 
 #### Parameters
 
-| name  | type  | description                                                                                          |
-|-------|-------|------------------------------------------------------------------------------------------------------|
-| `n`   | `int` | The number of bytes to generate. If n is non-positive or not supplied, a reasonable default is used. |
-| `sep` | `int` | The number of characters to separate with a dash, if 0 no separator is used.                         |
+| name  | type  | description                                                                                                   |
+|-------|-------|---------------------------------------------------------------------------------------------------------------|
+| `n`   | `int` | The number of bytes to generate. If n is non-positive or not supplied, a reasonable default is used.          |
+| `sep` | `int` | The number of characters to separate with a dash, if it's non-positive or not supplied, no separator is used. |
 
 #### Examples
 
