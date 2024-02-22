@@ -217,6 +217,28 @@ func TestSharedDict_Functions(t *testing.T) {
 			script: itn.HereDoc(`
 				load('share', 'sd')
 				def act(d):
+					d["cnt"] = d.get("cnt", 100) + 1
+				assert.eq(sd.get("cnt"), None)
+				sd.perform(act)
+				assert.eq(sd["cnt"], 101)
+			`),
+		},
+		{
+			name: `attr: custom perform -- error`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				def ungood(d):
+					fail("not good~{}".format(d))
+				sd["foo"] = "bar"
+				sd.perform(ungood)
+			`),
+			wantErr: `fail: not good~{"foo": "bar"}`,
+		},
+		{
+			name: `attr: custom perform`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				def act(d):
 					d["cnt"] = d.get("cnt", 0) + 1
 				print(sd)
 				sd.perform(act)

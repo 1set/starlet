@@ -249,6 +249,7 @@ var (
 	}
 )
 
+// shardDictLen returns the length of the underlying dictionary.
 func shardDictLen(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
 		return nil, err
@@ -257,6 +258,8 @@ func shardDictLen(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, 
 	return starlark.MakeInt(l), nil
 }
 
+// shardDictPerform calls the given function with the underlying receiver dictionary, and returns the result.
+// The function must be callable, like def perform(fn).
 func shardDictPerform(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// get the perform function
 	var pr starlark.Value
