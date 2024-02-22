@@ -164,16 +164,36 @@ func (s *SharedDict) SetKey(k, v starlark.Value) error {
 }
 
 func (s *SharedDict) Attr(name string) (starlark.Value, error) {
-	s.RLock()
-	defer s.RUnlock()
+	s.Lock()
+	defer s.Unlock()
 
-	// TODO: hack it later
-	return nil, fmt.Errorf("no such attribute: %s", name)
-
-	if s.dict != nil {
-		return s.dict.Attr(name)
+	// basic check
+	if s.frozen {
+		return nil, fmt.Errorf("frozen dict")
 	}
-	return nil, nil
+	if s.dict == nil {
+		return nil, nil
+	}
+
+	// get the original builtin
+	attr, err := s.dict.Attr(name)
+	if attr == nil || err != nil {
+		return attr, err
+	}
+	btl, ok := attr.(*starlark.Builtin)
+	if !ok {
+		return nil, fmt.Errorf("unsupported attribute: %s", name)
+	}
+
+	// wrap the builtin
+	return starlark.NewBuiltin(name, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		// lock the shared dict
+		s.Lock()
+		defer s.Unlock()
+
+		// call the original builtin
+		return btl.CallInternal(thread, args, kwargs)
+	}), nil
 }
 
 func (s *SharedDict) AttrNames() []string {

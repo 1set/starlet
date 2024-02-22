@@ -1,9 +1,10 @@
 package dataconv
 
 import (
+	"testing"
+
 	itn "github.com/1set/starlet/internal"
 	"go.starlark.net/starlark"
-	"testing"
 )
 
 func getSDLoader(name string, sd *SharedDict) func() (starlark.StringDict, error) {
@@ -90,6 +91,77 @@ func TestSharedDict_Functions(t *testing.T) {
 				l = dir(sd)
 				print(l)
 			`),
+		},
+		{
+			name: `attr: not found`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				v = sd.foo
+			`),
+			wantErr: `shared_dict has no .foo field or method`,
+		},
+		{
+			name: `attr: setdefault`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				v = sd.get("foo")
+				assert.eq(v, None)
+
+				sd["foo"] = "bar"			
+				assert.eq(sd.setdefault("foo"), "bar")
+
+				assert.eq(sd.setdefault("bar"), None)
+				assert.eq(sd.setdefault("cat", 123), 123)
+				assert.eq(sd.setdefault("bar"), None)
+				assert.eq(sd.setdefault("cat"), 123)
+				print(sd)
+			`),
+		},
+		{
+			name: `attr: clear`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd["foo"] = "bar"
+				assert.eq(sd.get("foo"), "bar")
+				sd.clear()
+				assert.eq(sd.get("foo"), None)
+			`),
+		},
+		{
+			name: `attr: items`,
+			script: itn.HereDoc(`
+				load('share', 'sd')	
+				sd["foo"] = "cat"
+				sd["bar"] = "dog"
+				assert.eq(sd.items(), [("foo", "cat"), ("bar", "dog")])
+				assert.eq(sd.keys(), ["foo", "bar"])
+				assert.eq(sd.values(), ["cat", "dog"])
+				
+				sd.update([("foo", "dog")], bar="cat")
+				assert.eq(sd.items(), [("foo", "dog"), ("bar", "cat")])
+
+				sd.pop("foo")
+				assert.eq(sd.items(), [("bar", "cat")])
+
+				sd.popitem()
+				assert.eq(sd.items(), [])
+			`),
+		},
+		{
+			name: `attr: pop missing`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				v = sd.pop("foo")
+			`),
+			wantErr: `pop: missing key`,
+		},
+		{
+			name: `attr: popitem empty`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				v = sd.popitem()
+			`),
+			wantErr: `popitem: empty dict`,
 		},
 	}
 	for _, tt := range tests {
