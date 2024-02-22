@@ -235,6 +235,28 @@ func TestSharedDict_Functions(t *testing.T) {
 			wantErr: `fail: not good~{"foo": "bar"}`,
 		},
 		{
+			name: `attr: custom perform -- error 2`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				def ungood(d, a, b, c):
+					print("two")
+				sd["foo"] = "bar"
+				sd.perform(ungood)
+			`),
+			wantErr: `function ungood missing 3 arguments (a, b, c)`,
+		},
+		{
+			name: `attr: custom perform -- error 3`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				def ungood():
+					print("three")
+				sd["foo"] = "bar"
+				sd.perform(ungood)
+			`),
+			wantErr: `function ungood accepts no arguments (1 given)`,
+		},
+		{
 			name: `attr: custom perform`,
 			script: itn.HereDoc(`
 				load('share', 'sd')
