@@ -94,11 +94,11 @@ func randstr(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 	return starlark.String(s), nil
 }
 
-// randb32(n) returns a random base32 string of length n.
-func randb32(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+// randb32(n) returns a random base32 string of length n with optional separator dash for every sep characters.
+func randb32(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// precondition checks
-	var n starlark.Int
-	if err := starlark.UnpackArgs("randbase32", args, kwargs, "n?", &n); err != nil {
+	var n, sep starlark.Int
+	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "n?", &n, "sep?", &sep); err != nil {
 		return nil, err
 	}
 	// set default value if n is not provided correctly
@@ -106,11 +106,28 @@ func randb32(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, 
 	if nInt.Sign() <= 0 {
 		nInt = defaultLenN
 	}
+	nSep := sep.BigInt()
+	if nSep.Sign() <= 0 {
+		nSep = big.NewInt(0)
+	}
 	// get random strings
-	const ab = `ABCDEFGHIJKLMNOPQRSTUVWXYZ234567` // standard base32 encoding, as defined in RFC 4648.
+	const ab = `ABCDEFGHIJKLMNOPQRSTUVWXYZ234567` // standard base32 encoding chars, as defined in RFC 4648.
 	s, err := getRandStr(ab, nInt.Int64())
 	if err != nil {
 		return nil, err
+	}
+	// add separator
+	if n := int(nSep.Int64()); n > 0 && n < len(s) {
+		// add separator every n chars
+		var buf []rune
+		for i, r := range s {
+			if i > 0 && i%n == 0 {
+				buf = append(buf, '-', r)
+			} else {
+				buf = append(buf, r)
+			}
+		}
+		s = string(buf)
 	}
 	return starlark.String(s), nil
 }
