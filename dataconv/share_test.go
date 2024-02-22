@@ -295,6 +295,73 @@ func TestSharedDict_Functions(t *testing.T) {
 	}
 }
 
+func TestSharedDict_Frozen(t *testing.T) {
+	tests := []struct {
+		name    string
+		script  string
+		wantErr string
+	}{
+		//{
+		//	name: `freeze again`,
+		//	script: itn.HereDoc(`
+		//		load('share', 'sd')
+		//		sd.freeze()
+		//	`),
+		//	wantErr: `frozen dict`,
+		//},
+		{
+			name: `clear`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd.clear()
+			`),
+			wantErr: `cannot clear frozen hash table`,
+		},
+		{
+			name: `delete`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd.popitem()
+			`),
+			wantErr: `popitem: cannot delete from frozen hash table`,
+		},
+		{
+			name: `set key`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd["fly"] = "away"
+			`),
+			wantErr: `frozen dict`,
+		},
+		{
+			name: `len`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				assert.eq(sd.len(), 1)
+			`),
+		},
+		{
+			name: `get`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				assert.eq(sd.get("foo"), "bar")
+			`),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sd := NewSharedDict()
+			sd.SetKey(starlark.String("foo"), starlark.String("bar"))
+			sd.Freeze()
+			res, err := itn.ExecModuleWithErrorTest(t, "share", getSDLoader("sd", sd), tt.script, tt.wantErr)
+			if (err != nil) != (tt.wantErr != "") {
+				t.Errorf("frozen sd(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
+				return
+			}
+		})
+	}
+}
+
 func TestSharedDict_Concurrent(t *testing.T) {
 	s1 := itn.HereDoc(`
 		load('share', 'sd')
