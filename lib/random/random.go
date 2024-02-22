@@ -30,13 +30,13 @@ func LoadModule() (starlark.StringDict, error) {
 				Members: starlark.StringDict{
 					"randbytes": starlark.NewBuiltin("random.randbytes", randbytes),
 					"randstr":   starlark.NewBuiltin("random.randstr", randstr),
+					"randb32":   starlark.NewBuiltin("random.randb32", randb32),
 					"randint":   starlark.NewBuiltin("random.randint", randint),
 					"choice":    starlark.NewBuiltin("random.choice", choice),
 					"shuffle":   starlark.NewBuiltin("random.shuffle", shuffle),
 					"random":    starlark.NewBuiltin("random.random", random),
 					"uniform":   starlark.NewBuiltin("random.uniform", uniform),
 					"uuid":      starlark.NewBuiltin("random.uuid", uuid),
-					"randb32":   starlark.NewBuiltin("random.randb32", randb32),
 				},
 			},
 		}

@@ -405,6 +405,71 @@ func TestLoadModule_Random(t *testing.T) {
 				return f >= 1 && f < 2
 			},
 		},
+		{
+			name: "uuid",
+			script: itn.HereDoc(`
+				load('random', 'uuid')
+				val = uuid()
+				print(val)
+				assert.eq(len(val), 36)
+				assert.eq(len(val.replace("-", "")), 32)
+			`),
+		},
+		{
+			name: "randb32 with less than 1 args",
+			script: itn.HereDoc(`
+				load('random', 'randb32')
+				x = randb32()
+				assert.eq(len(x), 10)
+			`),
+		},
+		{
+			name: "randb32 with incorrect args",
+			script: itn.HereDoc(`
+				load('random', 'randb32')
+				x = randb32(-2)
+				assert.eq(len(x), 10)
+				y = randb32(0)
+				assert.eq(len(y), 10)
+			`),
+		},
+		{
+			name: "randb32 with invalid type",
+			script: itn.HereDoc(`
+				load('random', 'randb32')
+				randb32('1')
+			`),
+			wantErr: `random.randb32: for parameter n: got string, want int`,
+		},
+		{
+			name: "randb32 with sep",
+			script: itn.HereDoc(`
+				load('random', 'randb32')
+				x = randb32(20, 5)
+				assert.eq(len(x), 20+3)
+				assert.eq(x[5], '-')
+				assert.eq(len(x.split('-')), 4)
+
+				y = randb32(20, 0)
+				assert.eq(len(y), 20)
+
+				z = randb32(20, -1)
+				assert.eq(len(z), 20)
+
+				w = randb32(20, 20)
+				assert.eq(len(w), 20)
+
+				t = randb32(20, 21)
+				assert.eq(len(t), 20)
+
+				u = randb32(20, 22)
+
+				v = randb32(20, 1)
+				assert.eq(len(v), 20+19)
+				assert.eq(v[1], '-')
+				assert.eq(len(v.split('-')), 20)
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
