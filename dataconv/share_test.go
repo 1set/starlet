@@ -1,6 +1,7 @@
 package dataconv
 
 import (
+	"sync"
 	"testing"
 
 	itn "github.com/1set/starlet/internal"
@@ -8,6 +9,14 @@ import (
 )
 
 func getSDLoader(name string, sd *SharedDict) func() (starlark.StringDict, error) {
+	return func() (starlark.StringDict, error) {
+		return starlark.StringDict{
+			name: sd,
+		}, nil
+	}
+}
+
+func getDictLoader(name string, sd *starlark.Dict) func() (starlark.StringDict, error) {
 	return func() (starlark.StringDict, error) {
 		return starlark.StringDict{
 			name: sd,
@@ -186,5 +195,40 @@ func TestSharedDict_Functions(t *testing.T) {
 				return
 			}
 		})
+	}
+}
+
+func TestSharedDict_Concurrent(t *testing.T) {
+	s1 := itn.HereDoc(`
+		load('share', 'sd')
+		sd["cnt"] = sd.get("cnt", 0) + 1
+	`)
+	s2 := itn.HereDoc(`
+		load('share', 'sd')
+		assert.eq(sd["cnt"], 100)
+	`)
+
+	// concurrent access to shared dict
+	var (
+		sd = NewSharedDict()
+		wg sync.WaitGroup
+	)
+	for i := 1; i <= 100; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			res, err := itn.ExecModuleWithErrorTest(t, "share", getSDLoader("sd", sd), s1, "")
+			if err != nil {
+				t.Errorf("sd concurrent error: %v, res: %v", err, res)
+			}
+		}()
+	}
+	wg.Wait()
+
+	// check the result
+	res, err := itn.ExecModuleWithErrorTest(t, "share", getSDLoader("sd", sd), s2, "")
+	if err != nil {
+		t.Errorf("sd check error: %v, res: %v", err, res)
 	}
 }
