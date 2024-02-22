@@ -163,6 +163,20 @@ func TestSharedDict_Functions(t *testing.T) {
 			`),
 			wantErr: `popitem: empty dict`,
 		},
+		{
+			name: `attr: upsert`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				def inc(i = 1):
+					sd["cnt"] = sd.get("cnt", 0) + i
+
+				inc()
+				inc()
+				inc(3)
+
+				assert.eq(sd["cnt"], 5)
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
