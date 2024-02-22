@@ -94,7 +94,7 @@ func randstr(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 	return starlark.String(s), nil
 }
 
-// randb32(n) returns a random base32 string of length n with optional separator dash for every sep characters.
+// randb32(n, sep) returns a random base32 string of length n with optional separator dash for every sep characters.
 func randb32(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// precondition checks
 	var n, sep starlark.Int

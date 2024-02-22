@@ -416,11 +416,14 @@ func TestLoadModule_Random(t *testing.T) {
 			`),
 		},
 		{
-			name: "randb32 with less than 1 args",
+			name: "randb32 with 0 or 1 args",
 			script: itn.HereDoc(`
 				load('random', 'randb32')
 				x = randb32()
 				assert.eq(len(x), 10)
+
+				y = randb32(6)
+				assert.eq(len(y), 6)
 			`),
 		},
 		{

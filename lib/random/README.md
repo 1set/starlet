@@ -51,6 +51,30 @@ print(s)
 # Output: "enfknqfbra"
 ```
 
+### `randb32(n, sep)`
+
+Generate a random base32 string containing n number of bytes with optional separator dash for every sep characters.
+
+#### Parameters
+
+| name  | type  | description                                                                                          |
+|-------|-------|------------------------------------------------------------------------------------------------------|
+| `n`   | `int` | The number of bytes to generate. If n is non-positive or not supplied, a reasonable default is used. |
+| `sep` | `int` | The number of characters to separate with a dash, if 0 no separator is used.                         |
+
+#### Examples
+
+**basic**
+
+Generate a random base32 string containing 10 bytes with no separator.
+
+```python
+load("random", "randb32")
+s = randb32(10, 4)
+print(s)
+# Output: 2RXQ-H45H-WV
+```
+
 ### `randint(a,b)`
 
 Return a random integer N such that a <= N <= b.
@@ -115,6 +139,23 @@ load("random", "uniform")
 n = uniform(5, 10)
 print(n)
 # Output: 7.309677873766576
+```
+
+### `uuid4()`
+
+Generate a random UUID (RFC 4122 version 4).
+
+#### Examples
+
+**basic**
+
+Generate a random UUID.
+
+```python
+load("random", "uuid")
+u = uuid()
+print(u)
+# Output: 6e360b7a-f677-4f6c-9c57-8b09694d66b3
 ```
 
 ### `choice(seq)`
