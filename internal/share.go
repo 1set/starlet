@@ -2,9 +2,10 @@ package internal
 
 import (
 	"fmt"
+	"sync"
+
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
-	"sync"
 )
 
 // SharedDict is a dictionary that can be shared among multiple Starlark threads.
@@ -37,7 +38,13 @@ func NewSharedDict() *SharedDict {
 //	return nil
 //}
 
-var _ starlark.Value = (*SharedDict)(nil)
+var (
+	_ starlark.Value      = (*SharedDict)(nil)
+	_ starlark.Comparable = (*SharedDict)(nil)
+	_ starlark.Mapping    = (*SharedDict)(nil)
+	_ starlark.HasAttrs   = (*SharedDict)(nil)
+	_ starlark.HasSetKey  = (*SharedDict)(nil)
+)
 
 func (s *SharedDict) String() string {
 	var v string
@@ -167,9 +174,6 @@ func (s *SharedDict) Attr(name string) (starlark.Value, error) {
 }
 
 func (s *SharedDict) AttrNames() []string {
-	s.RLock()
-	defer s.RUnlock()
-
 	if s.dict != nil {
 		return s.dict.AttrNames()
 	}
