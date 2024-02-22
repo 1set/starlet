@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	itn "github.com/1set/starlet/internal"
+	guuid "github.com/google/uuid"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
@@ -29,11 +30,13 @@ func LoadModule() (starlark.StringDict, error) {
 				Members: starlark.StringDict{
 					"randbytes": starlark.NewBuiltin("random.randbytes", randbytes),
 					"randstr":   starlark.NewBuiltin("random.randstr", randstr),
+					"randb32":   starlark.NewBuiltin("random.randb32", randb32),
 					"randint":   starlark.NewBuiltin("random.randint", randint),
 					"choice":    starlark.NewBuiltin("random.choice", choice),
 					"shuffle":   starlark.NewBuiltin("random.shuffle", shuffle),
 					"random":    starlark.NewBuiltin("random.random", random),
 					"uniform":   starlark.NewBuiltin("random.uniform", uniform),
+					"uuid":      starlark.NewBuiltin("random.uuid", uuid),
 				},
 			},
 		}
@@ -87,6 +90,44 @@ func randstr(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 	s, err := getRandStr(ab.GoString(), nInt.Int64())
 	if err != nil {
 		return nil, err
+	}
+	return starlark.String(s), nil
+}
+
+// randb32(n, sep) returns a random base32 string of length n with optional separator dash for every sep characters.
+func randb32(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// precondition checks
+	var n, sep starlark.Int
+	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "n?", &n, "sep?", &sep); err != nil {
+		return nil, err
+	}
+	// set default value if n is not provided correctly
+	nInt := n.BigInt()
+	if nInt.Sign() <= 0 {
+		nInt = defaultLenN
+	}
+	nSep := sep.BigInt()
+	if nSep.Sign() <= 0 {
+		nSep = big.NewInt(0)
+	}
+	// get random strings
+	const ab = `ABCDEFGHIJKLMNOPQRSTUVWXYZ234567` // standard base32 encoding chars, as defined in RFC 4648.
+	s, err := getRandStr(ab, nInt.Int64())
+	if err != nil {
+		return nil, err
+	}
+	// add separator
+	if n := int(nSep.Int64()); n > 0 && n < len(s) {
+		// add separator every n chars
+		var buf []rune
+		for i, r := range s {
+			if i > 0 && i%n == 0 {
+				buf = append(buf, '-', r)
+			} else {
+				buf = append(buf, r)
+			}
+		}
+		s = string(buf)
 	}
 	return starlark.String(s), nil
 }
@@ -191,6 +232,12 @@ func random(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, k
 		return nil, err
 	}
 	return starlark.Float(f), nil
+}
+
+// uuid() returns a random UUID (RFC 4122 version 4).
+func uuid(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	u := guuid.New()
+	return starlark.String(u.String()), nil
 }
 
 // uniform(a, b) returns a random floating point number N such that a <= N <= b for a <= b and b <= N <= a for b < a. The end-point value b may or may not be included in the range depending on floating-point rounding in the equation a + (b-a) * random().
