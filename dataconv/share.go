@@ -1,4 +1,4 @@
-package internal
+package dataconv
 
 import (
 	"fmt"
@@ -166,6 +166,9 @@ func (s *SharedDict) SetKey(k, v starlark.Value) error {
 func (s *SharedDict) Attr(name string) (starlark.Value, error) {
 	s.RLock()
 	defer s.RUnlock()
+
+	// TODO: hack it later
+	return nil, fmt.Errorf("no such attribute: %s", name)
 
 	if s.dict != nil {
 		return s.dict.Attr(name)
