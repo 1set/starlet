@@ -230,11 +230,13 @@ func TestSharedDict_Functions(t *testing.T) {
 func TestSharedDict_Concurrent(t *testing.T) {
 	s1 := itn.HereDoc(`
 		load('share', 'sd')
-		sd["cnt"] = sd.get("cnt", 0) + 1
+		def act(d):
+			d["cnt"] = d.get("cnt", 100) + 1
+		sd.perform(act)
 	`)
 	s2 := itn.HereDoc(`
 		load('share', 'sd')
-		assert.eq(sd["cnt"], 100)
+		assert.eq(sd["cnt"], 200)
 	`)
 
 	// concurrent access to shared dict
