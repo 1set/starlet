@@ -94,6 +94,15 @@ func TestSharedDict_Functions(t *testing.T) {
 			`),
 		},
 		{
+			name: `same`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd1 = sd
+				sd2 = sd
+				assert.true(sd1 == sd2)
+			`),
+		},
+		{
 			name: `attrs`,
 			script: itn.HereDoc(`
 				load('share', 'sd')
@@ -184,6 +193,26 @@ func TestSharedDict_Functions(t *testing.T) {
 				inc(3)
 
 				assert.eq(sd["cnt"], 5)
+			`),
+		},
+		{
+			name: `attr: custom len`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				assert.eq(sd.len(), 0)
+				sd["foo"] = "bar"
+				assert.eq(sd.len(), 1)
+			`),
+		},
+		{
+			name: `attr: custom perform`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				def act(d):
+					d["cnt"] = d.get("cnt", 0) + 1
+				print(sd)
+				sd.perform(act)
+				print(sd)
 			`),
 		},
 	}

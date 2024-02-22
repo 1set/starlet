@@ -2,6 +2,7 @@ package dataconv
 
 import (
 	"fmt"
+	"sort"
 	"sync"
 
 	"go.starlark.net/starlark"
@@ -175,8 +176,19 @@ func (s *SharedDict) Attr(name string) (starlark.Value, error) {
 		return nil, nil
 	}
 
-	// get the original builtin
-	attr, err := s.dict.Attr(name)
+	var (
+		attr starlark.Value
+		err  error
+	)
+	// try to get the new custom builtin
+	if b, ok := customSharedDictMethods[name]; ok {
+		attr = b.BindReceiver(s.dict)
+	} else {
+		// get the builtin from the original dict
+		attr, err = s.dict.Attr(name)
+	}
+
+	// convert to builtin
 	if attr == nil || err != nil {
 		return attr, err
 	}
@@ -198,7 +210,12 @@ func (s *SharedDict) Attr(name string) (starlark.Value, error) {
 
 func (s *SharedDict) AttrNames() []string {
 	if s.dict != nil {
-		return s.dict.AttrNames()
+		names := s.dict.AttrNames()
+		for cn := range customSharedDictMethods {
+			names = append(names, cn)
+		}
+		sort.Strings(names)
+		return names
 	}
 	return nil
 }
@@ -223,4 +240,38 @@ func (s *SharedDict) CompareSameType(op syntax.Token, y_ starlark.Value, depth i
 		return s.dict.CompareSameType(op, y.dict, depth)
 	}
 	return false, nil
+}
+
+var (
+	customSharedDictMethods = map[string]*starlark.Builtin{
+		"len":     starlark.NewBuiltin("len", shardDictLen),
+		"perform": starlark.NewBuiltin("perform", shardDictPerform),
+	}
+)
+
+func shardDictLen(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+		return nil, err
+	}
+	l := b.Receiver().(*starlark.Dict).Len()
+	return starlark.MakeInt(l), nil
+}
+
+func shardDictPerform(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// get the perform function
+	var pr starlark.Value
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "fn", &pr); err != nil {
+		return nil, err
+	}
+
+	// get the receiver
+	d := b.Receiver().(*starlark.Dict)
+
+	// call the function with the receiver
+	switch pr := pr.(type) {
+	case starlark.Callable:
+		return pr.CallInternal(thread, starlark.Tuple{d}, nil)
+	default:
+		return nil, fmt.Errorf("unsupported callable type: %s", pr.Type())
+	}
 }
