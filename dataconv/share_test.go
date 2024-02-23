@@ -578,6 +578,74 @@ func TestSharedDict_Frozen(t *testing.T) {
 	}
 }
 
+func TestSharedDict_NilDict(t *testing.T) {
+	tests := []struct {
+		name    string
+		script  string
+		wantErr string
+	}{
+		{
+			name: `get`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				v = sd["foo"]
+			`),
+			wantErr: `key "foo" not in shared_dict`,
+		},
+		{
+			name: `set`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd["foo"] = "bar"
+				assert.eq(sd["foo"], "bar")
+			`),
+		},
+		{
+			name: `attr: len`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd.len()
+			`),
+			wantErr: `shared_dict has no .len field or method`,
+		},
+		{
+			name: `attr names`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				assert.eq(dir(sd), [])
+			`),
+		},
+		{
+			name: `compare`,
+			script: itn.HereDoc(`
+				load('share', 'sd', sd3='another')
+				assert.true(sd == sd)
+				assert.true(sd != sd3)
+				assert.true(not(sd == sd3))
+			`),
+		},
+		{
+			name: `compare unsupported`,
+			script: itn.HereDoc(`
+				load('share', 'sd', sd3='another')
+				sd >= sd3
+			`),
+			wantErr: `unsupported operator: >=`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sd := NewSharedDict()
+			sd.dict = nil
+			res, err := itn.ExecModuleWithErrorTest(t, "share", getSDLoader("sd", sd), tt.script, tt.wantErr)
+			if (err != nil) != (tt.wantErr != "") {
+				t.Errorf("nil inside sd(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
+				return
+			}
+		})
+	}
+}
+
 func TestSharedDict_Concurrent(t *testing.T) {
 	s1 := itn.HereDoc(`
 		load('share', 'sd')

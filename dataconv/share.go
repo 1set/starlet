@@ -16,10 +16,14 @@ type SharedDict struct {
 	frozen bool
 }
 
+const (
+	defaultSharedDictSize = 8
+)
+
 // NewSharedDict creates a new SharedDict instance.
 func NewSharedDict() *SharedDict {
 	return &SharedDict{
-		dict: starlark.NewDict(1),
+		dict: starlark.NewDict(defaultSharedDictSize),
 	}
 }
 
@@ -93,7 +97,7 @@ func (s *SharedDict) SetKey(k, v starlark.Value) error {
 
 	// maybe create the dictionary (perhaps this line is unreachable)
 	if s.dict == nil {
-		s.dict = &starlark.Dict{}
+		s.dict = starlark.NewDict(defaultSharedDictSize)
 	}
 
 	// check if the value is a shared dict -- reject it
@@ -187,8 +191,20 @@ func (s *SharedDict) CompareSameType(op syntax.Token, y_ starlark.Value, depth i
 	// compare the underlying dictionaries
 	if s.dict != nil && y.dict != nil {
 		return s.dict.CompareSameType(op, y.dict, depth)
+	} else if s.dict == nil && y.dict == nil {
+		// both are nil, they are equal, aha! (nil == nil)
+		return true, nil
 	}
-	return false, nil
+
+	// one is nil, the other is not, they are not equal
+	switch op {
+	case syntax.EQL:
+		return false, nil
+	case syntax.NEQ:
+		return true, nil
+	default:
+		return false, fmt.Errorf("unsupported operator: %s", op)
+	}
 }
 
 var (
