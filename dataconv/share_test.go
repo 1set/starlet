@@ -130,13 +130,14 @@ func TestSharedDict_Functions(t *testing.T) {
 			`),
 		},
 		{
-			name: `equal check`,
+			name: `compare`,
 			script: itn.HereDoc(`
 				load('share', 'sd', sd3='another')
 				sd1 = sd
 				sd2 = sd
 				assert.true(sd1 == sd2)
 				assert.true(sd1 != sd3)
+				assert.true(not (sd1 != sd2))
 
 				sd1.clear()
 				sd1["your"] = "name"
@@ -146,6 +147,28 @@ func TestSharedDict_Functions(t *testing.T) {
 				assert.true(None != sd1)
 				assert.true(None != sd2)
 				assert.true(None != sd3)
+			`),
+		},
+		{
+			name: `compare: invalid operator`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd1 = sd
+				sd2 = sd
+				sd1 < sd2
+			`),
+			wantErr: `unsupported operator: <`,
+		},
+		{
+			name: `compare: diff type`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd["foo"] = "bar"
+				dd = {"foo": "bar"}
+				print(sd, dd)
+				assert.true(sd != dd)
+				assert.true(sd != 123)
+				assert.true(dd != 456)
 			`),
 		},
 		{
@@ -454,7 +477,7 @@ func TestSharedDict_Frozen(t *testing.T) {
 			`),
 		},
 		{
-			name: `equal`,
+			name: `compare`,
 			script: itn.HereDoc(`
 				load('share', 'sd', sd3='another')
 				assert.true(sd != sd3)
