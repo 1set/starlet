@@ -21,6 +21,44 @@ func getSDLoader(name string, sd *SharedDict) func() (starlark.StringDict, error
 	}
 }
 
+func TestSharedDict_Unpacker(t *testing.T) {
+	// test unpacker with starlark.Dict
+	d := starlark.NewDict(1)
+	d.SetKey(starlark.String("foo"), starlark.String("bar"))
+
+	var ad *starlark.Dict
+	err := starlark.UnpackArgs("f", starlark.Tuple{d}, []starlark.Tuple{}, "a", &ad)
+	if err != nil {
+		t.Errorf("unpack standard args error: %v", err)
+		return
+	}
+	t.Logf("dict: %v", ad)
+
+	// test unpacker with SharedDict
+	sd := NewSharedDict()
+	sd.SetKey(starlark.String("four"), starlark.String("five"))
+
+	var asd *SharedDict
+	err = starlark.UnpackArgs("f2", starlark.Tuple{sd}, []starlark.Tuple{}, "a", &asd)
+	if err != nil {
+		t.Errorf("unpack shared dict args error: %v", err)
+		return
+	}
+
+	// check if it's the same instance inside
+	if &sd.RWMutex != &asd.RWMutex {
+		t.Errorf("unpack shared dict: not the same RWMutex")
+		return
+	}
+	t.Logf("shared dict lock: %p --> %p", &sd.RWMutex, &asd.RWMutex)
+
+	if sd.dict != asd.dict {
+		t.Errorf("unpack shared dict: not the same dict")
+		return
+	}
+	t.Logf("shared dict dict: %p --> %p", sd.dict, asd.dict)
+}
+
 func TestSharedDict_Functions(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -348,6 +386,16 @@ func TestSharedDict_Functions(t *testing.T) {
 				sd.perform(123)
 			`),
 			wantErr: `perform: not callable type: int`,
+		},
+		{
+			name: `args`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				def work(d):
+					d["cnt"] = d.get("cnt", 100) + 1
+				work(sd)
+				assert.eq(sd["cnt"], 101)
+			`),
 		},
 	}
 	for _, tt := range tests {
