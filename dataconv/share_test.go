@@ -21,14 +21,6 @@ func getSDLoader(name string, sd *SharedDict) func() (starlark.StringDict, error
 	}
 }
 
-func getDictLoader(name string, sd *starlark.Dict) func() (starlark.StringDict, error) {
-	return func() (starlark.StringDict, error) {
-		return starlark.StringDict{
-			name: sd,
-		}, nil
-	}
-}
-
 func TestSharedDict_Functions(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -318,6 +310,27 @@ func TestSharedDict_Functions(t *testing.T) {
 				print(sd)
 				sd.perform(act)
 				print(sd)
+			`),
+		},
+		{
+			name: `attr: custom perform return`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd["cnt"] = 100
+				def act(d):
+					return d["cnt"] + 1
+				x = sd.perform(act)
+				assert.eq(x, 101)
+			`),
+		},
+		{
+			name: `attr: custom perform return`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd["a"] = 100
+				sd["b"] = 200
+				x = sd.perform(lambda d: d.get("a", 0) + d.get("b", 0) + 50)
+				assert.eq(x, 350)
 			`),
 		},
 		{
