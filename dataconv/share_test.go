@@ -641,8 +641,8 @@ func TestSharedDict_Frozen(t *testing.T) {
 				load('share', 'sd')
 				print(sd)
 				x = sd.from_json('{"a": 120}')
-				print(x, sd)
 			`),
+			wantErr: `cannot insert into frozen hash table`,
 		},
 	}
 	for _, tt := range tests {

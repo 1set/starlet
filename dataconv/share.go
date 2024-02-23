@@ -302,7 +302,9 @@ func sharedDictFromJSON(thread *starlark.Thread, b *starlark.Builtin, args starl
 		if len(r) < 2 {
 			continue
 		}
-		_ = od.SetKey(r[0], r[1])
+		if e := od.SetKey(r[0], r[1]); e != nil {
+			return nil, e
+		}
 	}
 
 	// return new json dict
