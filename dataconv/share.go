@@ -39,6 +39,7 @@ func (s *SharedDict) String() string {
 	return fmt.Sprintf("shared_dict(%s)", v)
 }
 
+// Type returns the type name of the SharedDict.
 func (s *SharedDict) Type() string {
 	return "shared_dict"
 }
