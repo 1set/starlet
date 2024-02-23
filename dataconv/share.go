@@ -67,6 +67,8 @@ func (s *SharedDict) Hash() (uint32, error) {
 	return 0, fmt.Errorf("unhashable type: shared_dict")
 }
 
+// Get returns the value corresponding to the specified key, or not found if the mapping does not contain the key.
+// It implements the starlark.Mapping interface.
 func (s *SharedDict) Get(k starlark.Value) (v starlark.Value, found bool, err error) {
 	s.RLock()
 	defer s.RUnlock()
@@ -77,6 +79,8 @@ func (s *SharedDict) Get(k starlark.Value) (v starlark.Value, found bool, err er
 	return nil, false, nil
 }
 
+// SetKey sets the value for the specified key, supports update using x[k]=v syntax, like a dictionary.
+// It implements the starlark.HasSetKey interface.
 func (s *SharedDict) SetKey(k, v starlark.Value) error {
 	s.Lock()
 	defer s.Unlock()
@@ -98,6 +102,8 @@ func (s *SharedDict) SetKey(k, v starlark.Value) error {
 	return s.dict.SetKey(k, v)
 }
 
+// Attr returns the value of the specified attribute, or (nil, nil) if the attribute is not found.
+// It implements the starlark.HasAttrs interface.
 func (s *SharedDict) Attr(name string) (starlark.Value, error) {
 	s.Lock()
 	defer s.Unlock()
@@ -139,6 +145,8 @@ func (s *SharedDict) Attr(name string) (starlark.Value, error) {
 	}), nil
 }
 
+// AttrNames returns a new slice containing the names of all the attributes of the SharedDict.
+// It implements the starlark.HasAttrs interface.
 func (s *SharedDict) AttrNames() []string {
 	if s.dict != nil {
 		names := s.dict.AttrNames()
@@ -151,10 +159,19 @@ func (s *SharedDict) AttrNames() []string {
 	return nil
 }
 
+// CompareSameType compares the SharedDict with another value of the same type.
+// It implements the starlark.Comparable interface.
 func (s *SharedDict) CompareSameType(op syntax.Token, y_ starlark.Value, depth int) (bool, error) {
 	// if they are the same object, they are equal
 	if s == y_ {
-		return true, nil
+		switch op {
+		case syntax.EQL:
+			return true, nil
+		case syntax.NEQ:
+			return false, nil
+		default:
+			return false, fmt.Errorf("unsupported operator: %s", op)
+		}
 	}
 
 	// scan the type
