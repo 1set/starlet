@@ -188,8 +188,10 @@ func TestSharedDict_Functions(t *testing.T) {
 				load('share', 'sd')
 				sd["foo"] = "bar"
 				assert.eq(sd.get("foo"), "bar")
+				assert.eq(sd.len(), 1)
 				sd.clear()
 				assert.eq(sd.get("foo"), None)
+				assert.eq(sd.len(), 0)
 			`),
 		},
 		{

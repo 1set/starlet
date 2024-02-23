@@ -93,16 +93,6 @@ func (s *SharedDict) Get(k starlark.Value) (v starlark.Value, found bool, err er
 	return nil, false, nil
 }
 
-func (s *SharedDict) Len() int {
-	s.RLock()
-	defer s.RUnlock()
-
-	if s.dict != nil {
-		return s.dict.Len()
-	}
-	return 0
-}
-
 func (s *SharedDict) SetKey(k, v starlark.Value) error {
 	s.Lock()
 	defer s.Unlock()
