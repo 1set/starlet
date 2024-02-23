@@ -639,6 +639,7 @@ func TestSharedDict_Frozen(t *testing.T) {
 			name: `attr: custom from_json`,
 			script: itn.HereDoc(`
 				load('share', 'sd')
+				print(sd)
 				x = sd.from_json('{"a": 120}')
 				print(x, sd)
 			`),
