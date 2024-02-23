@@ -44,19 +44,20 @@ func TestSharedDict_Unpacker(t *testing.T) {
 		t.Errorf("unpack shared dict args error: %v", err)
 		return
 	}
+	t.Logf("sdict: %v", asd)
 
 	// check if it's the same instance inside
 	if &sd.RWMutex != &asd.RWMutex {
 		t.Errorf("unpack shared dict: not the same RWMutex")
 		return
 	}
-	t.Logf("shared dict lock: %p --> %p", &sd.RWMutex, &asd.RWMutex)
+	t.Logf("shared sdict lock: %p --> %p", &sd.RWMutex, &asd.RWMutex)
 
 	if sd.dict != asd.dict {
 		t.Errorf("unpack shared dict: not the same dict")
 		return
 	}
-	t.Logf("shared dict dict: %p --> %p", sd.dict, asd.dict)
+	t.Logf("shared sdict dict: %p --> %p", sd.dict, asd.dict)
 }
 
 func TestSharedDict_Functions(t *testing.T) {

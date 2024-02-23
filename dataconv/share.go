@@ -23,22 +23,6 @@ func NewSharedDict() *SharedDict {
 	}
 }
 
-//// Assert at compile time that Duration implements Unpacker.
-//var _ starlark.Unpacker = (*SharedDict)(nil)
-//
-//// Unpack implements Unpacker for custom type SharedDict.
-//func (s *SharedDict) Unpack(v starlark.Value) error {
-//	dict, ok := v.(*starlark.Dict)
-//	if !ok {
-//		return fmt.Errorf("got %s, want dict", v.Type())
-//	}
-//
-//	s.Lock()
-//	defer s.Unlock()
-//	s.dict = dict
-//	return nil
-//}
-
 var (
 	_ starlark.Value      = (*SharedDict)(nil)
 	_ starlark.Comparable = (*SharedDict)(nil)
