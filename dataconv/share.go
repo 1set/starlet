@@ -209,13 +209,13 @@ func (s *SharedDict) CompareSameType(op syntax.Token, y_ starlark.Value, depth i
 
 var (
 	customSharedDictMethods = map[string]*starlark.Builtin{
-		"len":     starlark.NewBuiltin("len", shardDictLen),
-		"perform": starlark.NewBuiltin("perform", shardDictPerform),
+		"len":     starlark.NewBuiltin("len", sharedDictLen),
+		"perform": starlark.NewBuiltin("perform", sharedDictPerform),
 	}
 )
 
-// shardDictLen returns the length of the underlying dictionary.
-func shardDictLen(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+// sharedDictLen returns the length of the underlying dictionary.
+func sharedDictLen(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
 		return nil, err
 	}
@@ -223,9 +223,9 @@ func shardDictLen(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, 
 	return starlark.MakeInt(l), nil
 }
 
-// shardDictPerform calls the given function with the underlying receiver dictionary, and returns the result.
+// sharedDictPerform calls the given function with the underlying receiver dictionary, and returns the result.
 // The function must be callable, like def perform(fn).
-func shardDictPerform(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func sharedDictPerform(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// get the perform function
 	var pr starlark.Value
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "fn", &pr); err != nil {
