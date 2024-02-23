@@ -121,9 +121,6 @@ func (s *SharedDict) Attr(name string) (starlark.Value, error) {
 	defer s.Unlock()
 
 	// basic check
-	//if s.frozen {
-	//	return nil, fmt.Errorf("frozen dict")
-	//}
 	if s.dict == nil {
 		return nil, nil
 	}

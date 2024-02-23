@@ -301,14 +301,55 @@ func TestSharedDict_Frozen(t *testing.T) {
 		script  string
 		wantErr string
 	}{
-		//{
-		//	name: `freeze again`,
-		//	script: itn.HereDoc(`
-		//		load('share', 'sd')
-		//		sd.freeze()
-		//	`),
-		//	wantErr: `frozen dict`,
-		//},
+		// frozen dict can be read
+		{
+			name: `len`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				assert.eq(sd.len(), 1)
+			`),
+		},
+		{
+			name: `get`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				assert.eq(sd["foo"], "bar")
+				assert.eq(sd.get("foo"), "bar")
+			`),
+		},
+		{
+			name: `items`,
+			script: itn.HereDoc(`
+				load('share', 'sd')	
+				assert.eq(sd.items(), [("foo", "bar")])
+			`),
+		},
+		{
+			name: `keys`,
+			script: itn.HereDoc(`
+				load('share', 'sd')	
+				assert.eq(sd.keys(), ["foo"])
+			`),
+		},
+		{
+			name: `values`,
+			script: itn.HereDoc(`
+				load('share', 'sd')	
+				assert.eq(sd.values(), ["bar"])
+			`),
+		},
+		{
+			name: `perform: get`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				v = []
+				def act(d):
+					v.append(d["foo"])
+				sd.perform(act)
+				assert.eq(v, ["bar"])
+			`),
+		},
+		// frozen dict cannot be modified
 		{
 			name: `clear`,
 			script: itn.HereDoc(`
@@ -326,6 +367,14 @@ func TestSharedDict_Frozen(t *testing.T) {
 			wantErr: `popitem: cannot delete from frozen hash table`,
 		},
 		{
+			name: `delete 2`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd.pop("foo")
+			`),
+			wantErr: `pop: cannot delete from frozen hash table`,
+		},
+		{
 			name: `set key`,
 			script: itn.HereDoc(`
 				load('share', 'sd')
@@ -334,24 +383,41 @@ func TestSharedDict_Frozen(t *testing.T) {
 			wantErr: `frozen dict`,
 		},
 		{
-			name: `len`,
+			name: `setdefault`,
 			script: itn.HereDoc(`
 				load('share', 'sd')
-				assert.eq(sd.len(), 1)
+				assert.eq(sd.setdefault("foo", "too"), "bar")
+				sd.setdefault("zoo", "bar")
 			`),
+			wantErr: `setdefault: cannot insert into frozen hash table`,
 		},
 		{
-			name: `get`,
+			name: `attr: update`,
+			script: itn.HereDoc(`
+				load('share', 'sd')	
+				sd.update([("foo", "dog")], bar="cat")
+			`),
+			wantErr: `update: cannot insert into frozen hash table`,
+		},
+		{
+			name: `perform: set`,
 			script: itn.HereDoc(`
 				load('share', 'sd')
-				assert.eq(sd.get("foo"), "bar")
+				v = "bar"
+				def act(d):
+					d[v] = d["foo"]
+				sd.perform(act)
 			`),
+			wantErr: `cannot insert into frozen hash table`,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sd := NewSharedDict()
-			sd.SetKey(starlark.String("foo"), starlark.String("bar"))
+			if err := sd.SetKey(starlark.String("foo"), starlark.String("bar")); err != nil {
+				t.Errorf("set key error: %v", err)
+				return
+			}
 			sd.Freeze()
 			res, err := itn.ExecModuleWithErrorTest(t, "share", getSDLoader("sd", sd), tt.script, tt.wantErr)
 			if (err != nil) != (tt.wantErr != "") {
