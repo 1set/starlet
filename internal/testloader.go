@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 
 	"go.starlark.net/starlark"
@@ -18,8 +19,20 @@ type ModuleLoadFunc func() (starlark.StringDict, error)
 // ThreadLoadFunc is a function that loads a Starlark module by name, usually used by the Starlark thread.
 type ThreadLoadFunc func(thread *starlark.Thread, module string) (starlark.StringDict, error)
 
+var initTestOnce sync.Once
+
 // NewAssertLoader creates a Starlark thread loader that loads a module by name or asserts.star for testing.
 func NewAssertLoader(moduleName string, loader ModuleLoadFunc) ThreadLoadFunc {
+	initTestOnce.Do(func() {
+		starlarktest.DataFile = func(pkgdir, filename string) string {
+			_, currFileName, _, ok := runtime.Caller(1)
+			if !ok {
+				return ""
+			}
+			return filepath.Join(filepath.Dir(currFileName), filename)
+		}
+	})
+	// for assert loader
 	return func(thread *starlark.Thread, module string) (starlark.StringDict, error) {
 		switch module {
 		case moduleName:
@@ -51,13 +64,6 @@ func NewAssertLoader(moduleName string, loader ModuleLoadFunc) ThreadLoadFunc {
 				"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
 			}, nil
 		case "assert.star":
-			starlarktest.DataFile = func(pkgdir, filename string) string {
-				_, currFileName, _, ok := runtime.Caller(1)
-				if !ok {
-					return ""
-				}
-				return filepath.Join(filepath.Dir(currFileName), filename)
-			}
 			return starlarktest.LoadAssertModule()
 		}
 
