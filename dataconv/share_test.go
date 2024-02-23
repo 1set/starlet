@@ -111,6 +111,10 @@ func TestSharedDict_Functions(t *testing.T) {
 				sd1["your"] = "name"
 				assert.true(sd1 == sd2)
 				assert.true(sd1 == sd3)
+
+				assert.true(None != sd1)
+				assert.true(None != sd2)
+				assert.true(None != sd3)
 			`),
 		},
 		{
@@ -395,6 +399,8 @@ func TestSharedDict_Frozen(t *testing.T) {
 				sd3.clear()
 				sd3["foo"] = "bar"
 				assert.true(sd == sd3)
+				assert.true(None != sd)
+				assert.true(None != sd3)
 			`),
 		},
 		{
