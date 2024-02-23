@@ -83,34 +83,6 @@ func (s *SharedDict) Hash() (uint32, error) {
 	return 0, fmt.Errorf("unhashable type: shared_dict")
 }
 
-// The following methods are wrapped around the underlying starlark.Dict.
-
-func (s *SharedDict) Clear() error {
-	s.Lock()
-	defer s.Unlock()
-
-	if s.frozen {
-		return fmt.Errorf("cannot clear a frozen shared_dict")
-	}
-	if s.dict != nil {
-		return s.dict.Clear()
-	}
-	return nil
-}
-
-func (s *SharedDict) Delete(k starlark.Value) (v starlark.Value, found bool, err error) {
-	s.Lock()
-	defer s.Unlock()
-
-	if s.frozen {
-		return nil, false, fmt.Errorf("cannot delete from a frozen shared_dict")
-	}
-	if s.dict != nil {
-		return s.dict.Delete(k)
-	}
-	return nil, false, nil
-}
-
 func (s *SharedDict) Get(k starlark.Value) (v starlark.Value, found bool, err error) {
 	s.RLock()
 	defer s.RUnlock()
@@ -119,26 +91,6 @@ func (s *SharedDict) Get(k starlark.Value) (v starlark.Value, found bool, err er
 		return s.dict.Get(k)
 	}
 	return nil, false, nil
-}
-
-func (s *SharedDict) Items() []starlark.Tuple {
-	s.RLock()
-	defer s.RUnlock()
-
-	if s.dict != nil {
-		return s.dict.Items()
-	}
-	return nil
-}
-
-func (s *SharedDict) Keys() []starlark.Value {
-	s.RLock()
-	defer s.RUnlock()
-
-	if s.dict != nil {
-		return s.dict.Keys()
-	}
-	return nil
 }
 
 func (s *SharedDict) Len() int {
