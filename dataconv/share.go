@@ -107,11 +107,19 @@ func (s *SharedDict) SetKey(k, v starlark.Value) error {
 	s.Lock()
 	defer s.Unlock()
 
+	// basic check
 	if s.frozen {
 		return fmt.Errorf("frozen dict")
 	}
+
+	// maybe create the dictionary (perhaps this line is unreachable)
 	if s.dict == nil {
 		s.dict = &starlark.Dict{}
+	}
+
+	// check if the value is a shared dict -- reject it
+	if sd, ok := v.(*SharedDict); ok {
+		return fmt.Errorf("unsupported value: %s", sd.Type())
 	}
 	return s.dict.SetKey(k, v)
 }

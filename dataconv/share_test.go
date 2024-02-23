@@ -114,11 +114,47 @@ func TestSharedDict_Functions(t *testing.T) {
 			`),
 		},
 		{
+			name: `string`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				s = str(sd)
+				assert.eq(s, "shared_dict({})")
+				sd["foo"] = "bar"
+				s2 = str(sd)
+				assert.eq(s2, 'shared_dict({"foo": "bar"})')
+			`),
+		},
+		{
+			name: `self contain key`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd[sd] = "self"
+			`),
+			wantErr: `unhashable type: shared_dict`,
+		},
+		{
+			name: `self contain value`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd["self"] = sd
+			`),
+			wantErr: `unsupported value: shared_dict`,
+		},
+		{
+			name: `no shared dict as value`,
+			script: itn.HereDoc(`
+				load('share', 'sd', sd3='another')
+				sd["another"] = sd3
+			`),
+			wantErr: `unsupported value: shared_dict`,
+		},
+		{
 			name: `attrs`,
 			script: itn.HereDoc(`
 				load('share', 'sd')
 				l = dir(sd)
 				print(l)
+				assert.eq(l, ["clear", "get", "items", "keys", "len", "perform", "pop", "popitem", "setdefault", "update", "values"])
 			`),
 		},
 		{
