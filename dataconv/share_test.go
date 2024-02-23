@@ -212,7 +212,7 @@ func TestSharedDict_Functions(t *testing.T) {
 				load('share', 'sd')
 				l = dir(sd)
 				print(l)
-				assert.eq(l, ["clear", "get", "items", "keys", "len", "perform", "pop", "popitem", "setdefault", "update", "values"])
+				assert.eq(l, ["clear", "get", "items", "keys", "len", "perform", "pop", "popitem", "setdefault", "to_json", "update", "values"])
 			`),
 		},
 		{
@@ -410,6 +410,31 @@ func TestSharedDict_Functions(t *testing.T) {
 				sd.perform(123)
 			`),
 			wantErr: `perform: not callable type: int`,
+		},
+		{
+			name: `attr: custom to_json -- invalid args`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd.to_json(123)
+			`),
+			wantErr: `to_json: got 1 arguments, want 0`,
+		},
+		{
+			name: `attr: custom to_json -- empty`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				j = sd.to_json()
+				assert.eq(j, "{}")
+			`),
+		},
+		{
+			name: `attr: custom to_json -- one`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd["foo"] = "bar"
+				j = sd.to_json()
+				assert.eq(j, '{"foo":"bar"}')
+			`),
 		},
 		{
 			name: `args`,

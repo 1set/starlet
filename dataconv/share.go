@@ -5,6 +5,7 @@ import (
 	"sort"
 	"sync"
 
+	stdjson "go.starlark.net/lib/json"
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 )
@@ -211,6 +212,7 @@ var (
 	customSharedDictMethods = map[string]*starlark.Builtin{
 		"len":     starlark.NewBuiltin("len", sharedDictLen),
 		"perform": starlark.NewBuiltin("perform", sharedDictPerform),
+		"to_json": starlark.NewBuiltin("to_json", sharedDictToJSON),
 	}
 )
 
@@ -242,4 +244,25 @@ func sharedDictPerform(thread *starlark.Thread, b *starlark.Builtin, args starla
 	default:
 		return nil, fmt.Errorf("%s: not callable type: %s", b.Name(), pr.Type())
 	}
+}
+
+// sharedDictToJSON converts the underlying dictionary to a JSON string.
+func sharedDictToJSON(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// check the arguments: no arguments
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+		return nil, err
+	}
+
+	// get the receiver
+	d := b.Receiver().(*starlark.Dict)
+
+	// get the JSON encoder
+	jm, ok := stdjson.Module.Members["encode"]
+	if !ok {
+		return nil, fmt.Errorf("json.encode not found")
+	}
+	enc := jm.(*starlark.Builtin)
+
+	// convert to JSON
+	return enc.CallInternal(thread, starlark.Tuple{d}, nil)
 }
