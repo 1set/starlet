@@ -5,6 +5,7 @@ import (
 	"sort"
 	"sync"
 
+	itn "github.com/1set/starlet/internal"
 	stdjson "go.starlark.net/lib/json"
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
@@ -210,9 +211,10 @@ func (s *SharedDict) CompareSameType(op syntax.Token, y_ starlark.Value, depth i
 
 var (
 	customSharedDictMethods = map[string]*starlark.Builtin{
-		"len":     starlark.NewBuiltin("len", sharedDictLen),
-		"perform": starlark.NewBuiltin("perform", sharedDictPerform),
-		"to_json": starlark.NewBuiltin("to_json", sharedDictToJSON),
+		"len":       starlark.NewBuiltin("len", sharedDictLen),
+		"perform":   starlark.NewBuiltin("perform", sharedDictPerform),
+		"to_json":   starlark.NewBuiltin("to_json", sharedDictToJSON),
+		"from_json": starlark.NewBuiltin("from_json", sharedDictFromJSON),
 	}
 )
 
@@ -265,4 +267,45 @@ func sharedDictToJSON(thread *starlark.Thread, b *starlark.Builtin, args starlar
 
 	// convert to JSON
 	return enc.CallInternal(thread, starlark.Tuple{d}, nil)
+}
+
+// sharedDictFromJSON converts a starlark.Value to a starlark.Dict, and wraps it with a SharedDict.
+func sharedDictFromJSON(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// check the arguments
+	var s itn.StringOrBytes
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "x", &s); err != nil {
+		return nil, err
+	}
+
+	// get the JSON decoder
+	jm, ok := stdjson.Module.Members["decode"]
+	if !ok {
+		return nil, fmt.Errorf("json.decode not found")
+	}
+	dec := jm.(*starlark.Builtin)
+
+	// convert from JSON
+	v, err := dec.CallInternal(thread, starlark.Tuple{s.StarlarkString()}, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// convert to dict
+	nd, ok := v.(*starlark.Dict)
+	if !ok {
+		return nil, fmt.Errorf("got %s, want dict", v.Type())
+	}
+
+	// merge the new dict into a shared dict
+	od := b.Receiver().(*starlark.Dict)
+	for _, r := range nd.Items() {
+		if len(r) < 2 {
+			continue
+		}
+		k, v := r[0], r[1]
+		_ = od.SetKey(k, v)
+	}
+
+	// return new json dict
+	return nd, nil
 }

@@ -212,7 +212,7 @@ func TestSharedDict_Functions(t *testing.T) {
 				load('share', 'sd')
 				l = dir(sd)
 				print(l)
-				assert.eq(l, ["clear", "get", "items", "keys", "len", "perform", "pop", "popitem", "setdefault", "to_json", "update", "values"])
+				assert.eq(l, ["clear", "from_json", "get", "items", "keys", "len", "perform", "pop", "popitem", "setdefault", "to_json", "update", "values"])
 			`),
 		},
 		{
@@ -437,6 +437,47 @@ func TestSharedDict_Functions(t *testing.T) {
 			`),
 		},
 		{
+			name: `attr: custom from_json -- missing args`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd.from_json()
+			`),
+			wantErr: `from_json: missing argument for x`,
+		},
+		{
+			name: `attr: custom from_json -- invalid type`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd.from_json(123)
+			`),
+			wantErr: `from_json: for parameter x: got int, want string or bytes`,
+		},
+		{
+			name: `attr: custom from_json -- not dict`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd.from_json("123")
+			`),
+			wantErr: `got int, want dict`,
+		},
+		{
+			name: `attr: custom from_json`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd["a"] = 100
+				sd["b"] = 200
+
+				x = sd.from_json('{}')
+				assert.eq(sd.items(), {"a": 100, "b": 200}.items())
+				assert.eq(x, {})
+
+				y = sd.from_json('{"b":300, "c":400}')
+				print(sd, y)
+				assert.eq(sd.items(), {"a": 100, "b": 300, "c": 400}.items())
+				assert.eq(y, {"b": 300, "c": 400})
+			`),
+		},
+		{
 			name: `args`,
 			script: itn.HereDoc(`
 				load('share', 'sd')
@@ -524,6 +565,15 @@ func TestSharedDict_Frozen(t *testing.T) {
 				assert.eq(v, ["bar"])
 			`),
 		},
+		{
+			name: `to_json`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				j = sd.to_json()
+				assert.eq(j, '{"foo":"bar"}')
+			`),
+		},
+
 		// frozen dict cannot be modified
 		{
 			name: `clear`,
@@ -584,6 +634,14 @@ func TestSharedDict_Frozen(t *testing.T) {
 				sd.perform(act)
 			`),
 			wantErr: `cannot insert into frozen hash table`,
+		},
+		{
+			name: `attr: custom from_json`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				x = sd.from_json('{"a": 120}')
+				print(x, sd)
+			`),
 		},
 	}
 	for _, tt := range tests {
