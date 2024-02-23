@@ -9,9 +9,14 @@ import (
 )
 
 func getSDLoader(name string, sd *SharedDict) func() (starlark.StringDict, error) {
+	md := NewSharedDict()
+	if err := md.SetKey(starlark.String("your"), starlark.String("name")); err != nil {
+		panic(err)
+	}
 	return func() (starlark.StringDict, error) {
 		return starlark.StringDict{
-			name: sd,
+			name:      sd,
+			"another": md,
 		}, nil
 	}
 }
@@ -94,12 +99,18 @@ func TestSharedDict_Functions(t *testing.T) {
 			`),
 		},
 		{
-			name: `same`,
+			name: `equal check`,
 			script: itn.HereDoc(`
-				load('share', 'sd')
+				load('share', 'sd', sd3='another')
 				sd1 = sd
 				sd2 = sd
 				assert.true(sd1 == sd2)
+				assert.true(sd1 != sd3)
+
+				sd1.clear()
+				sd1["your"] = "name"
+				assert.true(sd1 == sd2)
+				assert.true(sd1 == sd3)
 			`),
 		},
 		{
@@ -336,6 +347,16 @@ func TestSharedDict_Frozen(t *testing.T) {
 			script: itn.HereDoc(`
 				load('share', 'sd')	
 				assert.eq(sd.values(), ["bar"])
+			`),
+		},
+		{
+			name: `equal`,
+			script: itn.HereDoc(`
+				load('share', 'sd', sd3='another')
+				assert.true(sd != sd3)
+				sd3.clear()
+				sd3["foo"] = "bar"
+				assert.true(sd == sd3)
 			`),
 		},
 		{
