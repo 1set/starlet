@@ -608,6 +608,14 @@ func TestSharedDict_Frozen(t *testing.T) {
 				assert.eq(j, '{"foo":"bar"}')
 			`),
 		},
+		{
+			name: `to_dict`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				d = sd.to_dict()
+				assert.eq(d, {"foo":"bar"})
+			`),
+		},
 
 		// frozen dict cannot be modified
 		{
