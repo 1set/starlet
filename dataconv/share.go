@@ -169,16 +169,20 @@ func (s *SharedDict) AttrNames() []string {
 // CompareSameType compares the SharedDict with another value of the same type.
 // It implements the starlark.Comparable interface.
 func (s *SharedDict) CompareSameType(op syntax.Token, y_ starlark.Value, depth int) (bool, error) {
-	// if they are the same object, they are equal
-	if s == y_ {
+	retEqualCheck := func(equal bool, op syntax.Token) (bool, error) {
 		switch op {
 		case syntax.EQL:
-			return true, nil
+			return equal, nil
 		case syntax.NEQ:
-			return false, nil
+			return !equal, nil
 		default:
 			return false, fmt.Errorf("unsupported operator: %s", op)
 		}
+	}
+
+	// if they are the same object, they are equal
+	if s == y_ {
+		return retEqualCheck(true, op)
 	}
 
 	// scan the type
@@ -195,18 +199,11 @@ func (s *SharedDict) CompareSameType(op syntax.Token, y_ starlark.Value, depth i
 		return s.dict.CompareSameType(op, y.dict, depth)
 	} else if s.dict == nil && y.dict == nil {
 		// both are nil, they are equal, aha! (nil == nil)
-		return true, nil
+		return retEqualCheck(true, op)
 	}
 
 	// one is nil, the other is not, they are not equal
-	switch op {
-	case syntax.EQL:
-		return false, nil
-	case syntax.NEQ:
-		return true, nil
-	default:
-		return false, fmt.Errorf("unsupported operator: %s", op)
-	}
+	return retEqualCheck(false, op)
 }
 
 var (
