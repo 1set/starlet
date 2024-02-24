@@ -212,7 +212,7 @@ func TestSharedDict_Functions(t *testing.T) {
 				load('share', 'sd')
 				l = dir(sd)
 				print(l)
-				assert.eq(l, ["clear", "from_json", "get", "items", "keys", "len", "perform", "pop", "popitem", "setdefault", "to_json", "update", "values"])
+				assert.eq(l, ["clear", "from_json", "get", "items", "keys", "len", "perform", "pop", "popitem", "setdefault", "to_dict", "to_json", "update", "values"])
 			`),
 		},
 		{
@@ -410,6 +410,41 @@ func TestSharedDict_Functions(t *testing.T) {
 				sd.perform(123)
 			`),
 			wantErr: `perform: not callable type: int`,
+		},
+		{
+			name: `attr: custom to_dict -- invalid args`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd.to_dict(123)
+			`),
+			wantErr: `to_dict: got 1 arguments, want 0`,
+		},
+		{
+			name: `attr: custom to_dict -- empty`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				d = sd.to_dict()
+				assert.eq(d, {})
+			`),
+		},
+		{
+			name: `attr: custom to_dict -- one`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd["foo"] = "bar"
+				d = sd.to_dict()
+				assert.eq(d, {"foo":"bar"})
+			`),
+		},
+		{
+			name: `attr: custom to_dict -- two`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd["foo"] = "bar"
+				sd["cnt"] = 100
+				d = sd.to_dict()
+				assert.eq(d, {"foo":"bar", "cnt":100})
+			`),
 		},
 		{
 			name: `attr: custom to_json -- invalid args`,
@@ -691,6 +726,14 @@ func TestSharedDict_NilDict(t *testing.T) {
 				sd.len()
 			`),
 			wantErr: `shared_dict has no .len field or method`,
+		},
+		{
+			name: `to json`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				assert.eq(sd.to_json(), '{}')
+			`),
+			wantErr: `shared_dict has no .to_json field or method`,
 		},
 		{
 			name: `attr names`,

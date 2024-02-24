@@ -210,6 +210,7 @@ var (
 	customSharedDictMethods = map[string]*starlark.Builtin{
 		"len":       starlark.NewBuiltin("len", sharedDictLen),
 		"perform":   starlark.NewBuiltin("perform", sharedDictPerform),
+		"to_dict":   starlark.NewBuiltin("to_dict", sharedDictToDict),
 		"to_json":   starlark.NewBuiltin("to_json", sharedDictToJSON),
 		"from_json": starlark.NewBuiltin("from_json", sharedDictFromJSON),
 	}
@@ -243,6 +244,27 @@ func sharedDictPerform(thread *starlark.Thread, b *starlark.Builtin, args starla
 	default:
 		return nil, fmt.Errorf("%s: not callable type: %s", b.Name(), pr.Type())
 	}
+}
+
+// sharedDictToDict returns the shadow-clone of underlying dictionary.
+func sharedDictToDict(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+		return nil, err
+	}
+	// get the receiver
+	od := b.Receiver().(*starlark.Dict)
+
+	// clone the dictionary
+	nd := starlark.NewDict(od.Len())
+	for _, r := range od.Items() {
+		if len(r) < 2 {
+			continue
+		}
+		if e := nd.SetKey(r[0], r[1]); e != nil {
+			return nil, e
+		}
+	}
+	return nd, nil
 }
 
 // sharedDictToJSON converts the underlying dictionary to a JSON string.
