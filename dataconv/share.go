@@ -5,6 +5,8 @@ import (
 	"sort"
 	"sync"
 
+	itn "github.com/1set/starlet/internal"
+	stdjson "go.starlark.net/lib/json"
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 )
@@ -14,18 +16,13 @@ type SharedDict struct {
 	sync.RWMutex
 	dict   *starlark.Dict
 	frozen bool
+	name   string
 }
 
 const (
 	defaultSharedDictSize = 8
+	defaultSharedDictName = "shared_dict"
 )
-
-// NewSharedDict creates a new SharedDict instance.
-func NewSharedDict() *SharedDict {
-	return &SharedDict{
-		dict: starlark.NewDict(defaultSharedDictSize),
-	}
-}
 
 var (
 	_ starlark.Value      = (*SharedDict)(nil)
@@ -35,17 +32,39 @@ var (
 	_ starlark.HasSetKey  = (*SharedDict)(nil)
 )
 
+// NewSharedDict creates a new SharedDict instance.
+func NewSharedDict() *SharedDict {
+	return &SharedDict{
+		dict: starlark.NewDict(defaultSharedDictSize),
+	}
+}
+
+// NewNamedSharedDict creates a new SharedDict instance with the given name.
+func NewNamedSharedDict(name string) *SharedDict {
+	return &SharedDict{
+		dict: starlark.NewDict(defaultSharedDictSize),
+		name: name,
+	}
+}
+
+func (s *SharedDict) getName() string {
+	if s.name == "" {
+		return defaultSharedDictName
+	}
+	return s.name
+}
+
 func (s *SharedDict) String() string {
 	var v string
 	if s != nil && s.dict != nil {
 		v = s.dict.String()
 	}
-	return fmt.Sprintf("shared_dict(%s)", v)
+	return fmt.Sprintf("%s(%s)", s.getName(), v)
 }
 
 // Type returns the type name of the SharedDict.
 func (s *SharedDict) Type() string {
-	return "shared_dict"
+	return s.getName()
 }
 
 // Freeze prevents the SharedDict from being modified.
@@ -69,7 +88,7 @@ func (s *SharedDict) Truth() starlark.Bool {
 
 // Hash returns the hash value of the SharedDict, actually it's not hashable.
 func (s *SharedDict) Hash() (uint32, error) {
-	return 0, fmt.Errorf("unhashable type: shared_dict")
+	return 0, fmt.Errorf("unhashable type: %s", s.getName())
 }
 
 // Get returns the value corresponding to the specified key, or not found if the mapping does not contain the key.
@@ -92,7 +111,7 @@ func (s *SharedDict) SetKey(k, v starlark.Value) error {
 
 	// basic check
 	if s.frozen {
-		return fmt.Errorf("frozen dict")
+		return fmt.Errorf("frozen %s", s.Type())
 	}
 
 	// maybe create the dictionary (perhaps this line is unreachable)
@@ -167,16 +186,20 @@ func (s *SharedDict) AttrNames() []string {
 // CompareSameType compares the SharedDict with another value of the same type.
 // It implements the starlark.Comparable interface.
 func (s *SharedDict) CompareSameType(op syntax.Token, y_ starlark.Value, depth int) (bool, error) {
-	// if they are the same object, they are equal
-	if s == y_ {
+	retEqualCheck := func(equal bool, op syntax.Token) (bool, error) {
 		switch op {
 		case syntax.EQL:
-			return true, nil
+			return equal, nil
 		case syntax.NEQ:
-			return false, nil
+			return !equal, nil
 		default:
 			return false, fmt.Errorf("unsupported operator: %s", op)
 		}
+	}
+
+	// if they are the same object, they are equal
+	if s == y_ {
+		return retEqualCheck(true, op)
 	}
 
 	// scan the type
@@ -193,29 +216,25 @@ func (s *SharedDict) CompareSameType(op syntax.Token, y_ starlark.Value, depth i
 		return s.dict.CompareSameType(op, y.dict, depth)
 	} else if s.dict == nil && y.dict == nil {
 		// both are nil, they are equal, aha! (nil == nil)
-		return true, nil
+		return retEqualCheck(true, op)
 	}
 
 	// one is nil, the other is not, they are not equal
-	switch op {
-	case syntax.EQL:
-		return false, nil
-	case syntax.NEQ:
-		return true, nil
-	default:
-		return false, fmt.Errorf("unsupported operator: %s", op)
-	}
+	return retEqualCheck(false, op)
 }
 
 var (
 	customSharedDictMethods = map[string]*starlark.Builtin{
-		"len":     starlark.NewBuiltin("len", shardDictLen),
-		"perform": starlark.NewBuiltin("perform", shardDictPerform),
+		"len":       starlark.NewBuiltin("len", sharedDictLen),
+		"perform":   starlark.NewBuiltin("perform", sharedDictPerform),
+		"to_dict":   starlark.NewBuiltin("to_dict", sharedDictToDict),
+		"to_json":   starlark.NewBuiltin("to_json", sharedDictToJSON),
+		"from_json": starlark.NewBuiltin("from_json", sharedDictFromJSON),
 	}
 )
 
-// shardDictLen returns the length of the underlying dictionary.
-func shardDictLen(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+// sharedDictLen returns the length of the underlying dictionary.
+func sharedDictLen(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
 		return nil, err
 	}
@@ -223,9 +242,9 @@ func shardDictLen(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, 
 	return starlark.MakeInt(l), nil
 }
 
-// shardDictPerform calls the given function with the underlying receiver dictionary, and returns the result.
+// sharedDictPerform calls the given function with the underlying receiver dictionary, and returns the result.
 // The function must be callable, like def perform(fn).
-func shardDictPerform(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func sharedDictPerform(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// get the perform function
 	var pr starlark.Value
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "fn", &pr); err != nil {
@@ -242,4 +261,88 @@ func shardDictPerform(thread *starlark.Thread, b *starlark.Builtin, args starlar
 	default:
 		return nil, fmt.Errorf("%s: not callable type: %s", b.Name(), pr.Type())
 	}
+}
+
+// sharedDictToDict returns the shadow-clone of underlying dictionary.
+func sharedDictToDict(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+		return nil, err
+	}
+	// get the receiver
+	od := b.Receiver().(*starlark.Dict)
+
+	// clone the dictionary
+	nd := starlark.NewDict(od.Len())
+	for _, r := range od.Items() {
+		if len(r) < 2 {
+			continue
+		}
+		if e := nd.SetKey(r[0], r[1]); e != nil {
+			return nil, e
+		}
+	}
+	return nd, nil
+}
+
+// sharedDictToJSON converts the underlying dictionary to a JSON string.
+func sharedDictToJSON(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// check the arguments: no arguments
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+		return nil, err
+	}
+
+	// get the receiver
+	d := b.Receiver().(*starlark.Dict)
+
+	// get the JSON encoder
+	jm, ok := stdjson.Module.Members["encode"]
+	if !ok {
+		return nil, fmt.Errorf("json.encode not found")
+	}
+	enc := jm.(*starlark.Builtin)
+
+	// convert to JSON
+	return enc.CallInternal(thread, starlark.Tuple{d}, nil)
+}
+
+// sharedDictFromJSON converts a starlark.Value to a starlark.Dict, and wraps it with a SharedDict.
+func sharedDictFromJSON(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// check the arguments
+	var s itn.StringOrBytes
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "x", &s); err != nil {
+		return nil, err
+	}
+
+	// get the JSON decoder
+	jm, ok := stdjson.Module.Members["decode"]
+	if !ok {
+		return nil, fmt.Errorf("json.decode not found")
+	}
+	dec := jm.(*starlark.Builtin)
+
+	// convert from JSON
+	v, err := dec.CallInternal(thread, starlark.Tuple{s.StarlarkString()}, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// convert to dict
+	nd, ok := v.(*starlark.Dict)
+	if !ok {
+		return nil, fmt.Errorf("got %s, want dict", v.Type())
+	}
+
+	// merge the new dict into a shared dict
+	od := b.Receiver().(*starlark.Dict)
+	for _, r := range nd.Items() {
+		if len(r) < 2 {
+			continue
+		}
+		if e := od.SetKey(r[0], r[1]); e != nil {
+			return nil, e
+		}
+	}
+
+	// return new json dict
+	return nd, nil
 }
