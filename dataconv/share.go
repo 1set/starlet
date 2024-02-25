@@ -39,8 +39,8 @@ func NewSharedDict() *SharedDict {
 	}
 }
 
-// NewSharedDictWithName creates a new SharedDict instance with the given name.
-func NewSharedDictWithName(name string) *SharedDict {
+// NewNamedSharedDict creates a new SharedDict instance with the given name.
+func NewNamedSharedDict(name string) *SharedDict {
 	return &SharedDict{
 		dict: starlark.NewDict(defaultSharedDictSize),
 		name: name,

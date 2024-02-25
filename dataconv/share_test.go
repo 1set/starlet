@@ -13,10 +13,16 @@ func getSDLoader(name string, sd *SharedDict) func() (starlark.StringDict, error
 	if err := md.SetKey(starlark.String("your"), starlark.String("name")); err != nil {
 		panic(err)
 	}
+	md2 := NewSharedDict()
+	if err := md2.SetKey(starlark.String("my"), starlark.String("heart")); err != nil {
+		panic(err)
+	}
+	md2.Freeze()
 	return func() (starlark.StringDict, error) {
 		return starlark.StringDict{
 			name:      sd,
 			"another": md,
+			"frozen":  md2,
 		}, nil
 	}
 }
@@ -771,6 +777,90 @@ func TestSharedDict_NilDict(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sd := NewSharedDict()
+			sd.dict = nil
+			res, err := itn.ExecModuleWithErrorTest(t, "share", getSDLoader("sd", sd), tt.script, tt.wantErr)
+			if (err != nil) != (tt.wantErr != "") {
+				t.Errorf("nil inside sd(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
+				return
+			}
+		})
+	}
+}
+
+func TestSharedDict_Named(t *testing.T) {
+	tests := []struct {
+		name    string
+		script  string
+		wantErr string
+	}{
+		{
+			name: `get error`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				v = sd["foo"]
+			`),
+			wantErr: `key "foo" not in Kioku`,
+		},
+		{
+			name: `string`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd[1] = 2
+				assert.eq(str(sd), "Kioku({1: 2})")
+			`),
+		},
+		{
+			name: `type`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				assert.eq(type(sd), "Kioku")
+			`),
+		},
+		{
+			name: `hash error`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				d = { sd: 123 }
+			`),
+			wantErr: `unhashable type: Kioku`,
+		},
+		{
+			name: `set frozen`,
+			script: itn.HereDoc(`
+				load('share', sf='frozen')
+				sf["foo"] = "bar"
+			`),
+			wantErr: `frozen shared_dict`,
+		},
+		{
+			name: `set same type`,
+			script: itn.HereDoc(`
+				load('share', 'sd', sd3='another')
+				sd3["foo"] = sd
+			`),
+			wantErr: `unsupported value: Kioku`,
+		},
+		{
+			name: `compare`,
+			script: itn.HereDoc(`
+				load('share', 'sd', sd3='another')
+				assert.true(sd == sd)
+				assert.true(sd != sd3)
+				assert.true(not(sd == sd3))
+			`),
+		},
+		{
+			name: `compare unsupported`,
+			script: itn.HereDoc(`
+				load('share', 'sd', sd3='another')
+				sd >= sd3
+			`),
+			wantErr: `unsupported operator: >=`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sd := NewNamedSharedDict("Kioku")
 			sd.dict = nil
 			res, err := itn.ExecModuleWithErrorTest(t, "share", getSDLoader("sd", sd), tt.script, tt.wantErr)
 			if (err != nil) != (tt.wantErr != "") {
