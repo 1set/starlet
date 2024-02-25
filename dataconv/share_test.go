@@ -18,11 +18,14 @@ func getSDLoader(name string, sd *SharedDict) func() (starlark.StringDict, error
 		panic(err)
 	}
 	md2.Freeze()
+	md3 := NewSharedDict()
+	md3.dict = nil
 	return func() (starlark.StringDict, error) {
 		return starlark.StringDict{
 			name:      sd,
 			"another": md,
 			"frozen":  md2,
+			"broken":  md3,
 		}, nil
 	}
 }
@@ -759,8 +762,10 @@ func TestSharedDict_NilDict(t *testing.T) {
 		{
 			name: `compare`,
 			script: itn.HereDoc(`
-				load('share', 'sd', sd3='another')
+				load('share', 'sd', sd2='broken', sd3='another')
 				assert.true(sd == sd)
+				assert.true(sd == sd2)
+				assert.true(not(sd != sd2))
 				assert.true(sd != sd3)
 				assert.true(not(sd == sd3))
 			`),
