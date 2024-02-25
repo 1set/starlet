@@ -16,18 +16,13 @@ type SharedDict struct {
 	sync.RWMutex
 	dict   *starlark.Dict
 	frozen bool
+	name   string
 }
 
 const (
 	defaultSharedDictSize = 8
+	defaultSharedDictName = "shared_dict"
 )
-
-// NewSharedDict creates a new SharedDict instance.
-func NewSharedDict() *SharedDict {
-	return &SharedDict{
-		dict: starlark.NewDict(defaultSharedDictSize),
-	}
-}
 
 var (
 	_ starlark.Value      = (*SharedDict)(nil)
@@ -37,17 +32,39 @@ var (
 	_ starlark.HasSetKey  = (*SharedDict)(nil)
 )
 
+// NewSharedDict creates a new SharedDict instance.
+func NewSharedDict() *SharedDict {
+	return &SharedDict{
+		dict: starlark.NewDict(defaultSharedDictSize),
+	}
+}
+
+// NewSharedDictWithName creates a new SharedDict instance with the given name.
+func NewSharedDictWithName(name string) *SharedDict {
+	return &SharedDict{
+		dict: starlark.NewDict(defaultSharedDictSize),
+		name: name,
+	}
+}
+
+func (s *SharedDict) getName() string {
+	if s.name == "" {
+		return defaultSharedDictName
+	}
+	return s.name
+}
+
 func (s *SharedDict) String() string {
 	var v string
 	if s != nil && s.dict != nil {
 		v = s.dict.String()
 	}
-	return fmt.Sprintf("shared_dict(%s)", v)
+	return fmt.Sprintf("%s(%s)", s.getName(), v)
 }
 
 // Type returns the type name of the SharedDict.
 func (s *SharedDict) Type() string {
-	return "shared_dict"
+	return s.getName()
 }
 
 // Freeze prevents the SharedDict from being modified.
@@ -71,7 +88,7 @@ func (s *SharedDict) Truth() starlark.Bool {
 
 // Hash returns the hash value of the SharedDict, actually it's not hashable.
 func (s *SharedDict) Hash() (uint32, error) {
-	return 0, fmt.Errorf("unhashable type: shared_dict")
+	return 0, fmt.Errorf("unhashable type: %s", s.getName())
 }
 
 // Get returns the value corresponding to the specified key, or not found if the mapping does not contain the key.
@@ -94,7 +111,7 @@ func (s *SharedDict) SetKey(k, v starlark.Value) error {
 
 	// basic check
 	if s.frozen {
-		return fmt.Errorf("frozen dict")
+		return fmt.Errorf("frozen %s", s.Type())
 	}
 
 	// maybe create the dictionary (perhaps this line is unreachable)

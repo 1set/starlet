@@ -648,7 +648,7 @@ func TestSharedDict_Frozen(t *testing.T) {
 				load('share', 'sd')
 				sd["fly"] = "away"
 			`),
-			wantErr: `frozen dict`,
+			wantErr: `frozen shared_dict`,
 		},
 		{
 			name: `setdefault`,
