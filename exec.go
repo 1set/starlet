@@ -9,6 +9,8 @@ import (
 	"go.starlark.net/starlark"
 )
 
+// execStarlarkFile executes a Starlark file with the given filename and source, and returns the global environment and any error encountered.
+// If the cache is enabled, it will try to load the compiled program from the cache first, and save the compiled program to the cache after compilation.
 func (m *Machine) execStarlarkFile(filename string, src interface{}) (starlark.StringDict, error) {
 	// restore the arguments for starlark.ExecFileOptions
 	opts := m.getFileOptions()
@@ -16,7 +18,7 @@ func (m *Machine) execStarlarkFile(filename string, src interface{}) (starlark.S
 	predeclared := m.predeclared
 	hasCache := m.progCache != nil
 
-	// if cache is not enabled, execute the original source
+	// if cache is not enabled, just execute the original source
 	if !hasCache {
 		return starlark.ExecFileOptions(opts, thread, filename, src, predeclared)
 	}
@@ -27,6 +29,8 @@ func (m *Machine) execStarlarkFile(filename string, src interface{}) (starlark.S
 		err  error
 		key  = fmt.Sprintf("%d:%s", starlark.CompilerVersion, filename)
 	)
+
+	// try to load compiled program from cache first
 	if hasCache {
 		// if cache is enabled, try to load compiled bytes from cache first
 		if cb, ok := m.progCache.Get(key); ok {
