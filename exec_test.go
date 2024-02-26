@@ -110,6 +110,11 @@ var (
 func BenchmarkRunNoCache(b *testing.B) {
 	m := starlet.NewDefault()
 	m.SetScript(testScriptName, testScriptBytes, nil)
+	if _, err := m.Run(); err != nil {
+		b.Errorf("Run() error = %v", err)
+		return
+	}
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = m.Run()
@@ -120,6 +125,11 @@ func BenchmarkRunMemoryCache(b *testing.B) {
 	m := starlet.NewDefault()
 	m.SetScriptCacheEnabled(true)
 	m.SetScript(testScriptName, testScriptBytes, nil)
+	if _, err := m.Run(); err != nil {
+		b.Errorf("Run() error = %v", err)
+		return
+	}
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = m.Run()
