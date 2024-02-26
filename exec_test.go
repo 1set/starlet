@@ -103,7 +103,9 @@ var (
 		# This is a test script
 		a = 10
 		b = 20
-		c = a + b
+		def add(x, y):
+			return x+y
+		c = add(a,b)
 	`))
 )
 
