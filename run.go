@@ -255,6 +255,7 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 }
 
 // Reset resets the machine to initial state before the first run.
+// Attention: It does not reset the compiled program cache.
 func (m *Machine) Reset() {
 	m.runTimes = 0
 	m.thread = nil

@@ -464,6 +464,72 @@ func TestMachine_DisableBothConversion(t *testing.T) {
 	}
 }
 
+func TestMachine_SetScriptCache(t *testing.T) {
+	var (
+		sname    = "test"
+		script1  = "a = 10"
+		script2  = "a = 20"
+		checkRes = func(c int, err error, res starlet.StringAnyMap, expVal int) {
+			if err != nil {
+				t.Errorf("[case#%d] expected no error, got %v", c, err)
+				return
+			}
+			if exp := starlet.StringAnyMap(map[string]interface{}{"a": int64(expVal)}); !expectEqualStringAnyMap(t, res, exp) {
+				t.Errorf("[case#%d] expected result %v, got %v", c, exp, res)
+				return
+			}
+		}
+	)
+
+	// no cache
+	{
+		m := starlet.NewDefault()
+		m.SetScript(sname, []byte(script1), nil)
+		res, err := m.Run()
+		checkRes(101, err, res, 10)
+
+		m.SetScript(sname, []byte(script2), nil)
+		res, err = m.Run()
+		checkRes(102, err, res, 20)
+	}
+
+	// outside cache
+	{
+		m := starlet.NewDefault()
+		mc := starlet.NewMemoryCache()
+		m.SetScriptCache(mc)
+		m.SetScript(sname, []byte(script1), nil)
+		res, err := m.Run()
+		checkRes(201, err, res, 10)
+
+		m.SetScript(sname, []byte(script2), nil)
+		res, err = m.Run()
+		checkRes(202, err, res, 10)
+
+		m.SetScript(sname+"diff", []byte(script2), nil)
+		res, err = m.Run()
+		checkRes(203, err, res, 20)
+	}
+
+	// builtin cache
+	{
+		m := starlet.NewDefault()
+		m.SetScriptCacheEnabled(true)
+		m.SetScript(sname, []byte(script1), nil)
+		res, err := m.Run()
+		checkRes(301, err, res, 10)
+
+		m.SetScript(sname, []byte(script2), nil)
+		res, err = m.Run()
+		checkRes(302, err, res, 10)
+
+		m.SetScriptCacheEnabled(false)
+		m.SetScript(sname, []byte(script2), nil)
+		res, err = m.Run()
+		checkRes(303, err, res, 20)
+	}
+}
+
 func TestMachine_GetStarlarkPredeclared(t *testing.T) {
 	m := starlet.NewDefault()
 	pd := m.GetStarlarkPredeclared()
