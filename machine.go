@@ -257,6 +257,27 @@ func (m *Machine) SetOutputConversionEnabled(enabled bool) {
 	m.enableOutConv = enabled
 }
 
+// SetScriptCache sets the cache for compiled Starlark programs.
+func (m *Machine) SetScriptCache(cache ByteCache) {
+	m.mu.Lock() // Locking to avoid concurrent access
+	defer m.mu.Unlock()
+
+	m.progCache = cache
+}
+
+// SetScriptCacheEnabled controls the cache for compiled Starlark programs with the default in-memory cache.
+// If enabled is true, it creates the default in-memory cache instance, otherwise it uses no cache.
+func (m *Machine) SetScriptCacheEnabled(enabled bool) {
+	m.mu.Lock() // Locking to avoid concurrent access
+	defer m.mu.Unlock()
+
+	if enabled {
+		m.progCache = NewMemoryCache()
+	} else {
+		m.progCache = nil
+	}
+}
+
 // SetCustomTag sets the custom annotation tag of Go struct fields for Starlark.
 func (m *Machine) SetCustomTag(tag string) {
 	m.mu.Lock() // Locking to avoid concurrent access

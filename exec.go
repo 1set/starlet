@@ -69,21 +69,21 @@ type ByteCache interface {
 	Set(key string, value []byte) error
 }
 
-// MapByteCache is a simple in-memory map-based ByteCache.
-type MapByteCache struct {
+// MemoryCache is a simple in-memory map-based ByteCache, serves as a default cache for Starlark programs.
+type MemoryCache struct {
 	sync.RWMutex
 	data map[string][]byte
 }
 
-// NewMapByteCache creates a new MapByteCache instance.
-func NewMapByteCache() *MapByteCache {
-	return &MapByteCache{
+// NewMemoryCache creates a new MemoryCache instance.
+func NewMemoryCache() *MemoryCache {
+	return &MemoryCache{
 		data: make(map[string][]byte),
 	}
 }
 
 // Get returns the value for the given key, and whether the key exists.
-func (c *MapByteCache) Get(key string) ([]byte, bool) {
+func (c *MemoryCache) Get(key string) ([]byte, bool) {
 	c.RLock()
 	defer c.RUnlock()
 
@@ -95,7 +95,7 @@ func (c *MapByteCache) Get(key string) ([]byte, bool) {
 }
 
 // Set sets the value for the given key.
-func (c *MapByteCache) Set(key string, value []byte) error {
+func (c *MemoryCache) Set(key string, value []byte) error {
 	c.Lock()
 	defer c.Unlock()
 
