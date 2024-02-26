@@ -6,12 +6,13 @@
 package starlet
 
 import (
+	"bytes"
 	"fmt"
-	"go.starlark.net/syntax"
 	"io/fs"
 	"sync"
 
 	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
 )
 
 // Machine is a thread-safe type that wraps Starlark runtime environments. Machine ensures thread safety by using a sync.RWMutex to control access to the environment's state.
@@ -325,12 +326,27 @@ func (m *Machine) DisableGlobalReassign() {
 
 func starlarkExecFile(opts *syntax.FileOptions, thread *starlark.Thread, filename string, src interface{}, predeclared starlark.StringDict) (starlark.StringDict, error) {
 	// Parse, resolve, and compile a Starlark source file.
-	_, mod, err := starlark.SourceProgramOptions(opts, filename, src, predeclared.Has)
+	_, prog, err := starlark.SourceProgramOptions(opts, filename, src, predeclared.Has)
 	if err != nil {
 		return nil, err
 	}
 
-	g, err := mod.Init(thread, predeclared)
+	// Try to save it to the cache
+	buf := new(bytes.Buffer)
+	if err := prog.Write(buf); err != nil {
+		return nil, err
+	}
+	bs := buf.Bytes()
+	//cv := starlark.CompilerVersion
+
+	// Reload as a new program
+	np, err := starlark.CompiledProgram(bytes.NewReader(bs))
+	if err != nil {
+		return nil, err
+	}
+	prog = np
+
+	g, err := prog.Init(thread, predeclared)
 	g.Freeze()
 	return g, err
 }
