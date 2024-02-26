@@ -471,6 +471,7 @@ func TestMachine_SetScriptCache(t *testing.T) {
 		ckey     = fmt.Sprintf("%d:%s", starlark.CompilerVersion, sname)
 		script1  = "a = 10"
 		script2  = "a = 20"
+		script3  = "b ="
 		checkRes = func(c int, err error, res starlet.StringAnyMap, expVal int) {
 			if err != nil {
 				t.Errorf("[case#%d] expected no error, got %v", c, err)
@@ -548,6 +549,37 @@ func TestMachine_SetScriptCache(t *testing.T) {
 		m.SetScript(sname, []byte(script2), nil)
 		res, err = m.Run()
 		checkRes(403, err, res, 20)
+	}
+
+	// broken code
+	{
+		m1 := starlet.NewDefault()
+		m1.SetScript(sname, []byte(script3), nil)
+		_, err1 := m1.Run()
+		if err1 == nil {
+			t.Errorf("expected error 1, got none")
+			return
+		}
+
+		m2 := starlet.NewDefault()
+		m2.SetScriptCacheEnabled(true)
+		m2.SetScript(sname, []byte(script3), nil)
+		_, err2 := m2.Run()
+		if err2 == nil {
+			t.Errorf("expected error 2, got none")
+			return
+		}
+
+		m2.SetScript(sname, []byte(script3), nil)
+		_, err3 := m2.Run()
+		if err3 == nil {
+			t.Errorf("expected error 3, got none")
+			return
+		}
+
+		if err1.Error() != err2.Error() || err2.Error() != err3.Error() {
+			t.Errorf("expected same error, got different --- err1: %v, err2: %v, err3: %v", err1, err2, err3)
+		}
 	}
 }
 
