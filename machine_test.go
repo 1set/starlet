@@ -1,6 +1,7 @@
 package starlet_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/1set/starlet"
@@ -467,6 +468,7 @@ func TestMachine_DisableBothConversion(t *testing.T) {
 func TestMachine_SetScriptCache(t *testing.T) {
 	var (
 		sname    = "test"
+		ckey     = fmt.Sprintf("%d:%s", starlark.CompilerVersion, sname)
 		script1  = "a = 10"
 		script2  = "a = 20"
 		checkRes = func(c int, err error, res starlet.StringAnyMap, expVal int) {
@@ -493,11 +495,10 @@ func TestMachine_SetScriptCache(t *testing.T) {
 		checkRes(102, err, res, 20)
 	}
 
-	// outside cache
+	// builtin cache
 	{
 		m := starlet.NewDefault()
-		mc := starlet.NewMemoryCache()
-		m.SetScriptCache(mc)
+		m.SetScriptCacheEnabled(true)
 		m.SetScript(sname, []byte(script1), nil)
 		res, err := m.Run()
 		checkRes(201, err, res, 10)
@@ -506,15 +507,17 @@ func TestMachine_SetScriptCache(t *testing.T) {
 		res, err = m.Run()
 		checkRes(202, err, res, 10)
 
-		m.SetScript(sname+"diff", []byte(script2), nil)
+		m.SetScriptCacheEnabled(false)
+		m.SetScript(sname, []byte(script2), nil)
 		res, err = m.Run()
 		checkRes(203, err, res, 20)
 	}
 
-	// builtin cache
+	// outside cache
 	{
 		m := starlet.NewDefault()
-		m.SetScriptCacheEnabled(true)
+		mc := starlet.NewMemoryCache()
+		m.SetScriptCache(mc)
 		m.SetScript(sname, []byte(script1), nil)
 		res, err := m.Run()
 		checkRes(301, err, res, 10)
@@ -523,10 +526,28 @@ func TestMachine_SetScriptCache(t *testing.T) {
 		res, err = m.Run()
 		checkRes(302, err, res, 10)
 
-		m.SetScriptCacheEnabled(false)
-		m.SetScript(sname, []byte(script2), nil)
+		m.SetScript(sname+"diff", []byte(script2), nil)
 		res, err = m.Run()
 		checkRes(303, err, res, 20)
+	}
+
+	// broken cache
+	{
+		m := starlet.NewDefault()
+		mc := starlet.NewMemoryCache()
+		m.SetScriptCache(mc)
+		m.SetScript(sname, []byte(script1), nil)
+		res, err := m.Run()
+		checkRes(401, err, res, 10)
+
+		m.SetScript(sname, []byte(script2), nil)
+		res, err = m.Run()
+		checkRes(402, err, res, 10)
+
+		mc.Set(ckey, []byte("broken_data"))
+		m.SetScript(sname, []byte(script2), nil)
+		res, err = m.Run()
+		checkRes(403, err, res, 20)
 	}
 }
 
