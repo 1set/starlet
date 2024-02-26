@@ -58,5 +58,8 @@ var (
 
 // getUpTime returns time elapsed since the app started.
 func getUpTime(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+		return nil, err
+	}
 	return stdtime.Duration(time.Since(appStart)), nil
 }

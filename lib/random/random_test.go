@@ -338,6 +338,14 @@ func TestLoadModule_Random(t *testing.T) {
 			},
 		},
 		{
+			name: "random with invalid args",
+			script: itn.HereDoc(`
+				load('random', 'random')
+				random(1)
+			`),
+			wantErr: `random.random: got 1 arguments, want 0`,
+		},
+		{
 			name: "uniform with less than 2 args",
 			script: itn.HereDoc(`
 				load('random', 'uniform')
@@ -414,6 +422,14 @@ func TestLoadModule_Random(t *testing.T) {
 				assert.eq(len(val), 36)
 				assert.eq(len(val.replace("-", "")), 32)
 			`),
+		},
+		{
+			name: "uuid with invalid args",
+			script: itn.HereDoc(`
+				load('random', 'uuid')
+				uuid(2)
+			`),
+			wantErr: `random.uuid: got 1 arguments, want 0`,
 		},
 		{
 			name: "randb32 with 0 or 1 args",
