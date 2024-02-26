@@ -7,6 +7,7 @@ package starlet
 
 import (
 	"fmt"
+	"go.starlark.net/syntax"
 	"io/fs"
 	"sync"
 
@@ -320,4 +321,16 @@ func (m *Machine) DisableGlobalReassign() {
 	defer m.mu.Unlock()
 
 	m.allowGlobalReassign = false
+}
+
+func starlarkExecFile(opts *syntax.FileOptions, thread *starlark.Thread, filename string, src interface{}, predeclared starlark.StringDict) (starlark.StringDict, error) {
+	// Parse, resolve, and compile a Starlark source file.
+	_, mod, err := starlark.SourceProgramOptions(opts, filename, src, predeclared.Has)
+	if err != nil {
+		return nil, err
+	}
+
+	g, err := mod.Init(thread, predeclared)
+	g.Freeze()
+	return g, err
 }

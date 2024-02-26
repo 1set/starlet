@@ -168,7 +168,8 @@ func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap) (out Str
 
 	// run with everything prepared
 	m.runTimes++
-	res, err := starlark.ExecFileOptions(m.getFileOptions(), m.thread, scriptName, source, m.predeclared)
+	//res, err := starlark.ExecFileOptions(m.getFileOptions(), m.thread, scriptName, source, m.predeclared)
+	res, err := starlarkExecFile(m.getFileOptions(), m.thread, scriptName, source, m.predeclared)
 	done <- struct{}{}
 
 	// merge result as predeclared for next run
