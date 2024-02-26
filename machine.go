@@ -47,6 +47,7 @@ type Machine struct {
 	scriptContent []byte
 	scriptFS      fs.FS
 	// runtime core
+	progCache   ByteCache
 	runTimes    uint
 	loadCache   *cache
 	thread      *starlark.Thread

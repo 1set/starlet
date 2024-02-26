@@ -2,34 +2,102 @@ package starlet
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
+	"sync"
 
 	"go.starlark.net/starlark"
-	"go.starlark.net/syntax"
 )
 
-func starlarkExecFile(opts *syntax.FileOptions, thread *starlark.Thread, filename string, src interface{}, predeclared starlark.StringDict) (starlark.StringDict, error) {
-	// Parse, resolve, and compile a Starlark source file.
-	_, prog, err := starlark.SourceProgramOptions(opts, filename, src, predeclared.Has)
-	if err != nil {
-		return nil, err
+func (m *Machine) execStarlarkFile(filename string, src interface{}) (starlark.StringDict, error) {
+	// restore the arguments for starlark.ExecFileOptions
+	opts := m.getFileOptions()
+	thread := m.thread
+	predeclared := m.predeclared
+	hasCache := m.progCache != nil
+
+	// if cache is not enabled, execute the original source
+	if !hasCache {
+		return starlark.ExecFileOptions(opts, thread, filename, src, predeclared)
 	}
 
-	// Try to save it to the cache
-	buf := new(bytes.Buffer)
-	if err := prog.Write(buf); err != nil {
-		return nil, err
+	// for compiled program and cache key
+	var (
+		prog *starlark.Program
+		err  error
+		key  = fmt.Sprintf("%d:%s", starlark.CompilerVersion, filename)
+	)
+	if hasCache {
+		// if cache is enabled, try to load compiled bytes from cache first
+		if cb, ok := m.progCache.Get(key); ok {
+			// load program from compiled bytes
+			if prog, err = starlark.CompiledProgram(bytes.NewReader(cb)); err != nil {
+				// if failed, remove the result and continue
+				prog = nil
+			}
+		}
 	}
-	bs := buf.Bytes()
-	//cv := starlark.CompilerVersion
 
-	// Reload as a new program
-	np, err := starlark.CompiledProgram(bytes.NewReader(bs))
-	if err != nil {
-		return nil, err
+	// if program is not loaded from cache, compile and cache it
+	if prog == nil {
+		// parse, resolve, and compile a Starlark source file.
+		if _, prog, err = starlark.SourceProgramOptions(opts, filename, src, predeclared.Has); err != nil {
+			return nil, err
+		}
+		// dump the compiled program to bytes
+		buf := new(bytes.Buffer)
+		if err = prog.Write(buf); err != nil {
+			return nil, err
+		}
+		// save the compiled bytes to cache
+		_ = m.progCache.Set(key, buf.Bytes())
 	}
-	prog = np
 
+	// execute the compiled program
 	g, err := prog.Init(thread, predeclared)
 	g.Freeze()
 	return g, err
+}
+
+// ByteCache is an interface for caching byte data, used for caching compiled Starlark programs.
+type ByteCache interface {
+	Get(key string) ([]byte, bool)
+	Set(key string, value []byte) error
+}
+
+// MapByteCache is a simple in-memory map-based ByteCache.
+type MapByteCache struct {
+	sync.RWMutex
+	data map[string][]byte
+}
+
+// NewMapByteCache creates a new MapByteCache instance.
+func NewMapByteCache() *MapByteCache {
+	return &MapByteCache{
+		data: make(map[string][]byte),
+	}
+}
+
+// Get returns the value for the given key, and whether the key exists.
+func (c *MapByteCache) Get(key string) ([]byte, bool) {
+	c.RLock()
+	defer c.RUnlock()
+
+	if c == nil || c.data == nil {
+		return nil, false
+	}
+	v, ok := c.data[key]
+	return v, ok
+}
+
+// Set sets the value for the given key.
+func (c *MapByteCache) Set(key string, value []byte) error {
+	c.Lock()
+	defer c.Unlock()
+
+	if c == nil || c.data == nil {
+		return errors.New("no data map found in the cache")
+	}
+	c.data[key] = value
+	return nil
 }
