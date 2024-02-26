@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/1set/starlet"
+	itn "github.com/1set/starlet/internal"
 )
 
 func TestNewMemoryCache(t *testing.T) {
@@ -93,5 +94,34 @@ func TestMemoryCache_Set(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+var (
+	testScriptName  = "test"
+	testScriptBytes = []byte(itn.HereDoc(`
+		# This is a test script
+		a = 10
+		b = 20
+		c = a + b
+	`))
+)
+
+func BenchmarkRunNoCache(b *testing.B) {
+	m := starlet.NewDefault()
+	m.SetScript(testScriptName, testScriptBytes, nil)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = m.Run()
+	}
+}
+
+func BenchmarkRunMemoryCache(b *testing.B) {
+	m := starlet.NewDefault()
+	m.SetScriptCacheEnabled(true)
+	m.SetScript(testScriptName, testScriptBytes, nil)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = m.Run()
 	}
 }

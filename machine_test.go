@@ -494,6 +494,11 @@ func TestMachine_SetScriptCache(t *testing.T) {
 		m.SetScript(sname, []byte(script2), nil)
 		res, err = m.Run()
 		checkRes(102, err, res, 20)
+
+		m.Reset()
+		m.SetScript(sname, []byte(script2), nil)
+		res, err = m.Run()
+		checkRes(103, err, res, 20)
 	}
 
 	// builtin cache
