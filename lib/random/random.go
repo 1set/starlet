@@ -226,7 +226,12 @@ func shuffle(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 }
 
 // random() returns a random floating point number in the range 0.0 <= X < 1.0.
-func random(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func random(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// check the arguments: no arguments
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+		return nil, err
+	}
+	// get random float
 	f, err := getRandomFloat(1 << 53)
 	if err != nil {
 		return nil, err
@@ -235,7 +240,12 @@ func random(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, k
 }
 
 // uuid() returns a random UUID (RFC 4122 version 4).
-func uuid(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func uuid(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// check the arguments: no arguments
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+		return nil, err
+	}
+	// get random UUID
 	u := guuid.New()
 	return starlark.String(u.String()), nil
 }
@@ -256,6 +266,8 @@ func uniform(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 	diff := float64(b - a)
 	return starlark.Float(float64(a) + diff*f), nil
 }
+
+// the following functions are not exposed to Starlark directly, but can be used in other Starlark builtins.
 
 // getRandomInt returns a random integer in the range [0, max).
 func getRandomInt(max int) (int, error) {

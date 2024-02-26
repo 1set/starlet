@@ -41,6 +41,14 @@ func TestLoadModule_Runtime(t *testing.T) {
 				print(s, u)
 			`),
 		},
+		{
+			name: `uptime invalid`,
+			script: itn.HereDoc(`
+				load('runtime', 'uptime')
+				uptime(123)
+			`),
+			wantErr: `runtime.uptime: got 1 arguments, want 0`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

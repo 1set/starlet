@@ -168,7 +168,7 @@ func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap) (out Str
 
 	// run with everything prepared
 	m.runTimes++
-	res, err := starlark.ExecFileOptions(m.getFileOptions(), m.thread, scriptName, source, m.predeclared)
+	res, err := m.execStarlarkFile(scriptName, source)
 	done <- struct{}{}
 
 	// merge result as predeclared for next run
@@ -253,6 +253,7 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 }
 
 // Reset resets the machine to initial state before the first run.
+// Attention: It does not reset the compiled program cache.
 func (m *Machine) Reset() {
 	m.runTimes = 0
 	m.thread = nil
