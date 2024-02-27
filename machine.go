@@ -214,7 +214,13 @@ func (m *Machine) AddLazyloadModules(mods ModuleLoaderMap) {
 	m.lazyloadMods.Merge(mods)
 }
 
+var (
+	// NoopPrintFunc is a no-op print function for the Starlark runtime environment, it does nothing.
+	NoopPrintFunc PrintFunc = func(thread *starlark.Thread, msg string) {}
+)
+
 // SetPrintFunc sets the print function of the Starlark runtime environment.
+// To disable printing, you can set it to NoopPrintFunc. Setting it to nil will invoke the default `fmt.Fprintln(os.Stderr, msg)` instead.
 func (m *Machine) SetPrintFunc(printFunc PrintFunc) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

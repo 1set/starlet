@@ -623,3 +623,34 @@ func TestMachine_GetStarlarkThread(t *testing.T) {
 		t.Errorf("expected not nil, got nil")
 	}
 }
+
+func Test_SetPrintFunc(t *testing.T) {
+	m := starlet.NewDefault()
+	// set print function
+	printFunc, cmpFunc := getPrintCompareFunc(t)
+	m.SetPrintFunc(printFunc)
+	// set code
+	code := `print("Aloha, Honua!")`
+	m.SetScript("aloha.star", []byte(code), nil)
+	// run
+	_, err := m.Run()
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	// compare
+	cmpFunc("Aloha, Honua!\n")
+
+	// set print function to nil
+	m.SetPrintFunc(nil)
+	m.SetScript("aloha.star", []byte(`print("Aloha, Honua! Nil")`), nil)
+	if _, err = m.Run(); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	// set print function to noop
+	m.SetPrintFunc(starlet.NoopPrintFunc)
+	m.SetScript("aloha.star", []byte(`print("Aloha, Honua! Noop")`), nil)
+	if _, err = m.Run(); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
