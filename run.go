@@ -116,8 +116,9 @@ func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap, allowCac
 	)
 	if m.scriptContent != nil {
 		if scriptName == "" {
-			// for default name
+			// for default name, and disable cache to avoid conflict
 			scriptName = "eval.star"
+			allowCache = false
 		}
 		source = m.scriptContent
 	} else if m.scriptFS != nil {
