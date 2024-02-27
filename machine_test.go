@@ -586,6 +586,21 @@ func TestMachine_SetScriptCache(t *testing.T) {
 			t.Errorf("expected same error, got different --- err1: %v, err2: %v, err3: %v", err1, err2, err3)
 		}
 	}
+
+	// ignore cache
+	{
+		m := starlet.NewDefault()
+		m.SetScriptCacheEnabled(true)
+		res, err := m.RunScript([]byte(script1), nil)
+		checkRes(501, err, res, 10)
+
+		res, err = m.RunScript([]byte(script2), nil)
+		checkRes(502, err, res, 20)
+
+		m.SetScriptCacheEnabled(false)
+		res, err = m.RunScript([]byte(script2), nil)
+		checkRes(503, err, res, 20)
+	}
 }
 
 func TestMachine_GetStarlarkPredeclared(t *testing.T) {
