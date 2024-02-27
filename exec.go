@@ -11,15 +11,15 @@ import (
 
 // execStarlarkFile executes a Starlark file with the given filename and source, and returns the global environment and any error encountered.
 // If the cache is enabled, it will try to load the compiled program from the cache first, and save the compiled program to the cache after compilation.
-func (m *Machine) execStarlarkFile(filename string, src interface{}) (starlark.StringDict, error) {
+func (m *Machine) execStarlarkFile(filename string, src interface{}, allowCache bool) (starlark.StringDict, error) {
 	// restore the arguments for starlark.ExecFileOptions
 	opts := m.getFileOptions()
 	thread := m.thread
 	predeclared := m.predeclared
 	hasCache := m.progCache != nil
 
-	// if cache is not enabled, just execute the original source
-	if !hasCache {
+	// if cache is not enabled or not allowed, just execute the original source
+	if !hasCache || !allowCache {
 		return starlark.ExecFileOptions(opts, thread, filename, src, predeclared)
 	}
 
