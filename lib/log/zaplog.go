@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/1set/starlet/dataconv"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 	"go.uber.org/zap"
@@ -96,7 +97,11 @@ func genLoggerBuiltin(name string, level zapcore.Level) starlark.Callable {
 					kvp = append(kvp, s.GoString())
 				}
 			} else {
-				kvp = append(kvp, args[i])
+				if v, e := dataconv.Unmarshal(args[i]); e == nil {
+					kvp = append(kvp, v)
+				} else {
+					kvp = append(kvp, args[i])
+				}
 			}
 		}
 

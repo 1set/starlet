@@ -57,8 +57,9 @@ func TestLoadModule_Log(t *testing.T) {
 				load('log', 'debug')
 				m = {"mm": "this is more"}
 				l = [2, "LIST", 3.14, True]
-				debug('this is a debug message', "map", m, "list", l)
+				debug('this is a data message', "map", m, "list", l)
 			`),
+			keywords: []string{"DEBUG", "this is a data message", `{"map": {"mm":"this is more"}, "list": [2,"LIST",3.14,true]}`},
 		},
 	}
 	for _, tt := range tests {
