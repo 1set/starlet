@@ -97,16 +97,18 @@ func genLoggerBuiltin(name string, level zapcore.Level) starlark.Callable {
 				continue
 			}
 			if i%2 == 1 {
+				// for keys, try to interpret as string, or use String() as fallback
 				if s, ok := args[i].(starlark.String); ok {
 					kvp = append(kvp, s.GoString())
 				} else {
 					kvp = append(kvp, args[i].String())
 				}
 			} else {
+				// for values, try to unmarshal to Go types, or use String() as fallback
 				if v, e := dataconv.Unmarshal(args[i]); e == nil {
 					kvp = append(kvp, v)
 				} else {
-					kvp = append(kvp, args[i])
+					kvp = append(kvp, args[i].String())
 				}
 			}
 		}
