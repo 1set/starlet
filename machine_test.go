@@ -601,6 +601,24 @@ func TestMachine_SetScriptCache(t *testing.T) {
 		res, err = m.RunScript([]byte(script2), nil)
 		checkRes(503, err, res, 20)
 	}
+
+	// skip cache
+	{
+		m := starlet.NewDefault()
+		m.SetScriptCacheEnabled(true)
+		m.SetScript("", []byte(script1), nil)
+		res, err := m.Run()
+		checkRes(601, err, res, 10)
+
+		m.SetScript("", []byte(script2), nil)
+		res, err = m.Run()
+		checkRes(602, err, res, 20)
+
+		m.SetScriptCacheEnabled(false)
+		m.SetScript("", []byte(script2), nil)
+		res, err = m.Run()
+		checkRes(603, err, res, 20)
+	}
 }
 
 func TestMachine_GetStarlarkPredeclared(t *testing.T) {
