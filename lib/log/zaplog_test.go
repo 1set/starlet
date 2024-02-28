@@ -134,6 +134,16 @@ func TestLoadModule_Log(t *testing.T) {
 	}
 }
 
+func TestLoadModule_Log_SetLog_Nil(t *testing.T) {
+	lg.SetLog(nil)
+	script := "load('log', 'info')\ninfo('this is an info message only')"
+	res, err := itn.ExecModuleWithErrorTest(t, lg.ModuleName, lg.LoadModule, script, "")
+	if err != nil {
+		t.Errorf("log.SetLog(nil) expects no error, actual error = '%v', result = %v", err, res)
+		return
+	}
+}
+
 func buildCustomLogger() (*zap.SugaredLogger, *bytes.Buffer) {
 	buf := bytes.NewBufferString("")
 	var al zap.LevelEnablerFunc = func(lvl zapcore.Level) bool {
