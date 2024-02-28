@@ -61,6 +61,37 @@ func TestLoadModule_Log(t *testing.T) {
 			`),
 			keywords: []string{"DEBUG", "this is a data message", `{"map": {"mm":"this is more"}, "list": [2,"LIST",3.14,true]}`},
 		},
+		{
+			name: `info message`,
+			script: itn.HereDoc(`
+				load('log', 'info')
+				info('this is an info message', 1, 2, "hello", "world")
+			`),
+			keywords: []string{"INFO", "this is an info message", `{"1": 2, "hello": "world"}`},
+		},
+		{
+			name: `warn message`,
+			script: itn.HereDoc(`
+				load('log', 'warn')
+				warn('this is a warning message only')
+			`),
+			keywords: []string{"WARN", "this is a warning message only"},
+		},
+		{
+			name: `error message`,
+			script: itn.HereDoc(`
+				load('log', 'error')
+				error('this is an error message only')
+			`),
+			keywords: []string{"ERROR", "this is an error message only"},
+		},
+		//{
+		//	name: `fatal message`,
+		//	script: itn.HereDoc(`
+		//		load('log', 'fatal')
+		//		fatal('this is a fatal message only')
+		//	`),
+		//},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -51,7 +51,7 @@ func LoadModule() (starlark.StringDict, error) {
 // SetLog sets the logger from outside the package.
 func SetLog(l *zap.SugaredLogger) {
 	if l == nil {
-		// TODO: set to default, or Noop logger
+		logger = zap.NewNop().Sugar()
 		return
 	}
 	logger = l
@@ -81,9 +81,9 @@ func genLoggerBuiltin(name string, level zapcore.Level) starlark.Callable {
 		case zap.ErrorLevel:
 			logFn = logger.Errorw
 		case zap.FatalLevel:
-			logFn = logger.Fatalw
+			logFn = logger.Errorw
 		default:
-			logFn = logger.Infow
+			return nil, fmt.Errorf("unsupported log level: %v", level)
 		}
 
 		// convert args to key-value pairs
@@ -95,6 +95,8 @@ func genLoggerBuiltin(name string, level zapcore.Level) starlark.Callable {
 			if i%2 == 1 {
 				if s, ok := args[i].(starlark.String); ok {
 					kvp = append(kvp, s.GoString())
+				} else {
+					kvp = append(kvp, args[i].String())
 				}
 			} else {
 				if v, e := dataconv.Unmarshal(args[i]); e == nil {
@@ -106,6 +108,11 @@ func genLoggerBuiltin(name string, level zapcore.Level) starlark.Callable {
 		}
 
 		// log the message
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Println("recovered from panic:", r)
+			}
+		}()
 		logFn(msg, kvp...)
 		return starlark.None, nil
 	})
