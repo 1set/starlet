@@ -587,7 +587,7 @@ func TestMachine_SetScriptCache(t *testing.T) {
 		}
 	}
 
-	// ignore cache
+	// ignore cache 1: run script will use default name "direct.star", disable cache to avoid conflict
 	{
 		m := starlet.NewDefault()
 		m.SetScriptCacheEnabled(true)
@@ -602,7 +602,7 @@ func TestMachine_SetScriptCache(t *testing.T) {
 		checkRes(503, err, res, 20)
 	}
 
-	// skip cache
+	// ignore cache 2: empty script name will set as "eval.star", disable cache to avoid conflict
 	{
 		m := starlet.NewDefault()
 		m.SetScriptCacheEnabled(true)
