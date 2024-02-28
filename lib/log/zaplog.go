@@ -27,7 +27,6 @@ func LoadModule() (starlark.StringDict, error) {
 	once.Do(func() {
 		// If logger is nil, create a new development logger.
 		if logger == nil {
-			//lg, _ := zap.NewProduction()
 			lg, _ := zap.NewDevelopment()
 			logger = lg.Sugar()
 		}

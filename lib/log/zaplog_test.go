@@ -70,6 +70,19 @@ func TestLoadModule_Log(t *testing.T) {
 			keywords: []string{"INFO", "this is an info message", `{"1": 2, "hello": "world"}`},
 		},
 		{
+			name: `info self args`,
+			script: itn.HereDoc(`
+				load('log', 'info')
+				d = {"hello": "world"}
+				d["a"] = d
+				l = [1,2,3]
+				l.append(l)
+				s = set([4,5,6])
+				info('this is complex info message', "self1", d, "self2", l, "self3", s)
+			`),
+			keywords: []string{"INFO", "this is complex info message", `{"self1": "{\"hello\": \"world\", \"a\": {...}}", "self2": "[1, 2, 3, [...]]", "self3": [4,5,6]}`},
+		},
+		{
 			name: `warn message`,
 			script: itn.HereDoc(`
 				load('log', 'warn')

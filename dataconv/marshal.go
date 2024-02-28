@@ -134,6 +134,12 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 				return
 			}
 
+			// check for cyclic reference
+			if dictVal == x {
+				err = fmt.Errorf("cyclic reference found")
+				return
+			}
+
 			pval, err = Unmarshal(dictVal)
 			if err != nil {
 				err = fmt.Errorf("unmarshaling starlark value: %w", err)
@@ -182,6 +188,10 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 
 		defer iter.Done()
 		for iter.Next(&listVal) {
+			if listVal == x {
+				err = fmt.Errorf("cyclic reference found")
+				return
+			}
 			value[i], err = Unmarshal(listVal)
 			if err != nil {
 				return
