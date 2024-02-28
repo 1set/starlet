@@ -6,6 +6,7 @@ import (
 	libhash "github.com/1set/starlet/lib/hashlib"
 	libhttp "github.com/1set/starlet/lib/http"
 	libjson "github.com/1set/starlet/lib/json"
+	liblog "github.com/1set/starlet/lib/log"
 	librand "github.com/1set/starlet/lib/random"
 	libre "github.com/1set/starlet/lib/re"
 	librt "github.com/1set/starlet/lib/runtime"
@@ -45,6 +46,7 @@ var allBuiltinModules = ModuleLoaderMap{
 	libjson.ModuleName: libjson.LoadModule,
 	libstr.ModuleName:  libstr.LoadModule,
 	librt.ModuleName:   librt.LoadModule,
+	liblog.ModuleName:  liblog.LoadModule,
 }
 
 // GetAllBuiltinModuleNames returns a list of all builtin module names.
