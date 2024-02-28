@@ -1,6 +1,7 @@
 package log
 
 import (
+	"fmt"
 	"sync"
 
 	"go.starlark.net/starlark"
@@ -59,8 +60,12 @@ func SetLog(l *zap.SugaredLogger) {
 func genLoggerBuiltin(name string, level zapcore.Level) starlark.Callable {
 	return starlark.NewBuiltin(ModuleName+"."+name, func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var msg string
-		if err := starlark.UnpackPositionalArgs(name, args, kwargs, 1, &msg); err != nil {
-			return nil, err
+		if len(args) <= 0 {
+			return nil, fmt.Errorf("%s: expected at least 1 argument, got 0", fn.Name())
+		} else if s, ok := args[0].(starlark.String); ok {
+			msg = string(s)
+		} else {
+			return nil, fmt.Errorf("%s: expected string as first argument, got %s", fn.Name(), args[0].Type())
 		}
 
 		// find the correct log function
@@ -83,9 +88,12 @@ func genLoggerBuiltin(name string, level zapcore.Level) starlark.Callable {
 		// convert args to key-value pairs
 		var kvp []interface{}
 		for i := range args {
+			if i == 0 {
+				continue
+			}
 			if i%2 == 1 {
 				if s, ok := args[i].(starlark.String); ok {
-					kvp = append(kvp, s)
+					kvp = append(kvp, s.GoString())
 				}
 			} else {
 				kvp = append(kvp, args[i])
