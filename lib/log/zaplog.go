@@ -1,6 +1,7 @@
 package log
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -70,7 +71,10 @@ func genLoggerBuiltin(name string, level zapcore.Level) starlark.Callable {
 		}
 
 		// find the correct log function
-		var logFn func(msg string, keysAndValues ...interface{})
+		var (
+			logFn  func(msg string, keysAndValues ...interface{})
+			retErr bool
+		)
 		switch level {
 		case zap.DebugLevel:
 			logFn = logger.Debugw
@@ -82,6 +86,7 @@ func genLoggerBuiltin(name string, level zapcore.Level) starlark.Callable {
 			logFn = logger.Errorw
 		case zap.FatalLevel:
 			logFn = logger.Errorw
+			retErr = true
 		default:
 			return nil, fmt.Errorf("unsupported log level: %v", level)
 		}
@@ -108,12 +113,10 @@ func genLoggerBuiltin(name string, level zapcore.Level) starlark.Callable {
 		}
 
 		// log the message
-		defer func() {
-			if r := recover(); r != nil {
-				fmt.Println("recovered from panic:", r)
-			}
-		}()
 		logFn(msg, kvp...)
+		if retErr {
+			return starlark.None, errors.New(msg)
+		}
 		return starlark.None, nil
 	})
 }

@@ -85,13 +85,14 @@ func TestLoadModule_Log(t *testing.T) {
 			`),
 			keywords: []string{"ERROR", "this is an error message only"},
 		},
-		//{
-		//	name: `fatal message`,
-		//	script: itn.HereDoc(`
-		//		load('log', 'fatal')
-		//		fatal('this is a fatal message only')
-		//	`),
-		//},
+		{
+			name: `fatal message`,
+			script: itn.HereDoc(`
+				load('log', 'fatal')
+				fatal('this is a fatal message only')
+			`),
+			wantErr: `this is a fatal message only`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
