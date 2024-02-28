@@ -24,6 +24,9 @@ require (
 	github.com/muesli/termenv v0.13.0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rodolfoag/gow32 v0.0.0-20160917004320-d95ff468acf8 // indirect
+	go.uber.org/atomic v1.9.0 // indirect
+	go.uber.org/multierr v1.9.0 // indirect
+	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/sys v0.0.0-20220908164124-27713097b956 // indirect
 )
 

@@ -130,6 +130,18 @@ func TestUnmarshal(t *testing.T) {
 	if err := nilDict.SetKey(starlark.String("foo"), nil); err != nil {
 		t.Fatal(err)
 	}
+	cycDict := starlark.NewDict(2)
+	if err := cycDict.SetKey(starlark.String("foo"), starlark.MakeInt(42)); err != nil {
+		t.Fatal(err)
+	}
+	if err := cycDict.SetKey(starlark.String("bar"), cycDict); err != nil {
+		t.Fatal(err)
+	}
+
+	cycList := starlark.NewList([]starlark.Value{starlark.MakeInt(42)})
+	if err := cycList.Append(cycList); err != nil {
+		t.Fatal(err)
+	}
 
 	ct, _ := (&customType{42}).MarshalStarlark()
 	strDictCT := starlark.NewDict(2)
@@ -213,6 +225,8 @@ func TestUnmarshal(t *testing.T) {
 		{ct, &customType{42}, ""},
 		{act, &customType{43}, ""},
 		{strDictCT, map[string]interface{}{"foo": 42, "bar": &customType{42}}, ""},
+		{cycDict, nil, "cyclic reference found"},
+		{cycList, nil, "cyclic reference found"},
 		{starlark.NewList([]starlark.Value{starlark.MakeInt(42), ct}), []interface{}{42, &customType{42}}, ""},
 		{starlark.Tuple{starlark.String("foo"), starlark.MakeInt(42)}, []interface{}{"foo", 42}, ""},
 		{ss, []interface{}{"Hello", "World"}, ""},
