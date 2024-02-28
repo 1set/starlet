@@ -4,7 +4,9 @@ import (
 	"sync"
 
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 // ModuleName defines the expected name for this Module when used
@@ -16,3 +18,82 @@ var (
 	logModule starlark.StringDict
 	logger    *zap.SugaredLogger
 )
+
+// LoadModule loads the time module. It is concurrency-safe and idempotent.
+func LoadModule() (starlark.StringDict, error) {
+	once.Do(func() {
+		// If logger is nil, create a new development logger.
+		if logger == nil {
+			//lg, _ := zap.NewProduction()
+			lg, _ := zap.NewDevelopment()
+			logger = lg.Sugar()
+		}
+
+		// Create the log module
+		logModule = starlark.StringDict{
+			ModuleName: &starlarkstruct.Module{
+				Name: ModuleName,
+				Members: starlark.StringDict{
+					"debug": genLoggerBuiltin("debug", zap.DebugLevel),
+					"info":  genLoggerBuiltin("info", zap.InfoLevel),
+					"warn":  genLoggerBuiltin("warn", zap.WarnLevel),
+					"error": genLoggerBuiltin("error", zap.ErrorLevel),
+					"fatal": genLoggerBuiltin("fatal", zap.FatalLevel),
+				},
+			},
+		}
+	})
+	return logModule, nil
+}
+
+// SetLog sets the logger from outside the package.
+func SetLog(l *zap.SugaredLogger) {
+	if l == nil {
+		// TODO: set to default, or Noop logger
+		return
+	}
+	logger = l
+}
+
+// genLoggerBuiltin is a helper function to generate a starlark Builtin function that logs a message at a given level.
+func genLoggerBuiltin(name string, level zapcore.Level) starlark.Callable {
+	return starlark.NewBuiltin(ModuleName+"."+name, func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var msg string
+		if err := starlark.UnpackPositionalArgs(name, args, kwargs, 1, &msg); err != nil {
+			return nil, err
+		}
+
+		// find the correct log function
+		var logFn func(msg string, keysAndValues ...interface{})
+		switch level {
+		case zap.DebugLevel:
+			logFn = logger.Debugw
+		case zap.InfoLevel:
+			logFn = logger.Infow
+		case zap.WarnLevel:
+			logFn = logger.Warnw
+		case zap.ErrorLevel:
+			logFn = logger.Errorw
+		case zap.FatalLevel:
+			logFn = logger.Fatalw
+		default:
+			logFn = logger.Infow
+		}
+
+		// convert args to key-value pairs
+		var kvp []interface{}
+		for i := range args {
+			if i%2 == 1 {
+				if s, ok := args[i].(starlark.String); ok {
+					kvp = append(kvp, s)
+				}
+			} else {
+				kvp = append(kvp, args[i])
+			}
+		}
+
+		// log the message
+		logFn(msg, kvp...)
+		return starlark.None, nil
+	})
+}
