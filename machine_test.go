@@ -586,6 +586,39 @@ func TestMachine_SetScriptCache(t *testing.T) {
 			t.Errorf("expected same error, got different --- err1: %v, err2: %v, err3: %v", err1, err2, err3)
 		}
 	}
+
+	// ignore cache 1: run script will use default name "direct.star", disable cache to avoid conflict
+	{
+		m := starlet.NewDefault()
+		m.SetScriptCacheEnabled(true)
+		res, err := m.RunScript([]byte(script1), nil)
+		checkRes(501, err, res, 10)
+
+		res, err = m.RunScript([]byte(script2), nil)
+		checkRes(502, err, res, 20)
+
+		m.SetScriptCacheEnabled(false)
+		res, err = m.RunScript([]byte(script2), nil)
+		checkRes(503, err, res, 20)
+	}
+
+	// ignore cache 2: empty script name will set as "eval.star", disable cache to avoid conflict
+	{
+		m := starlet.NewDefault()
+		m.SetScriptCacheEnabled(true)
+		m.SetScript("", []byte(script1), nil)
+		res, err := m.Run()
+		checkRes(601, err, res, 10)
+
+		m.SetScript("", []byte(script2), nil)
+		res, err = m.Run()
+		checkRes(602, err, res, 20)
+
+		m.SetScriptCacheEnabled(false)
+		m.SetScript("", []byte(script2), nil)
+		res, err = m.Run()
+		checkRes(603, err, res, 20)
+	}
 }
 
 func TestMachine_GetStarlarkPredeclared(t *testing.T) {
@@ -621,5 +654,36 @@ func TestMachine_GetStarlarkThread(t *testing.T) {
 	th = m.GetStarlarkThread()
 	if th == nil {
 		t.Errorf("expected not nil, got nil")
+	}
+}
+
+func Test_SetPrintFunc(t *testing.T) {
+	m := starlet.NewDefault()
+	// set print function
+	printFunc, cmpFunc := getPrintCompareFunc(t)
+	m.SetPrintFunc(printFunc)
+	// set code
+	code := `print("Aloha, Honua!")`
+	m.SetScript("aloha.star", []byte(code), nil)
+	// run
+	_, err := m.Run()
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	// compare
+	cmpFunc("Aloha, Honua!\n")
+
+	// set print function to nil
+	m.SetPrintFunc(nil)
+	m.SetScript("aloha.star", []byte(`print("Aloha, Honua! Nil")`), nil)
+	if _, err = m.Run(); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	// set print function to noop
+	m.SetPrintFunc(starlet.NoopPrintFunc)
+	m.SetScript("aloha.star", []byte(`print("Aloha, Honua! Noop")`), nil)
+	if _, err = m.Run(); err != nil {
+		t.Errorf("unexpected error: %v", err)
 	}
 }
