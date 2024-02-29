@@ -31,9 +31,9 @@ func LoadModule() (starlark.StringDict, error) {
 					"read_bytes":   wrapReadFile("read_bytes", readBytes),
 					"read_string":  wrapReadFile("read_string", readString),
 					"read_lines":   wrapReadFile("read_lines", readLines),
-					"write_bytes":  wrapWriteFile("write_bytes", writeBytes),
-					"write_string": wrapWriteFile("write_string", writeString),
-					"write_lines":  wrapWriteFile("write_lines", writeLines),
+					"write_bytes":  wrapWriteFile("write_bytes", true, writeBytes),
+					"write_string": wrapWriteFile("write_string", true, writeString),
+					"write_lines":  wrapWriteFile("write_lines", true, writeLines),
 				},
 			},
 		}
@@ -100,8 +100,9 @@ func readLines(name string) (starlark.Value, error) {
 }
 
 // wrapWriteFile wraps the file writing functions to be used in Starlark.
-func wrapWriteFile(funcName string, workLoad func(name string, data starlark.Value) error) starlark.Callable {
-	return starlark.NewBuiltin(ModuleName+"."+funcName, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func wrapWriteFile(funcName string, override bool, workLoad func(name, funcName string, override bool, data starlark.Value) error) starlark.Callable {
+	fullName := ModuleName + "." + funcName
+	return starlark.NewBuiltin(fullName, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var (
 			fp   itn.StringOrBytes
 			data starlark.Value
@@ -109,59 +110,76 @@ func wrapWriteFile(funcName string, workLoad func(name string, data starlark.Val
 		if err := starlark.UnpackArgs(b.Name(), args, kwargs, "name", &fp, "data", &data); err != nil {
 			return starlark.None, err
 		}
-		return starlark.None, workLoad(fp.GoString(), data)
+		return starlark.None, workLoad(fp.GoString(), fullName, override, data)
 	})
 }
 
 // writeBytes writes the given data in bytes into a file.
-func writeBytes(name string, data starlark.Value) error {
+func writeBytes(name, funcName string, override bool, data starlark.Value) error {
+	wf := AppendFileBytes
+	if override {
+		wf = WriteFileBytes
+	}
+	// treat starlark.Bytes and starlark.String as the same type
 	switch v := data.(type) {
 	case starlark.Bytes:
-		return WriteFileBytes(name, []byte(v))
+		return wf(name, []byte(v))
 	case starlark.String:
-		return WriteFileBytes(name, []byte(v))
+		return wf(name, []byte(v))
 	default:
-		return fmt.Errorf(ModuleName+`.write_bytes: expected string or bytes, got %s`, data.Type())
+		return fmt.Errorf(`%s: expected string or bytes, got %s`, funcName, data.Type())
 	}
 }
 
 // writeString writes the given data in string into a file.
-func writeString(name string, data starlark.Value) error {
+func writeString(name, funcName string, override bool, data starlark.Value) error {
+	wf := AppendFileString
+	if override {
+		wf = WriteFileString
+	}
+	// treat starlark.Bytes and starlark.String as the same type
 	switch v := data.(type) {
 	case starlark.Bytes:
-		return WriteFileString(name, string(v))
+		return wf(name, string(v))
 	case starlark.String:
-		return WriteFileString(name, string(v))
+		return wf(name, string(v))
 	default:
-		return fmt.Errorf(ModuleName+`.write_string: expected string or bytes, got %s`, data.Type())
+		return fmt.Errorf(`%s: expected string or bytes, got %s`, funcName, data.Type())
 	}
 }
 
 // writeLines writes the lines into a file. The data should be a list, a tuple or a set of strings.
-func writeLines(name string, data starlark.Value) error {
+func writeLines(name, funcName string, override bool, data starlark.Value) error {
+	wf := AppendFileLines
+	if override {
+		wf = WriteFileLines
+	}
+	// handle all types of iterable, and allow string or bytes
 	switch v := data.(type) {
 	case starlark.String:
-		return WriteFileLines(name, []string{v.GoString()})
+		return wf(name, []string{v.GoString()})
+	case starlark.Bytes:
+		return wf(name, []string{string(v)})
 	case *starlark.List:
 		if ls, err := convIterStrings(v); err != nil {
 			return err
 		} else {
-			return WriteFileLines(name, ls)
+			return wf(name, ls)
 		}
 	case starlark.Tuple:
 		if ts, err := convIterStrings(v); err != nil {
 			return err
 		} else {
-			return WriteFileLines(name, ts)
+			return wf(name, ts)
 		}
 	case *starlark.Set:
 		if ss, err := convIterStrings(v); err != nil {
 			return err
 		} else {
-			return WriteFileLines(name, ss)
+			return wf(name, ss)
 		}
 	default:
-		return fmt.Errorf(ModuleName+`.write_lines: expected list/tuple/set, got %s`, data.Type())
+		return fmt.Errorf(`%s: expected list/tuple/set, got %s`, funcName, data.Type())
 	}
 }
 
