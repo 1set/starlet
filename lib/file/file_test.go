@@ -98,14 +98,6 @@ func TestLoadModule_File(t *testing.T) {
 			wantErr: "file.read_string: for parameter name: got int, want string or bytes",
 		},
 		{
-			name: `read not exist`,
-			script: itn.HereDoc(`
-				load('file', 'read_string')
-				s = read_string('not-such-file.txt')
-			`),
-			wantErr: `open not-such-file.txt:`,
-		},
-		{
 			name: `read string`,
 			script: itn.HereDoc(`
 				load('file', 'read_string')
@@ -281,14 +273,6 @@ func TestLoadModule_File(t *testing.T) {
 			`),
 		},
 		{
-			name: `count not exist`,
-			script: itn.HereDoc(`
-				load('file', 'count_lines')
-				s = count_lines('not-such-file2.txt')
-			`),
-			wantErr: `open not-such-file2.txt:`,
-		},
-		{
 			name: `read head lines`,
 			script: itn.HereDoc(`
 				load('file', 'head_lines')
@@ -329,20 +313,52 @@ func TestLoadModule_File(t *testing.T) {
 			wantErr: `file.tail_lines: expected positive integer, got -7`,
 		},
 		{
+			name: `read_bytes: not exist`,
+			script: itn.HereDoc(`
+				load('file', 'read_bytes')
+				s = read_bytes('not-such-file1.txt')
+			`),
+			wantErr: `open not-such-file1.txt:`,
+		},
+		{
+			name: `read_string: not exist`,
+			script: itn.HereDoc(`
+				load('file', 'read_string')
+				s = read_string('not-such-file2.txt')
+			`),
+			wantErr: `open not-such-file2.txt:`,
+		},
+		{
+			name: `read_lines: not exist`,
+			script: itn.HereDoc(`
+				load('file', 'read_lines')
+				s = read_lines('not-such-file3.txt')
+			`),
+			wantErr: `open not-such-file3.txt:`,
+		},
+		{
+			name: `count not exist`,
+			script: itn.HereDoc(`
+				load('file', 'count_lines')
+				s = count_lines('not-such-file4.txt')
+			`),
+			wantErr: `open not-such-file4.txt:`,
+		},
+		{
 			name: `head not exist`,
 			script: itn.HereDoc(`
 				load('file', 'head_lines')
-				s = head_lines('not-such-file1.txt', 10)
+				s = head_lines('not-such-file5.txt', 10)
 			`),
-			wantErr: `open not-such-file1.txt:`,
+			wantErr: `open not-such-file5.txt:`,
 		},
 		{
 			name: `tail not exist`,
 			script: itn.HereDoc(`
 				load('file', 'tail_lines')
-				s = tail_lines('not-such-file0.txt', 10)
+				s = tail_lines('not-such-file6.txt', 10)
 			`),
-			wantErr: `open not-such-file0.txt:`,
+			wantErr: `open not-such-file6.txt:`,
 		},
 	}
 	for _, tt := range tests {
