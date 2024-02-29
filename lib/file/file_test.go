@@ -120,6 +120,22 @@ func TestLoadModule_File(t *testing.T) {
 			`),
 		},
 		{
+			name: `write no args`,
+			script: itn.HereDoc(`
+				load('file', 'write_bytes')
+				write_bytes()
+			`),
+			wantErr: `file.write_bytes: missing argument for name`,
+		},
+		{
+			name: `write no data`,
+			script: itn.HereDoc(`
+				load('file', 'write_bytes')
+				write_bytes("try-one-test.txt")
+			`),
+			wantErr: `file.write_bytes: missing argument for data`,
+		},
+		{
 			name: `write bytes`,
 			script: itn.HereDoc(`
 				load('file', 'write_bytes')
@@ -178,6 +194,15 @@ func TestLoadModule_File(t *testing.T) {
 				write_lines(fp, set(["Good", "Job"]))
 			`),
 			fileContent: "Good\nJob\n",
+		},
+		{
+			name: `write lines: various type`,
+			script: itn.HereDoc(`
+				load('file', 'write_lines')
+				fp = %q
+				write_lines(fp, ["Hello", 123, [True, False]])
+			`),
+			fileContent: "Hello\n123\n[True, False]\n",
 		},
 	}
 	for _, tt := range tests {
