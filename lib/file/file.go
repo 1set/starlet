@@ -212,30 +212,17 @@ func writeLines(name, funcName string, override bool, data starlark.Value) error
 	case starlark.Bytes:
 		return wf(name, []string{string(v)})
 	case *starlark.List:
-		if ls, err := convIterStrings(v); err != nil {
-			return err
-		} else {
-			return wf(name, ls)
-		}
+		return wf(name, convIterStrings(v))
 	case starlark.Tuple:
-		if ts, err := convIterStrings(v); err != nil {
-			return err
-		} else {
-			return wf(name, ts)
-		}
+		return wf(name, convIterStrings(v))
 	case *starlark.Set:
-		if ss, err := convIterStrings(v); err != nil {
-			return err
-		} else {
-			return wf(name, ss)
-		}
+		return wf(name, convIterStrings(v))
 	default:
 		return fmt.Errorf(`%s: expected list/tuple/set, got %s`, funcName, data.Type())
 	}
 }
 
-func convIterStrings(lst starlark.Iterable) ([]string, error) {
-	var lines []string
+func convIterStrings(lst starlark.Iterable) (lines []string) {
 	iter := lst.Iterate()
 	defer iter.Done()
 
@@ -250,5 +237,5 @@ func convIterStrings(lst starlark.Iterable) ([]string, error) {
 			lines = append(lines, x.String())
 		}
 	}
-	return lines, nil
+	return
 }
