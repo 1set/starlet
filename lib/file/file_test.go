@@ -3,6 +3,7 @@ package file_test
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	itn "github.com/1set/starlet/internal"
@@ -147,14 +148,42 @@ func TestLoadModule_File(t *testing.T) {
 			wantErr: `file.write_bytes: missing argument for data`,
 		},
 		{
+			name: `write_bytes invalid data`,
+			script: itn.HereDoc(`
+				load('file', 'write_bytes')
+				fp = %q
+				write_bytes(fp, 123)
+			`),
+			wantErr: "file.write_bytes: expected string or bytes, got int",
+		},
+		{
+			name: `write_string invalid data`,
+			script: itn.HereDoc(`
+				load('file', 'write_string')
+				fp = %q
+				write_string(fp, 123)
+			`),
+			wantErr: "file.write_string: expected string or bytes, got int",
+		},
+		{
+			name: `write_lines invalid data`,
+			script: itn.HereDoc(`
+				load('file', 'write_lines')
+				fp = %q
+				write_lines(fp, 123)
+			`),
+			wantErr: "file.write_lines: expected list/tuple/set, got int",
+		},
+		{
 			name: `write bytes`,
 			script: itn.HereDoc(`
 				load('file', 'write_bytes')
 				fp = %q
 				write_bytes(fp, b'hello')
 				write_bytes(fp, b'world')
+				write_bytes(fp, 'Word')
 			`),
-			fileContent: "world",
+			fileContent: "Word",
 		},
 		{
 			name: `write string`,
@@ -412,11 +441,8 @@ func TestLoadModule_File(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// prepare temp file if needed
-			var (
-				cont = tt.fileContent
-				tp   string
-			)
-			if cont != "" {
+			var tp string
+			if strings.Contains(tt.script, "%q") {
 				tf, err := os.CreateTemp("", "starlet-file-test-write")
 				if err != nil {
 					t.Errorf("os.CreateTemp() expects no error, actual error = '%v'", err)
@@ -432,7 +458,7 @@ func TestLoadModule_File(t *testing.T) {
 				t.Errorf("file(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
 			}
 			// check file content if needed
-			if cont != "" {
+			if cont := tt.fileContent; cont != "" {
 				b, err := os.ReadFile(tp)
 				if err != nil {
 					t.Errorf("os.ReadFile() expects no error, actual error = '%v'", err)
