@@ -28,7 +28,10 @@ var (
 
 // NewDefaultLogger creates a new logger as a default. It is used when no logger is provided to NewModule.
 func NewDefaultLogger() *zap.SugaredLogger {
-	lg, _ := zap.NewDevelopment()
+	cfg := zap.NewDevelopmentConfig()
+	cfg.DisableCaller = true
+	cfg.DisableStacktrace = true
+	lg, _ := cfg.Build()
 	return lg.Sugar()
 }
 
