@@ -3,6 +3,7 @@ package log
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/1set/starlet/dataconv"
@@ -90,26 +91,32 @@ func genLoggerBuiltin(name string, level zapcore.Level) starlark.Callable {
 			return nil, fmt.Errorf("unsupported log level: %v", level)
 		}
 
+		// append leftover arguments to message
+		if len(args) > 1 {
+			var ps []string
+			for _, a := range args[1:] {
+				ps = append(ps, dataconv.StarString(a))
+			}
+			msg += " " + strings.Join(ps, " ")
+		}
+
 		// convert args to key-value pairs
 		var kvp []interface{}
-		for i := range args {
-			if i == 0 {
+		for _, pair := range kwargs {
+			// for each key-value pair
+			if pair.Len() != 2 {
 				continue
 			}
-			if i%2 == 1 {
-				// for keys, try to interpret as string, or use String() as fallback
-				if s, ok := args[i].(starlark.String); ok {
-					kvp = append(kvp, s.GoString())
-				} else {
-					kvp = append(kvp, args[i].String())
-				}
+			key, val := pair[0], pair[1]
+
+			// for keys, try to interpret as string, or use String() as fallback
+			kvp = append(kvp, dataconv.StarString(key))
+
+			// for values, try to unmarshal to Go types, or use String() as fallback
+			if v, e := dataconv.Unmarshal(val); e == nil {
+				kvp = append(kvp, v)
 			} else {
-				// for values, try to unmarshal to Go types, or use String() as fallback
-				if v, e := dataconv.Unmarshal(args[i]); e == nil {
-					kvp = append(kvp, v)
-				} else {
-					kvp = append(kvp, args[i].String())
-				}
+				kvp = append(kvp, val.String())
 			}
 		}
 
