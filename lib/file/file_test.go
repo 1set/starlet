@@ -1,6 +1,7 @@
 package file_test
 
 import (
+	"os"
 	"testing"
 
 	itn "github.com/1set/starlet/internal"
@@ -8,6 +9,15 @@ import (
 )
 
 func TestLoadModule_File(t *testing.T) {
+	//ioutil.TempFile("", "starlet-file-test-write")
+	tf, err := os.CreateTemp("", "starlet-file-test-write")
+	if err != nil {
+		t.Errorf("os.CreateTemp() expects no error, actual error = '%v'", err)
+		return
+	}
+	tp := tf.Name()
+	t.Logf("Temp file to write: %s", tp)
+
 	tests := []struct {
 		name    string
 		script  string

@@ -52,7 +52,7 @@ func ReadFirstLines(path string, n int) (lines []string, err error) {
 		return
 	}
 	defer f.Close()
-	return extractTopLines(f, n)
+	return extractIOTopLines(f, n)
 }
 
 // ReadLastLines reads the bottom n lines from the given file (the line ending chars are not included), or lesser lines if the given file doesn't contain enough line ending chars.
@@ -62,16 +62,16 @@ func ReadLastLines(path string, n int) (lines []string, err error) {
 		return
 	}
 	defer f.Close()
-	return extractBottomLines(f, n)
+	return extractIOBottomLines(f, n)
 }
 
-// extractTopLines extracts the top n lines from the given stream (the line ending chars are not included), or lesser lines if the given stream doesn't contain enough line ending chars.
-func extractTopLines(rd io.Reader, n int) ([]string, error) {
+// extractIOTopLines extracts the top n lines from the given stream (the line ending chars are not included), or lesser lines if the given stream doesn't contain enough line ending chars.
+func extractIOTopLines(rd io.Reader, n int) ([]string, error) {
 	if n <= 0 {
 		return nil, errors.New("amoy: n should be greater than 0")
 	}
 	result := make([]string, 0)
-	if err := readByLine(rd, func(line string) error {
+	if err := readIOByLine(rd, func(line string) error {
 		result = append(result, line)
 		n--
 		if n <= 0 {
@@ -84,8 +84,8 @@ func extractTopLines(rd io.Reader, n int) ([]string, error) {
 	return result, nil
 }
 
-// extractBottomLines extracts the bottom n lines from the given stream (the line ending chars are not included), or lesser lines if the given stream doesn't contain enough line ending chars.
-func extractBottomLines(rd io.Reader, n int) ([]string, error) {
+// extractIOBottomLines extracts the bottom n lines from the given stream (the line ending chars are not included), or lesser lines if the given stream doesn't contain enough line ending chars.
+func extractIOBottomLines(rd io.Reader, n int) ([]string, error) {
 	if n <= 0 {
 		return nil, errors.New("amoy: n should be greater than 0")
 	}
@@ -93,7 +93,7 @@ func extractBottomLines(rd io.Reader, n int) ([]string, error) {
 		result = make([]string, n, n)
 		cnt    int
 	)
-	if err := readByLine(rd, func(line string) error {
+	if err := readIOByLine(rd, func(line string) error {
 		result[cnt%n] = line
 		cnt++
 		return nil
@@ -114,7 +114,7 @@ func readFileByLine(path string, callback LineFunc) (err error) {
 		return
 	}
 	defer file.Close()
-	return readByLine(file, callback)
+	return readIOByLine(file, callback)
 }
 
 func openFileWriteLines(path string, flag int, lines []string) error {
@@ -123,11 +123,11 @@ func openFileWriteLines(path string, flag int, lines []string) error {
 		return err
 	}
 	defer file.Close()
-	return writeLines(file, lines)
+	return writeIOLines(file, lines)
 }
 
-// writeLines writes the given lines to a Writer.
-func writeLines(wr io.Writer, lines []string) error {
+// writeIOLines writes the given lines to a Writer.
+func writeIOLines(wr io.Writer, lines []string) error {
 	w := bufio.NewWriter(wr)
 	defer w.Flush()
 	for _, line := range lines {
@@ -138,8 +138,8 @@ func writeLines(wr io.Writer, lines []string) error {
 	return nil
 }
 
-// readByLine iterates the given Reader by lines (the line ending chars are not included).
-func readByLine(rd io.Reader, callback LineFunc) (err error) {
+// readIOByLine iterates the given Reader by lines (the line ending chars are not included).
+func readIOByLine(rd io.Reader, callback LineFunc) (err error) {
 	readLine := func(r *bufio.Reader) (string, error) {
 		var (
 			err      error
