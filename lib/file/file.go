@@ -140,13 +140,15 @@ func writeString(name string, data starlark.Value) error {
 // writeLines writes the lines into a file. The data should be a list, a tuple or a set of strings.
 func writeLines(name string, data starlark.Value) error {
 	switch v := data.(type) {
+	case starlark.String:
+		return WriteFileLines(name, []string{v.GoString()})
 	case *starlark.List:
 		if ls, err := convIterStrings(v); err != nil {
 			return err
 		} else {
 			return WriteFileLines(name, ls)
 		}
-	case *starlark.Tuple:
+	case starlark.Tuple:
 		if ts, err := convIterStrings(v); err != nil {
 			return err
 		} else {

@@ -11,6 +11,7 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/starlarktest"
+	"go.starlark.net/syntax"
 )
 
 // ModuleLoadFunc is a function that loads a Starlark module and returns the module's string dict.
@@ -76,7 +77,10 @@ func ExecModuleWithErrorTest(t *testing.T, name string, loader ModuleLoadFunc, s
 	thread := &starlark.Thread{Load: NewAssertLoader(name, loader), Print: func(_ *starlark.Thread, msg string) { t.Log("※", msg) }}
 	starlarktest.SetReporter(thread, t)
 	header := `load('assert.star', 'assert')`
-	out, err := starlark.ExecFile(thread, name+"_test.star", []byte(header+"\n"+script), nil)
+	opts := syntax.FileOptions{
+		Set: true,
+	}
+	out, err := starlark.ExecFileOptions(&opts, thread, name+"_test.star", []byte(header+"\n"+script), nil)
 	if err != nil {
 		if wantErr == "" {
 			if ee, ok := err.(*starlark.EvalError); ok {

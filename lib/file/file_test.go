@@ -129,6 +129,56 @@ func TestLoadModule_File(t *testing.T) {
 			`),
 			fileContent: "world",
 		},
+		{
+			name: `write string`,
+			script: itn.HereDoc(`
+				load('file', 'write_string')
+				fp = %q
+				write_string(fp, "Hello World")
+				write_string(fp, "Aloha!\nA hui hou!\n")
+			`),
+			fileContent: "Aloha!\nA hui hou!\n",
+		},
+		{
+			name: `write lines: string`,
+			script: itn.HereDoc(`
+				load('file', 'write_lines')
+				fp = %q
+				write_lines(fp, "Hello World")
+				write_lines(fp, "Goodbye~")
+			`),
+			fileContent: "Goodbye~\n",
+		},
+		{
+			name: `write lines: list`,
+			script: itn.HereDoc(`
+				load('file', 'write_lines')
+				fp = %q
+				write_lines(fp, ["Hello", "World"])
+				write_lines(fp, ["Great", "Job"])
+			`),
+			fileContent: "Great\nJob\n",
+		},
+		{
+			name: `write lines: tuple`,
+			script: itn.HereDoc(`
+				load('file', 'write_lines')
+				fp = %q
+				write_lines(fp, ("Hello", "World"))
+				write_lines(fp, ("Nice", "Job"))
+			`),
+			fileContent: "Nice\nJob\n",
+		},
+		{
+			name: `write lines: set`,
+			script: itn.HereDoc(`
+				load('file', 'write_lines')
+				fp = %q
+				write_lines(fp, set(["Hello", "World"]))
+				write_lines(fp, set(["Good", "Job"]))
+			`),
+			fileContent: "Good\nJob\n",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -144,7 +194,7 @@ func TestLoadModule_File(t *testing.T) {
 					return
 				}
 				tp = tf.Name()
-				t.Logf("Temp file to write: %s", tp)
+				//t.Logf("Temp file to write: %s", tp)
 				tt.script = fmt.Sprintf(tt.script, tp)
 			}
 			// execute test
@@ -160,7 +210,7 @@ func TestLoadModule_File(t *testing.T) {
 					return
 				}
 				if string(b) != cont {
-					t.Errorf("file(%q) expects file content = %q, actual content = %q", tt.name, cont, string(b))
+					t.Errorf("file(%q) expects (%s) file content = %q, actual content = %q", tt.name, tp, cont, string(b))
 				}
 			}
 		})
