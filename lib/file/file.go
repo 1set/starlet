@@ -54,7 +54,7 @@ func trimBom(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, 
 	}
 }
 
-// wrapReadFile wraps the ReadFile function to be used in Starlark.
+// wrapReadFile wraps the file reading functions to be used in Starlark.
 func wrapReadFile(funcName string, workLoad func(name string) (starlark.Value, error)) starlark.Callable {
 	return starlark.NewBuiltin(ModuleName+"."+funcName, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var fp itn.StringOrBytes
