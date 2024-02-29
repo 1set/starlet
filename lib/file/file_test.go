@@ -245,6 +245,78 @@ func TestLoadModule_File(t *testing.T) {
 			`),
 			fileContent: "Hello\nWorld\nGreat\nJob\nBye\n",
 		},
+		{
+			name: `count lines: no args`,
+			script: itn.HereDoc(`
+				load('file', 'count_lines')
+				count_lines()
+			`),
+			wantErr: `file.count_lines: missing argument for name`,
+		},
+		{
+			name: `count lines`,
+			script: itn.HereDoc(`
+				load('file', 'count_lines')
+				assert.eq(3, count_lines('testdata/line_mac.txt'))
+				assert.eq(3, count_lines('testdata/line_win.txt'))
+			`),
+		},
+		{
+			name: `count not exist`,
+			script: itn.HereDoc(`
+				load('file', 'count_lines')
+				s = count_lines('not-such-file2.txt')
+			`),
+			wantErr: `open not-such-file2.txt:`,
+		},
+		{
+			name: `read head lines`,
+			script: itn.HereDoc(`
+				load('file', 'head_lines')
+				l1 = head_lines('testdata/line_mac.txt', 10)
+				assert.eq(len(l1), 3)
+				assert.eq(l1, ['Line 1', 'Line 2', 'Line 3'])
+				l2 = head_lines('testdata/line_win.txt', 2)
+				assert.eq(len(l2), 2)
+				assert.eq(l2, ['Line 1', 'Line 2'])
+			`),
+		},
+		{
+			name: `read tail lines`,
+			script: itn.HereDoc(`
+				load('file', 'tail_lines')
+				l1 = tail_lines('testdata/line_mac.txt', 10)
+				assert.eq(len(l1), 3)
+				assert.eq(l1, ['Line 1', 'Line 2', 'Line 3'])
+				l2 = tail_lines('testdata/line_win.txt', 2)
+				assert.eq(len(l2), 2)
+				assert.eq(l2, ['Line 2', 'Line 3'])
+			`),
+		},
+		{
+			name: `read tail lines: invalid n`,
+			script: itn.HereDoc(`
+				load('file', 'tail_lines')
+				l1 = tail_lines('testdata/line_mac.txt', -7)
+			`),
+			wantErr: `file.tail_lines: expected positive integer, got -7`,
+		},
+		{
+			name: `head not exist`,
+			script: itn.HereDoc(`
+				load('file', 'head_lines')
+				s = head_lines('not-such-file1.txt', 10)
+			`),
+			wantErr: `open not-such-file1.txt:`,
+		},
+		{
+			name: `tail not exist`,
+			script: itn.HereDoc(`
+				load('file', 'tail_lines')
+				s = tail_lines('not-such-file0.txt', 10)
+			`),
+			wantErr: `open not-such-file0.txt:`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
