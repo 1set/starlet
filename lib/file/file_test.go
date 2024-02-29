@@ -229,9 +229,9 @@ func TestLoadModule_File(t *testing.T) {
 			script: itn.HereDoc(`
 				load('file', 'write_lines')
 				fp = %q
-				write_lines(fp, ["Hello", 123, [True, False]])
+				write_lines(fp, ["Hello", b'world', 123, [True, False]])
 			`),
-			fileContent: "Hello\n123\n[True, False]\n",
+			fileContent: "Hello\nworld\n123\n[True, False]\n",
 		},
 		{
 			name: `append bytes`,
@@ -311,6 +311,14 @@ func TestLoadModule_File(t *testing.T) {
 				assert.eq(len(l2), 2)
 				assert.eq(l2, ['Line 2', 'Line 3'])
 			`),
+		},
+		{
+			name: `read head lines: invalid args`,
+			script: itn.HereDoc(`
+				load('file', 'head_lines')
+				l1 = head_lines(123, 10)
+			`),
+			wantErr: `file.head_lines: for parameter name: got int, want string or bytes`,
 		},
 		{
 			name: `read tail lines: invalid n`,

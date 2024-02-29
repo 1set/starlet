@@ -241,9 +241,12 @@ func convIterStrings(lst starlark.Iterable) ([]string, error) {
 
 	var x starlark.Value
 	for iter.Next(&x) {
-		if s, ok := starlark.AsString(x); ok {
-			lines = append(lines, s)
-		} else {
+		switch v := x.(type) {
+		case starlark.String:
+			lines = append(lines, v.GoString())
+		case starlark.Bytes:
+			lines = append(lines, string(v))
+		default:
 			lines = append(lines, x.String())
 		}
 	}
