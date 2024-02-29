@@ -28,9 +28,9 @@ func LoadModule() (starlark.StringDict, error) {
 				Name: ModuleName,
 				Members: starlark.StringDict{
 					"trim_bom":      starlark.NewBuiltin(ModuleName+".trim_bom", trimBom),
-					"count_lines":   starlark.NewBuiltin(ModuleName+".count_lines", countFileLines),
-					"head_lines":    readPartialLines("head_lines", ReadFirstLines),
-					"tail_lines":    readPartialLines("tail_lines", ReadLastLines),
+					"count_lines":   starlark.NewBuiltin(ModuleName+".count_lines", countLinesInFile),
+					"head_lines":    readTopOrBottomLines("head_lines", ReadFirstLines),
+					"tail_lines":    readTopOrBottomLines("tail_lines", ReadLastLines),
 					"read_bytes":    wrapReadFile("read_bytes", readBytes),
 					"read_string":   wrapReadFile("read_string", readString),
 					"read_lines":    wrapReadFile("read_lines", readLines),
@@ -63,8 +63,8 @@ func trimBom(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, 
 	}
 }
 
-// countFileLines counts the number of lines in a file.
-func countFileLines(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+// countLinesInFile counts the number of lines in a file.
+func countLinesInFile(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var fp itn.StringOrBytes
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "name", &fp); err != nil {
 		return starlark.None, err
@@ -77,8 +77,8 @@ func countFileLines(thread *starlark.Thread, b *starlark.Builtin, args starlark.
 	return starlark.MakeInt(cnt), nil
 }
 
-// readPartialLines wraps the file reading functions for top or bottom lines to be used in Starlark.
-func readPartialLines(funcName string, workLoad func(name string, n int) ([]string, error)) starlark.Callable {
+// readTopOrBottomLines wraps the file reading functions for top or bottom lines to be used in Starlark.
+func readTopOrBottomLines(funcName string, workLoad func(name string, n int) ([]string, error)) starlark.Callable {
 	return starlark.NewBuiltin(ModuleName+"."+funcName, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		// unpack arguments
 		var (
