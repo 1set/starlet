@@ -20,8 +20,10 @@ const ModuleName = "log"
 // Initialized as global functions to be used as default
 var (
 	defaultModule = NewModule(NewDefaultLogger())
-	LoadModule    = defaultModule.LoadModule
-	SetLog        = defaultModule.SetLog
+	// LoadModule loads the default log module. It is concurrency-safe and idempotent.
+	LoadModule = defaultModule.LoadModule
+	// SetLog sets the logger of the default log module from outside the package. If l is nil, a noop logger is used, which does nothing.
+	SetLog = defaultModule.SetLog
 )
 
 // NewDefaultLogger creates a new logger as a default. It is used when no logger is provided to NewModule.
@@ -45,7 +47,7 @@ func NewModule(lg *zap.SugaredLogger) *Module {
 	return &Module{logger: lg}
 }
 
-// LoadModule loads the log module. It is concurrency-safe and idempotent.
+// LoadModule returns the log module loader. It is concurrency-safe and idempotent.
 func (m *Module) LoadModule() (starlark.StringDict, error) {
 	m.once.Do(func() {
 		// If logger is nil, create a new development logger.
@@ -70,7 +72,7 @@ func (m *Module) LoadModule() (starlark.StringDict, error) {
 	return m.logModule, nil
 }
 
-// SetLog sets the logger from outside the package.
+// SetLog sets the logger of the log module from outside the package. If l is nil, a noop logger is used, which does nothing.
 func (m *Module) SetLog(l *zap.SugaredLogger) {
 	if l == nil {
 		m.logger = zap.NewNop().Sugar()
