@@ -13,8 +13,9 @@ import (
 )
 
 func TestLoadModule_Log_NoSet(t *testing.T) {
+	mm := lg.NewModule(nil)
 	script := "load('log', 'info')\ninfo('this is 1st info message only')"
-	res, err := itn.ExecModuleWithErrorTest(t, lg.ModuleName, lg.LoadModule, script, "")
+	res, err := itn.ExecModuleWithErrorTest(t, lg.ModuleName, mm.LoadModule, script, "")
 	if err != nil {
 		t.Errorf("log.SetLog(nil) expects no error, actual error = '%v', result = %v", err, res)
 		return
@@ -22,9 +23,10 @@ func TestLoadModule_Log_NoSet(t *testing.T) {
 }
 
 func TestLoadModule_Log_SetLog_Nil(t *testing.T) {
-	lg.SetLog(nil)
+	mm := lg.NewModule(nil)
+	mm.SetLog(nil)
 	script := "load('log', 'info')\ninfo('this is 2nd info message only')"
-	res, err := itn.ExecModuleWithErrorTest(t, lg.ModuleName, lg.LoadModule, script, "")
+	res, err := itn.ExecModuleWithErrorTest(t, lg.ModuleName, mm.LoadModule, script, "")
 	if err != nil {
 		t.Errorf("log.SetLog(nil) expects no error, actual error = '%v', result = %v", err, res)
 		return
@@ -63,12 +65,12 @@ func TestLoadModule_Log(t *testing.T) {
 			wantErr: "log.debug: expected string as first argument, got int",
 		},
 		{
-			name: `debug with incomplete args`,
+			name: `debug with pending args`,
 			script: itn.HereDoc(`
 				load('log', 'debug')
-				debug('this is a broken message', "what")
+				debug('this is a broken message', "what", 123, True)
 			`),
-			keywords: []string{"DEBUG", "this is a broken message", "ERROR", "Ignored key without a value."},
+			keywords: []string{"DEBUG", `this is a broken message what 123 True`},
 		},
 		{
 			name: `debug with key values`,
@@ -76,7 +78,7 @@ func TestLoadModule_Log(t *testing.T) {
 				load('log', 'debug')
 				m = {"mm": "this is more"}
 				l = [2, "LIST", 3.14, True]
-				debug('this is a data message', "map", m, "list", l)
+				debug('this is a data message', map=m, list=l)
 			`),
 			keywords: []string{"DEBUG", "this is a data message", `{"map": {"mm":"this is more"}, "list": [2,"LIST",3.14,true]}`},
 		},
@@ -84,9 +86,9 @@ func TestLoadModule_Log(t *testing.T) {
 			name: `info message`,
 			script: itn.HereDoc(`
 				load('log', 'info')
-				info('this is an info message', 1, 2, "hello", "world")
+				info('this is an info message', a1=2, hello="world")
 			`),
-			keywords: []string{"INFO", "this is an info message", `{"1": 2, "hello": "world"}`},
+			keywords: []string{"INFO", "this is an info message", `{"a1": 2, "hello": "world"}`},
 		},
 		{
 			name: `info self args`,
@@ -97,7 +99,7 @@ func TestLoadModule_Log(t *testing.T) {
 				l = [1,2,3]
 				l.append(l)
 				s = set([4,5,6])
-				info('this is complex info message', "self1", d, "self2", l, "self3", s)
+				info('this is complex info message', self1=d, self2=l, self3=s)
 			`),
 			keywords: []string{"INFO", "this is complex info message", `{"self1": "{\"hello\": \"world\", \"a\": {...}}", "self2": "[1, 2, 3, [...]]", "self3": [4,5,6]}`},
 		},

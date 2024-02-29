@@ -554,3 +554,54 @@ func TestTypeConvert(t *testing.T) {
 		})
 	}
 }
+
+func TestStarString(t *testing.T) {
+	tests := []struct {
+		name string
+		val  starlark.Value
+		want string
+	}{
+		{
+			name: "string",
+			val:  starlark.String("hello"),
+			want: "hello",
+		},
+		{
+			name: "bytes",
+			val:  starlark.Bytes("world"),
+			want: "world",
+		},
+		{
+			name: "none",
+			val:  starlark.None,
+			want: "None",
+		},
+		{
+			name: "bool",
+			val:  starlark.Bool(true),
+			want: "True",
+		},
+		{
+			name: "number",
+			val:  starlark.MakeInt(42),
+			want: "42",
+		},
+		{
+			name: "float",
+			val:  starlark.Float(3.14),
+			want: "3.14",
+		},
+		{
+			name: "list",
+			val:  starlark.NewList([]starlark.Value{starlark.String("foo"), starlark.String("bar")}),
+			want: `["foo", "bar"]`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := StarString(tt.val); got != tt.want {
+				t.Errorf("StarString(%v) got = %q, want = %q", tt.val, got, tt.want)
+			}
+		})
+	}
+}

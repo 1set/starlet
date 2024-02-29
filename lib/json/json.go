@@ -19,7 +19,7 @@ var (
 	jsonModule starlark.StringDict
 )
 
-// LoadModule loads the time module. It is concurrency-safe and idempotent.
+// LoadModule loads the json module. It is concurrency-safe and idempotent.
 func LoadModule() (starlark.StringDict, error) {
 	once.Do(func() {
 		mod := starlarkstruct.Module{

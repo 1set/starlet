@@ -3,9 +3,10 @@ package log
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
-	"github.com/1set/starlet/dataconv"
+	dc "github.com/1set/starlet/dataconv"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 	"go.uber.org/zap"
@@ -16,49 +17,75 @@ import (
 // in starlark's load() function, eg: load('log', 'info')
 const ModuleName = "log"
 
+// Initialized as global functions to be used as default
 var (
+	defaultModule = NewModule(NewDefaultLogger())
+	// LoadModule loads the default log module. It is concurrency-safe and idempotent.
+	LoadModule = defaultModule.LoadModule
+	// SetLog sets the logger of the default log module from outside the package. If l is nil, a noop logger is used, which does nothing.
+	SetLog = defaultModule.SetLog
+)
+
+// NewDefaultLogger creates a new logger as a default. It is used when no logger is provided to NewModule.
+func NewDefaultLogger() *zap.SugaredLogger {
+	cfg := zap.NewDevelopmentConfig()
+	cfg.DisableCaller = true
+	cfg.DisableStacktrace = true
+	lg, _ := cfg.Build()
+	return lg.Sugar()
+}
+
+// Module wraps the starlark module for the log package.
+type Module struct {
 	once      sync.Once
 	logModule starlark.StringDict
 	logger    *zap.SugaredLogger
-)
+}
 
-// LoadModule loads the time module. It is concurrency-safe and idempotent.
-func LoadModule() (starlark.StringDict, error) {
-	once.Do(func() {
+// NewModule creates a new log module. If logger is nil, a new development logger is created.
+func NewModule(lg *zap.SugaredLogger) *Module {
+	if lg == nil {
+		lg = NewDefaultLogger()
+	}
+	return &Module{logger: lg}
+}
+
+// LoadModule returns the log module loader. It is concurrency-safe and idempotent.
+func (m *Module) LoadModule() (starlark.StringDict, error) {
+	m.once.Do(func() {
 		// If logger is nil, create a new development logger.
-		if logger == nil {
-			lg, _ := zap.NewDevelopment()
-			logger = lg.Sugar()
+		if m.logger == nil {
+			m.logger = NewDefaultLogger()
 		}
 
 		// Create the log module
-		logModule = starlark.StringDict{
+		m.logModule = starlark.StringDict{
 			ModuleName: &starlarkstruct.Module{
 				Name: ModuleName,
 				Members: starlark.StringDict{
-					"debug": genLoggerBuiltin("debug", zap.DebugLevel),
-					"info":  genLoggerBuiltin("info", zap.InfoLevel),
-					"warn":  genLoggerBuiltin("warn", zap.WarnLevel),
-					"error": genLoggerBuiltin("error", zap.ErrorLevel),
-					"fatal": genLoggerBuiltin("fatal", zap.FatalLevel),
+					"debug": m.genLoggerBuiltin("debug", zap.DebugLevel),
+					"info":  m.genLoggerBuiltin("info", zap.InfoLevel),
+					"warn":  m.genLoggerBuiltin("warn", zap.WarnLevel),
+					"error": m.genLoggerBuiltin("error", zap.ErrorLevel),
+					"fatal": m.genLoggerBuiltin("fatal", zap.FatalLevel),
 				},
 			},
 		}
 	})
-	return logModule, nil
+	return m.logModule, nil
 }
 
-// SetLog sets the logger from outside the package.
-func SetLog(l *zap.SugaredLogger) {
+// SetLog sets the logger of the log module from outside the package. If l is nil, a noop logger is used, which does nothing.
+func (m *Module) SetLog(l *zap.SugaredLogger) {
 	if l == nil {
-		logger = zap.NewNop().Sugar()
+		m.logger = zap.NewNop().Sugar()
 		return
 	}
-	logger = l
+	m.logger = l
 }
 
 // genLoggerBuiltin is a helper function to generate a starlark Builtin function that logs a message at a given level.
-func genLoggerBuiltin(name string, level zapcore.Level) starlark.Callable {
+func (m *Module) genLoggerBuiltin(name string, level zapcore.Level) starlark.Callable {
 	return starlark.NewBuiltin(ModuleName+"."+name, func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var msg string
 		if len(args) <= 0 {
@@ -76,40 +103,46 @@ func genLoggerBuiltin(name string, level zapcore.Level) starlark.Callable {
 		)
 		switch level {
 		case zap.DebugLevel:
-			logFn = logger.Debugw
+			logFn = m.logger.Debugw
 		case zap.InfoLevel:
-			logFn = logger.Infow
+			logFn = m.logger.Infow
 		case zap.WarnLevel:
-			logFn = logger.Warnw
+			logFn = m.logger.Warnw
 		case zap.ErrorLevel:
-			logFn = logger.Errorw
+			logFn = m.logger.Errorw
 		case zap.FatalLevel:
-			logFn = logger.Errorw
+			logFn = m.logger.Errorw
 			retErr = true
 		default:
 			return nil, fmt.Errorf("unsupported log level: %v", level)
 		}
 
+		// append leftover arguments to message
+		if len(args) > 1 {
+			var ps []string
+			for _, a := range args[1:] {
+				ps = append(ps, dc.StarString(a))
+			}
+			msg += " " + strings.Join(ps, " ")
+		}
+
 		// convert args to key-value pairs
 		var kvp []interface{}
-		for i := range args {
-			if i == 0 {
+		for _, pair := range kwargs {
+			// for each key-value pair
+			if pair.Len() != 2 {
 				continue
 			}
-			if i%2 == 1 {
-				// for keys, try to interpret as string, or use String() as fallback
-				if s, ok := args[i].(starlark.String); ok {
-					kvp = append(kvp, s.GoString())
-				} else {
-					kvp = append(kvp, args[i].String())
-				}
+			key, val := pair[0], pair[1]
+
+			// for keys, try to interpret as string, or use String() as fallback
+			kvp = append(kvp, dc.StarString(key))
+
+			// for values, try to unmarshal to Go types, or use String() as fallback
+			if v, e := dc.Unmarshal(val); e == nil {
+				kvp = append(kvp, v)
 			} else {
-				// for values, try to unmarshal to Go types, or use String() as fallback
-				if v, e := dataconv.Unmarshal(args[i]); e == nil {
-					kvp = append(kvp, v)
-				} else {
-					kvp = append(kvp, args[i].String())
-				}
+				kvp = append(kvp, val.String())
 			}
 		}
 

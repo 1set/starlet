@@ -146,3 +146,15 @@ func TypeConvert(data interface{}) interface{} {
 		return v
 	}
 }
+
+// StarString returns the string representation of a starlark.Value.
+func StarString(x starlark.Value) string {
+	switch v := x.(type) {
+	case starlark.String:
+		return v.GoString()
+	case starlark.Bytes:
+		return string(v)
+	default:
+		return v.String()
+	}
+}

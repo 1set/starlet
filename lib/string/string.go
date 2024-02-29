@@ -34,7 +34,7 @@ const (
 	printable      = decDigits + asciiLetters + punctuation + whitespace
 )
 
-// LoadModule loads the time module. It is concurrency-safe and idempotent.
+// LoadModule loads the string module. It is concurrency-safe and idempotent.
 func LoadModule() (starlark.StringDict, error) {
 	once.Do(func() {
 		strModule = starlark.StringDict{

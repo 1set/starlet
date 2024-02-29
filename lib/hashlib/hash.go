@@ -28,7 +28,7 @@ var (
 	hashError  error
 )
 
-// LoadModule loads the time module. It is concurrency-safe and idempotent.
+// LoadModule loads the hashlib module. It is concurrency-safe and idempotent.
 func LoadModule() (starlark.StringDict, error) {
 	once.Do(func() {
 		hashModule = starlark.StringDict{
