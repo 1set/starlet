@@ -181,7 +181,7 @@ Write a byte string to a file.
 
 ```python
 load('file', 'write_bytes')
-name = 'newFile'
+name = 'new_file.txt'
 data = b'Hello, This is a new file.'
 write_bytes(name, data)
 ```
@@ -205,7 +205,7 @@ Write a string to a file.
 
 ```python
 load('file', 'write_string')
-write_string('newFile', 'Hello, This is a new file.')
+write_string('new_file.txt', 'Hello, This is a new file.')
 ```
 
 ### `write_lines(name, data)`
@@ -228,7 +228,7 @@ Write a list of lines to a file.
 ```python
 load('file', 'write_lines')
 lines = ['This is line1', 'This is line2', 'This is line3']
-write_lines('newFile', lines)
+write_lines('new_file.txt', lines)
 ```
 
 ### `append_bytes(name, data)`
@@ -250,7 +250,7 @@ Append a byte string to a file.
 
 ```python
 load('file', 'append_bytes')
-append_bytes('existingFile', b'Hello, This is appended data.')
+append_bytes('existing_file.txt', b'Hello, This is appended data.')
 ```
 
 ### `append_string(name, data)`
@@ -272,7 +272,7 @@ Append a string to a file.
 
 ```python
 load('file', 'append_string')
-append_string('existingFile', 'Hello, This is appended data.')
+append_string('existing_file.txt', 'Hello, This is appended data.')
 ```
 
 ### `append_lines(name, data)`
@@ -294,5 +294,5 @@ Append a list of lines to a file.
 
 ```python
 load('file', 'append_lines')
-append_lines('existingFile', ['This is line1', 'This is line2', 'This is line3'])
+append_lines('existing_file.txt', ['This is line1', 'This is line2', 'This is line3'])
 ```
