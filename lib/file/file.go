@@ -139,37 +139,21 @@ func writeString(name string, data starlark.Value) error {
 
 // writeLines writes the lines into a file. The data should be a list, a tuple or a set of strings.
 func writeLines(name string, data starlark.Value) error {
-	convIter := func(lst starlark.Iterable) ([]string, error) {
-		var lines []string
-		iter := lst.Iterate()
-		defer iter.Done()
-
-		var x starlark.Value
-		for iter.Next(&x) {
-			if s, ok := starlark.AsString(x); ok {
-				lines = append(lines, s)
-			} else {
-				lines = append(lines, x.String())
-			}
-		}
-		return lines, nil
-	}
-
 	switch v := data.(type) {
 	case *starlark.List:
-		if ls, err := convIter(v); err != nil {
+		if ls, err := convIterStrings(v); err != nil {
 			return err
 		} else {
 			return WriteFileLines(name, ls)
 		}
 	case *starlark.Tuple:
-		if ts, err := convIter(v); err != nil {
+		if ts, err := convIterStrings(v); err != nil {
 			return err
 		} else {
 			return WriteFileLines(name, ts)
 		}
 	case *starlark.Set:
-		if ss, err := convIter(v); err != nil {
+		if ss, err := convIterStrings(v); err != nil {
 			return err
 		} else {
 			return WriteFileLines(name, ss)
@@ -177,4 +161,20 @@ func writeLines(name string, data starlark.Value) error {
 	default:
 		return fmt.Errorf(ModuleName+`.write_lines: expected list/tuple/set, got %s`, data.Type())
 	}
+}
+
+func convIterStrings(lst starlark.Iterable) ([]string, error) {
+	var lines []string
+	iter := lst.Iterate()
+	defer iter.Done()
+
+	var x starlark.Value
+	for iter.Next(&x) {
+		if s, ok := starlark.AsString(x); ok {
+			lines = append(lines, s)
+		} else {
+			lines = append(lines, x.String())
+		}
+	}
+	return lines, nil
 }
