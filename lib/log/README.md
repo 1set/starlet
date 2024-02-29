@@ -24,7 +24,8 @@ Log a debug message with additional information.
 
 ```python
 load("log", "debug")
-debug("Fetching data", retry_attempt=1)
+debug("Fetching data at", "21:40", retry_attempt=1)
+{"retry_attempt": 1}
 ```
 
 ### `info(msg, *misc, **kv)`
