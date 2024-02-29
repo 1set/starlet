@@ -45,6 +45,25 @@ func TestLoadModule_File(t *testing.T) {
 			wantErr: "file.trim_bom: expected string or bytes, got int",
 		},
 		{
+			name: `read empty file`,
+			script: itn.HereDoc(`
+				load('file', 'read_bytes', 'read_string', 'read_lines', 'count_lines', 'head_lines', 'tail_lines')
+				fp = 'testdata/empty.txt'
+				b = read_bytes(fp)
+				assert.eq(b, b'')
+				s = read_string(fp)
+				assert.eq(s, '')
+				l = read_lines(fp)
+				assert.eq(l, [])
+				c = count_lines(fp)
+				assert.eq(c, 0)
+				h = head_lines(fp, 10)
+				assert.eq(h, [])
+				t = tail_lines(fp, 10)
+				assert.eq(t, [])
+			`),
+		},
+		{
 			name: `read bytes`,
 			script: itn.HereDoc(`
 				load('file', 'read_bytes')

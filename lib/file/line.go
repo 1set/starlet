@@ -68,7 +68,7 @@ func ReadLastLines(path string, n int) (lines []string, err error) {
 // extractIOTopLines extracts the top n lines from the given stream (the line ending chars are not included), or lesser lines if the given stream doesn't contain enough line ending chars.
 func extractIOTopLines(rd io.Reader, n int) ([]string, error) {
 	if n <= 0 {
-		return nil, errors.New("amoy: n should be greater than 0")
+		return nil, errors.New("n should be greater than 0")
 	}
 	result := make([]string, 0)
 	if err := readIOByLine(rd, func(line string) error {
@@ -87,7 +87,7 @@ func extractIOTopLines(rd io.Reader, n int) ([]string, error) {
 // extractIOBottomLines extracts the bottom n lines from the given stream (the line ending chars are not included), or lesser lines if the given stream doesn't contain enough line ending chars.
 func extractIOBottomLines(rd io.Reader, n int) ([]string, error) {
 	if n <= 0 {
-		return nil, errors.New("amoy: n should be greater than 0")
+		return nil, errors.New("n should be greater than 0")
 	}
 	var (
 		result = make([]string, n, n)
