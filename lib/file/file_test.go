@@ -1,9 +1,10 @@
 package file_test
 
 import (
+	"testing"
+
 	itn "github.com/1set/starlet/internal"
 	lf "github.com/1set/starlet/lib/file"
-	"testing"
 )
 
 func TestLoadModule_File(t *testing.T) {
@@ -42,8 +43,34 @@ func TestLoadModule_File(t *testing.T) {
 			name: `read bytes`,
 			script: itn.HereDoc(`
 				load('file', 'read_bytes')
-				# b = read_bytes('testdata/file.txt')
-				# assert.eq(b, b'hello\nworld\n')
+				b = read_bytes('testdata/aloha.txt')
+				assert.eq(b, b'ALOHA\n')
+			`),
+		},
+		{
+			name: `read string`,
+			script: itn.HereDoc(`
+				load('file', 'read_string')
+				s = read_string('testdata/aloha.txt')
+				assert.eq(s, 'ALOHA\n')
+			`),
+		},
+		{
+			name: `read lines mac`,
+			script: itn.HereDoc(`
+				load('file', 'read_lines')
+				l = read_lines('testdata/line_mac.txt')
+				assert.eq(len(l), 3)
+				assert.eq(l, ['Line 1', 'Line 2', 'Line 3'])
+			`),
+		},
+		{
+			name: `read lines win`,
+			script: itn.HereDoc(`
+				load('file', 'read_lines')
+				l = read_lines('testdata/line_win.txt')
+				assert.eq(len(l), 3)
+				assert.eq(l, ['Line 1', 'Line 2', 'Line 3'])
 			`),
 		},
 	}
