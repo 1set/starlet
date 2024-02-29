@@ -313,6 +313,54 @@ func TestLoadModule_File(t *testing.T) {
 			wantErr: `file.tail_lines: expected positive integer, got -7`,
 		},
 		{
+			name: `write_bytes: conflict`,
+			script: itn.HereDoc(`
+				load('file', 'write_bytes')
+				write_bytes('testdata/', b'hello')
+			`),
+			wantErr: `open testdata/:`,
+		},
+		{
+			name: `write_string: conflict`,
+			script: itn.HereDoc(`
+				load('file', 'write_string')
+				write_string('testdata/', b'hello')
+			`),
+			wantErr: `open testdata/:`,
+		},
+		{
+			name: `write_lines: conflict`,
+			script: itn.HereDoc(`
+				load('file', 'write_lines')
+				write_lines('testdata/', b'hello')
+			`),
+			wantErr: `open testdata/:`,
+		},
+		{
+			name: `append_bytes: conflict`,
+			script: itn.HereDoc(`
+				load('file', 'append_bytes')
+				append_bytes('testdata/', b'hello')
+			`),
+			wantErr: `open testdata/:`,
+		},
+		{
+			name: `append_string: conflict`,
+			script: itn.HereDoc(`
+				load('file', 'append_string')
+				append_string('testdata/', b'hello')
+			`),
+			wantErr: `open testdata/:`,
+		},
+		{
+			name: `append_lines: conflict`,
+			script: itn.HereDoc(`
+				load('file', 'append_lines')
+				append_lines('testdata/', b'hello')
+			`),
+			wantErr: `open testdata/:`,
+		},
+		{
 			name: `read_bytes: not exist`,
 			script: itn.HereDoc(`
 				load('file', 'read_bytes')
