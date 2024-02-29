@@ -24,7 +24,7 @@ Removes the Byte Order Mark (BOM) from a string.
 load("file", "trim_bom")
 s = b'\xef\xbb\xbfhello'
 print(trim_bom(s))
-# Output: 'hello'
+# Output: hello
 ```
 
 ### `count_lines(name) int`
@@ -45,7 +45,7 @@ Count the lines of a file.
 
 ```python
 load("file", "count_lines")
-name = 'pathToFile'
+name = 'path/to/file.txt'
 print(count_lines(name))
 # Output: 10
 ```
@@ -69,7 +69,7 @@ Get the top 10 lines of a file.
 
 ```python
 load('file', 'head_lines')
-print(head_lines('pathToFile', 10))
+print(head_lines('path/to/file.txt', 10))
 # Output: ['line1', 'line2', ... 'line10']
 ```
 
@@ -92,7 +92,7 @@ Get the bottom 10 lines of a file.
 
 ```python
 load('file', 'tail_lines')
-print(tail_lines('pathToFile', 10))
+print(tail_lines('path/to/file.txt', 10))
 # Output: ['line91', 'line92', ... 'line100']
 ```
 
@@ -114,7 +114,7 @@ Read a file in bytes.
 
 ```python
 load('file', 'read_bytes')
-print(read_bytes('pathToFile'))
+print(read_bytes('path/to/file.txt'))
 # Output: b'file_content'
 ```
 
@@ -136,7 +136,7 @@ Read a file in string.
 
 ```python
 load('file', 'read_string')
-print(read_string('pathToFile'))
+print(read_string('path/to/file.txt'))
 # Output: 'file_content'
 ```
 
@@ -158,7 +158,7 @@ Get lines of a file in a list.
 
 ```python
 load('file', 'read_lines')
-print(read_lines('pathToFile'))
+print(read_lines('path/to/file.txt'))
 # Output: ['line1', 'line2', 'line3', ....]
 ```
 
