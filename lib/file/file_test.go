@@ -1,6 +1,7 @@
 package file_test
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -9,24 +10,18 @@ import (
 )
 
 func TestLoadModule_File(t *testing.T) {
-	//ioutil.TempFile("", "starlet-file-test-write")
-	tf, err := os.CreateTemp("", "starlet-file-test-write")
-	if err != nil {
-		t.Errorf("os.CreateTemp() expects no error, actual error = '%v'", err)
-		return
-	}
-	tp := tf.Name()
-	t.Logf("Temp file to write: %s", tp)
-
 	tests := []struct {
-		name    string
-		script  string
-		wantErr string
+		name        string
+		script      string
+		wantErr     string
+		fileContent string
 	}{
 		{
 			name: `trim bom`,
 			script: itn.HereDoc(`
 				load('file', 'trim_bom')
+				b0 = trim_bom('A')
+				assert.eq(b0, 'A')
 				b1 = trim_bom('hello')
 				assert.eq(b1, 'hello')
 				b2 = trim_bom(b'\xef\xbb\xbfhello')
@@ -68,6 +63,30 @@ func TestLoadModule_File(t *testing.T) {
 			`),
 		},
 		{
+			name: `read no args`,
+			script: itn.HereDoc(`
+				load('file', 'read_string')
+				read_string() 
+			`),
+			wantErr: "file.read_string: missing argument for name",
+		},
+		{
+			name: `read invalid args`,
+			script: itn.HereDoc(`
+				load('file', 'read_string')
+				read_string(123) 
+			`),
+			wantErr: "file.read_string: for parameter name: got int, want string or bytes",
+		},
+		{
+			name: `read not exist`,
+			script: itn.HereDoc(`
+				load('file', 'read_string')
+				s = read_string('not-such-file.txt')
+			`),
+			wantErr: `open not-such-file.txt:`,
+		},
+		{
 			name: `read string`,
 			script: itn.HereDoc(`
 				load('file', 'read_string')
@@ -100,12 +119,49 @@ func TestLoadModule_File(t *testing.T) {
 				assert.eq(l2, [text])
 			`),
 		},
+		{
+			name: `write bytes`,
+			script: itn.HereDoc(`
+				load('file', 'write_bytes')
+				fp = %q
+				write_bytes(fp, b'hello')
+				write_bytes(fp, b'world')
+			`),
+			fileContent: "world",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// prepare temp file if needed
+			var (
+				cont = tt.fileContent
+				tp   string
+			)
+			if cont != "" {
+				tf, err := os.CreateTemp("", "starlet-file-test-write")
+				if err != nil {
+					t.Errorf("os.CreateTemp() expects no error, actual error = '%v'", err)
+					return
+				}
+				tp = tf.Name()
+				t.Logf("Temp file to write: %s", tp)
+				tt.script = fmt.Sprintf(tt.script, tp)
+			}
+			// execute test
 			res, err := itn.ExecModuleWithErrorTest(t, lf.ModuleName, lf.LoadModule, tt.script, tt.wantErr)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("file(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
+			}
+			// check file content if needed
+			if cont != "" {
+				b, err := os.ReadFile(tp)
+				if err != nil {
+					t.Errorf("os.ReadFile() expects no error, actual error = '%v'", err)
+					return
+				}
+				if string(b) != cont {
+					t.Errorf("file(%q) expects file content = %q, actual content = %q", tt.name, cont, string(b))
+				}
 			}
 		})
 	}
