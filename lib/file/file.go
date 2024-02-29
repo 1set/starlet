@@ -28,6 +28,9 @@ func LoadModule() (starlark.StringDict, error) {
 				Name: ModuleName,
 				Members: starlark.StringDict{
 					"trim_bom":      starlark.NewBuiltin(ModuleName+".trim_bom", trimBom),
+					"count_lines":   starlark.NewBuiltin(ModuleName+".count_lines", countFileLines),
+					"head_lines":    readPartialLines("head_lines", ReadFirstLines),
+					"tail_lines":    readPartialLines("tail_lines", ReadLastLines),
 					"read_bytes":    wrapReadFile("read_bytes", readBytes),
 					"read_string":   wrapReadFile("read_string", readString),
 					"read_lines":    wrapReadFile("read_lines", readLines),
@@ -58,6 +61,51 @@ func trimBom(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, 
 	default:
 		return none, fmt.Errorf(`%s: expected string or bytes, got %s`, b.Name(), r.Type())
 	}
+}
+
+// countFileLines counts the number of lines in a file.
+func countFileLines(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var fp itn.StringOrBytes
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "name", &fp); err != nil {
+		return starlark.None, err
+	}
+	// do the work
+	cnt, err := CountFileLines(fp.GoString())
+	if err != nil {
+		return nil, err
+	}
+	return starlark.MakeInt(cnt), nil
+}
+
+// readPartialLines wraps the file reading functions for top or bottom lines to be used in Starlark.
+func readPartialLines(funcName string, workLoad func(name string, n int) ([]string, error)) starlark.Callable {
+	return starlark.NewBuiltin(ModuleName+"."+funcName, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		// unpack arguments
+		var (
+			fp itn.StringOrBytes
+			n  starlark.Int
+		)
+		if err := starlark.UnpackArgs(b.Name(), args, kwargs, "name", &fp, "n", &n); err != nil {
+			return starlark.None, err
+		}
+		nInt, _ := n.Int64()
+		if nInt <= 0 {
+			return starlark.None, fmt.Errorf(`%s: expected positive integer, got %d`, b.Name(), n)
+		}
+
+		// read lines
+		ls, err := workLoad(fp.GoString(), int(nInt))
+		if err != nil {
+			return nil, err
+		}
+
+		// return as list
+		sl := make([]starlark.Value, len(ls))
+		for i, l := range ls {
+			sl[i] = starlark.String(l)
+		}
+		return starlark.NewList(sl), nil
+	})
 }
 
 // wrapReadFile wraps the file reading functions to be used in Starlark.
