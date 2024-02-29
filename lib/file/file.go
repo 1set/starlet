@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	dc "github.com/1set/starlet/dataconv"
 	itn "github.com/1set/starlet/internal"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
@@ -228,14 +229,7 @@ func convIterStrings(lst starlark.Iterable) (lines []string) {
 
 	var x starlark.Value
 	for iter.Next(&x) {
-		switch v := x.(type) {
-		case starlark.String:
-			lines = append(lines, v.GoString())
-		case starlark.Bytes:
-			lines = append(lines, string(v))
-		default:
-			lines = append(lines, x.String())
-		}
+		lines = append(lines, dc.StarString(x))
 	}
 	return
 }

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/1set/starlet/dataconv"
+	dc "github.com/1set/starlet/dataconv"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 	"go.uber.org/zap"
@@ -95,7 +95,7 @@ func genLoggerBuiltin(name string, level zapcore.Level) starlark.Callable {
 		if len(args) > 1 {
 			var ps []string
 			for _, a := range args[1:] {
-				ps = append(ps, dataconv.StarString(a))
+				ps = append(ps, dc.StarString(a))
 			}
 			msg += " " + strings.Join(ps, " ")
 		}
@@ -110,10 +110,10 @@ func genLoggerBuiltin(name string, level zapcore.Level) starlark.Callable {
 			key, val := pair[0], pair[1]
 
 			// for keys, try to interpret as string, or use String() as fallback
-			kvp = append(kvp, dataconv.StarString(key))
+			kvp = append(kvp, dc.StarString(key))
 
 			// for values, try to unmarshal to Go types, or use String() as fallback
-			if v, e := dataconv.Unmarshal(val); e == nil {
+			if v, e := dc.Unmarshal(val); e == nil {
 				kvp = append(kvp, v)
 			} else {
 				kvp = append(kvp, val.String())
