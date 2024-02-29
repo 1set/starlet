@@ -27,13 +27,16 @@ func LoadModule() (starlark.StringDict, error) {
 			ModuleName: &starlarkstruct.Module{
 				Name: ModuleName,
 				Members: starlark.StringDict{
-					"trim_bom":     starlark.NewBuiltin(ModuleName+".trim_bom", trimBom),
-					"read_bytes":   wrapReadFile("read_bytes", readBytes),
-					"read_string":  wrapReadFile("read_string", readString),
-					"read_lines":   wrapReadFile("read_lines", readLines),
-					"write_bytes":  wrapWriteFile("write_bytes", true, writeBytes),
-					"write_string": wrapWriteFile("write_string", true, writeString),
-					"write_lines":  wrapWriteFile("write_lines", true, writeLines),
+					"trim_bom":      starlark.NewBuiltin(ModuleName+".trim_bom", trimBom),
+					"read_bytes":    wrapReadFile("read_bytes", readBytes),
+					"read_string":   wrapReadFile("read_string", readString),
+					"read_lines":    wrapReadFile("read_lines", readLines),
+					"write_bytes":   wrapWriteFile("write_bytes", true, writeBytes),
+					"write_string":  wrapWriteFile("write_string", true, writeString),
+					"write_lines":   wrapWriteFile("write_lines", true, writeLines),
+					"append_bytes":  wrapWriteFile("append_bytes", false, writeBytes),
+					"append_string": wrapWriteFile("append_string", false, writeString),
+					"append_lines":  wrapWriteFile("append_lines", false, writeLines),
 				},
 			},
 		}

@@ -66,7 +66,7 @@ func TestLoadModule_File(t *testing.T) {
 			name: `read no args`,
 			script: itn.HereDoc(`
 				load('file', 'read_string')
-				read_string() 
+				read_string()
 			`),
 			wantErr: "file.read_string: missing argument for name",
 		},
@@ -74,7 +74,7 @@ func TestLoadModule_File(t *testing.T) {
 			name: `read invalid args`,
 			script: itn.HereDoc(`
 				load('file', 'read_string')
-				read_string(123) 
+				read_string(123)
 			`),
 			wantErr: "file.read_string: for parameter name: got int, want string or bytes",
 		},
@@ -166,6 +166,16 @@ func TestLoadModule_File(t *testing.T) {
 			fileContent: "Goodbye~\n",
 		},
 		{
+			name: `write lines: bytes`,
+			script: itn.HereDoc(`
+				load('file', 'write_lines')
+				fp = %q
+				write_lines(fp, b"Hello World")
+				write_lines(fp, b"Goodbye!")
+			`),
+			fileContent: "Goodbye!\n",
+		},
+		{
 			name: `write lines: list`,
 			script: itn.HereDoc(`
 				load('file', 'write_lines')
@@ -203,6 +213,37 @@ func TestLoadModule_File(t *testing.T) {
 				write_lines(fp, ["Hello", 123, [True, False]])
 			`),
 			fileContent: "Hello\n123\n[True, False]\n",
+		},
+		{
+			name: `append bytes`,
+			script: itn.HereDoc(`
+				load('file', 'append_bytes')
+				fp = %q
+				append_bytes(fp, b'hello')
+				append_bytes(fp, b'world')
+			`),
+			fileContent: "helloworld",
+		},
+		{
+			name: `append string`,
+			script: itn.HereDoc(`
+				load('file', 'append_string', 'write_string')
+				fp = %q
+				write_string(fp, "Hello World\n")
+				append_string(fp, "Aloha!\nA hui hou!\n")
+			`),
+			fileContent: "Hello World\nAloha!\nA hui hou!\n",
+		},
+		{
+			name: `append lines`,
+			script: itn.HereDoc(`
+				load('file', 'write_lines', 'append_lines')
+				fp = %q
+				write_lines(fp, ["Hello", "World"])
+				append_lines(fp, ["Great", "Job"])
+				append_lines(fp, ["Bye"])
+			`),
+			fileContent: "Hello\nWorld\nGreat\nJob\nBye\n",
 		},
 	}
 	for _, tt := range tests {
