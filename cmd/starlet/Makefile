@@ -24,7 +24,7 @@ GOGET=$(GOCMD) get
 GOMOD=$(GOCMD) mod
 
 # for go build
-# export CGO_ENABLED=0
+export CGO_ENABLED=0
 export TZ=Asia/Shanghai
 export PACK=main
 export FLAGS="-s -w -X '$(PACK).AppName=$(BINARY)' -X '$(PACK).BuildDate=`date '+%Y-%m-%dT%T%z'`' -X '$(PACK).BuildHost=`hostname`' -X '$(PACK).GoVersion=`go version`' -X '$(PACK).GitBranch=`git symbolic-ref -q --short HEAD`' -X '$(PACK).GitCommit=`git rev-parse --short HEAD`' -X '$(PACK).GitSummary=`git describe --tags --dirty --always`' -X '$(PACK).CIBuildNum=${BUILD_NUM}'"
