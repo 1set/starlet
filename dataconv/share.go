@@ -185,7 +185,7 @@ func (s *SharedDict) AttrNames() []string {
 
 // CompareSameType compares the SharedDict with another value of the same type.
 // It implements the starlark.Comparable interface.
-func (s *SharedDict) CompareSameType(op syntax.Token, y_ starlark.Value, depth int) (bool, error) {
+func (s *SharedDict) CompareSameType(op syntax.Token, yv starlark.Value, depth int) (bool, error) {
 	retEqualCheck := func(equal bool, op syntax.Token) (bool, error) {
 		switch op {
 		case syntax.EQL:
@@ -198,12 +198,12 @@ func (s *SharedDict) CompareSameType(op syntax.Token, y_ starlark.Value, depth i
 	}
 
 	// if they are the same object, they are equal
-	if s == y_ {
+	if s == yv {
 		return retEqualCheck(true, op)
 	}
 
 	// scan the type
-	y := y_.(*SharedDict)
+	y := yv.(*SharedDict)
 
 	// lock both objects
 	s.RLock()
