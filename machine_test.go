@@ -278,7 +278,7 @@ func TestMachine_Export_Run(t *testing.T) {
 	// run with load
 	ll := starlet.GetBuiltinModuleMap()
 	m.SetLazyloadModules(ll)
-	rd, err = m.RunScript([]byte(`load("math", "sqrt"); b = sqrt(x)`), nil)
+	_, err = m.RunScript([]byte(`load("math", "sqrt"); b = sqrt(x)`), nil)
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
 	}
@@ -295,7 +295,7 @@ func TestMachine_Export_Run(t *testing.T) {
 	}
 	// add preload modules
 	m.AddPreloadModules(starlet.ModuleLoaderList{starlet.GetBuiltinModule("math")})
-	rd, err = m.RunScript([]byte(`x = math.sqrt(100)`), nil)
+	_, err = m.RunScript([]byte(`x = math.sqrt(100)`), nil)
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
 	}
