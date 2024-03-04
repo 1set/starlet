@@ -66,6 +66,10 @@ func NewAssertLoader(moduleName string, loader ModuleLoadFunc) ThreadLoadFunc {
 			}, nil
 		case "assert.star":
 			return starlarktest.LoadAssertModule()
+		case "freeze.star":
+			return starlark.StringDict{
+				"freeze": starlark.NewBuiltin("freeze", freezeValue),
+			}, nil
 		}
 
 		return nil, fmt.Errorf("invalid module")
@@ -93,4 +97,13 @@ func ExecModuleWithErrorTest(t *testing.T, name string, loader ModuleLoadFunc, s
 		}
 	}
 	return out, err
+}
+
+func freezeValue(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var v starlark.Value
+	if err := starlark.UnpackArgs(bn.Name(), args, kwargs, "v", &v); err != nil {
+		return nil, err
+	}
+	v.Freeze()
+	return v, nil
 }
