@@ -106,6 +106,18 @@ func TestLoadModule_Random(t *testing.T) {
 			wantErr: `random.shuffle: for parameter seq: got tuple, want starlark.HasSetIndex`,
 		},
 		{
+			name: "shuffle frozen",
+			script: itn.HereDoc(`
+				load('random', 'shuffle')
+				load('freeze.star', 'freeze')
+				x = [1, 2, 3]
+				freeze(x)
+				shuffle(x)
+			`),
+			wantErr: `cannot assign to element of frozen list`,
+		},
+
+		{
 			name: "shuffle with empty type",
 			script: itn.HereDoc(`
 				load('random', 'shuffle')

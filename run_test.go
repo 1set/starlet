@@ -1559,7 +1559,7 @@ t = 4
 z = y << 5
 fail("oops")
 `), nil)
-	ts = time.Now()
+
 	out, err = m.Run()
 	expectErr(t, err, "starlark: exec: fail: oops")
 	t.Logf("got result after run #4: %v", out)
@@ -1580,7 +1580,7 @@ foo()
 	m.SetScript("timer.star", []byte(`
 zoo = z + 100
 `), nil)
-	ts = time.Now()
+
 	out, err = m.Run()
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)

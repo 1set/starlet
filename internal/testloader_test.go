@@ -43,6 +43,11 @@ func TestNewAssertLoader(t *testing.T) {
 			loadFunc:   moduleLoadFunc,
 		},
 		{
+			name:       "Load freeze.star module",
+			moduleName: "freeze.star",
+			loadFunc:   moduleLoadFunc,
+		},
+		{
 			name:          "Invalid module",
 			moduleName:    "invalid",
 			loadFunc:      moduleLoadFunc,

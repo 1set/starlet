@@ -198,11 +198,14 @@ func shuffle(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 		swap      = func(i, j int) error {
 			x := seq.Index(i)
 			y := seq.Index(j)
-			if e := seq.SetIndex(i, y); e != nil {
-				return e
-			}
-			if e := seq.SetIndex(j, x); e != nil {
-				return e
+
+			e1 := seq.SetIndex(i, y)
+			e2 := seq.SetIndex(j, x)
+
+			if e1 != nil {
+				return e1
+			} else if e2 != nil {
+				return e2
 			}
 			return nil
 		}

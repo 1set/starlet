@@ -1,3 +1,4 @@
+// Package log provides functionality for logging messages at various severity levels in the Starlark environment.
 package log
 
 import (
