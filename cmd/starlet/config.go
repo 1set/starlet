@@ -9,6 +9,7 @@ import (
 	"github.com/1set/gut/ystring"
 )
 
+// revive:disable:exported
 var (
 	CIBuildNum string
 	BuildDate  string
