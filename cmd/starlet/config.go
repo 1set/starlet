@@ -29,7 +29,7 @@ var (
   ███████║   ██║   ██║  ██║██║  ██║███████╗███████╗   ██║
   ╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝
 `
-	logoArtColor = cl.CherryBlossomsByColumn(logoArt)
+	logoArtColor = cl.RoseWaterByColumn(logoArt)
 )
 
 func displayBuildInfo() {
