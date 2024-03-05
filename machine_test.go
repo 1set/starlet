@@ -509,9 +509,10 @@ func TestMachine_SetScriptCache(t *testing.T) {
 		res, err := m.Run()
 		checkRes(201, err, res, 10)
 
+		// no cache pollution since script content is used as cache key
 		m.SetScript(sname, []byte(script2), nil)
 		res, err = m.Run()
-		checkRes(202, err, res, 10)
+		checkRes(202, err, res, 20)
 
 		m.SetScriptCacheEnabled(false)
 		m.SetScript(sname, []byte(script2), nil)
@@ -528,9 +529,10 @@ func TestMachine_SetScriptCache(t *testing.T) {
 		res, err := m.Run()
 		checkRes(301, err, res, 10)
 
+		// no cache pollution since script content is used as cache key
 		m.SetScript(sname, []byte(script2), nil)
 		res, err = m.Run()
-		checkRes(302, err, res, 10)
+		checkRes(302, err, res, 20)
 
 		m.SetScript(sname+"diff", []byte(script2), nil)
 		res, err = m.Run()
@@ -546,9 +548,10 @@ func TestMachine_SetScriptCache(t *testing.T) {
 		res, err := m.Run()
 		checkRes(401, err, res, 10)
 
+		// no cache pollution since script content is used as cache key
 		m.SetScript(sname, []byte(script2), nil)
 		res, err = m.Run()
-		checkRes(402, err, res, 10)
+		checkRes(402, err, res, 20)
 
 		mc.Set(ckey, []byte("broken_data"))
 		m.SetScript(sname, []byte(script2), nil)

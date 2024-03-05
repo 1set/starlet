@@ -28,8 +28,8 @@ func (m *Machine) execStarlarkFile(filename string, src interface{}, allowCache 
 	var (
 		prog *starlark.Program
 		err  error
-		//key  = getCacheKey(filename, src)
-		key = fmt.Sprintf("%d:%s", starlark.CompilerVersion, filename)
+		//key = fmt.Sprintf("%d:%s", starlark.CompilerVersion, filename)
+		key = getCacheKey(filename, src)
 	)
 
 	// try to load compiled program from cache first
