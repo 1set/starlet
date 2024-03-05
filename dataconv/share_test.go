@@ -8,25 +8,59 @@ import (
 	"go.starlark.net/starlark"
 )
 
-func getSDLoader(name string, sd *SharedDict) func() (starlark.StringDict, error) {
-	md := NewSharedDict()
-	if err := md.SetKey(starlark.String("your"), starlark.String("name")); err != nil {
-		panic(err)
+func TestSharedDict_Clone(t *testing.T) {
+	sd1 := NewSharedDictFromDict(nil)
+	if sd1 == nil {
+		t.Errorf("NewSharedDictFromDict: 1 nil")
+		return
 	}
-	md2 := NewSharedDict()
-	if err := md2.SetKey(starlark.String("my"), starlark.String("heart")); err != nil {
-		panic(err)
+	if sd1.dict == nil {
+		t.Errorf("NewSharedDictFromDict: 1 nil dict")
+		return
 	}
-	md2.Freeze()
-	md3 := NewSharedDict()
-	md3.dict = nil
-	return func() (starlark.StringDict, error) {
-		return starlark.StringDict{
-			name:      sd,
-			"another": md,
-			"frozen":  md2,
-			"broken":  md3,
-		}, nil
+	if sd1.Len() != 0 {
+		t.Errorf("NewSharedDictFromDict: 1 non-empty dict")
+		return
+	}
+
+	d2 := starlark.NewDict(1)
+	d2.SetKey(starlark.String("foo"), starlark.String("bar"))
+	sd2 := NewSharedDictFromDict(d2)
+	if sd2 == nil {
+		t.Errorf("NewSharedDictFromDict: 2 nil")
+		return
+	}
+	if sd2.dict == nil {
+		t.Errorf("NewSharedDictFromDict: 2 nil dict")
+		return
+	}
+	if sd2.Len() != 1 {
+		t.Errorf("NewSharedDictFromDict: 2 empty dict")
+		return
+	}
+	if d2 == sd2.dict {
+		t.Errorf("NewSharedDictFromDict: 2 not cloned")
+		return
+	}
+}
+
+func TestSharedDict_TypeName(t *testing.T) {
+	sd := NewSharedDict()
+	if sd.Type() != "shared_dict" {
+		t.Errorf("TypeName1: %s", sd.Type())
+		return
+	}
+
+	sd.SetTypeName("Kioku")
+	if sd.Type() != "Kioku" {
+		t.Errorf("TypeName2: %s", sd.Type())
+		return
+	}
+
+	sd.SetTypeName("")
+	if sd.Type() != "shared_dict" {
+		t.Errorf("TypeName3: %s", sd.Type())
+		return
 	}
 }
 
@@ -913,58 +947,24 @@ func TestSharedDict_Concurrent(t *testing.T) {
 	}
 }
 
-func TestSharedDict_Clone(t *testing.T) {
-	sd1 := NewSharedDictFromDict(nil)
-	if sd1 == nil {
-		t.Errorf("NewSharedDictFromDict: 1 nil")
-		return
+func getSDLoader(name string, sd *SharedDict) func() (starlark.StringDict, error) {
+	md := NewSharedDict()
+	if err := md.SetKey(starlark.String("your"), starlark.String("name")); err != nil {
+		panic(err)
 	}
-	if sd1.dict == nil {
-		t.Errorf("NewSharedDictFromDict: 1 nil dict")
-		return
+	md2 := NewSharedDict()
+	if err := md2.SetKey(starlark.String("my"), starlark.String("heart")); err != nil {
+		panic(err)
 	}
-	if sd1.Len() != 0 {
-		t.Errorf("NewSharedDictFromDict: 1 non-empty dict")
-		return
-	}
-
-	d2 := starlark.NewDict(1)
-	d2.SetKey(starlark.String("foo"), starlark.String("bar"))
-	sd2 := NewSharedDictFromDict(d2)
-	if sd2 == nil {
-		t.Errorf("NewSharedDictFromDict: 2 nil")
-		return
-	}
-	if sd2.dict == nil {
-		t.Errorf("NewSharedDictFromDict: 2 nil dict")
-		return
-	}
-	if sd2.Len() != 1 {
-		t.Errorf("NewSharedDictFromDict: 2 empty dict")
-		return
-	}
-	if d2 == sd2.dict {
-		t.Errorf("NewSharedDictFromDict: 2 not cloned")
-		return
-	}
-}
-
-func TestSharedDict_TypeName(t *testing.T) {
-	sd := NewSharedDict()
-	if sd.Type() != "shared_dict" {
-		t.Errorf("TypeName1: %s", sd.Type())
-		return
-	}
-
-	sd.SetTypeName("Kioku")
-	if sd.Type() != "Kioku" {
-		t.Errorf("TypeName2: %s", sd.Type())
-		return
-	}
-
-	sd.SetTypeName("")
-	if sd.Type() != "shared_dict" {
-		t.Errorf("TypeName3: %s", sd.Type())
-		return
+	md2.Freeze()
+	md3 := NewSharedDict()
+	md3.dict = nil
+	return func() (starlark.StringDict, error) {
+		return starlark.StringDict{
+			name:      sd,
+			"another": md,
+			"frozen":  md2,
+			"broken":  md3,
+		}, nil
 	}
 }
