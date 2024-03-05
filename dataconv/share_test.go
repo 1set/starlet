@@ -948,3 +948,23 @@ func TestSharedDict_Clone(t *testing.T) {
 		return
 	}
 }
+
+func TestSharedDict_TypeName(t *testing.T) {
+	sd := NewSharedDict()
+	if sd.Type() != "shared_dict" {
+		t.Errorf("TypeName1: %s", sd.Type())
+		return
+	}
+
+	sd.SetTypeName("Kioku")
+	if sd.Type() != "Kioku" {
+		t.Errorf("TypeName2: %s", sd.Type())
+		return
+	}
+
+	sd.SetTypeName("")
+	if sd.Type() != "shared_dict" {
+		t.Errorf("TypeName3: %s", sd.Type())
+		return
+	}
+}

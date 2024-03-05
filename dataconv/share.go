@@ -64,7 +64,7 @@ func (s *SharedDict) String() string {
 	if s != nil && s.dict != nil {
 		v = s.dict.String()
 	}
-	return fmt.Sprintf("%s(%s)", s.GetTypeName(), v)
+	return fmt.Sprintf("%s(%s)", s.getTypeName(), v)
 }
 
 // SetTypeName sets the type name of the SharedDict.
@@ -72,8 +72,8 @@ func (s *SharedDict) SetTypeName(name string) {
 	s.name = name
 }
 
-// GetTypeName returns the type name of the SharedDict.
-func (s *SharedDict) GetTypeName() string {
+// getTypeName returns the type name of the SharedDict.
+func (s *SharedDict) getTypeName() string {
 	if s.name == "" {
 		return defaultSharedDictName
 	}
@@ -82,7 +82,7 @@ func (s *SharedDict) GetTypeName() string {
 
 // Type returns the type name of the SharedDict.
 func (s *SharedDict) Type() string {
-	return s.GetTypeName()
+	return s.getTypeName()
 }
 
 // Freeze prevents the SharedDict from being modified.
@@ -106,7 +106,7 @@ func (s *SharedDict) Truth() starlark.Bool {
 
 // Hash returns the hash value of the SharedDict, actually it's not hashable.
 func (s *SharedDict) Hash() (uint32, error) {
-	return 0, fmt.Errorf("unhashable type: %s", s.GetTypeName())
+	return 0, fmt.Errorf("unhashable type: %s", s.getTypeName())
 }
 
 // Get returns the value corresponding to the specified key, or not found if the mapping does not contain the key.
