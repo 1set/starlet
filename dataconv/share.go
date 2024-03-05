@@ -47,6 +47,31 @@ func NewNamedSharedDict(name string) *SharedDict {
 	}
 }
 
+// NewSharedDictFromDict creates a new SharedDict instance from the given starlark.Dict.
+// It attempts to clone the dictionary, and returns the original dictionary if failed.
+func NewSharedDictFromDict(d *starlark.Dict) *SharedDict {
+	nd, err := cloneDict(d)
+	if err != nil {
+		nd = d
+	}
+	return &SharedDict{
+		dict: nd,
+	}
+}
+
+// NewNamedSharedDictFromDict creates a new SharedDict instance with the given name from the given starlark.Dict.
+// It attempts to clone the dictionary, and returns the original dictionary if failed.
+func NewNamedSharedDictFromDict(name string, d *starlark.Dict) *SharedDict {
+	nd, err := cloneDict(d)
+	if err != nil {
+		nd = d
+	}
+	return &SharedDict{
+		dict: nd,
+		name: name,
+	}
+}
+
 func (s *SharedDict) getName() string {
 	if s.name == "" {
 		return defaultSharedDictName
@@ -272,16 +297,7 @@ func sharedDictToDict(thread *starlark.Thread, b *starlark.Builtin, args starlar
 	od := b.Receiver().(*starlark.Dict)
 
 	// clone the dictionary
-	nd := starlark.NewDict(od.Len())
-	for _, r := range od.Items() {
-		if len(r) < 2 {
-			continue
-		}
-		if e := nd.SetKey(r[0], r[1]); e != nil {
-			return nil, e
-		}
-	}
-	return nd, nil
+	return cloneDict(od)
 }
 
 // sharedDictToJSON converts the underlying dictionary to a JSON string.
@@ -344,5 +360,22 @@ func sharedDictFromJSON(thread *starlark.Thread, b *starlark.Builtin, args starl
 	}
 
 	// return new json dict
+	return nd, nil
+}
+
+// cloneDict returns a shadow-clone of the given dictionary. It's safe to call it with a nil dictionary, it will return a new empty dictionary.
+func cloneDict(od *starlark.Dict) (*starlark.Dict, error) {
+	nd := starlark.NewDict(od.Len())
+	if od == nil {
+		return nd, nil
+	}
+	for _, r := range od.Items() {
+		if len(r) < 2 {
+			continue
+		}
+		if e := nd.SetKey(r[0], r[1]); e != nil {
+			return nil, e
+		}
+	}
 	return nd, nil
 }
