@@ -59,37 +59,30 @@ func NewSharedDictFromDict(d *starlark.Dict) *SharedDict {
 	}
 }
 
-// NewNamedSharedDictFromDict creates a new SharedDict instance with the given name from the given starlark.Dict.
-// It attempts to clone the dictionary, and returns the original dictionary if failed.
-func NewNamedSharedDictFromDict(name string, d *starlark.Dict) *SharedDict {
-	nd, err := cloneDict(d)
-	if err != nil {
-		nd = d
+func (s *SharedDict) String() string {
+	var v string
+	if s != nil && s.dict != nil {
+		v = s.dict.String()
 	}
-	return &SharedDict{
-		dict: nd,
-		name: name,
-	}
+	return fmt.Sprintf("%s(%s)", s.GetTypeName(), v)
 }
 
-func (s *SharedDict) getName() string {
+// SetTypeName sets the type name of the SharedDict.
+func (s *SharedDict) SetTypeName(name string) {
+	s.name = name
+}
+
+// GetTypeName returns the type name of the SharedDict.
+func (s *SharedDict) GetTypeName() string {
 	if s.name == "" {
 		return defaultSharedDictName
 	}
 	return s.name
 }
 
-func (s *SharedDict) String() string {
-	var v string
-	if s != nil && s.dict != nil {
-		v = s.dict.String()
-	}
-	return fmt.Sprintf("%s(%s)", s.getName(), v)
-}
-
 // Type returns the type name of the SharedDict.
 func (s *SharedDict) Type() string {
-	return s.getName()
+	return s.GetTypeName()
 }
 
 // Freeze prevents the SharedDict from being modified.
@@ -113,7 +106,7 @@ func (s *SharedDict) Truth() starlark.Bool {
 
 // Hash returns the hash value of the SharedDict, actually it's not hashable.
 func (s *SharedDict) Hash() (uint32, error) {
-	return 0, fmt.Errorf("unhashable type: %s", s.getName())
+	return 0, fmt.Errorf("unhashable type: %s", s.GetTypeName())
 }
 
 // Get returns the value corresponding to the specified key, or not found if the mapping does not contain the key.
