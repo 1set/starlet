@@ -248,6 +248,17 @@ func (s *SharedDict) CompareSameType(op syntax.Token, yv starlark.Value, depth i
 	return retEqualCheck(false, op)
 }
 
+// Len returns the length of the underlying dictionary.
+func (s *SharedDict) Len() int {
+	s.RLock()
+	defer s.RUnlock()
+
+	if s.dict != nil {
+		return s.dict.Len()
+	}
+	return 0
+}
+
 var (
 	customSharedDictMethods = map[string]*starlark.Builtin{
 		"len":       starlark.NewBuiltin("len", sharedDictLen),
@@ -365,10 +376,10 @@ func sharedDictFromJSON(thread *starlark.Thread, b *starlark.Builtin, args starl
 
 // cloneDict returns a shadow-clone of the given dictionary. It's safe to call it with a nil dictionary, it will return a new empty dictionary.
 func cloneDict(od *starlark.Dict) (*starlark.Dict, error) {
-	nd := starlark.NewDict(od.Len())
 	if od == nil {
-		return nd, nil
+		return starlark.NewDict(defaultSharedDictSize), nil
 	}
+	nd := starlark.NewDict(od.Len())
 	for _, r := range od.Items() {
 		if len(r) < 2 {
 			continue

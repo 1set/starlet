@@ -912,3 +912,39 @@ func TestSharedDict_Concurrent(t *testing.T) {
 		t.Errorf("sd check error: %v, res: %v", err, res)
 	}
 }
+
+func TestSharedDict_Clone(t *testing.T) {
+	sd1 := NewSharedDictFromDict(nil)
+	if sd1 == nil {
+		t.Errorf("NewSharedDictFromDict: 1 nil")
+		return
+	}
+	if sd1.dict == nil {
+		t.Errorf("NewSharedDictFromDict: 1 nil dict")
+		return
+	}
+	if sd1.Len() != 0 {
+		t.Errorf("NewSharedDictFromDict: 1 non-empty dict")
+		return
+	}
+
+	d2 := starlark.NewDict(1)
+	d2.SetKey(starlark.String("foo"), starlark.String("bar"))
+	sd2 := NewSharedDictFromDict(d2)
+	if sd2 == nil {
+		t.Errorf("NewSharedDictFromDict: 2 nil")
+		return
+	}
+	if sd2.dict == nil {
+		t.Errorf("NewSharedDictFromDict: 2 nil dict")
+		return
+	}
+	if sd2.Len() != 1 {
+		t.Errorf("NewSharedDictFromDict: 2 empty dict")
+		return
+	}
+	if d2 == sd2.dict {
+		t.Errorf("NewSharedDictFromDict: 2 not cloned")
+		return
+	}
+}
