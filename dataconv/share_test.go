@@ -1,6 +1,7 @@
 package dataconv
 
 import (
+	"reflect"
 	"sync"
 	"testing"
 
@@ -40,6 +41,20 @@ func TestSharedDict_Clone(t *testing.T) {
 	}
 	if d2 == sd2.dict {
 		t.Errorf("NewSharedDictFromDict: 2 not cloned")
+		return
+	}
+
+	dd, err := sd2.CloneDict()
+	if dd == nil || err != nil {
+		t.Errorf("Clone: nil, Error: %v", err)
+		return
+	}
+	if dd == sd2.dict {
+		t.Errorf("Clone: not cloned")
+		return
+	}
+	if !reflect.DeepEqual(dd, sd2.dict) {
+		t.Errorf("Clone: not deep cloned")
 		return
 	}
 }

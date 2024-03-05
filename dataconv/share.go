@@ -242,6 +242,7 @@ func (s *SharedDict) CompareSameType(op syntax.Token, yv starlark.Value, depth i
 }
 
 // Len returns the length of the underlying dictionary.
+// Notice that this method is not a must for the starlark.Value interface, but it's useful for Go code.
 func (s *SharedDict) Len() int {
 	s.RLock()
 	defer s.RUnlock()
@@ -250,6 +251,15 @@ func (s *SharedDict) Len() int {
 		return s.dict.Len()
 	}
 	return 0
+}
+
+// CloneDict returns a clone of the underlying dictionary
+// Notice that this method is not a must for the starlark.Value interface, but it's useful for Go code.
+func (s *SharedDict) CloneDict() (*starlark.Dict, error) {
+	s.RLock()
+	defer s.RUnlock()
+
+	return cloneDict(s.dict)
 }
 
 var (
