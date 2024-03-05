@@ -47,11 +47,16 @@ func NewNamedSharedDict(name string) *SharedDict {
 	}
 }
 
-func (s *SharedDict) getName() string {
-	if s.name == "" {
-		return defaultSharedDictName
+// NewSharedDictFromDict creates a new SharedDict instance from the given starlark.Dict.
+// It attempts to clone the dictionary, and returns the original dictionary if failed.
+func NewSharedDictFromDict(d *starlark.Dict) *SharedDict {
+	nd, err := cloneDict(d)
+	if err != nil {
+		nd = d
 	}
-	return s.name
+	return &SharedDict{
+		dict: nd,
+	}
 }
 
 func (s *SharedDict) String() string {
@@ -59,12 +64,25 @@ func (s *SharedDict) String() string {
 	if s != nil && s.dict != nil {
 		v = s.dict.String()
 	}
-	return fmt.Sprintf("%s(%s)", s.getName(), v)
+	return fmt.Sprintf("%s(%s)", s.getTypeName(), v)
+}
+
+// SetTypeName sets the type name of the SharedDict.
+func (s *SharedDict) SetTypeName(name string) {
+	s.name = name
+}
+
+// getTypeName returns the type name of the SharedDict.
+func (s *SharedDict) getTypeName() string {
+	if s.name == "" {
+		return defaultSharedDictName
+	}
+	return s.name
 }
 
 // Type returns the type name of the SharedDict.
 func (s *SharedDict) Type() string {
-	return s.getName()
+	return s.getTypeName()
 }
 
 // Freeze prevents the SharedDict from being modified.
@@ -88,7 +106,7 @@ func (s *SharedDict) Truth() starlark.Bool {
 
 // Hash returns the hash value of the SharedDict, actually it's not hashable.
 func (s *SharedDict) Hash() (uint32, error) {
-	return 0, fmt.Errorf("unhashable type: %s", s.getName())
+	return 0, fmt.Errorf("unhashable type: %s", s.getTypeName())
 }
 
 // Get returns the value corresponding to the specified key, or not found if the mapping does not contain the key.
@@ -223,6 +241,27 @@ func (s *SharedDict) CompareSameType(op syntax.Token, yv starlark.Value, depth i
 	return retEqualCheck(false, op)
 }
 
+// Len returns the length of the underlying dictionary.
+// Notice that this method is not a must for the starlark.Value interface, but it's useful for Go code.
+func (s *SharedDict) Len() int {
+	s.RLock()
+	defer s.RUnlock()
+
+	if s.dict != nil {
+		return s.dict.Len()
+	}
+	return 0
+}
+
+// CloneDict returns a clone of the underlying dictionary
+// Notice that this method is not a must for the starlark.Value interface, but it's useful for Go code.
+func (s *SharedDict) CloneDict() (*starlark.Dict, error) {
+	s.RLock()
+	defer s.RUnlock()
+
+	return cloneDict(s.dict)
+}
+
 var (
 	customSharedDictMethods = map[string]*starlark.Builtin{
 		"len":       starlark.NewBuiltin("len", sharedDictLen),
@@ -272,16 +311,7 @@ func sharedDictToDict(thread *starlark.Thread, b *starlark.Builtin, args starlar
 	od := b.Receiver().(*starlark.Dict)
 
 	// clone the dictionary
-	nd := starlark.NewDict(od.Len())
-	for _, r := range od.Items() {
-		if len(r) < 2 {
-			continue
-		}
-		if e := nd.SetKey(r[0], r[1]); e != nil {
-			return nil, e
-		}
-	}
-	return nd, nil
+	return cloneDict(od)
 }
 
 // sharedDictToJSON converts the underlying dictionary to a JSON string.
@@ -344,5 +374,22 @@ func sharedDictFromJSON(thread *starlark.Thread, b *starlark.Builtin, args starl
 	}
 
 	// return new json dict
+	return nd, nil
+}
+
+// cloneDict returns a shadow-clone of the given dictionary. It's safe to call it with a nil dictionary, it will return a new empty dictionary.
+func cloneDict(od *starlark.Dict) (*starlark.Dict, error) {
+	if od == nil {
+		return starlark.NewDict(defaultSharedDictSize), nil
+	}
+	nd := starlark.NewDict(od.Len())
+	for _, r := range od.Items() {
+		if len(r) < 2 {
+			continue
+		}
+		if e := nd.SetKey(r[0], r[1]); e != nil {
+			return nil, e
+		}
+	}
 	return nd, nil
 }

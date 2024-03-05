@@ -2,6 +2,7 @@ package starlet_test
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/1set/starlet"
@@ -509,9 +510,10 @@ func TestMachine_SetScriptCache(t *testing.T) {
 		res, err := m.Run()
 		checkRes(201, err, res, 10)
 
+		// no cache pollution since script content is used as cache key
 		m.SetScript(sname, []byte(script2), nil)
 		res, err = m.Run()
-		checkRes(202, err, res, 10)
+		checkRes(202, err, res, 20)
 
 		m.SetScriptCacheEnabled(false)
 		m.SetScript(sname, []byte(script2), nil)
@@ -528,9 +530,10 @@ func TestMachine_SetScriptCache(t *testing.T) {
 		res, err := m.Run()
 		checkRes(301, err, res, 10)
 
+		// no cache pollution since script content is used as cache key
 		m.SetScript(sname, []byte(script2), nil)
 		res, err = m.Run()
-		checkRes(302, err, res, 10)
+		checkRes(302, err, res, 20)
 
 		m.SetScript(sname+"diff", []byte(script2), nil)
 		res, err = m.Run()
@@ -546,9 +549,10 @@ func TestMachine_SetScriptCache(t *testing.T) {
 		res, err := m.Run()
 		checkRes(401, err, res, 10)
 
+		// no cache pollution since script content is used as cache key
 		m.SetScript(sname, []byte(script2), nil)
 		res, err = m.Run()
-		checkRes(402, err, res, 10)
+		checkRes(402, err, res, 20)
 
 		mc.Set(ckey, []byte("broken_data"))
 		m.SetScript(sname, []byte(script2), nil)
@@ -587,6 +591,20 @@ func TestMachine_SetScriptCache(t *testing.T) {
 		}
 	}
 
+	// missing file
+	{
+		m1 := starlet.NewDefault()
+		if _, err := m1.RunFile("not-exist.star", nil, nil); err == nil {
+			t.Errorf("expected error 4, got none")
+		}
+
+		m2 := starlet.NewDefault()
+		m2.SetScriptCacheEnabled(true)
+		if _, err := m2.RunFile("not-exist.star", nil, nil); err == nil {
+			t.Errorf("expected error 5, got none")
+		}
+	}
+
 	// ignore cache 1: run script will use default name "direct.star", disable cache to avoid conflict
 	{
 		m := starlet.NewDefault()
@@ -618,6 +636,27 @@ func TestMachine_SetScriptCache(t *testing.T) {
 		m.SetScript("", []byte(script2), nil)
 		res, err = m.Run()
 		checkRes(603, err, res, 20)
+	}
+
+	// file cache
+	{
+		m := starlet.NewDefault()
+		m.SetScriptCacheEnabled(true)
+		m.SetGlobals(starlet.StringAnyMap{"input": 20})
+		m.SetScript("two.star", nil, os.DirFS("testdata"))
+		res, err := m.Run()
+		checkRes(701, err, res, 2)
+
+		// NOTICE: cache pollution is possible here if the file content is not used as cache key
+		res, err = m.RunFile("two.star", os.DirFS("testdata/nemo"), nil)
+		checkRes(702, err, res, 2)
+
+		m.SetScriptCacheEnabled(false)
+		res, err = m.RunFile("two.star", os.DirFS("testdata"), nil)
+		checkRes(703, err, res, 2)
+
+		res, err = m.RunFile("two.star", os.DirFS("testdata/nemo"), nil)
+		checkRes(704, err, res, 200)
 	}
 }
 

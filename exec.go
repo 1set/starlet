@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 
+	itn "github.com/1set/starlet/internal"
 	"go.starlark.net/starlark"
 )
 
@@ -27,7 +28,8 @@ func (m *Machine) execStarlarkFile(filename string, src interface{}, allowCache 
 	var (
 		prog *starlark.Program
 		err  error
-		key  = fmt.Sprintf("%d:%s", starlark.CompilerVersion, filename)
+		//key = fmt.Sprintf("%d:%s", starlark.CompilerVersion, filename)
+		key = getCacheKey(filename, src)
 	)
 
 	// try to load compiled program from cache first
@@ -61,6 +63,19 @@ func (m *Machine) execStarlarkFile(filename string, src interface{}, allowCache 
 	g, err := prog.Init(thread, predeclared)
 	g.Freeze()
 	return g, err
+}
+
+func getCacheKey(filename string, src interface{}) string {
+	var k string
+	switch s := src.(type) {
+	case string:
+		k = itn.GetStringMD5(s)
+	case []byte:
+		k = itn.GetBytesMD5(s)
+	default:
+		k = filename
+	}
+	return fmt.Sprintf("%d:%s", starlark.CompilerVersion, k)
 }
 
 // ByteCache is an interface for caching byte data, used for caching compiled Starlark programs.
