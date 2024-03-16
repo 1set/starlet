@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/1set/starlet"
+	"github.com/1set/starlet/dataconv"
+	itn "github.com/1set/starlet/internal"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
@@ -1211,4 +1213,39 @@ bar["c"] = 30
 		- ⚠️: Action has side effects
 		- N/A: Not applicable
 	*/
+}
+
+func TestWrapModuleData_Edit(t *testing.T) {
+	name := "test_module"
+	data := starlark.StringDict{
+		"foo": starlark.String("bar"),
+		"baz": starlark.MakeInt(42),
+	}
+
+	wrapFunc := dataconv.WrapModuleData(name, data)
+	if _, err := wrapFunc(); err != nil {
+		t.Errorf("WrapModuleData() returned an error: %v", err)
+	}
+
+	scripts := []string{
+		itn.HereDoc(`
+			test_module.foo = "bar bar"
+		`),
+		itn.HereDoc(`
+			test_module.baz = 84
+		`),
+		itn.HereDoc(`
+			test_module.qux = "quux"
+		`),
+		itn.HereDoc(`
+			test_module["see"] = "saw"
+		`),
+	}
+	for i, s := range scripts {
+		sl := starlet.NewDefault()
+		sl.AddPreloadModules(starlet.ModuleLoaderList{wrapFunc})
+		if _, err := sl.RunScript([]byte(s), nil); err == nil {
+			t.Errorf("Expected error, got nil: %d", i)
+		}
+	}
 }
