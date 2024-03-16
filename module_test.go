@@ -719,29 +719,34 @@ print("dh", d.hours, type(d))
 
 // It tests the modifications on module loaders implemented via StringDict, starstruct.Module, and starstruct.Struct and loads via direct load and lazy load.
 func Test_ModuleLoader_Modify(t *testing.T) {
+	// load 1
+	sd1 := starlark.StringDict{
+		"a": starlark.MakeInt(1),
+		"b": starlark.MakeInt(2),
+	}
 	sdLoad := func() (starlark.StringDict, error) {
-		return starlark.StringDict{
-			"a": starlark.MakeInt(1),
-			"b": starlark.MakeInt(2),
-		}, nil
+		return sd1, nil
+	}
+	// load 2
+	sd2 := starlark.StringDict{
+		"a": starlark.MakeInt(10),
+		"b": starlark.MakeInt(20),
 	}
 	smLoad := func() (starlark.StringDict, error) {
 		return starlark.StringDict{
 			"foo": &starlarkstruct.Module{
-				Name: "foo",
-				Members: starlark.StringDict{
-					"a": starlark.MakeInt(1),
-					"b": starlark.MakeInt(2),
-				},
+				Name:    "foo",
+				Members: sd2,
 			},
 		}, nil
 	}
+	// load 3
+	sd3 := starlark.StringDict{
+		"a": starlark.MakeInt(100),
+		"b": starlark.MakeInt(200),
+	}
 	ssLoad := func() (starlark.StringDict, error) {
-		sd := starlark.StringDict{
-			"a": starlark.MakeInt(1),
-			"b": starlark.MakeInt(2),
-		}
-		ss := starlarkstruct.FromStringDict(starlark.String("bar"), sd)
+		ss := starlarkstruct.FromStringDict(starlark.String("bar"), sd3)
 		return starlark.StringDict{
 			"bar": ss,
 		}, nil
