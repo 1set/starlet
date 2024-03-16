@@ -10,6 +10,7 @@ import (
 
 	"github.com/1set/starlet"
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 )
 
 var (
@@ -713,5 +714,109 @@ print("dh", d.hours, type(d))
 	} else {
 		t.Logf("output: %v", out)
 		t.Logf("machine: %v", m)
+	}
+}
+
+// It tests the modifications on module loaders implemented via StringDict, starstruct.Module, and starstruct.Struct and loads via direct load and lazy load.
+func Test_ModuleLoader_Modify(t *testing.T) {
+	sdLoad := func() (starlark.StringDict, error) {
+		return starlark.StringDict{
+			"a": starlark.MakeInt(1),
+			"b": starlark.MakeInt(2),
+		}, nil
+	}
+	smLoad := func() (starlark.StringDict, error) {
+		return starlark.StringDict{
+			"foo": &starlarkstruct.Module{
+				Name: "foo",
+				Members: starlark.StringDict{
+					"a": starlark.MakeInt(1),
+					"b": starlark.MakeInt(2),
+				},
+			},
+		}, nil
+	}
+	ssLoad := func() (starlark.StringDict, error) {
+		sd := starlark.StringDict{
+			"a": starlark.MakeInt(1),
+			"b": starlark.MakeInt(2),
+		}
+		ss := starlarkstruct.FromStringDict(starlark.String("bar"), sd)
+		return starlark.StringDict{
+			"bar": ss,
+		}, nil
+	}
+
+	tests := []struct {
+		name     string
+		preload  starlet.ModuleLoaderList
+		lazyload starlet.ModuleLoaderMap
+		script   string
+		wantErr  bool
+		checkRes func(anyMap starlet.StringAnyMap) bool
+	}{
+		{
+			name:    "Preload StringDict",
+			preload: starlet.ModuleLoaderList{sdLoad},
+			script: `
+print(a, b)
+`,
+			wantErr: false,
+			checkRes: func(anyMap starlet.StringAnyMap) bool {
+				return true
+			},
+		},
+		{
+			name:    "Preload Module",
+			preload: starlet.ModuleLoaderList{smLoad},
+			script: `
+print(foo.a, foo.b)
+`,
+			wantErr: false,
+			checkRes: func(anyMap starlet.StringAnyMap) bool {
+				return true
+			},
+		},
+		{
+			name:    "Preload Struct",
+			preload: starlet.ModuleLoaderList{ssLoad},
+			script: `
+print(bar.a, bar.b)
+`,
+			wantErr: false,
+			checkRes: func(anyMap starlet.StringAnyMap) bool {
+				return true
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// set code
+			m := starlet.NewWithLoaders(nil, tt.preload, tt.lazyload)
+			m.SetPrintFunc(getLogPrintFunc(t))
+			code := tt.script
+
+			// run
+			out, err := m.RunScript([]byte(code), nil)
+
+			// check error
+			if (err != nil) != tt.wantErr {
+				t.Errorf("unexpected error: %v", err)
+				return
+			}
+			if tt.wantErr {
+				return
+			}
+
+			// check result
+			if out == nil {
+				t.Errorf("unexpected nil output")
+				return
+			}
+			if !tt.checkRes(out) {
+				t.Errorf("unexpected output: %v", out)
+			}
+		})
 	}
 }
