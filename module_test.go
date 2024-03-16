@@ -817,6 +817,7 @@ c = bar.a + bar.b + bar.l[0]
 			wantErr:  false,
 			checkRes: getEqualFunc("c", int64(600)),
 		},
+
 		// Check LazyLoad Read
 		{
 			name:       "LazyLoad StringDict",
@@ -841,12 +842,34 @@ c = foo.a + foo.b + foo.l[0]
 			checkRes: getEqualFunc("c", int64(60)),
 		},
 		{
+			name:       "LazyLoad Named Module",
+			lazyload:   load2,
+			moduleName: "foo",
+			script: `
+load("foo", "a", "b", "l")
+c = a + b + l[0]
+`,
+			wantErr:  false,
+			checkRes: getEqualFunc("c", int64(60)),
+		},
+		{
 			name:       "LazyLoad Struct",
 			lazyload:   load3,
 			moduleName: "play",
 			script: `
 load("play", "bar")
 c = bar.a + bar.b + bar.l[0]
+`,
+			wantErr:  false,
+			checkRes: getEqualFunc("c", int64(600)),
+		},
+		{
+			name:       "LazyLoad Named Struct",
+			lazyload:   load3,
+			moduleName: "bar",
+			script: `
+load("bar", "a", "b", "l")
+c = a + b + l[0]
 `,
 			wantErr:  false,
 			checkRes: getEqualFunc("c", int64(600)),
@@ -922,7 +945,6 @@ print(type(bar), dir(bar), bar)
 load("play", "a", "b", "l", "s")
 a = 100
 b = 200
-l.append(300)
 s = "new"
 `,
 			wantErr: true,
@@ -961,6 +983,33 @@ foo.s = "new"
 load("play", "foo")
 foo.l.append(600)
 print(type(foo), dir(foo), foo, foo.l)
+`,
+			wantErr: false,
+			checkData: func(sd starlark.StringDict) bool {
+				return sd["l"].(*starlark.List).Len() == 2
+			},
+		},
+		{
+			name:       "Assign Lazyload Struct",
+			lazyload:   load3,
+			moduleName: "play",
+			script: `
+load("play", "bar")
+print(type(bar), dir(bar), bar)
+bar.a = 700
+bar.b = 800
+bar.s = "new"
+`,
+			wantErr: true,
+		},
+		{
+			name:       "Modify Lazyload Struct",
+			lazyload:   load3,
+			moduleName: "play",
+			script: `
+load("play", "bar")
+bar.l.append(900)
+print(type(bar), dir(bar), bar)
 `,
 			wantErr: false,
 			checkData: func(sd starlark.StringDict) bool {
@@ -1036,11 +1085,13 @@ print(type(foo), dir(foo), foo, foo.l)
 			For loader with Module:
 				When it loads as preload, the starlarkstruct.Module is used directly.
 					1. assign to the module's member fails, but modify like append to list works.
-				When it loads as lazyload, the starlarkstruct.Module is used directly.
+				When it loads as lazyload with different name, the starlarkstruct.Module is used directly.
 					1. assign to the module's member fails, but modify like append to list works.
 
 			For loader with Struct:
 				When it loads as preload, the starlarkstruct.Struct is used directly.
+					1. assign to the struct's member fails, but modify like append to list works.
+				When it loads as lazyload with different name, the starlarkstruct.Struct is used directly.
 					1. assign to the struct's member fails, but modify like append to list works.
 
 	*/
