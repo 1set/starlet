@@ -780,13 +780,14 @@ func Test_ModuleLoader_Modify(t *testing.T) {
 
 	// test cases
 	tests := []struct {
-		name      string
-		preload   func() (starlark.StringDict, starlet.ModuleLoader)
-		lazyload  func() (starlark.StringDict, starlet.ModuleLoader)
-		script    string
-		wantErr   bool
-		checkRes  func(anyMap starlet.StringAnyMap) bool
-		checkData func(sd starlark.StringDict) bool
+		name       string
+		preload    func() (starlark.StringDict, starlet.ModuleLoader)
+		lazyload   func() (starlark.StringDict, starlet.ModuleLoader)
+		moduleName string
+		script     string
+		wantErr    bool
+		checkRes   func(anyMap starlet.StringAnyMap) bool
+		checkData  func(sd starlark.StringDict) bool
 	}{
 		// Check Preload Read
 		{
@@ -818,8 +819,9 @@ c = bar.a + bar.b + bar.l[0]
 		},
 		// Check LazyLoad Read
 		{
-			name:     "LazyLoad StringDict",
-			lazyload: load1,
+			name:       "LazyLoad StringDict",
+			lazyload:   load1,
+			moduleName: "play",
 			script: `
 load("play", "a", "b", "l")
 c = a + b + l[0]
@@ -828,8 +830,9 @@ c = a + b + l[0]
 			checkRes: getEqualFunc("c", int64(6)),
 		},
 		{
-			name:     "LazyLoad Module",
-			lazyload: load2,
+			name:       "LazyLoad Module",
+			lazyload:   load2,
+			moduleName: "play",
 			script: `
 load("play", "foo")
 c = foo.a + foo.b + foo.l[0]
@@ -838,8 +841,9 @@ c = foo.a + foo.b + foo.l[0]
 			checkRes: getEqualFunc("c", int64(60)),
 		},
 		{
-			name:     "LazyLoad Struct",
-			lazyload: load3,
+			name:       "LazyLoad Struct",
+			lazyload:   load3,
+			moduleName: "play",
 			script: `
 load("play", "bar")
 c = bar.a + bar.b + bar.l[0]
@@ -847,6 +851,7 @@ c = bar.a + bar.b + bar.l[0]
 			wantErr:  false,
 			checkRes: getEqualFunc("c", int64(600)),
 		},
+
 		// Edit Preload
 		{
 			name:    "Edit Preload StringDict",
@@ -887,7 +892,7 @@ print(type(foo), dir(foo), foo, foo.l)
 		},
 		{
 			name:    "Assign Preload Struct",
-			preload: load3,
+			preload: load2,
 			script: `
 print(type(bar), dir(bar), bar)
 bar.a = 700
@@ -902,6 +907,60 @@ bar.s = "new"
 			script: `
 bar.l.append(900)
 print(type(bar), dir(bar), bar)
+`,
+			wantErr: false,
+			checkData: func(sd starlark.StringDict) bool {
+				return sd["l"].(*starlark.List).Len() == 2
+			},
+		},
+		// Edit Lazyload
+		{
+			name:       "Edit Lazyload StringDict",
+			lazyload:   load1,
+			moduleName: "play",
+			script: `
+load("play", "a", "b", "l", "s")
+a = 100
+b = 200
+l.append(300)
+s = "new"
+`,
+			wantErr: true,
+		},
+		{
+			name:       "Modify Lazyload StringDict",
+			lazyload:   load1,
+			moduleName: "play",
+			script: `
+load("play", "a", "b", "l", "s")
+l.append(300)
+`,
+			wantErr: false,
+			checkData: func(sd starlark.StringDict) bool {
+				return sd["a"] == starlark.MakeInt(1) && sd["b"] == starlark.MakeInt(2) && sd["l"].(*starlark.List).Len() == 2 && sd["s"] == starlark.String("test")
+			},
+		},
+		{
+			name:       "Assign Lazyload Module",
+			lazyload:   load2,
+			moduleName: "play",
+			script: `
+load("play", "foo")
+print(type(foo), dir(foo), foo)
+foo.a = 400
+foo.b = 500
+foo.s = "new"
+`,
+			wantErr: true,
+		},
+		{
+			name:       "Modify Lazyload Module",
+			lazyload:   load2,
+			moduleName: "play",
+			script: `
+load("play", "foo")
+foo.l.append(600)
+print(type(foo), dir(foo), foo, foo.l)
 `,
 			wantErr: false,
 			checkData: func(sd starlark.StringDict) bool {
@@ -926,7 +985,7 @@ print(type(bar), dir(bar), bar)
 				sd, load := tt.lazyload()
 				coreSD = sd
 				lazyload = starlet.ModuleLoaderMap{
-					"play": load,
+					tt.moduleName: load,
 				}
 			} else {
 				t.Errorf("no preload or lazyload")
@@ -971,9 +1030,13 @@ print(type(bar), dir(bar), bar)
 			For simple direct StringDict loader:
 				When it loads as preload, the original key-value(s) is shadow-copied and the copy is used.
 					1. assign doesn't affect the original data (like int or string), but modify like append to list does.
+				When it loads as lazyload, the original key-value(s) is shadow-copied and the copy is used.
+					1. assign fails for re-assignment, but modify like append to list works.
 
 			For loader with Module:
 				When it loads as preload, the starlarkstruct.Module is used directly.
+					1. assign to the module's member fails, but modify like append to list works.
+				When it loads as lazyload, the starlarkstruct.Module is used directly.
 					1. assign to the module's member fails, but modify like append to list works.
 
 			For loader with Struct:
