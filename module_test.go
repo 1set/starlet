@@ -1165,31 +1165,50 @@ bar["c"] = 30
 
 	/*
 		Things Learned:
-			For simple direct StringDict loader:
-				When it loads as preload, the original key-value(s) is shadow-copied and the copy is used.
-					1. assign doesn't affect the original data (like int or string), but modify like append to list does.
-				When it loads as lazyload, the original key-value(s) is shadow-copied and the copy is used.
-					1. assign fails for re-assignment, but modify like append to list works.
 
-			For loader with Module:
-				When it loads as preload, the starlarkstruct.Module is used directly.
-					1. assign to the module's member fails, but modify like append to list works.
-					2. add new member fails.
-				When it loads as lazyload with different name, the starlarkstruct.Module is used directly.
-					1. assign to the module's member fails, but modify like append to list works.
-					2. add new member fails.
-				When it loads as lazyload with same name, the member of starlarkstruct.Module is used directly.
-					1. assign fails for re-assignment, but modify like append to list works.
+		For simple direct StringDict loader:
+			When it loads as preload, the original key-value(s) is shadow-copied and the copy is used.
+				1. assign doesn't affect the original data (like int or string), but modify like append to list does.
+			When it loads as lazyload, the original key-value(s) is shadow-copied and the copy is used.
+				1. assign fails for re-assignment, but modify like append to list works.
 
-			For loader with Struct:
-				When it loads as preload, the starlarkstruct.Struct is used directly.
-					1. assign to the struct's member fails, but modify like append to list works.
-					2. add new member fails.
-				When it loads as lazyload with different name, the starlarkstruct.Struct is used directly.
-					1. assign to the struct's member fails, but modify like append to list works.
-					2. add new member fails.
-				When it loads as lazyload with same name, the member of starlarkstruct.Struct is shadow-copied and the copy is used.
-					1. assign fails for re-assignment, but modify like append to list works.
+		For loader with Module:
+			When it loads as preload, the starlarkstruct.Module is used directly.
+				1. assign to the module's member fails, but modify like append to list works.
+				2. add new member fails.
+			When it loads as lazyload with different name, the starlarkstruct.Module is used directly.
+				1. assign to the module's member fails, but modify like append to list works.
+				2. add new member fails.
+			When it loads as lazyload with same name, the member of starlarkstruct.Module is used.
+				1. assign fails for re-assignment, but modify like append to list works.
 
+		For loader with Struct:
+			When it loads as preload, the starlarkstruct.Struct is used directly.
+				1. assign to the struct's member fails, but modify like append to list works.
+				2. add new member fails.
+			When it loads as lazyload with different name, the starlarkstruct.Struct is used directly.
+				1. assign to the struct's member fails, but modify like append to list works.
+				2. add new member fails.
+			When it loads as lazyload with same name, the member of starlarkstruct.Struct is shadow-copied and the copy is used.
+				1. assign fails for re-assignment, but modify like append to list works.
+
+		Summary:
+
+		| Loader Type             | Loading Method            | Loading Behavior       | Assign                     | Modify                      | Insert   |
+		|:-----------------------:|:--------------------------|:-----------------------|:---------------------------|:----------------------------|:---------|
+		| Plain StringDict Loader | Preload                   | Shadow Copy            | ✅ Doesn't affect original | ⚠️ Works (e.g. list append) | N/A      |
+		| Plain StringDict Loader | Lazyload                  | Shadow Copy            | ❌ Fails for re-assignment | ⚠️ Works (e.g. list append) | N/A      |
+		|      Module Loader      | Preload                   | Direct Usage           | ❌ Fails                   | ⚠️ Works (e.g. list append) | ❌ Fails |
+		|      Module Loader      | Lazyload (different name) | Direct Usage           | ❌ Fails                   | ⚠️ Works (e.g. list append) | ❌ Fails |
+		|      Module Loader      | Lazyload (same name)      | Shadow Copy of Members | ❌ Fails for re-assignment | ⚠️ Works (e.g. list append) | N/A      |
+		|      Struct Loader      | Preload                   | Direct Usage           | ❌ Fails                   | ⚠️ Works (e.g. list append) | ❌ Fails |
+		|      Struct Loader      | Lazyload (different name) | Direct Usage           | ❌ Fails                   | ⚠️ Works (e.g. list append) | ❌ Fails |
+		|      Struct Loader      | Lazyload (same name)      | Shadow Copy of Members | ❌ Fails for re-assignment | ⚠️ Works (e.g. list append) | N/A      |
+
+		Key:
+		- ✅: Successful action
+		- ❌: Failed action
+		- ⚠️: Action has side effects
+		- N/A: Not applicable
 	*/
 }
