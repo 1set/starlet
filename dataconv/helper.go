@@ -98,6 +98,14 @@ func WrapModuleData(name string, data starlark.StringDict) func() (starlark.Stri
 	}
 }
 
+// WrapStructData wraps data from the given starlark.StringDict into a Starlark struct loader, which can be used to load the struct into a Starlark interpreter and accessed via `load("name", "data_key")`.
+func WrapStructData(name string, data starlark.StringDict) func() (starlark.StringDict, error) {
+	return func() (starlark.StringDict, error) {
+		ss := starlarkstruct.FromStringDict(starlark.String(name), data)
+		return starlark.StringDict{name: ss}, nil
+	}
+}
+
 // TypeConvert converts JSON decoded values to their appropriate types.
 func TypeConvert(data interface{}) interface{} {
 	switch v := data.(type) {

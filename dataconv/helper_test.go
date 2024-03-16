@@ -374,6 +374,41 @@ func TestWrapModuleData(t *testing.T) {
 	}
 }
 
+func TestWrapStructData(t *testing.T) {
+	name := "test_struct"
+	data := starlark.StringDict{
+		"foo": starlark.String("bar"),
+		"baz": starlark.MakeInt(42),
+	}
+
+	wrapFunc := WrapStructData(name, data)
+	result, err := wrapFunc()
+	if err != nil {
+		t.Errorf("WrapStructData() returned an error: %v", err)
+	}
+
+	ss, ok := result[name].(*starlarkstruct.Struct)
+	if !ok {
+		t.Errorf("WrapStructData() did not return a struct")
+	}
+
+	if s, ok := ss.Constructor().(starlark.String); !ok || s.GoString() != name {
+		t.Errorf("WrapStructData() returned a struct with incorrect name. Expected: %s, Got: %s", name, s)
+	}
+
+	if as := ss.AttrNames(); len(as) != len(data) {
+		t.Errorf("WrapStructData() returned a struct with incorrect number of members. Expected: %d, Got: %v", len(data), as)
+	} else {
+		t.Logf("members: %v", as)
+	}
+
+	sd := starlark.StringDict{}
+	ss.ToStringDict(sd)
+	if !reflect.DeepEqual(sd, data) {
+		t.Errorf("WrapStructData() returned a struct with incorrect members. Expected: %v, Got: %v", data, sd)
+	}
+}
+
 func TestTypeConvert(t *testing.T) {
 	timestr0 := "2021-09-07T21:30:00Z"
 	timestr1 := "2021-09-07T21:30:43Z"

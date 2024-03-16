@@ -1249,3 +1249,38 @@ func TestWrapModuleData_Edit(t *testing.T) {
 		}
 	}
 }
+
+func TestWrapStructData_Edit(t *testing.T) {
+	name := "test_struct"
+	data := starlark.StringDict{
+		"foo": starlark.String("bar"),
+		"baz": starlark.MakeInt(42),
+	}
+
+	wrapFunc := dataconv.WrapStructData(name, data)
+	if _, err := wrapFunc(); err != nil {
+		t.Errorf("WrapStructData() returned an error: %v", err)
+	}
+
+	scripts := []string{
+		itn.HereDoc(`
+			test_struct.foo = "bar bar"
+		`),
+		itn.HereDoc(`
+			test_struct.baz = 84
+		`),
+		itn.HereDoc(`
+			test_struct.qux = "quux"
+		`),
+		itn.HereDoc(`
+			test_struct["see"] = "saw"
+		`),
+	}
+	for i, s := range scripts {
+		sl := starlet.NewDefault()
+		sl.AddPreloadModules(starlet.ModuleLoaderList{wrapFunc})
+		if _, err := sl.RunScript([]byte(s), nil); err == nil {
+			t.Errorf("Expected error, got nil: %d", i)
+		}
+	}
+}
