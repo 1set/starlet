@@ -720,38 +720,51 @@ print("dh", d.hours, type(d))
 // It tests the modifications on module loaders implemented via StringDict, starstruct.Module, and starstruct.Struct and loads via direct load and lazy load.
 func Test_ModuleLoader_Modify(t *testing.T) {
 	// load 1
-	sd1 := starlark.StringDict{
-		"a": starlark.MakeInt(1),
-		"b": starlark.MakeInt(2),
-	}
-	sdLoad := func() (starlark.StringDict, error) {
-		return sd1, nil
+	load1 := func() (starlark.StringDict, starlet.ModuleLoader) {
+		sd1 := starlark.StringDict{
+			"a": starlark.MakeInt(1),
+			"b": starlark.MakeInt(2),
+			"l": starlark.NewList([]starlark.Value{starlark.MakeInt(3)}),
+		}
+		sdLoad := func() (starlark.StringDict, error) {
+			return sd1, nil
+		}
+		return sd1, sdLoad
 	}
 	// load 2
-	sd2 := starlark.StringDict{
-		"a": starlark.MakeInt(10),
-		"b": starlark.MakeInt(20),
-	}
-	smLoad := func() (starlark.StringDict, error) {
-		return starlark.StringDict{
-			"foo": &starlarkstruct.Module{
-				Name:    "foo",
-				Members: sd2,
-			},
-		}, nil
+	load2 := func() (starlark.StringDict, starlet.ModuleLoader) {
+		sd2 := starlark.StringDict{
+			"a": starlark.MakeInt(10),
+			"b": starlark.MakeInt(20),
+			"l": starlark.NewList([]starlark.Value{starlark.MakeInt(30)}),
+		}
+		smLoad := func() (starlark.StringDict, error) {
+			return starlark.StringDict{
+				"foo": &starlarkstruct.Module{
+					Name:    "foo",
+					Members: sd2,
+				},
+			}, nil
+		}
+		return sd2, smLoad
 	}
 	// load 3
-	sd3 := starlark.StringDict{
-		"a": starlark.MakeInt(100),
-		"b": starlark.MakeInt(200),
-	}
-	ssLoad := func() (starlark.StringDict, error) {
-		ss := starlarkstruct.FromStringDict(starlark.String("bar"), sd3)
-		return starlark.StringDict{
-			"bar": ss,
-		}, nil
+	load3 := func() (starlark.StringDict, starlet.ModuleLoader) {
+		sd3 := starlark.StringDict{
+			"a": starlark.MakeInt(100),
+			"b": starlark.MakeInt(200),
+			"l": starlark.NewList([]starlark.Value{starlark.MakeInt(300)}),
+		}
+		ssLoad := func() (starlark.StringDict, error) {
+			ss := starlarkstruct.FromStringDict(starlark.String("bar"), sd3)
+			return starlark.StringDict{
+				"bar": ss,
+			}, nil
+		}
+		return sd3, ssLoad
 	}
 
+	// helpers
 	getEqualFunc := func(name string, val interface{}) func(anyMap starlet.StringAnyMap) bool {
 		return func(anyMap starlet.StringAnyMap) bool {
 			v, found := anyMap[name]
@@ -762,48 +775,71 @@ func Test_ModuleLoader_Modify(t *testing.T) {
 		}
 	}
 
+	// test cases
 	tests := []struct {
-		name     string
-		preload  starlet.ModuleLoaderList
-		lazyload starlet.ModuleLoaderMap
-		script   string
-		wantErr  bool
-		checkRes func(anyMap starlet.StringAnyMap) bool
+		name      string
+		preload   func() (starlark.StringDict, starlet.ModuleLoader)
+		lazyload  func() (starlark.StringDict, starlet.ModuleLoader)
+		script    string
+		wantErr   bool
+		checkRes  func(anyMap starlet.StringAnyMap) bool
+		checkData func(sd starlark.StringDict) bool
 	}{
-		// Check Read
+		// Check Preload Read
 		{
 			name:    "Preload StringDict",
-			preload: starlet.ModuleLoaderList{sdLoad},
+			preload: load1,
 			script: `
-c = a + b
+c = a + b + l[0]
 `,
 			wantErr:  false,
-			checkRes: getEqualFunc("c", int64(3)),
+			checkRes: getEqualFunc("c", int64(6)),
 		},
 		{
 			name:    "Preload Module",
-			preload: starlet.ModuleLoaderList{smLoad},
+			preload: load2,
 			script: `
-c = foo.a + foo.b
+c = foo.a + foo.b + foo.l[0]
 `,
 			wantErr:  false,
-			checkRes: getEqualFunc("c", int64(30)),
+			checkRes: getEqualFunc("c", int64(60)),
 		},
 		{
 			name:    "Preload Struct",
-			preload: starlet.ModuleLoaderList{ssLoad},
+			preload: load3,
 			script: `
-c = bar.a + bar.b
+c = bar.a + bar.b + bar.l[0]
 `,
 			wantErr:  false,
-			checkRes: getEqualFunc("c", int64(300)),
+			checkRes: getEqualFunc("c", int64(600)),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// get loaders
+			var (
+				coreSD   starlark.StringDict
+				preload  starlet.ModuleLoaderList
+				lazyload starlet.ModuleLoaderMap
+			)
+			if tt.preload != nil {
+				sd, load := tt.preload()
+				coreSD = sd
+				preload = append(preload, load)
+			} else if tt.lazyload != nil {
+				sd, load := tt.lazyload()
+				coreSD = sd
+				lazyload = starlet.ModuleLoaderMap{
+					"play": load,
+				}
+			} else {
+				t.Errorf("no preload or lazyload")
+				return
+			}
+
 			// set code
-			m := starlet.NewWithLoaders(nil, tt.preload, tt.lazyload)
+			m := starlet.NewWithLoaders(nil, preload, lazyload)
 			m.SetPrintFunc(getLogPrintFunc(t))
 			code := tt.script
 
@@ -826,6 +862,11 @@ c = bar.a + bar.b
 			}
 			if tt.checkRes != nil && !tt.checkRes(out) {
 				t.Errorf("unexpected output: %v", out)
+			}
+
+			// check original data
+			if tt.checkData != nil && !tt.checkData(coreSD) {
+				t.Errorf("unexpected original data: %v", coreSD)
 			}
 		})
 	}
