@@ -752,6 +752,16 @@ func Test_ModuleLoader_Modify(t *testing.T) {
 		}, nil
 	}
 
+	getEqualFunc := func(name string, val interface{}) func(anyMap starlet.StringAnyMap) bool {
+		return func(anyMap starlet.StringAnyMap) bool {
+			v, found := anyMap[name]
+			if !found {
+				return false
+			}
+			return v == val
+		}
+	}
+
 	tests := []struct {
 		name     string
 		preload  starlet.ModuleLoaderList
@@ -760,38 +770,33 @@ func Test_ModuleLoader_Modify(t *testing.T) {
 		wantErr  bool
 		checkRes func(anyMap starlet.StringAnyMap) bool
 	}{
+		// Check Read
 		{
 			name:    "Preload StringDict",
 			preload: starlet.ModuleLoaderList{sdLoad},
 			script: `
-print(a, b)
+c = a + b
 `,
-			wantErr: false,
-			checkRes: func(anyMap starlet.StringAnyMap) bool {
-				return true
-			},
+			wantErr:  false,
+			checkRes: getEqualFunc("c", int64(3)),
 		},
 		{
 			name:    "Preload Module",
 			preload: starlet.ModuleLoaderList{smLoad},
 			script: `
-print(foo.a, foo.b)
+c = foo.a + foo.b
 `,
-			wantErr: false,
-			checkRes: func(anyMap starlet.StringAnyMap) bool {
-				return true
-			},
+			wantErr:  false,
+			checkRes: getEqualFunc("c", int64(30)),
 		},
 		{
 			name:    "Preload Struct",
 			preload: starlet.ModuleLoaderList{ssLoad},
 			script: `
-print(bar.a, bar.b)
+c = bar.a + bar.b
 `,
-			wantErr: false,
-			checkRes: func(anyMap starlet.StringAnyMap) bool {
-				return true
-			},
+			wantErr:  false,
+			checkRes: getEqualFunc("c", int64(300)),
 		},
 	}
 
@@ -819,7 +824,7 @@ print(bar.a, bar.b)
 				t.Errorf("unexpected nil output")
 				return
 			}
-			if !tt.checkRes(out) {
+			if tt.checkRes != nil && !tt.checkRes(out) {
 				t.Errorf("unexpected output: %v", out)
 			}
 		})
