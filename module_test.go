@@ -813,6 +813,37 @@ c = bar.a + bar.b + bar.l[0]
 			wantErr:  false,
 			checkRes: getEqualFunc("c", int64(600)),
 		},
+		// Check LazyLoad Read
+		{
+			name:     "LazyLoad StringDict",
+			lazyload: load1,
+			script: `
+load("play", "a", "b", "l")
+c = a + b + l[0]
+`,
+			wantErr:  false,
+			checkRes: getEqualFunc("c", int64(6)),
+		},
+		{
+			name:     "LazyLoad Module",
+			lazyload: load2,
+			script: `
+load("play", "foo")
+c = foo.a + foo.b + foo.l[0]
+`,
+			wantErr:  false,
+			checkRes: getEqualFunc("c", int64(60)),
+		},
+		{
+			name:     "LazyLoad Struct",
+			lazyload: load3,
+			script: `
+load("play", "bar")
+c = bar.a + bar.b + bar.l[0]
+`,
+			wantErr:  false,
+			checkRes: getEqualFunc("c", int64(600)),
+		},
 	}
 
 	for _, tt := range tests {
