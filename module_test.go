@@ -1067,6 +1067,44 @@ l.append(900)
 				return sd["l"].(*starlark.List).Len() == 2
 			},
 		},
+
+		// Add Preload
+		{
+			name:    "Add Preload Module",
+			preload: load2,
+			script: `
+foo["c"] = 30
+`,
+			wantErr: true,
+		},
+		{
+			name:    "Add Preload Struct",
+			preload: load3,
+			script: `
+bar["c"] = 30
+`,
+			wantErr: true,
+		},
+		{
+			name:       "Add Lazyload Module",
+			lazyload:   load2,
+			moduleName: "play",
+			script: `
+load("play", "foo")
+foo["c"] = 30
+`,
+			wantErr: true,
+		},
+		{
+			name:       "Add Lazyload Struct",
+			lazyload:   load3,
+			moduleName: "play",
+			script: `
+load("play", "bar")
+bar["c"] = 30
+`,
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -1136,16 +1174,20 @@ l.append(900)
 			For loader with Module:
 				When it loads as preload, the starlarkstruct.Module is used directly.
 					1. assign to the module's member fails, but modify like append to list works.
+					2. add new member fails.
 				When it loads as lazyload with different name, the starlarkstruct.Module is used directly.
 					1. assign to the module's member fails, but modify like append to list works.
+					2. add new member fails.
 				When it loads as lazyload with same name, the member of starlarkstruct.Module is used directly.
 					1. assign fails for re-assignment, but modify like append to list works.
 
 			For loader with Struct:
 				When it loads as preload, the starlarkstruct.Struct is used directly.
 					1. assign to the struct's member fails, but modify like append to list works.
+					2. add new member fails.
 				When it loads as lazyload with different name, the starlarkstruct.Struct is used directly.
 					1. assign to the struct's member fails, but modify like append to list works.
+					2. add new member fails.
 				When it loads as lazyload with same name, the member of starlarkstruct.Struct is shadow-copied and the copy is used.
 					1. assign fails for re-assignment, but modify like append to list works.
 
