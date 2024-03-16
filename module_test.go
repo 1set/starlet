@@ -725,6 +725,7 @@ func Test_ModuleLoader_Modify(t *testing.T) {
 			"a": starlark.MakeInt(1),
 			"b": starlark.MakeInt(2),
 			"l": starlark.NewList([]starlark.Value{starlark.MakeInt(3)}),
+			"s": starlark.String("test"),
 		}
 		sdLoad := func() (starlark.StringDict, error) {
 			return sd1, nil
@@ -737,6 +738,7 @@ func Test_ModuleLoader_Modify(t *testing.T) {
 			"a": starlark.MakeInt(10),
 			"b": starlark.MakeInt(20),
 			"l": starlark.NewList([]starlark.Value{starlark.MakeInt(30)}),
+			"s": starlark.String("test"),
 		}
 		smLoad := func() (starlark.StringDict, error) {
 			return starlark.StringDict{
@@ -754,6 +756,7 @@ func Test_ModuleLoader_Modify(t *testing.T) {
 			"a": starlark.MakeInt(100),
 			"b": starlark.MakeInt(200),
 			"l": starlark.NewList([]starlark.Value{starlark.MakeInt(300)}),
+			"s": starlark.String("test"),
 		}
 		ssLoad := func() (starlark.StringDict, error) {
 			ss := starlarkstruct.FromStringDict(starlark.String("bar"), sd3)
@@ -844,6 +847,67 @@ c = bar.a + bar.b + bar.l[0]
 			wantErr:  false,
 			checkRes: getEqualFunc("c", int64(600)),
 		},
+		// Edit Preload
+		{
+			name:    "Edit Preload StringDict",
+			preload: load1,
+			script: `
+a = 100
+b = 200
+l.append(300)
+s = "new"
+`,
+			wantErr: false,
+			checkData: func(sd starlark.StringDict) bool {
+				return sd["a"] == starlark.MakeInt(1) && sd["b"] == starlark.MakeInt(2) && sd["l"].(*starlark.List).Len() == 2 && sd["s"] == starlark.String("test")
+			},
+		},
+		{
+			name:    "Assign Preload Module",
+			preload: load2,
+			script: `
+print(type(foo), dir(foo), foo)
+foo.a = 400
+foo.b = 500
+foo.s = "new"
+`,
+			wantErr: true,
+		},
+		{
+			name:    "Modify Preload Module",
+			preload: load2,
+			script: `
+foo.l.append(600)
+print(type(foo), dir(foo), foo, foo.l)
+`,
+			wantErr: false,
+			checkData: func(sd starlark.StringDict) bool {
+				return sd["l"].(*starlark.List).Len() == 2
+			},
+		},
+		{
+			name:    "Assign Preload Struct",
+			preload: load3,
+			script: `
+print(type(bar), dir(bar), bar)
+bar.a = 700
+bar.b = 800
+bar.s = "new"
+`,
+			wantErr: true,
+		},
+		{
+			name:    "Modify Preload Struct",
+			preload: load3,
+			script: `
+bar.l.append(900)
+print(type(bar), dir(bar), bar)
+`,
+			wantErr: false,
+			checkData: func(sd starlark.StringDict) bool {
+				return sd["l"].(*starlark.List).Len() == 2
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -901,4 +965,20 @@ c = bar.a + bar.b + bar.l[0]
 			}
 		})
 	}
+
+	/*
+		Things Learned:
+			For simple direct StringDict loader:
+				When it loads as preload, the original key-value(s) is shadow-copied and the copy is used.
+					1. assign doesn't affect the original data (like int or string), but modify like append to list does.
+
+			For loader with Module:
+				When it loads as preload, the starlarkstruct.Module is used directly.
+					1. assign to the module's member fails, but modify like append to list works.
+
+			For loader with Struct:
+				When it loads as preload, the starlarkstruct.Struct is used directly.
+					1. assign to the struct's member fails, but modify like append to list works.
+
+	*/
 }
