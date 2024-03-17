@@ -241,6 +241,23 @@ func TestLoadModule_HTTP(t *testing.T) {
 			`),
 		},
 		{
+			name: `POST JSON Hybrid`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				load('struct.star', 'struct')
+				load('module.star', 'module')
+				s = struct(a = 'bee', c = 'dee')
+				m = module("data", a = 'egg', c = 'flow')
+				d = { "st" : s, "md" : m, 123:456}
+				res = post(test_server_url, json_body=d)
+				assert.eq(res.status_code, 200)
+				b = res.body()
+				assert.true(b.startswith("POST "))
+				assert.true('/json' in b)
+				assert.true('{"123":456,"md":{"a":"egg","c":"flow"},"st":{"a":"bee","c":"dee"}}' in b)
+			`),
+		},
+		{
 			name: `POST JSON Starlight`,
 			script: itn.HereDoc(`
 				load('http', 'post')
