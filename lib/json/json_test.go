@@ -108,6 +108,24 @@ func TestLoadModule_JSON(t *testing.T) {
 				assert.eq(dumps(d, indent=2), s)
 			`),
 		},
+		{
+			name: `dumps struct`,
+			script: itn.HereDoc(`
+				load('json', 'dumps')
+				load("struct.star", "struct")
+				s = struct(a="b", c="d")
+				print(s)
+			`),
+		},
+		{
+			name: `dumps module`,
+			script: itn.HereDoc(`
+				load('json', 'dumps')
+				load("module.star", "module")
+				m = module("hello", a="b", c="d")
+				print(m)
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -64,6 +64,10 @@ func NewAssertLoader(moduleName string, loader ModuleLoadFunc) ThreadLoadFunc {
 			return starlark.StringDict{
 				"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
 			}, nil
+		case "module.star":
+			return starlark.StringDict{
+				"module": starlark.NewBuiltin("module", starlarkstruct.MakeModule),
+			}, nil
 		case "assert.star":
 			return starlarktest.LoadAssertModule()
 		case "freeze.star":
