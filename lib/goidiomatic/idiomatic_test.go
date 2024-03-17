@@ -481,6 +481,48 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				assert.eq('55554444 4c524c52 4142', bytes_hex(b'UUDDLRLRAB', " ", -4))
 			`),
 		},
+		{
+			name: `module: missing name`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'module')
+				module()
+			`),
+			wantErr: `module: got 0 arguments, want 1`,
+		},
+		{
+			name: `module: only name`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'module')
+				r = module("rose")
+				assert.eq(str(r), '<module "rose">')
+			`),
+		},
+		{
+			name: `module: values`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'module')
+				r = module("rose", a=100)
+				assert.eq(str(r), '<module "rose">')
+				assert.eq(r.a, 100)
+				s = module("rose", a=200, b="hello")
+				assert.eq(str(s), '<module "rose">')
+				assert.eq(s.a, 200)
+				assert.eq(s.b, "hello")
+			`),
+		},
+		{
+			name: `module: compare`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'module')
+				a = module("rose", a=100)
+				b = module("rose", a=100)
+				c = module("rose", a=200)
+				d = module("lily", a=100)
+				assert.true(a != b)
+				assert.true(a != c)
+				assert.true(a != d)
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
