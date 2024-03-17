@@ -222,8 +222,10 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 		return nil
 	}
 
+	// initialize thread or reset for each run
 	if m.thread == nil {
 		// -- for the first run
+
 		// preset globals + preload modules + extras -> predeclared
 		if m.predeclared, err = m.convertInput(m.globals); err != nil {
 			return errorStarlightConvert("globals", err)
@@ -236,14 +238,6 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 		if err = mergeExtra(); err != nil {
 			return err
 		}
-		//esd, err := m.convertInput(extras)
-		//if err != nil {
-		//	return errorStarlightConvert("extras", err)
-		//}
-		//// merge extras
-		//for k, v := range esd {
-		//	m.predeclared[k] = v
-		//}
 
 		// cache load&read + printf -> thread
 		m.loadCache = &cache{
