@@ -205,6 +205,23 @@ func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap, allowCac
 
 // prepareThread prepares the thread for execution, including preset globals, preload modules and extras.
 func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
+	mergeExtra := func() error {
+		// no extras
+		if extras == nil {
+			return nil
+		}
+		// convert extras if needed
+		esd, err := m.convertInput(extras)
+		if err != nil {
+			return errorStarlightConvert("extras", err)
+		}
+		// merge extras
+		for k, v := range esd {
+			m.predeclared[k] = v
+		}
+		return nil
+	}
+
 	if m.thread == nil {
 		// -- for the first run
 		// preset globals + preload modules + extras -> predeclared
@@ -215,15 +232,18 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 			return errorStarletError("preload", err)
 		}
 
-		// convert extras or not
-		esd, err := m.convertInput(extras)
-		if err != nil {
-			return errorStarlightConvert("extras", err)
+		// merge extras into predeclared
+		if err = mergeExtra(); err != nil {
+			return err
 		}
-		// merge extras
-		for k, v := range esd {
-			m.predeclared[k] = v
-		}
+		//esd, err := m.convertInput(extras)
+		//if err != nil {
+		//	return errorStarlightConvert("extras", err)
+		//}
+		//// merge extras
+		//for k, v := range esd {
+		//	m.predeclared[k] = v
+		//}
 
 		// cache load&read + printf -> thread
 		m.loadCache = &cache{
@@ -243,9 +263,16 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 		}
 	} else {
 		// -- for the second and following runs
+
+		// merge extras into predeclared
+		if err = mergeExtra(); err != nil {
+			return err
+		}
+
 		// set globals for cache
 		m.loadCache.loadMod = m.lazyloadMods.GetLazyLoader()
 		m.loadCache.globals = m.predeclared
+
 		// reset for each run
 		m.thread.Print = m.printFunc
 		m.thread.Uncancel()
