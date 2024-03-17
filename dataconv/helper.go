@@ -72,6 +72,26 @@ func MarshalStarlarkJSON(data starlark.Value, indent int) (string, error) {
 	return strings.TrimSpace(bf.String()), nil
 }
 
+// UnmarshalStarlarkJSON unmarshals a JSON string into a starlark.Value.
+// It first unmarshals the JSON string into a Gol value, then converts it into a starlark.Value.
+func UnmarshalStarlarkJSON(data string) (starlark.Value, error) {
+	var m map[string]interface{}
+	err := json.Unmarshal([]byte(data), &m)
+	if err != nil {
+		return starlark.None, err
+	}
+
+	// fix types
+	f := TypeConvert(m)
+
+	// convert go value to a starlark value
+	v, err := Marshal(f)
+	if err != nil {
+		return starlark.None, err
+	}
+	return v, nil
+}
+
 // ConvertStruct converts a struct to a Starlark wrapper.
 func ConvertStruct(v interface{}, tagName string) starlark.Value {
 	// if not a pointer, convert to pointer
@@ -107,6 +127,7 @@ func WrapStructData(name string, data starlark.StringDict) func() (starlark.Stri
 }
 
 // TypeConvert converts JSON decoded values to their appropriate types.
+// Usually it's used after JSON Unmarshal, Starlark Unmarshal, or similar.
 func TypeConvert(data interface{}) interface{} {
 	switch v := data.(type) {
 	case string:

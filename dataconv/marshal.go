@@ -98,6 +98,7 @@ func Marshal(data interface{}) (v starlark.Value, err error) {
 }
 
 // Unmarshal converts a starlark.Value into it's Golang counterpart, like FromValue() of package starlight does.
+// It's the opposite of Marshal().
 func Unmarshal(x starlark.Value) (val interface{}, err error) {
 	iterAttrs := func(v starlark.HasAttrs) (map[string]interface{}, error) {
 		jo := make(map[string]interface{})
