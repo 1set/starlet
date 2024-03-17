@@ -523,6 +523,44 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				assert.true(a != d)
 			`),
 		},
+		{
+			name: `struct: no name`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'struct')
+				s = struct()
+				assert.eq(str(s), 'struct()')
+			`),
+		},
+		{
+			name: `struct: one value`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'struct')
+				r = struct(rose="red")
+				assert.eq(str(r), 'struct(rose = "red")')
+			`),
+		},
+		{
+			name: `struct: values`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'struct')
+				r = struct(rose="red", lily="white")
+				assert.eq(str(r), 'struct(lily = "white", rose = "red")')
+			`),
+		},
+		{
+			name: `struct: compare`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'struct')
+				a = struct(a=100)
+				b = struct(a=100)
+				c = struct(a=200)
+				d = struct(a=100, b=200)
+				assert.true(a == b)
+				assert.true(a != c)
+				assert.true(a != d)
+				assert.true(c != d)
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
