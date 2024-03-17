@@ -5,7 +5,6 @@ package http
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"mime/multipart"
@@ -410,16 +409,10 @@ func (r *Response) JSON(thread *starlark.Thread, _ *starlark.Builtin, args starl
 		return nil, err
 	}
 
-	var data interface{}
-	if err := json.Unmarshal(body, &data); err != nil {
-		return nil, err
-	}
-	r.Body.Close()
-
-	// convert all values to their appropriate types
-	data = dataconv.TypeConvert(data)
-
 	// reset reader to allow multiple calls
+	r.Body.Close()
 	r.Body = ioutil.NopCloser(bytes.NewReader(body))
-	return dataconv.Marshal(data)
+
+	// use internal marshaler to support starlark types
+	return dataconv.UnmarshalStarlarkJSON(body)
 }

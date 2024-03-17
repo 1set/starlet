@@ -372,6 +372,9 @@ func TestLoadModule_HTTP(t *testing.T) {
 				assert.eq(t.year, 2023)
 				assert.eq(t.month, 7)
 				assert.eq(t.day, 15)
+
+				text = res.body()
+				assert.true('"ArrayInteger":[1,2,3]' in text)
 			`),
 		},
 		{
