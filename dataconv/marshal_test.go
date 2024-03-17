@@ -451,20 +451,20 @@ type myStruct struct {
 	Drink bool
 }
 
-func (c myStruct) String() string {
+func (m *myStruct) String() string {
 	return "myStruct"
 }
 
-func (c myStruct) Type() string { return "test.myStruct" }
+func (m *myStruct) Type() string { return "test.myStruct" }
 
-func (myStruct) Freeze() {}
+func (*myStruct) Freeze() {}
 
-func (c myStruct) Truth() starlark.Bool {
+func (m *myStruct) Truth() starlark.Bool {
 	return starlark.True
 }
 
-func (c myStruct) Hash() (uint32, error) {
-	return 0, fmt.Errorf("unhashable: %s", c.Type())
+func (m *myStruct) Hash() (uint32, error) {
+	return 0, fmt.Errorf("unhashable: %s", m.Type())
 }
 
 func (m *myStruct) MarshalStarlark() (starlark.Value, error) {
