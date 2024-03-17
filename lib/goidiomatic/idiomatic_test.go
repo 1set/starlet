@@ -498,6 +498,14 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 			`),
 		},
 		{
+			name: `module: invalid value`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'module')
+				r = module("rose", 200)
+			`),
+			wantErr: `module: got 2 arguments, want 1`,
+		},
+		{
 			name: `module: values`,
 			script: itn.HereDoc(`
 				load('go_idiomatic', 'module')
@@ -530,6 +538,14 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				s = struct()
 				assert.eq(str(s), 'struct()')
 			`),
+		},
+		{
+			name: `struct: invalid value`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'struct')
+				r = struct("red")
+			`),
+			wantErr: `struct: unexpected positional arguments`,
 		},
 		{
 			name: `struct: one value`,
@@ -577,6 +593,14 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				r = make_struct("rose")
 				assert.eq(str(r), 'rose()')
 			`),
+		},
+		{
+			name: `make_struct: invalid value`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'make_struct')
+				r = make_struct("rose", 100)
+			`),
+			wantErr: `make_struct: got 2 arguments, want 1`,
 		},
 		{
 			name: `make_struct: one value`,
