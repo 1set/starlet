@@ -11,7 +11,6 @@ import (
 	"github.com/1set/starlight/convert"
 	startime "go.starlark.net/lib/time"
 	"go.starlark.net/starlark"
-	"go.starlark.net/starlarkjson"
 	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/syntax"
 )
@@ -232,7 +231,7 @@ func TestUnmarshal(t *testing.T) {
 		{ss, []interface{}{"Hello", "World"}, ""},
 		{&starlarkstruct.Struct{}, map[string]interface{}{}, ""},
 		{srt, map[string]interface{}{"Message": "Aloha", "Times": 100, "Later": now}, ""},
-		{starlarkjson.Module, nil, "unrecognized starlark type: *starlarkstruct.Module"},
+		//{starlarkjson.Module, nil, "unrecognized starlark type: *starlarkstruct.Module"},
 		{convert.NewGoSlice([]int{1, 2, 3}), []int{1, 2, 3}, ""},
 		{convert.NewGoSlice([]string{"Hello", "World"}), []string{"Hello", "World"}, ""},
 		{convert.NewGoMap(map[string]int{"foo": 42}), map[string]int{"foo": 42}, ""},

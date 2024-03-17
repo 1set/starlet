@@ -113,8 +113,9 @@ func TestLoadModule_JSON(t *testing.T) {
 			script: itn.HereDoc(`
 				load('json', 'dumps')
 				load("struct.star", "struct")
-				s = struct(a="b", c="d")
-				print(s)
+				s = struct(a="Aloha", b=0x10, c=True, d=[1,2,3])
+				d = '{"a":"Aloha","b":16,"c":true,"d":[1,2,3]}'
+				assert.eq(dumps(s), d)
 			`),
 		},
 		{
@@ -122,8 +123,9 @@ func TestLoadModule_JSON(t *testing.T) {
 			script: itn.HereDoc(`
 				load('json', 'dumps')
 				load("module.star", "module")
-				m = module("hello", a="b", c="d")
-				print(m)
+				m = module("hello", a="Bravo", b=0b10, c=False, d=[7,8,9])
+				d = '{"a":"Bravo","b":2,"c":false,"d":[7,8,9]}'
+				assert.eq(dumps(m), d)
 			`),
 		},
 	}
