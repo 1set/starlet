@@ -75,7 +75,7 @@ func MarshalStarlarkJSON(data starlark.Value, indent int) (string, error) {
 // UnmarshalStarlarkJSON unmarshals a JSON bytes into a starlark.Value.
 // It first unmarshals the JSON string into a Gol value, then converts it into a starlark.Value.
 func UnmarshalStarlarkJSON(data []byte) (starlark.Value, error) {
-	var m map[string]interface{}
+	var m interface{}
 	err := json.Unmarshal(data, &m)
 	if err != nil {
 		return starlark.None, err

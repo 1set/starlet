@@ -286,6 +286,93 @@ func TestMarshalStarlarkJSON(t *testing.T) {
 	}
 }
 
+func TestUnmarshalStarlarkJSON(t *testing.T) {
+	stime := time.Unix(1709769600, 0).In(time.UTC)
+	d42 := starlark.NewDict(1)
+	_ = d42.SetKey(starlark.String("foo"), starlark.MakeInt(42))
+
+	tests := []struct {
+		name    string
+		input   []byte
+		want    starlark.Value
+		wantErr bool
+	}{
+		{
+			name:  "null",
+			input: []byte("null"),
+			want:  starlark.None,
+		},
+		{
+			name:  "true",
+			input: []byte("true"),
+			want:  starlark.True,
+		},
+		{
+			name:  "false",
+			input: []byte("false"),
+			want:  starlark.False,
+		},
+		{
+			name:  "int",
+			input: []byte("42"),
+			want:  starlark.MakeInt(42),
+		},
+		{
+			name:  "float",
+			input: []byte("1.23"),
+			want:  starlark.Float(1.23),
+		},
+		{
+			name:  "string",
+			input: []byte(`"Aloha!"`),
+			want:  starlark.String("Aloha!"),
+		},
+		{
+			name:  "time",
+			input: []byte(`"2024-03-07T00:00:00Z"`),
+			want:  startime.Time(stime),
+		},
+		{
+			name:  "dict",
+			input: []byte(`{"foo":42}`),
+			want:  d42,
+		},
+		{
+			name:  "list",
+			input: []byte(`[43,"foo"]`),
+			want: starlark.NewList([]starlark.Value{
+				starlark.MakeInt(43),
+				starlark.String("foo"),
+			}),
+		},
+		{
+			name:    "invalid json",
+			input:   []byte(`{"foo":4`),
+			wantErr: true,
+		},
+		{
+			name:    "deviant json",
+			input:   []byte(`{123:456}`),
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := UnmarshalStarlarkJSON(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("UnmarshalStarlarkJSON() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err != nil {
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("UnmarshalStarlarkJSON() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestConvertStruct(t *testing.T) {
 	type record1 struct {
 		Name  string `sl:"name"`
