@@ -227,6 +227,20 @@ func TestLoadModule_HTTP(t *testing.T) {
 			`),
 		},
 		{
+			name: `POST JSON Module`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				load('module.star', 'module')
+				s = module("data", a = 'egg', c = 'flow')
+				res = post(test_server_url, json_body=s)
+				assert.eq(res.status_code, 200)
+				b = res.body()
+				assert.true(b.startswith("POST "))
+				assert.true('/json' in b)
+				assert.true('{"a":"egg","c":"flow"}' in b)
+			`),
+		},
+		{
 			name: `POST JSON Starlight`,
 			script: itn.HereDoc(`
 				load('http', 'post')

@@ -128,6 +128,26 @@ func TestLoadModule_JSON(t *testing.T) {
 				assert.eq(dumps(m), d)
 			`),
 		},
+		{
+			name: `encode struct`,
+			script: itn.HereDoc(`
+				load('json', 'encode')
+				load("struct.star", "struct")
+				s = struct(a="Aloha", b=0x10, c=True, d=[1,2,3])
+				d = '{"a":"Aloha","b":16,"c":true,"d":[1,2,3]}'
+				assert.eq(encode(s), d)
+			`),
+		},
+		{
+			name: `encode module`,
+			script: itn.HereDoc(`
+				load('json', 'encode')
+				load("module.star", "module")
+				m = module("hello", a="Bravo", b=0b10, c=False, d=[7,8,9])
+				d = '{"a":"Bravo","b":2,"c":false,"d":[7,8,9]}'
+				assert.eq(encode(m), d)
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
