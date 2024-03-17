@@ -13,6 +13,7 @@ import (
 	itn "github.com/1set/starlet/internal"
 	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 )
 
 // ModuleName defines the expected name for this Module when used in Starlark's load() function, eg: load('go_idiomatic', 'nil')
@@ -21,19 +22,22 @@ const ModuleName = "go_idiomatic"
 // LoadModule loads the Go idiomatic module.
 func LoadModule() (starlark.StringDict, error) {
 	return starlark.StringDict{
-		"true":      starlark.True,
-		"false":     starlark.False,
-		"nil":       starlark.None,
-		"length":    starlark.NewBuiltin("length", length),
-		"sum":       starlark.NewBuiltin("sum", sum),
-		"oct":       starlark.NewBuiltin("oct", oct),
-		"hex":       starlark.NewBuiltin("hex", hex),
-		"bytes_hex": starlark.NewBuiltin("bytes_hex", bytesToHex),
-		"is_nil":    starlark.NewBuiltin("is_nil", isNil),
-		"bin":       starlark.NewBuiltin("bin", bin),
-		"sleep":     starlark.NewBuiltin("sleep", sleep),
-		"exit":      starlark.NewBuiltin("exit", exit),
-		"quit":      starlark.NewBuiltin("quit", exit), // alias for exit
+		"true":        starlark.True,
+		"false":       starlark.False,
+		"nil":         starlark.None,
+		"length":      starlark.NewBuiltin("length", length),
+		"sum":         starlark.NewBuiltin("sum", sum),
+		"oct":         starlark.NewBuiltin("oct", oct),
+		"hex":         starlark.NewBuiltin("hex", hex),
+		"bytes_hex":   starlark.NewBuiltin("bytes_hex", bytesToHex),
+		"is_nil":      starlark.NewBuiltin("is_nil", isNil),
+		"bin":         starlark.NewBuiltin("bin", bin),
+		"sleep":       starlark.NewBuiltin("sleep", sleep),
+		"exit":        starlark.NewBuiltin("exit", exit),
+		"quit":        starlark.NewBuiltin("quit", exit), // alias for exit
+		"module":      starlark.NewBuiltin("module", starlarkstruct.MakeModule),
+		"struct":      starlark.NewBuiltin("struct", starlarkstruct.Make),
+		"make_struct": starlark.NewBuiltin("make_struct", makeCustomStruct),
 	}, nil
 }
 
@@ -245,3 +249,12 @@ var (
 	// ErrSystemExit is returned by exit() to indicate the program should exit.
 	ErrSystemExit = errors.New(`starlet runtime system exit (Use Ctrl-D in REPL to exit)`)
 )
+
+// makeCustomStruct creates a custom struct with the given name and members.
+func makeCustomStruct(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var ctor starlark.Value
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, nil, 1, &ctor); err != nil {
+		return nil, err
+	}
+	return starlarkstruct.FromKeywords(ctor, kwargs), nil
+}

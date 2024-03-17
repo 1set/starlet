@@ -481,6 +481,159 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				assert.eq('55554444 4c524c52 4142', bytes_hex(b'UUDDLRLRAB', " ", -4))
 			`),
 		},
+		{
+			name: `module: missing name`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'module')
+				module()
+			`),
+			wantErr: `module: got 0 arguments, want 1`,
+		},
+		{
+			name: `module: only name`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'module')
+				r = module("rose")
+				assert.eq(str(r), '<module "rose">')
+			`),
+		},
+		{
+			name: `module: invalid value`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'module')
+				r = module("rose", 200)
+			`),
+			wantErr: `module: got 2 arguments, want 1`,
+		},
+		{
+			name: `module: values`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'module')
+				r = module("rose", a=100)
+				assert.eq(str(r), '<module "rose">')
+				assert.eq(r.a, 100)
+				s = module("rose", a=200, b="hello")
+				assert.eq(str(s), '<module "rose">')
+				assert.eq(s.a, 200)
+				assert.eq(s.b, "hello")
+			`),
+		},
+		{
+			name: `module: compare`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'module')
+				a = module("rose", a=100)
+				b = module("rose", a=100)
+				c = module("rose", a=200)
+				d = module("lily", a=100)
+				assert.true(a != b)
+				assert.true(a != c)
+				assert.true(a != d)
+			`),
+		},
+		{
+			name: `struct: no name`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'struct')
+				s = struct()
+				assert.eq(str(s), 'struct()')
+			`),
+		},
+		{
+			name: `struct: invalid value`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'struct')
+				r = struct("red")
+			`),
+			wantErr: `struct: unexpected positional arguments`,
+		},
+		{
+			name: `struct: one value`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'struct')
+				r = struct(rose="red")
+				assert.eq(str(r), 'struct(rose = "red")')
+			`),
+		},
+		{
+			name: `struct: values`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'struct')
+				r = struct(rose="red", lily="white")
+				assert.eq(str(r), 'struct(lily = "white", rose = "red")')
+			`),
+		},
+		{
+			name: `struct: compare`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'struct')
+				a = struct(a=100)
+				b = struct(a=100)
+				c = struct(a=200)
+				d = struct(a=100, b=200)
+				assert.true(a == b)
+				assert.true(a != c)
+				assert.true(a != d)
+				assert.true(c != d)
+			`),
+		},
+		{
+			name: `make_struct: no name`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'make_struct')
+				s = make_struct()
+				assert.eq(str(s), 'make_struct()')
+			`),
+			wantErr: `make_struct: got 0 arguments, want 1`,
+		},
+		{
+			name: `make_struct: only name`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'make_struct')
+				r = make_struct("rose")
+				assert.eq(str(r), 'rose()')
+			`),
+		},
+		{
+			name: `make_struct: invalid value`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'make_struct')
+				r = make_struct("rose", 100)
+			`),
+			wantErr: `make_struct: got 2 arguments, want 1`,
+		},
+		{
+			name: `make_struct: one value`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'make_struct')
+				r = make_struct("rose", price=100)
+				assert.eq(str(r), 'rose(price = 100)')
+			`),
+		},
+		{
+			name: `make_struct: values`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'make_struct')
+				r = make_struct("rose", price=100, color="red")
+				assert.eq(str(r), 'rose(color = "red", price = 100)')
+			`),
+		},
+		{
+			name: `make_struct: compare`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'make_struct')
+				a = make_struct("rose", n=100)
+				b = make_struct("rose", n=100)
+				c = make_struct("rose", n=200)
+				d = make_struct("rose", n=100, m=200)
+				e = make_struct("lily", n=100)
+				assert.eq(a, b)
+				assert.true(a == b)
+				assert.true(a != c)
+				assert.true(a != d)
+				assert.true(a != e)
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -292,6 +292,15 @@ func (m *Machine) SetCustomTag(tag string) {
 	m.customTag = tag
 }
 
+// GetStarlarkPredeclared returns the Starlark predeclared names of the Starlark runtime environment.
+// It's for advanced usage only, don't use it unless you know what you are doing.
+func (m *Machine) GetStarlarkPredeclared() starlark.StringDict {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return m.predeclared
+}
+
 // GetStarlarkThread returns the Starlark thread of the Starlark runtime environment.
 // It's for advanced usage only, don't use it unless you know what you are doing.
 func (m *Machine) GetStarlarkThread() *starlark.Thread {
@@ -301,13 +310,16 @@ func (m *Machine) GetStarlarkThread() *starlark.Thread {
 	return m.thread
 }
 
-// GetStarlarkPredeclared returns the Starlark predeclared names of the Starlark runtime environment.
-// It's for advanced usage only, don't use it unless you know what you are doing.
-func (m *Machine) GetStarlarkPredeclared() starlark.StringDict {
+// GetThreadLocal returns the local value of the Starlark thread of the Starlark runtime environment.
+// It returns nil if the thread is not set or the key is not found. Please ensure the machine already runs before calling this method.
+func (m *Machine) GetThreadLocal(key string) interface{} {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	return m.predeclared
+	if m.thread == nil {
+		return nil
+	}
+	return m.thread.Local(key)
 }
 
 // Export returns the current variables of the Starlark runtime environment.

@@ -1,6 +1,7 @@
 package starlet_test
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -660,6 +661,37 @@ func TestMachine_SetScriptCache(t *testing.T) {
 	}
 }
 
+func Test_SetPrintFunc(t *testing.T) {
+	m := starlet.NewDefault()
+	// set print function
+	printFunc, cmpFunc := getPrintCompareFunc(t)
+	m.SetPrintFunc(printFunc)
+	// set code
+	code := `print("Aloha, Honua!")`
+	m.SetScript("aloha.star", []byte(code), nil)
+	// run
+	_, err := m.Run()
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	// compare
+	cmpFunc("Aloha, Honua!\n")
+
+	// set print function to nil
+	m.SetPrintFunc(nil)
+	m.SetScript("aloha.star", []byte(`print("Aloha, Honua! Nil")`), nil)
+	if _, err = m.Run(); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	// set print function to noop
+	m.SetPrintFunc(starlet.NoopPrintFunc)
+	m.SetScript("aloha.star", []byte(`print("Aloha, Honua! Noop")`), nil)
+	if _, err = m.Run(); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
 func TestMachine_GetStarlarkPredeclared(t *testing.T) {
 	m := starlet.NewDefault()
 	pd := m.GetStarlarkPredeclared()
@@ -696,33 +728,66 @@ func TestMachine_GetStarlarkThread(t *testing.T) {
 	}
 }
 
-func Test_SetPrintFunc(t *testing.T) {
+func TestMachine_GetThreadLocal(t *testing.T) {
+	// new box
 	m := starlet.NewDefault()
-	// set print function
-	printFunc, cmpFunc := getPrintCompareFunc(t)
-	m.SetPrintFunc(printFunc)
-	// set code
-	code := `print("Aloha, Honua!")`
-	m.SetScript("aloha.star", []byte(code), nil)
-	// run
-	_, err := m.Run()
+	tl := m.GetThreadLocal("think")
+	if tl != nil {
+		t.Errorf("expected nil, got %v", tl)
+	}
+
+	// build ctx func
+	ctxFunc := func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var code uint8
+		if err := starlark.UnpackArgs(b.Name(), args, kwargs, "code?", &code); err != nil {
+			return nil, err
+		}
+		if code == 0 {
+			thread.SetLocal("think", "Think")
+			return starlark.None, nil
+		} else {
+			thread.SetLocal("learn", "Deeper")
+			return nil, errors.New("manual error")
+		}
+	}
+	_, err := m.RunScript([]byte(`a = 1 + 2`), starlet.StringAnyMap{
+		"think": starlark.NewBuiltin("think", ctxFunc),
+	})
 	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-	// compare
-	cmpFunc("Aloha, Honua!\n")
-
-	// set print function to nil
-	m.SetPrintFunc(nil)
-	m.SetScript("aloha.star", []byte(`print("Aloha, Honua! Nil")`), nil)
-	if _, err = m.Run(); err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Errorf("expected no error, got %v", err)
 	}
 
-	// set print function to noop
-	m.SetPrintFunc(starlet.NoopPrintFunc)
-	m.SetScript("aloha.star", []byte(`print("Aloha, Honua! Noop")`), nil)
-	if _, err = m.Run(); err != nil {
-		t.Errorf("unexpected error: %v", err)
+	// run machine
+	_, err = m.RunScript([]byte(`think(); c = a + b`), starlet.StringAnyMap{
+		"b": 10,
+	})
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+
+	// get thread local
+	tl = m.GetThreadLocal("think")
+	if tl == nil {
+		t.Errorf("expected not nil, got nil")
+	} else if v, ok := tl.(string); !ok || v != "Think" {
+		t.Errorf("expected 'Think', got %v", v)
+	}
+
+	// run again
+	_, err = m.RunScript([]byte(`print(a, b, c); think(1)`), starlet.StringAnyMap{
+		"b": 20,
+	})
+	if err == nil {
+		t.Errorf("expected error, got none")
+	} else if err.Error() != "starlark: exec: manual error" {
+		t.Errorf("expected manual error, got %v", err)
+	}
+
+	// get thread local after fail
+	tl = m.GetThreadLocal("learn")
+	if tl == nil {
+		t.Errorf("expected not nil, got nil")
+	} else if v, ok := tl.(string); !ok || v != "Deeper" {
+		t.Errorf("expected 'Deeper', got %v", v)
 	}
 }
