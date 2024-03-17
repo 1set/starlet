@@ -215,7 +215,7 @@ func TestLoadModule_String(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res, err := itn.ExecModuleWithErrorTest(t, ls.ModuleName, ls.LoadModule, tt.script, tt.wantErr)
+			res, err := itn.ExecModuleWithErrorTest(t, ls.ModuleName, ls.LoadModule, tt.script, tt.wantErr, nil)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("string(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
 				return

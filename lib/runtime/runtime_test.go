@@ -52,7 +52,7 @@ func TestLoadModule_Runtime(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res, err := itn.ExecModuleWithErrorTest(t, rt.ModuleName, rt.LoadModule, tt.script, tt.wantErr)
+			res, err := itn.ExecModuleWithErrorTest(t, rt.ModuleName, rt.LoadModule, tt.script, tt.wantErr, nil)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("runtime(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
 				return

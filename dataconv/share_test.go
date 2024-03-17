@@ -583,7 +583,7 @@ func TestSharedDict_Functions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res, err := itn.ExecModuleWithErrorTest(t, "share", getSDLoader("sd", NewSharedDict()), tt.script, tt.wantErr)
+			res, err := itn.ExecModuleWithErrorTest(t, "share", getSDLoader("sd", NewSharedDict()), tt.script, tt.wantErr, nil)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("sd(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
 				return
@@ -754,7 +754,7 @@ func TestSharedDict_Frozen(t *testing.T) {
 				return
 			}
 			sd.Freeze()
-			res, err := itn.ExecModuleWithErrorTest(t, "share", getSDLoader("sd", sd), tt.script, tt.wantErr)
+			res, err := itn.ExecModuleWithErrorTest(t, "share", getSDLoader("sd", sd), tt.script, tt.wantErr, nil)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("frozen sd(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
 				return
@@ -832,7 +832,7 @@ func TestSharedDict_NilDict(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			sd := NewSharedDict()
 			sd.dict = nil
-			res, err := itn.ExecModuleWithErrorTest(t, "share", getSDLoader("sd", sd), tt.script, tt.wantErr)
+			res, err := itn.ExecModuleWithErrorTest(t, "share", getSDLoader("sd", sd), tt.script, tt.wantErr, nil)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("nil inside sd(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
 				return
@@ -916,7 +916,7 @@ func TestSharedDict_Named(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			sd := NewNamedSharedDict("Kioku")
 			sd.dict = nil
-			res, err := itn.ExecModuleWithErrorTest(t, "share", getSDLoader("sd", sd), tt.script, tt.wantErr)
+			res, err := itn.ExecModuleWithErrorTest(t, "share", getSDLoader("sd", sd), tt.script, tt.wantErr, nil)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("nil inside sd(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
 				return
@@ -947,7 +947,7 @@ func TestSharedDict_Concurrent(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			res, err := itn.ExecModuleWithErrorTest(t, "share", getSDLoader("sd", sd), s1, "")
+			res, err := itn.ExecModuleWithErrorTest(t, "share", getSDLoader("sd", sd), s1, "", nil)
 			if err != nil {
 				t.Errorf("sd concurrent error: %v, res: %v", err, res)
 			}
@@ -956,7 +956,7 @@ func TestSharedDict_Concurrent(t *testing.T) {
 	wg.Wait()
 
 	// check the result
-	res, err := itn.ExecModuleWithErrorTest(t, "share", getSDLoader("sd", sd), s2, "")
+	res, err := itn.ExecModuleWithErrorTest(t, "share", getSDLoader("sd", sd), s2, "", nil)
 	if err != nil {
 		t.Errorf("sd check error: %v, res: %v", err, res)
 	}

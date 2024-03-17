@@ -76,7 +76,7 @@ func TestLoadModule_Base64(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res, err := itn.ExecModuleWithErrorTest(t, base64.ModuleName, base64.LoadModule, tt.script, tt.wantErr)
+			res, err := itn.ExecModuleWithErrorTest(t, base64.ModuleName, base64.LoadModule, tt.script, tt.wantErr, nil)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("base64(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
 				return

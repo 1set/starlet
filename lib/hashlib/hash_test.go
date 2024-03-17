@@ -66,7 +66,7 @@ func TestLoadModule_Hash(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res, err := itn.ExecModuleWithErrorTest(t, hashlib.ModuleName, hashlib.LoadModule, tt.script, tt.wantErr)
+			res, err := itn.ExecModuleWithErrorTest(t, hashlib.ModuleName, hashlib.LoadModule, tt.script, tt.wantErr, nil)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("hash(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
 				return

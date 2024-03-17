@@ -391,7 +391,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 			if tt.preset != nil {
 				tt.preset()
 			}
-			res, err := itn.ExecModuleWithErrorTest(t, ModuleName, LoadModule, tt.script, tt.wantErr)
+			res, err := itn.ExecModuleWithErrorTest(t, ModuleName, LoadModule, tt.script, tt.wantErr, nil)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("http(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
 				return
