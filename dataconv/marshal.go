@@ -294,12 +294,6 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 			return
 		}
 		val = v.Value().Interface()
-	case Unmarshaler:
-		if err = v.UnmarshalStarlark(x); err != nil {
-			err = fmt.Errorf("failed to marshal %T into Starlark object: %w", v, err)
-			return
-		}
-		val = v
 	default:
 		//fmt.Println("errbadtype:", x.Type())
 		//err = fmt.Errorf("unrecognized starlark type: %s", x.Type())

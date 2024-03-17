@@ -421,3 +421,75 @@ func (a *anotherCustomType) MarshalStarlark() (starlark.Value, error) {
 	}
 	return a.customType.MarshalStarlark()
 }
+
+func TestCustomUnmarshal(t *testing.T) {
+	g1 := &myStruct{Name: "foo", Age: 42, Drink: true}
+	s1, err := Marshal(g1)
+	if err != nil {
+		t.Errorf("unexpected error for marshal: %v", err)
+		return
+	}
+
+	g2, err := Unmarshal(s1)
+	if err != nil {
+		t.Errorf("unexpected error for unmarshal: %v", err)
+		return
+	}
+	g3, ok := g2.(*myStruct)
+	if !ok {
+		t.Errorf("unexpected type: %T", g2)
+		return
+	}
+	if !reflect.DeepEqual(g1, g3) {
+		t.Errorf("expected: %#v, got: %#v", g1, g3)
+	}
+}
+
+type myStruct struct {
+	Name  string
+	Age   int
+	Drink bool
+}
+
+func (c myStruct) String() string {
+	return "myStruct"
+}
+
+func (c myStruct) Type() string { return "test.myStruct" }
+
+func (myStruct) Freeze() {}
+
+func (c myStruct) Truth() starlark.Bool {
+	return starlark.True
+}
+
+func (c myStruct) Hash() (uint32, error) {
+	return 0, fmt.Errorf("unhashable: %s", c.Type())
+}
+
+func (m *myStruct) MarshalStarlark() (starlark.Value, error) {
+	return starlarkstruct.FromStringDict(&myStruct{}, starlark.StringDict{
+		"Name":  starlark.String(m.Name),
+		"Age":   starlark.MakeInt(m.Age),
+		"Drink": starlark.Bool(m.Drink),
+	}), nil
+}
+
+func (m *myStruct) UnmarshalStarlark(value starlark.Value) error {
+	s, ok := value.(*starlarkstruct.Struct)
+	if !ok {
+		return fmt.Errorf("unexpected type: %T", value)
+	}
+	if v, _ := s.Attr("Name"); v != nil {
+		m.Name, _ = asString(v)
+	}
+	if v, _ := s.Attr("Age"); v != nil {
+		i, _ := v.(starlark.Int).Int64()
+		m.Age = int(i)
+	}
+	if v, _ := s.Attr("Drink"); v != nil {
+		b, _ := v.(starlark.Bool)
+		m.Drink = bool(b)
+	}
+	return nil
+}
