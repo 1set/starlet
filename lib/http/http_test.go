@@ -173,7 +173,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 				load('http', 'post')
 				res = post(test_server_url)
 				assert.eq(res.status_code, 200)
-				assert.eq(res.body().startswith("POST "), True)
+				assert.true(res.body().startswith("POST "))
 			`),
 		},
 		{
@@ -183,9 +183,9 @@ func TestLoadModule_HTTP(t *testing.T) {
 				res = post(test_server_url, json_body="Hello")
 				assert.eq(res.status_code, 200)
 				b = res.body()
-				assert.eq(b.startswith("POST "), True)
-				assert.eq('/json' in b, True)
-				assert.eq('"Hello"' in b, True)
+				assert.true(b.startswith("POST "))
+				assert.true('/json' in b)
+				assert.true('"Hello"' in b)
 			`),
 		},
 		{
@@ -195,9 +195,9 @@ func TestLoadModule_HTTP(t *testing.T) {
 				res = post(test_server_url, json_body={ "a" : "b", "c" : "d"})
 				assert.eq(res.status_code, 200)
 				b = res.body()
-				assert.eq(b.startswith("POST "), True)
-				assert.eq('/json' in b, True)
-				assert.eq('{"a":"b","c":"d"}' in b, True)
+				assert.true(b.startswith("POST "))
+				assert.true('/json' in b)
+				assert.true('{"a":"b","c":"d"}' in b)
 			`),
 		},
 		{
@@ -207,9 +207,9 @@ func TestLoadModule_HTTP(t *testing.T) {
 				res = post(test_server_url, json_body={ 123: 456, 789: 0.123})
 				assert.eq(res.status_code, 200)
 				b = res.body()
-				assert.eq(b.startswith("POST "), True)
-				assert.eq('/json' in b, True)
-				assert.eq('{"123":456,"789":0.123}' in b, True)
+				assert.true(b.startswith("POST "))
+				assert.true('/json' in b)
+				assert.true('{"123":456,"789":0.123}' in b)
 			`),
 		},
 		{
@@ -221,9 +221,9 @@ func TestLoadModule_HTTP(t *testing.T) {
 				res = post(test_server_url, json_body=s)
 				assert.eq(res.status_code, 200)
 				b = res.body()
-				assert.eq(b.startswith("POST "), True)
-				assert.eq('/json' in b, True)
-				assert.eq('{"a":"bee","c":"dee"}' in b, True)
+				assert.true(b.startswith("POST "))
+				assert.true('/json' in b)
+				assert.true('{"a":"bee","c":"dee"}' in b)
 			`),
 		},
 		{
@@ -247,9 +247,9 @@ func TestLoadModule_HTTP(t *testing.T) {
 				res = post(test_server_url, json_body=test_custom_data)
 				assert.eq(res.status_code, 200)
 				b = res.body()
-				assert.eq(b.startswith("POST "), True)
-				assert.eq('/json' in b, True)
-				assert.eq('{"A":"我爱你","B":123,"C":true}' in b, True)
+				assert.true(b.startswith("POST "))
+				assert.true('/json' in b)
+				assert.true('{"A":"我爱你","B":123,"C":true}' in b)
 			`),
 		},
 		{
@@ -259,8 +259,8 @@ func TestLoadModule_HTTP(t *testing.T) {
 				res = post(test_server_url, form_body={ "a" : "b", "c" : "d"})
 				assert.eq(res.status_code, 200)
 				b = res.body()
-				assert.eq(b.startswith("POST "), True)
-				assert.eq('/x-www-form-urlencoded' in b, True)
+				assert.true(b.startswith("POST "))
+				assert.true('/x-www-form-urlencoded' in b)
 			`),
 		},
 		{
@@ -271,9 +271,9 @@ func TestLoadModule_HTTP(t *testing.T) {
 				res = post(test_server_url, json_body={ "a" : "b", "c" : "d"}, headers=headers)
 				assert.eq(res.status_code, 200)
 				b = res.body()
-				assert.eq(b.startswith("POST "), True)
-				assert.eq('/json' in b, True)
-				assert.eq('Foo: bar' in b, True)
+				assert.true(b.startswith("POST "))
+				assert.true('/json' in b)
+				assert.true('Foo: bar' in b)
 			`),
 		},
 		{
@@ -286,9 +286,9 @@ func TestLoadModule_HTTP(t *testing.T) {
 				res = post(test_server_url, json_body={ "a" : "b", "c" : "d"})
 				assert.eq(res.status_code, 200)
 				b = res.body()
-				assert.eq(b.startswith("POST "), True)
-				assert.eq('/json' in b, True)
-				assert.eq('User-Agent: GqQdYX3eIJw2DTt' in b, True)
+				assert.true(b.startswith("POST "))
+				assert.true('/json' in b)
+				assert.true('User-Agent: GqQdYX3eIJw2DTt' in b)
 			`),
 		},
 		{
@@ -315,7 +315,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 				res = get(test_server_url, timeout=0.5)
 				assert.eq(res.status_code, 200)
 				b = res.body()
-				assert.eq(b.startswith("GET /"), True)
+				assert.true(b.startswith("GET /"))
 			`),
 		},
 		{
@@ -348,7 +348,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 				assert.eq(type(data['Double']), "float")
 				assert.eq(type(data['Integer']), "int")
 				assert.eq(type(data['Bool']), "bool")
-				assert.eq(data['Bool'], True)
+				assert.true(data['Bool'])
 				
 				t = data['then']
 				assert.eq(type(t), "time.time")
