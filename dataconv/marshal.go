@@ -253,24 +253,23 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 		if _var, ok := v.Constructor().(Unmarshaler); ok {
 			err = _var.UnmarshalStarlark(x)
 			if err != nil {
-				err = fmt.Errorf("failed marshal %T to Starlark object: %w", v.Constructor(), err)
+				err = fmt.Errorf("failed to marshal %T into Starlark object: %w", v.Constructor(), err)
 				return
 			}
 			val = _var
 		} else {
-			if am, err := iterAttrs(v); err != nil {
+			am, err := iterAttrs(v)
+			if err != nil {
 				return nil, err
-			} else {
-				val = am
 			}
-			//err = fmt.Errorf("constructor object from *starlarkstruct.Struct not supported Marshaler to Starlark object: %T", v.Constructor())
-		}
-	case *starlarkstruct.Module:
-		if am, err := iterAttrs(v); err != nil {
-			return nil, err
-		} else {
 			val = am
 		}
+	case *starlarkstruct.Module:
+		am, err := iterAttrs(v)
+		if err != nil {
+			return nil, err
+		}
+		val = am
 	case *convert.GoSlice:
 		if IsInterfaceNil(v) {
 			err = fmt.Errorf("nil GoSlice")
@@ -295,6 +294,12 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 			return
 		}
 		val = v.Value().Interface()
+	case Unmarshaler:
+		if err = v.UnmarshalStarlark(x); err != nil {
+			err = fmt.Errorf("failed to marshal %T into Starlark object: %w", v, err)
+			return
+		}
+		val = v
 	default:
 		//fmt.Println("errbadtype:", x.Type())
 		//err = fmt.Errorf("unrecognized starlark type: %s", x.Type())
