@@ -155,6 +155,21 @@ func Test_DefaultMachine_Run_InvalidExtras(t *testing.T) {
 	expectErr(t, err, `starlight: convert extras: type chan int is not a supported starlark type`)
 }
 
+func Test_DefaultMachine_Run_InvalidExtras2(t *testing.T) {
+	m := starlet.NewDefault()
+	if _, err := m.RunScript([]byte(`aa = a << 1`), map[string]interface{}{
+		"a": 100,
+	}); err != nil {
+		t.Errorf("unexpected error: %v", err)
+		return
+	}
+
+	_, err := m.RunScript([]byte(`bb = 1`), map[string]interface{}{
+		"b": make(chan int),
+	})
+	expectErr(t, err, `starlight: convert extras: type chan int is not a supported starlark type`)
+}
+
 func Test_DefaultMachine_Run_LoadFunc(t *testing.T) {
 	m := starlet.NewDefault()
 	// set code
