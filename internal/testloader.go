@@ -64,6 +64,10 @@ func NewAssertLoader(moduleName string, loader ModuleLoadFunc) ThreadLoadFunc {
 			return starlark.StringDict{
 				"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
 			}, nil
+		case "module.star":
+			return starlark.StringDict{
+				"module": starlark.NewBuiltin("module", starlarkstruct.MakeModule),
+			}, nil
 		case "assert.star":
 			return starlarktest.LoadAssertModule()
 		case "freeze.star":
@@ -77,14 +81,14 @@ func NewAssertLoader(moduleName string, loader ModuleLoadFunc) ThreadLoadFunc {
 }
 
 // ExecModuleWithErrorTest executes a Starlark script with a module loader and compares the error with the expected error.
-func ExecModuleWithErrorTest(t *testing.T, name string, loader ModuleLoadFunc, script string, wantErr string) (starlark.StringDict, error) {
+func ExecModuleWithErrorTest(t *testing.T, name string, loader ModuleLoadFunc, script string, wantErr string, predecl starlark.StringDict) (starlark.StringDict, error) {
 	thread := &starlark.Thread{Load: NewAssertLoader(name, loader), Print: func(_ *starlark.Thread, msg string) { t.Log("※", msg) }}
 	starlarktest.SetReporter(thread, t)
 	header := `load('assert.star', 'assert')`
 	opts := syntax.FileOptions{
 		Set: true,
 	}
-	out, err := starlark.ExecFileOptions(&opts, thread, name+"_test.star", []byte(header+"\n"+script), nil)
+	out, err := starlark.ExecFileOptions(&opts, thread, name+"_test.star", []byte(header+"\n"+script), predecl)
 	if err != nil {
 		if wantErr == "" {
 			if ee, ok := err.(*starlark.EvalError); ok {

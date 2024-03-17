@@ -173,7 +173,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 				load('http', 'post')
 				res = post(test_server_url)
 				assert.eq(res.status_code, 200)
-				assert.eq(res.body().startswith("POST "), True)
+				assert.true(res.body().startswith("POST "))
 			`),
 		},
 		{
@@ -183,9 +183,9 @@ func TestLoadModule_HTTP(t *testing.T) {
 				res = post(test_server_url, json_body="Hello")
 				assert.eq(res.status_code, 200)
 				b = res.body()
-				assert.eq(b.startswith("POST "), True)
-				assert.eq('/json' in b, True)
-				assert.eq('"Hello"' in b, True)
+				assert.true(b.startswith("POST "))
+				assert.true('/json' in b)
+				assert.true('"Hello"' in b)
 			`),
 		},
 		{
@@ -195,9 +195,9 @@ func TestLoadModule_HTTP(t *testing.T) {
 				res = post(test_server_url, json_body={ "a" : "b", "c" : "d"})
 				assert.eq(res.status_code, 200)
 				b = res.body()
-				assert.eq(b.startswith("POST "), True)
-				assert.eq('/json' in b, True)
-				assert.eq('{"a":"b","c":"d"}' in b, True)
+				assert.true(b.startswith("POST "))
+				assert.true('/json' in b)
+				assert.true('{"a":"b","c":"d"}' in b)
 			`),
 		},
 		{
@@ -207,9 +207,9 @@ func TestLoadModule_HTTP(t *testing.T) {
 				res = post(test_server_url, json_body={ 123: 456, 789: 0.123})
 				assert.eq(res.status_code, 200)
 				b = res.body()
-				assert.eq(b.startswith("POST "), True)
-				assert.eq('/json' in b, True)
-				assert.eq('{"123":456,"789":0.123}' in b, True)
+				assert.true(b.startswith("POST "))
+				assert.true('/json' in b)
+				assert.true('{"123":456,"789":0.123}' in b)
 			`),
 		},
 		{
@@ -221,9 +221,40 @@ func TestLoadModule_HTTP(t *testing.T) {
 				res = post(test_server_url, json_body=s)
 				assert.eq(res.status_code, 200)
 				b = res.body()
-				assert.eq(b.startswith("POST "), True)
-				assert.eq('/json' in b, True)
-				assert.eq('{"a":"bee","c":"dee"}' in b, True)
+				assert.true(b.startswith("POST "))
+				assert.true('/json' in b)
+				assert.true('{"a":"bee","c":"dee"}' in b)
+			`),
+		},
+		{
+			name: `POST JSON Module`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				load('module.star', 'module')
+				s = module("data", a = 'egg', c = 'flow')
+				res = post(test_server_url, json_body=s)
+				assert.eq(res.status_code, 200)
+				b = res.body()
+				assert.true(b.startswith("POST "))
+				assert.true('/json' in b)
+				assert.true('{"a":"egg","c":"flow"}' in b)
+			`),
+		},
+		{
+			name: `POST JSON Hybrid`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				load('struct.star', 'struct')
+				load('module.star', 'module')
+				s = struct(a = 'bee', c = 'dee')
+				m = module("data", a = 'egg', c = 'flow')
+				d = { "st" : s, "md" : m, 123:456}
+				res = post(test_server_url, json_body=d)
+				assert.eq(res.status_code, 200)
+				b = res.body()
+				assert.true(b.startswith("POST "))
+				assert.true('/json' in b)
+				assert.true('{"123":456,"md":{"a":"egg","c":"flow"},"st":{"a":"bee","c":"dee"}}' in b)
 			`),
 		},
 		{
@@ -233,9 +264,9 @@ func TestLoadModule_HTTP(t *testing.T) {
 				res = post(test_server_url, json_body=test_custom_data)
 				assert.eq(res.status_code, 200)
 				b = res.body()
-				assert.eq(b.startswith("POST "), True)
-				assert.eq('/json' in b, True)
-				assert.eq('{"A":"我爱你","B":123,"C":true}' in b, True)
+				assert.true(b.startswith("POST "))
+				assert.true('/json' in b)
+				assert.true('{"A":"我爱你","B":123,"C":true}' in b)
 			`),
 		},
 		{
@@ -245,8 +276,8 @@ func TestLoadModule_HTTP(t *testing.T) {
 				res = post(test_server_url, form_body={ "a" : "b", "c" : "d"})
 				assert.eq(res.status_code, 200)
 				b = res.body()
-				assert.eq(b.startswith("POST "), True)
-				assert.eq('/x-www-form-urlencoded' in b, True)
+				assert.true(b.startswith("POST "))
+				assert.true('/x-www-form-urlencoded' in b)
 			`),
 		},
 		{
@@ -257,9 +288,9 @@ func TestLoadModule_HTTP(t *testing.T) {
 				res = post(test_server_url, json_body={ "a" : "b", "c" : "d"}, headers=headers)
 				assert.eq(res.status_code, 200)
 				b = res.body()
-				assert.eq(b.startswith("POST "), True)
-				assert.eq('/json' in b, True)
-				assert.eq('Foo: bar' in b, True)
+				assert.true(b.startswith("POST "))
+				assert.true('/json' in b)
+				assert.true('Foo: bar' in b)
 			`),
 		},
 		{
@@ -272,9 +303,9 @@ func TestLoadModule_HTTP(t *testing.T) {
 				res = post(test_server_url, json_body={ "a" : "b", "c" : "d"})
 				assert.eq(res.status_code, 200)
 				b = res.body()
-				assert.eq(b.startswith("POST "), True)
-				assert.eq('/json' in b, True)
-				assert.eq('User-Agent: GqQdYX3eIJw2DTt' in b, True)
+				assert.true(b.startswith("POST "))
+				assert.true('/json' in b)
+				assert.true('User-Agent: GqQdYX3eIJw2DTt' in b)
 			`),
 		},
 		{
@@ -301,7 +332,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 				res = get(test_server_url, timeout=0.5)
 				assert.eq(res.status_code, 200)
 				b = res.body()
-				assert.eq(b.startswith("GET /"), True)
+				assert.true(b.startswith("GET /"))
 			`),
 		},
 		{
@@ -334,13 +365,16 @@ func TestLoadModule_HTTP(t *testing.T) {
 				assert.eq(type(data['Double']), "float")
 				assert.eq(type(data['Integer']), "int")
 				assert.eq(type(data['Bool']), "bool")
-				assert.eq(data['Bool'], True)
+				assert.true(data['Bool'])
 				
 				t = data['then']
 				assert.eq(type(t), "time.time")
 				assert.eq(t.year, 2023)
 				assert.eq(t.month, 7)
 				assert.eq(t.day, 15)
+
+				text = res.body()
+				assert.true('"ArrayInteger":[1,2,3]' in text)
 			`),
 		},
 		{
@@ -360,7 +394,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 			if tt.preset != nil {
 				tt.preset()
 			}
-			res, err := itn.ExecModuleWithErrorTest(t, ModuleName, LoadModule, tt.script, tt.wantErr)
+			res, err := itn.ExecModuleWithErrorTest(t, ModuleName, LoadModule, tt.script, tt.wantErr, nil)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("http(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
 				return

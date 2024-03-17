@@ -15,7 +15,7 @@ import (
 func TestLoadModule_Log_NoSet(t *testing.T) {
 	mm := lg.NewModule(nil)
 	script := "load('log', 'info')\ninfo('this is 1st info message only')"
-	res, err := itn.ExecModuleWithErrorTest(t, lg.ModuleName, mm.LoadModule, script, "")
+	res, err := itn.ExecModuleWithErrorTest(t, lg.ModuleName, mm.LoadModule, script, "", nil)
 	if err != nil {
 		t.Errorf("log.SetLog(nil) expects no error, actual error = '%v', result = %v", err, res)
 		return
@@ -26,7 +26,7 @@ func TestLoadModule_Log_SetLog_Nil(t *testing.T) {
 	mm := lg.NewModule(nil)
 	mm.SetLog(nil)
 	script := "load('log', 'info')\ninfo('this is 2nd info message only')"
-	res, err := itn.ExecModuleWithErrorTest(t, lg.ModuleName, mm.LoadModule, script, "")
+	res, err := itn.ExecModuleWithErrorTest(t, lg.ModuleName, mm.LoadModule, script, "", nil)
 	if err != nil {
 		t.Errorf("log.SetLog(nil) expects no error, actual error = '%v', result = %v", err, res)
 		return
@@ -132,7 +132,7 @@ func TestLoadModule_Log(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l, b := buildCustomLogger()
 			lg.SetLog(l)
-			res, err := itn.ExecModuleWithErrorTest(t, lg.ModuleName, lg.LoadModule, tt.script, tt.wantErr)
+			res, err := itn.ExecModuleWithErrorTest(t, lg.ModuleName, lg.LoadModule, tt.script, tt.wantErr, nil)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("log(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
 				return

@@ -11,7 +11,6 @@ import (
 	"github.com/1set/starlight/convert"
 	startime "go.starlark.net/lib/time"
 	"go.starlark.net/starlark"
-	"go.starlark.net/starlarkjson"
 	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/syntax"
 )
@@ -33,16 +32,23 @@ func TestMarshal(t *testing.T) {
 	}
 
 	ct, _ := (&customType{42}).MarshalStarlark()
-	expectedStrDictCustomType := starlark.NewDict(2)
-	if err := expectedStrDictCustomType.SetKey(starlark.String("foo"), starlark.MakeInt(42)); err != nil {
+	expectedStrDict := starlark.NewDict(2)
+	if err := expectedStrDict.SetKey(starlark.String("foo"), starlark.MakeInt(42)); err != nil {
 		t.Fatal(err)
 	}
-	if err := expectedStrDictCustomType.SetKey(starlark.String("bar"), ct); err != nil {
+	if err := expectedStrDict.SetKey(starlark.String("bar"), ct); err != nil {
 		t.Fatal(err)
 	}
 
 	fnoop := func() {}
 	fnow := time.Now
+	crt := struct {
+		Message string
+		Times   int
+	}{
+		Message: "random",
+		Times:   2,
+	}
 
 	now := time.Now()
 	cases := []struct {
@@ -74,9 +80,11 @@ func TestMarshal(t *testing.T) {
 		{map[interface{}]interface{}{"foo": 42}, expectedStringDict, ""},
 		{map[interface{}]interface{}{42 * 2: 42}, expectedIntDict, ""},
 		{&customType{42}, ct, ""},
-		{map[string]interface{}{"foo": 42, "bar": &customType{42}}, expectedStrDictCustomType, ""},
-		{map[interface{}]interface{}{"foo": 42, "bar": &customType{42}}, expectedStrDictCustomType, ""},
+		{map[string]interface{}{"foo": 42, "bar": &customType{42}}, expectedStrDict, ""},
+		{map[interface{}]interface{}{"foo": 42, "bar": &customType{42}}, expectedStrDict, ""},
 		{[]interface{}{42, &customType{42}}, starlark.NewList([]starlark.Value{starlark.MakeInt(42), ct}), ""},
+		{crt, starlark.None, `unrecognized type: struct { Message string; Times int }{Message:"random", Times:2}`},
+		{&crt, starlark.None, `unrecognized type: &struct { Message string; Times int }{Message:"random", Times:2}`},
 		{&invalidCustomType{42}, starlark.None, "unrecognized type: &dataconv.invalidCustomType{Foo:42}"},
 		{&anotherCustomType{customType{42}, nil, nil}, ct, ""},
 		{&anotherCustomType{customType{42}, fmt.Errorf("foo foo"), nil}, starlark.None, "foo foo"},
@@ -176,7 +184,17 @@ func TestUnmarshal(t *testing.T) {
 	srtNil := starlarkstruct.FromStringDict(starlarkstruct.Default, map[string]starlark.Value{
 		"Null": nil,
 	})
-
+	md := &starlarkstruct.Module{
+		Name: "simple",
+		Members: starlark.StringDict{
+			"foo": starlark.MakeInt(42),
+			"bar": starlark.String("baz"),
+		},
+	}
+	st := starlarkstruct.FromStringDict(starlark.String("young"), map[string]starlark.Value{
+		"foo": starlark.MakeInt(42),
+		"bar": starlark.String("baz"),
+	})
 	gs := struct {
 		Message string
 		Times   int
@@ -230,9 +248,10 @@ func TestUnmarshal(t *testing.T) {
 		{starlark.NewList([]starlark.Value{starlark.MakeInt(42), ct}), []interface{}{42, &customType{42}}, ""},
 		{starlark.Tuple{starlark.String("foo"), starlark.MakeInt(42)}, []interface{}{"foo", 42}, ""},
 		{ss, []interface{}{"Hello", "World"}, ""},
-		{&starlarkstruct.Struct{}, map[string]interface{}{}, ""},
 		{srt, map[string]interface{}{"Message": "Aloha", "Times": 100, "Later": now}, ""},
-		{starlarkjson.Module, nil, "unrecognized starlark type: *starlarkstruct.Module"},
+		{md, map[string]interface{}{"foo": 42, "bar": "baz"}, ""},
+		{st, map[string]interface{}{"foo": 42, "bar": "baz"}, ""},
+		{&starlarkstruct.Struct{}, map[string]interface{}{}, ""},
 		{convert.NewGoSlice([]int{1, 2, 3}), []int{1, 2, 3}, ""},
 		{convert.NewGoSlice([]string{"Hello", "World"}), []string{"Hello", "World"}, ""},
 		{convert.NewGoMap(map[string]int{"foo": 42}), map[string]int{"foo": 42}, ""},
@@ -401,4 +420,76 @@ func (a *anotherCustomType) MarshalStarlark() (starlark.Value, error) {
 		return nil, a.ErrMar
 	}
 	return a.customType.MarshalStarlark()
+}
+
+func TestCustomUnmarshal(t *testing.T) {
+	g1 := &myStruct{Name: "foo", Age: 42, Drink: true}
+	s1, err := Marshal(g1)
+	if err != nil {
+		t.Errorf("unexpected error for marshal: %v", err)
+		return
+	}
+
+	g2, err := Unmarshal(s1)
+	if err != nil {
+		t.Errorf("unexpected error for unmarshal: %v", err)
+		return
+	}
+	g3, ok := g2.(*myStruct)
+	if !ok {
+		t.Errorf("unexpected type: %T", g2)
+		return
+	}
+	if !reflect.DeepEqual(g1, g3) {
+		t.Errorf("expected: %#v, got: %#v", g1, g3)
+	}
+}
+
+type myStruct struct {
+	Name  string
+	Age   int
+	Drink bool
+}
+
+func (m *myStruct) String() string {
+	return "myStruct"
+}
+
+func (m *myStruct) Type() string { return "test.myStruct" }
+
+func (*myStruct) Freeze() {}
+
+func (m *myStruct) Truth() starlark.Bool {
+	return starlark.True
+}
+
+func (m *myStruct) Hash() (uint32, error) {
+	return 0, fmt.Errorf("unhashable: %s", m.Type())
+}
+
+func (m *myStruct) MarshalStarlark() (starlark.Value, error) {
+	return starlarkstruct.FromStringDict(&myStruct{}, starlark.StringDict{
+		"Name":  starlark.String(m.Name),
+		"Age":   starlark.MakeInt(m.Age),
+		"Drink": starlark.Bool(m.Drink),
+	}), nil
+}
+
+func (m *myStruct) UnmarshalStarlark(value starlark.Value) error {
+	s, ok := value.(*starlarkstruct.Struct)
+	if !ok {
+		return fmt.Errorf("unexpected type: %T", value)
+	}
+	if v, _ := s.Attr("Name"); v != nil {
+		m.Name, _ = asString(v)
+	}
+	if v, _ := s.Attr("Age"); v != nil {
+		i, _ := v.(starlark.Int).Int64()
+		m.Age = int(i)
+	}
+	if v, _ := s.Attr("Drink"); v != nil {
+		b, _ := v.(starlark.Bool)
+		m.Drink = bool(b)
+	}
+	return nil
 }

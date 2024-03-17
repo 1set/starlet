@@ -9,7 +9,10 @@ import (
 	"testing"
 
 	"github.com/1set/starlet"
+	"github.com/1set/starlet/dataconv"
+	itn "github.com/1set/starlet/internal"
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 )
 
 var (
@@ -713,5 +716,571 @@ print("dh", d.hours, type(d))
 	} else {
 		t.Logf("output: %v", out)
 		t.Logf("machine: %v", m)
+	}
+}
+
+// It tests the modifications on module loaders implemented via StringDict, starstruct.Module, and starstruct.Struct and loads via direct load and lazy load.
+func Test_ModuleLoader_Modify(t *testing.T) {
+	// load 1
+	load1 := func() (starlark.StringDict, starlet.ModuleLoader) {
+		sd1 := starlark.StringDict{
+			"a": starlark.MakeInt(1),
+			"b": starlark.MakeInt(2),
+			"l": starlark.NewList([]starlark.Value{starlark.MakeInt(3)}),
+			"s": starlark.String("test"),
+		}
+		sdLoad := func() (starlark.StringDict, error) {
+			return sd1, nil
+		}
+		return sd1, sdLoad
+	}
+	// load 2
+	load2 := func() (starlark.StringDict, starlet.ModuleLoader) {
+		sd2 := starlark.StringDict{
+			"a": starlark.MakeInt(10),
+			"b": starlark.MakeInt(20),
+			"l": starlark.NewList([]starlark.Value{starlark.MakeInt(30)}),
+			"s": starlark.String("test"),
+		}
+		smLoad := func() (starlark.StringDict, error) {
+			return starlark.StringDict{
+				"foo": &starlarkstruct.Module{
+					Name:    "foo",
+					Members: sd2,
+				},
+			}, nil
+		}
+		return sd2, smLoad
+	}
+	// load 3
+	load3 := func() (starlark.StringDict, starlet.ModuleLoader) {
+		sd3 := starlark.StringDict{
+			"a": starlark.MakeInt(100),
+			"b": starlark.MakeInt(200),
+			"l": starlark.NewList([]starlark.Value{starlark.MakeInt(300)}),
+			"s": starlark.String("test"),
+		}
+		ssLoad := func() (starlark.StringDict, error) {
+			ss := starlarkstruct.FromStringDict(starlark.String("bar"), sd3)
+			return starlark.StringDict{
+				"bar": ss,
+			}, nil
+		}
+		return sd3, ssLoad
+	}
+
+	// helpers
+	getEqualFunc := func(name string, val interface{}) func(anyMap starlet.StringAnyMap) bool {
+		return func(anyMap starlet.StringAnyMap) bool {
+			v, found := anyMap[name]
+			if !found {
+				return false
+			}
+			return v == val
+		}
+	}
+
+	// test cases
+	tests := []struct {
+		name       string
+		preload    func() (starlark.StringDict, starlet.ModuleLoader)
+		lazyload   func() (starlark.StringDict, starlet.ModuleLoader)
+		moduleName string
+		script     string
+		wantErr    bool
+		checkRes   func(anyMap starlet.StringAnyMap) bool
+		checkData  func(sd starlark.StringDict) bool
+	}{
+		// Check Preload Read
+		{
+			name:    "Preload StringDict",
+			preload: load1,
+			script: `
+c = a + b + l[0]
+`,
+			wantErr:  false,
+			checkRes: getEqualFunc("c", int64(6)),
+		},
+		{
+			name:    "Preload Module",
+			preload: load2,
+			script: `
+c = foo.a + foo.b + foo.l[0]
+`,
+			wantErr:  false,
+			checkRes: getEqualFunc("c", int64(60)),
+		},
+		{
+			name:    "Preload Struct",
+			preload: load3,
+			script: `
+c = bar.a + bar.b + bar.l[0]
+`,
+			wantErr:  false,
+			checkRes: getEqualFunc("c", int64(600)),
+		},
+
+		// Check LazyLoad Read
+		{
+			name:       "LazyLoad StringDict",
+			lazyload:   load1,
+			moduleName: "play",
+			script: `
+load("play", "a", "b", "l")
+c = a + b + l[0]
+`,
+			wantErr:  false,
+			checkRes: getEqualFunc("c", int64(6)),
+		},
+		{
+			name:       "LazyLoad Module",
+			lazyload:   load2,
+			moduleName: "play",
+			script: `
+load("play", "foo")
+c = foo.a + foo.b + foo.l[0]
+`,
+			wantErr:  false,
+			checkRes: getEqualFunc("c", int64(60)),
+		},
+		{
+			name:       "LazyLoad Named Module",
+			lazyload:   load2,
+			moduleName: "foo",
+			script: `
+load("foo", "a", "b", "l")
+c = a + b + l[0]
+`,
+			wantErr:  false,
+			checkRes: getEqualFunc("c", int64(60)),
+		},
+		{
+			name:       "LazyLoad Struct",
+			lazyload:   load3,
+			moduleName: "play",
+			script: `
+load("play", "bar")
+c = bar.a + bar.b + bar.l[0]
+`,
+			wantErr:  false,
+			checkRes: getEqualFunc("c", int64(600)),
+		},
+		{
+			name:       "LazyLoad Named Struct",
+			lazyload:   load3,
+			moduleName: "bar",
+			script: `
+load("bar", "a", "b", "l")
+c = a + b + l[0]
+`,
+			wantErr:  false,
+			checkRes: getEqualFunc("c", int64(600)),
+		},
+
+		// Edit Preload
+		{
+			name:    "Edit Preload StringDict",
+			preload: load1,
+			script: `
+a = 100
+b = 200
+l.append(300)
+s = "new"
+`,
+			wantErr: false,
+			checkData: func(sd starlark.StringDict) bool {
+				return sd["a"] == starlark.MakeInt(1) && sd["b"] == starlark.MakeInt(2) && sd["l"].(*starlark.List).Len() == 2 && sd["s"] == starlark.String("test")
+			},
+		},
+		{
+			name:    "Assign Preload Module",
+			preload: load2,
+			script: `
+print(type(foo), dir(foo), foo)
+foo.a = 400
+foo.b = 500
+foo.s = "new"
+`,
+			wantErr: true,
+		},
+		{
+			name:    "Modify Preload Module",
+			preload: load2,
+			script: `
+foo.l.append(600)
+print(type(foo), dir(foo), foo, foo.l)
+`,
+			wantErr: false,
+			checkData: func(sd starlark.StringDict) bool {
+				return sd["l"].(*starlark.List).Len() == 2
+			},
+		},
+		{
+			name:    "Assign Preload Struct",
+			preload: load2,
+			script: `
+print(type(bar), dir(bar), bar)
+bar.a = 700
+bar.b = 800
+bar.s = "new"
+`,
+			wantErr: true,
+		},
+		{
+			name:    "Modify Preload Struct",
+			preload: load3,
+			script: `
+bar.l.append(900)
+print(type(bar), dir(bar), bar)
+`,
+			wantErr: false,
+			checkData: func(sd starlark.StringDict) bool {
+				return sd["l"].(*starlark.List).Len() == 2
+			},
+		},
+
+		// Edit Lazyload
+		{
+			name:       "Edit Lazyload StringDict",
+			lazyload:   load1,
+			moduleName: "play",
+			script: `
+load("play", "a", "b", "l", "s")
+a = 100
+b = 200
+s = "new"
+`,
+			wantErr: true,
+		},
+		{
+			name:       "Modify Lazyload StringDict",
+			lazyload:   load1,
+			moduleName: "play",
+			script: `
+load("play", "a", "b", "l", "s")
+l.append(300)
+`,
+			wantErr: false,
+			checkData: func(sd starlark.StringDict) bool {
+				return sd["a"] == starlark.MakeInt(1) && sd["b"] == starlark.MakeInt(2) && sd["l"].(*starlark.List).Len() == 2 && sd["s"] == starlark.String("test")
+			},
+		},
+		{
+			name:       "Assign Lazyload Module",
+			lazyload:   load2,
+			moduleName: "play",
+			script: `
+load("play", "foo")
+print(type(foo), dir(foo), foo)
+foo.a = 400
+foo.b = 500
+foo.s = "new"
+`,
+			wantErr: true,
+		},
+		{
+			name:       "Assign Named Lazyload Module",
+			lazyload:   load2,
+			moduleName: "foo",
+			script: `
+load("foo", "a", "b", "s")
+a = 400
+b = 500
+s = "new"
+`,
+			wantErr: true,
+		},
+		{
+			name:       "Modify Lazyload Module",
+			lazyload:   load2,
+			moduleName: "play",
+			script: `
+load("play", "foo")
+foo.l.append(600)
+print(type(foo), dir(foo), foo, foo.l)
+`,
+			wantErr: false,
+			checkData: func(sd starlark.StringDict) bool {
+				return sd["l"].(*starlark.List).Len() == 2
+			},
+		},
+		{
+			name:       "Modify Named Lazyload Module",
+			lazyload:   load2,
+			moduleName: "foo",
+			script: `
+load("foo", "l")
+l.append(600)
+`,
+			wantErr: false,
+			checkData: func(sd starlark.StringDict) bool {
+				return sd["l"].(*starlark.List).Len() == 2
+			},
+		},
+		{
+			name:       "Assign Lazyload Struct",
+			lazyload:   load3,
+			moduleName: "play",
+			script: `
+load("play", "bar")
+print(type(bar), dir(bar), bar)
+bar.a = 700
+bar.b = 800
+bar.s = "new"
+`,
+			wantErr: true,
+		},
+		{
+			name:       "Assign Named Lazyload Struct",
+			lazyload:   load3,
+			moduleName: "bar",
+			script: `
+load("bar", "a", "b", "s")
+a = 700
+b = 800
+s = "new"
+`,
+			wantErr: true,
+		},
+		{
+			name:       "Modify Lazyload Struct",
+			lazyload:   load3,
+			moduleName: "play",
+			script: `
+load("play", "bar")
+bar.l.append(900)
+print(type(bar), dir(bar), bar)
+`,
+			wantErr: false,
+			checkData: func(sd starlark.StringDict) bool {
+				return sd["l"].(*starlark.List).Len() == 2
+			},
+		},
+		{
+			name:       "Modify Named Lazyload Struct",
+			lazyload:   load3,
+			moduleName: "bar",
+			script: `
+load("bar", "l")
+l.append(900)
+`,
+			wantErr: false,
+			checkData: func(sd starlark.StringDict) bool {
+				return sd["l"].(*starlark.List).Len() == 2
+			},
+		},
+
+		// Add Preload
+		{
+			name:    "Add Preload Module",
+			preload: load2,
+			script: `
+foo["c"] = 30
+`,
+			wantErr: true,
+		},
+		{
+			name:    "Add Preload Struct",
+			preload: load3,
+			script: `
+bar["c"] = 30
+`,
+			wantErr: true,
+		},
+		{
+			name:       "Add Lazyload Module",
+			lazyload:   load2,
+			moduleName: "play",
+			script: `
+load("play", "foo")
+foo["c"] = 30
+`,
+			wantErr: true,
+		},
+		{
+			name:       "Add Lazyload Struct",
+			lazyload:   load3,
+			moduleName: "play",
+			script: `
+load("play", "bar")
+bar["c"] = 30
+`,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// get loaders
+			var (
+				coreSD   starlark.StringDict
+				preload  starlet.ModuleLoaderList
+				lazyload starlet.ModuleLoaderMap
+			)
+			if tt.preload != nil {
+				sd, load := tt.preload()
+				coreSD = sd
+				preload = append(preload, load)
+			} else if tt.lazyload != nil {
+				sd, load := tt.lazyload()
+				coreSD = sd
+				lazyload = starlet.ModuleLoaderMap{
+					tt.moduleName: load,
+				}
+			} else {
+				t.Errorf("no preload or lazyload")
+				return
+			}
+
+			// set code
+			m := starlet.NewWithLoaders(nil, preload, lazyload)
+			m.SetPrintFunc(getLogPrintFunc(t))
+			code := tt.script
+
+			// run
+			out, err := m.RunScript([]byte(code), nil)
+
+			// check error
+			if (err != nil) != tt.wantErr {
+				t.Errorf("unexpected error: %v", err)
+				return
+			}
+			if tt.wantErr {
+				return
+			}
+
+			// check result
+			if out == nil {
+				t.Errorf("unexpected nil output")
+				return
+			}
+			if tt.checkRes != nil && !tt.checkRes(out) {
+				t.Errorf("unexpected output: %v", out)
+			}
+
+			// check original data
+			if tt.checkData != nil && !tt.checkData(coreSD) {
+				t.Errorf("unexpected original data: %v", coreSD)
+			}
+		})
+	}
+
+	/*
+		Things Learned:
+
+		For simple direct StringDict loader:
+			When it loads as preload, the original key-value(s) is shadow-copied and the copy is used.
+				1. assign doesn't affect the original data (like int or string), but modify like append to list does.
+			When it loads as lazyload, the original key-value(s) is shadow-copied and the copy is used.
+				1. assign fails for re-assignment, but modify like append to list works.
+
+		For loader with Module:
+			When it loads as preload, the starlarkstruct.Module is used directly.
+				1. assign to the module's member fails, but modify like append to list works.
+				2. add new member fails.
+			When it loads as lazyload with different name, the starlarkstruct.Module is used directly.
+				1. assign to the module's member fails, but modify like append to list works.
+				2. add new member fails.
+			When it loads as lazyload with same name, the member of starlarkstruct.Module is used.
+				1. assign fails for re-assignment, but modify like append to list works.
+
+		For loader with Struct:
+			When it loads as preload, the starlarkstruct.Struct is used directly.
+				1. assign to the struct's member fails, but modify like append to list works.
+				2. add new member fails.
+			When it loads as lazyload with different name, the starlarkstruct.Struct is used directly.
+				1. assign to the struct's member fails, but modify like append to list works.
+				2. add new member fails.
+			When it loads as lazyload with same name, the member of starlarkstruct.Struct is shadow-copied and the copy is used.
+				1. assign fails for re-assignment, but modify like append to list works.
+
+		Summary:
+
+		| Loader Type             | Loading Method            | Loading Behavior       | Assign                     | Modify                      | Insert   |
+		|:-----------------------:|:--------------------------|:-----------------------|:---------------------------|:----------------------------|:---------|
+		| Plain StringDict Loader | Preload                   | Shadow Copy            | ✅ Doesn't affect original | ⚠️ Works (e.g. list append) | N/A      |
+		| Plain StringDict Loader | Lazyload                  | Shadow Copy            | ❌ Fails for re-assignment | ⚠️ Works (e.g. list append) | N/A      |
+		|      Module Loader      | Preload                   | Direct Usage           | ❌ Fails                   | ⚠️ Works (e.g. list append) | ❌ Fails |
+		|      Module Loader      | Lazyload (different name) | Direct Usage           | ❌ Fails                   | ⚠️ Works (e.g. list append) | ❌ Fails |
+		|      Module Loader      | Lazyload (same name)      | Shadow Copy of Members | ❌ Fails for re-assignment | ⚠️ Works (e.g. list append) | N/A      |
+		|      Struct Loader      | Preload                   | Direct Usage           | ❌ Fails                   | ⚠️ Works (e.g. list append) | ❌ Fails |
+		|      Struct Loader      | Lazyload (different name) | Direct Usage           | ❌ Fails                   | ⚠️ Works (e.g. list append) | ❌ Fails |
+		|      Struct Loader      | Lazyload (same name)      | Shadow Copy of Members | ❌ Fails for re-assignment | ⚠️ Works (e.g. list append) | N/A      |
+
+		Key:
+		- ✅: Successful action
+		- ❌: Failed action
+		- ⚠️: Action has side effects
+		- N/A: Not applicable
+	*/
+}
+
+func TestWrapModuleData_Edit(t *testing.T) {
+	name := "test_module"
+	data := starlark.StringDict{
+		"foo": starlark.String("bar"),
+		"baz": starlark.MakeInt(42),
+	}
+
+	wrapFunc := dataconv.WrapModuleData(name, data)
+	if _, err := wrapFunc(); err != nil {
+		t.Errorf("WrapModuleData() returned an error: %v", err)
+	}
+
+	scripts := []string{
+		itn.HereDoc(`
+			test_module.foo = "bar bar"
+		`),
+		itn.HereDoc(`
+			test_module.baz = 84
+		`),
+		itn.HereDoc(`
+			test_module.qux = "quux"
+		`),
+		itn.HereDoc(`
+			test_module["see"] = "saw"
+		`),
+	}
+	for i, s := range scripts {
+		sl := starlet.NewDefault()
+		sl.AddPreloadModules(starlet.ModuleLoaderList{wrapFunc})
+		if _, err := sl.RunScript([]byte(s), nil); err == nil {
+			t.Errorf("Expected error, got nil: %d", i)
+		}
+	}
+}
+
+func TestWrapStructData_Edit(t *testing.T) {
+	name := "test_struct"
+	data := starlark.StringDict{
+		"foo": starlark.String("bar"),
+		"baz": starlark.MakeInt(42),
+	}
+
+	wrapFunc := dataconv.WrapStructData(name, data)
+	if _, err := wrapFunc(); err != nil {
+		t.Errorf("WrapStructData() returned an error: %v", err)
+	}
+
+	scripts := []string{
+		itn.HereDoc(`
+			test_struct.foo = "bar bar"
+		`),
+		itn.HereDoc(`
+			test_struct.baz = 84
+		`),
+		itn.HereDoc(`
+			test_struct.qux = "quux"
+		`),
+		itn.HereDoc(`
+			test_struct["see"] = "saw"
+		`),
+	}
+	for i, s := range scripts {
+		sl := starlet.NewDefault()
+		sl.AddPreloadModules(starlet.ModuleLoaderList{wrapFunc})
+		if _, err := sl.RunScript([]byte(s), nil); err == nil {
+			t.Errorf("Expected error, got nil: %d", i)
+		}
 	}
 }
