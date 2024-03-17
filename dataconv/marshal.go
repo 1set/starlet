@@ -115,6 +115,7 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 		return jo, nil
 	}
 
+	// switch on the type of the value (common types)
 	switch v := x.(type) {
 	case starlark.NoneType:
 		val = nil
@@ -253,7 +254,7 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 		if _var, ok := v.Constructor().(Unmarshaler); ok {
 			err = _var.UnmarshalStarlark(x)
 			if err != nil {
-				err = fmt.Errorf("failed to marshal %T into Starlark object: %w", v.Constructor(), err)
+				err = fmt.Errorf("failed to marshal %T to Starlark object: %w", v.Constructor(), err)
 				return
 			}
 			val = _var
