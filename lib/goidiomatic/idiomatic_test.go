@@ -561,6 +561,55 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				assert.true(c != d)
 			`),
 		},
+		{
+			name: `make_struct: no name`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'make_struct')
+				s = make_struct()
+				assert.eq(str(s), 'make_struct()')
+			`),
+			wantErr: `make_struct: got 0 arguments, want 1`,
+		},
+		{
+			name: `make_struct: only name`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'make_struct')
+				r = make_struct("rose")
+				assert.eq(str(r), 'rose()')
+			`),
+		},
+		{
+			name: `make_struct: one value`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'make_struct')
+				r = make_struct("rose", price=100)
+				assert.eq(str(r), 'rose(price = 100)')
+			`),
+		},
+		{
+			name: `make_struct: values`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'make_struct')
+				r = make_struct("rose", price=100, color="red")
+				assert.eq(str(r), 'rose(color = "red", price = 100)')
+			`),
+		},
+		{
+			name: `make_struct: compare`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'make_struct')
+				a = make_struct("rose", n=100)
+				b = make_struct("rose", n=100)
+				c = make_struct("rose", n=200)
+				d = make_struct("rose", n=100, m=200)
+				e = make_struct("lily", n=100)
+				assert.eq(a, b)
+				assert.true(a == b)
+				assert.true(a != c)
+				assert.true(a != d)
+				assert.true(a != e)
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
