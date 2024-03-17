@@ -182,6 +182,10 @@ func TestUnmarshal(t *testing.T) {
 			"bar": starlark.String("baz"),
 		},
 	}
+	st := starlarkstruct.FromStringDict(starlark.String("young"), map[string]starlark.Value{
+		"foo": starlark.MakeInt(42),
+		"bar": starlark.String("baz"),
+	})
 	gs := struct {
 		Message string
 		Times   int
@@ -235,9 +239,10 @@ func TestUnmarshal(t *testing.T) {
 		{starlark.NewList([]starlark.Value{starlark.MakeInt(42), ct}), []interface{}{42, &customType{42}}, ""},
 		{starlark.Tuple{starlark.String("foo"), starlark.MakeInt(42)}, []interface{}{"foo", 42}, ""},
 		{ss, []interface{}{"Hello", "World"}, ""},
-		{&starlarkstruct.Struct{}, map[string]interface{}{}, ""},
 		{srt, map[string]interface{}{"Message": "Aloha", "Times": 100, "Later": now}, ""},
 		{md, map[string]interface{}{"foo": 42, "bar": "baz"}, ""},
+		{st, map[string]interface{}{"foo": 42, "bar": "baz"}, ""},
+		{&starlarkstruct.Struct{}, map[string]interface{}{}, ""},
 		{convert.NewGoSlice([]int{1, 2, 3}), []int{1, 2, 3}, ""},
 		{convert.NewGoSlice([]string{"Hello", "World"}), []string{"Hello", "World"}, ""},
 		{convert.NewGoMap(map[string]int{"foo": 42}), map[string]int{"foo": 42}, ""},
