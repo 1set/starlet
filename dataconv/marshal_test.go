@@ -32,16 +32,23 @@ func TestMarshal(t *testing.T) {
 	}
 
 	ct, _ := (&customType{42}).MarshalStarlark()
-	expectedStrDictCustomType := starlark.NewDict(2)
-	if err := expectedStrDictCustomType.SetKey(starlark.String("foo"), starlark.MakeInt(42)); err != nil {
+	expectedStrDict := starlark.NewDict(2)
+	if err := expectedStrDict.SetKey(starlark.String("foo"), starlark.MakeInt(42)); err != nil {
 		t.Fatal(err)
 	}
-	if err := expectedStrDictCustomType.SetKey(starlark.String("bar"), ct); err != nil {
+	if err := expectedStrDict.SetKey(starlark.String("bar"), ct); err != nil {
 		t.Fatal(err)
 	}
 
 	fnoop := func() {}
 	fnow := time.Now
+	crt := struct {
+		Message string
+		Times   int
+	}{
+		Message: "random",
+		Times:   2,
+	}
 
 	now := time.Now()
 	cases := []struct {
@@ -73,9 +80,11 @@ func TestMarshal(t *testing.T) {
 		{map[interface{}]interface{}{"foo": 42}, expectedStringDict, ""},
 		{map[interface{}]interface{}{42 * 2: 42}, expectedIntDict, ""},
 		{&customType{42}, ct, ""},
-		{map[string]interface{}{"foo": 42, "bar": &customType{42}}, expectedStrDictCustomType, ""},
-		{map[interface{}]interface{}{"foo": 42, "bar": &customType{42}}, expectedStrDictCustomType, ""},
+		{map[string]interface{}{"foo": 42, "bar": &customType{42}}, expectedStrDict, ""},
+		{map[interface{}]interface{}{"foo": 42, "bar": &customType{42}}, expectedStrDict, ""},
 		{[]interface{}{42, &customType{42}}, starlark.NewList([]starlark.Value{starlark.MakeInt(42), ct}), ""},
+		{crt, starlark.None, `unrecognized type: struct { Message string; Times int }{Message:"random", Times:2}`},
+		{&crt, starlark.None, `unrecognized type: &struct { Message string; Times int }{Message:"random", Times:2}`},
 		{&invalidCustomType{42}, starlark.None, "unrecognized type: &dataconv.invalidCustomType{Foo:42}"},
 		{&anotherCustomType{customType{42}, nil, nil}, ct, ""},
 		{&anotherCustomType{customType{42}, fmt.Errorf("foo foo"), nil}, starlark.None, "foo foo"},
