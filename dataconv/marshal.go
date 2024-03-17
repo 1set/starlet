@@ -99,6 +99,21 @@ func Marshal(data interface{}) (v starlark.Value, err error) {
 
 // Unmarshal converts a starlark.Value into it's Golang counterpart, like FromValue() of package starlight does.
 func Unmarshal(x starlark.Value) (val interface{}, err error) {
+	iterAttrs := func(v starlark.HasAttrs) (map[string]interface{}, error) {
+		jo := make(map[string]interface{})
+		for _, name := range v.AttrNames() {
+			sv, err := v.Attr(name)
+			if err != nil {
+				return nil, err
+			}
+			jo[name], err = Unmarshal(sv)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return jo, nil
+	}
+
 	switch v := x.(type) {
 	case starlark.NoneType:
 		val = nil
@@ -242,33 +257,19 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 			}
 			val = _var
 		} else {
-			jo := make(map[string]interface{})
-			for _, name := range v.AttrNames() {
-				sv, err := v.Attr(name)
-				if err != nil {
-					return nil, err
-				}
-				jo[name], err = Unmarshal(sv)
-				if err != nil {
-					return nil, err
-				}
+			if am, err := iterAttrs(v); err != nil {
+				return nil, err
+			} else {
+				val = am
 			}
-			val = jo
 			//err = fmt.Errorf("constructor object from *starlarkstruct.Struct not supported Marshaler to Starlark object: %T", v.Constructor())
 		}
 	case *starlarkstruct.Module:
-		jo := make(map[string]interface{})
-		for _, name := range v.AttrNames() {
-			sv, err := v.Attr(name)
-			if err != nil {
-				return nil, err
-			}
-			jo[name], err = Unmarshal(sv)
-			if err != nil {
-				return nil, err
-			}
+		if am, err := iterAttrs(v); err != nil {
+			return nil, err
+		} else {
+			val = am
 		}
-		val = jo
 	case *convert.GoSlice:
 		if IsInterfaceNil(v) {
 			err = fmt.Errorf("nil GoSlice")
