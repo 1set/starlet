@@ -245,6 +245,80 @@ load("go_idiomatic", "quit")
 quit(1)
 ```
 
+### `module(name, **kv)`
+
+Returns the module with the given name and keyword arguments.
+The main difference between the `module` and the `struct` is that the string representation of the `module` does not enumerate its fields.
+The module can't be compared with `==` and `!=`, but the `struct` can.
+
+#### Parameters
+
+| name   | type       | description                            |
+|--------|------------|----------------------------------------|
+| `name` | `string`   | The name of the module to return.      |
+| `kv`   | `**kwargs` | Key-value pairs to provide attributes. |
+
+#### Examples
+
+**Basic**
+
+Get the `os` module with pid attribute.
+
+```python
+load("go_idiomatic", "module")
+os = module("os", pid=1)
+print(os)
+# Output: <module "os">
+```
+
+### `struct(**kv)`
+
+Returns a new struct with the given keyword arguments.
+
+#### Parameters
+
+| name | type       | description                            |
+|------|------------|----------------------------------------|
+| `kv` | `**kwargs` | Key-value pairs to provide attributes. |
+
+#### Examples
+
+**Basic**
+
+Create a struct with name and age attributes.
+
+```python
+load("go_idiomatic", "struct")
+person = struct(name="Alice", age=30)
+print(person)
+# Output: struct(age = 30, name = "Alice")
+```
+
+### `make_struct(name, **kv)`
+
+Returns a new struct with the given name as constructor and keyword arguments.
+Comparing two structs with `==` and `!=` will compare their constructors first and then their fields.
+
+#### Parameters
+
+| name   | type       | description                            |
+|--------|------------|----------------------------------------|
+| `name` | `string`   | The name to use as constructor.        |
+| `kv`   | `**kwargs` | Key-value pairs to provide attributes. |
+
+#### Examples
+
+**Basic**
+
+Create a struct with name and age attributes.
+
+```python
+load("go_idiomatic", "make_struct")
+person = make_struct("Person", name="Alice", age=30)
+print(person)
+# Output: Person(age = 30, name = "Alice")
+```
+
 ## Types
 
 ### `nil`
