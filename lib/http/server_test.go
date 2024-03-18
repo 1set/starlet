@@ -214,6 +214,18 @@ func TestServerResponse(t *testing.T) {
 			`),
 		},
 		{
+			name: "invalid content type",
+			script: itn.HereDoc(`
+				response.set_content_type(True)
+			`),
+			request:        getMockRequest(bd),
+			expectedStatus: http.StatusBadRequest,
+			expectedResponse: itn.HereDoc(`
+		        Content-Type: text/plain
+				set_content_type: for parameter 1: got bool, want string or bytes
+			`),
+		},
+		{
 			name: "invalid status code",
 			script: itn.HereDoc(`
 				response.set_code()
