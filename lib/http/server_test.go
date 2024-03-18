@@ -90,7 +90,10 @@ func TestServerResponse(t *testing.T) {
 		response.add_header("Content-Type", "Not Seen")
 		response.add_header("X-Think", "Testing")
 		response.add_header("X-Think", "Starlark")
+		response.set_content_type("")
+		response.set_data(b'Not Data')
 		response.set_text(b'Hello, World!')
+		response.set_html('<h1>Hello, World!</h1>')
 		response.set_json({"abc": [1, 2, 3]})
 	`)
 

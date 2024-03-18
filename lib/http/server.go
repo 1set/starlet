@@ -76,13 +76,13 @@ type ServerResponse struct {
 func (r *ServerResponse) Struct() *starlarkstruct.Struct {
 	// prepare struct members
 	sd := starlark.StringDict{
-		"set_status":  starlark.NewBuiltin("status", r.setStatus),
-		"add_header":  starlark.NewBuiltin("add_header", r.addHeaderValue),
-		"set_content": starlark.NewBuiltin("set_content", r.setContentType),
-		"set_data":    starlark.NewBuiltin("set_data", r.setData(contentDataBinary)),
-		"set_json":    starlark.NewBuiltin("set_json", r.setJSONData),
-		"set_text":    starlark.NewBuiltin("set_text", r.setData(contentDataText)),
-		"set_html":    starlark.NewBuiltin("set_html", r.setData(contentDataHTML)),
+		"set_status":       starlark.NewBuiltin("status", r.setStatus),
+		"add_header":       starlark.NewBuiltin("add_header", r.addHeaderValue),
+		"set_content_type": starlark.NewBuiltin("set_content_type", r.setContentType),
+		"set_data":         starlark.NewBuiltin("set_data", r.setData(contentDataBinary)),
+		"set_json":         starlark.NewBuiltin("set_json", r.setJSONData),
+		"set_text":         starlark.NewBuiltin("set_text", r.setData(contentDataText)),
+		"set_html":         starlark.NewBuiltin("set_html", r.setData(contentDataHTML)),
 	}
 	// create struct
 	return starlarkstruct.FromStringDict(starlark.String("Response"), sd)
