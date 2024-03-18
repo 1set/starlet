@@ -81,72 +81,88 @@ func TestConvertServerRequest(t *testing.T) {
 }
 
 func TestServerResponse(t *testing.T) {
-	// create a request
-	s := `{"name":"John","age":30}`
-	req := getMockRequest(s)
-	script := itn.HereDoc(`
-		print(request)
-		response.set_status(201)
-		response.add_header("Content-Type", "Not Seen")
-		response.add_header("X-Think", "Testing")
-		response.add_header("X-Think", "Starlark")
-		response.set_content_type("")
-		response.set_data(b'Not Data')
-		response.set_text(b'Hello, World!')
-		response.set_html('<h1>Hello, World!</h1>')
-		response.set_json({"abc": [1, 2, 3]})
-	`)
+	testCases := []struct {
+		name             string
+		script           string
+		request          *http.Request
+		expectedStatus   int
+		expectedResponse string
+	}{
+		{
+			name: "full json and override",
+			script: itn.HereDoc(`
+				print(request)
+				response.set_status(201)
+				response.add_header("Content-Type", "Not Seen")
+				response.add_header("X-Think", "Testing")
+				response.add_header("X-Think", "Starlark")
+				response.set_content_type("")
+				response.set_data(b'Not Data')
+				response.set_text(b'Hello, World!')
+				response.set_html('<h1>Hello, World!</h1>')
+				response.set_json({"abc": [1, 2, 3]})
+			`),
+			request:        getMockRequest(`{"name":"John","age":30}`),
+			expectedStatus: http.StatusCreated,
+			expectedResponse: itn.HereDoc(`
+				Content-Type: application/json
+				X-Think: Testing
+				X-Think: Starlark
 
-	// Create a new ResponseRecorder
-	rr := httptest.NewRecorder()
-
-	// Call the handler function with the request and ResponseRecorder
-	hand := getScriptHandler(script)
-	hand(rr, req)
-
-	// Check the status code
-	if status := rr.Code; status != http.StatusCreated {
-		t.Errorf("Unexpected status code: %v, expected %v", status, http.StatusCreated)
+				{"abc":[1,2,3]}
+			`),
+		},
+		{
+			name: "no ops",
+			script: itn.HereDoc(`
+			`),
+			request:        getMockRequest(`{"name":"John","age":30}`),
+			expectedStatus: http.StatusOK,
+			expectedResponse: itn.HereDoc(`
+				Content-Type: application/octet-stream
+			`),
+		},
 	}
-	if bs, err := httputil.DumpRequest(req, true); err != nil {
-		t.Errorf("fail to dump request: %v", err)
-	} else {
-		t.Log("request", string(bs))
-	}
-	if bs, err := httputil.DumpResponse(rr.Result(), true); err != nil {
-		t.Errorf("fail to dump response: %v", err)
-	} else {
-		t.Log("response", string(bs))
-		exp := itn.HereDoc(`
-			Content-Type: application/json
-			X-Think: Testing
-			X-Think: Starlark
-		
-			{"abc":[1,2,3]}
-		`)
-		expLines := strings.Split(strings.TrimSpace(exp), "\n")
+	for i, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// call the handler
+			rr := httptest.NewRecorder()
+			handler := getScriptHandler(tc.script)
+			handler(rr, tc.request)
 
-		got := string(bs)
-		gotLines := strings.Split(strings.TrimSpace(got), "\n")
+			// check the status
+			if status := rr.Code; status != tc.expectedStatus {
+				t.Errorf("Unexpected status code: %v, expected %v", status, tc.expectedStatus)
+			}
 
-		for _, expLine := range expLines {
-			if expLine = strings.TrimSpace(expLine); expLine == "" {
-				continue
-			}
-			found := false
-			for _, gotLine := range gotLines {
-				if gotLine = strings.TrimSpace(gotLine); gotLine == "" {
-					continue
+			// check the response by comparing the expected lines
+			if bs, err := httputil.DumpResponse(rr.Result(), true); err != nil {
+				t.Errorf("fail to dump response: %v", err)
+			} else {
+				t.Logf("Response#%d: %s", i, bs)
+				expLines := strings.Split(strings.TrimSpace(tc.expectedResponse), "\n")
+				got := string(bs)
+				gotLines := strings.Split(strings.TrimSpace(got), "\n")
+				for _, expLine := range expLines {
+					if expLine = strings.TrimSpace(expLine); expLine == "" {
+						continue
+					}
+					found := false
+					for _, gotLine := range gotLines {
+						if gotLine = strings.TrimSpace(gotLine); gotLine == "" {
+							continue
+						}
+						if strings.Contains(gotLine, expLine) {
+							found = true
+							break
+						}
+					}
+					if !found {
+						t.Errorf("Expected line not found in response: {%v}", expLine)
+					}
 				}
-				if strings.Contains(gotLine, expLine) {
-					found = true
-					break
-				}
 			}
-			if !found {
-				t.Errorf("Expected line not found in response: {%v}", expLine)
-			}
-		}
+		})
 	}
 }
 
