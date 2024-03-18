@@ -58,31 +58,6 @@ func ConvertServerRequest(r *http.Request) *starlarkstruct.Struct {
 	return starlarkstruct.FromStringDict(starlark.String("Request"), sd)
 }
 
-func mapStrs2Dict(m map[string][]string) *starlark.Dict {
-	d := &starlark.Dict{}
-	for k, v := range m {
-		_ = d.SetKey(starlark.String(k), sliceStr2List(v))
-	}
-	return d
-}
-
-func sliceStr2List(s []string) *starlark.List {
-	l := make([]starlark.Value, len(s))
-	for i, v := range s {
-		l[i] = starlark.String(v)
-	}
-	return starlark.NewList(l)
-}
-
-type contentDataType uint
-
-const (
-	contentDataBinary contentDataType = iota
-	contentDataJSON
-	contentDataText
-	contentDataHTML
-)
-
 // ServerResponse is a Starlark struct to save info in Starlark scripts to modify http.ResponseWriter outside.
 type ServerResponse struct {
 	statusCode  int
@@ -92,6 +67,12 @@ type ServerResponse struct {
 	data        []byte
 }
 
+// NewServerResponse creates a new ServerResponse.
+func NewServerResponse() *ServerResponse {
+	return &ServerResponse{}
+}
+
+// Struct returns a Starlark struct for use in Starlark scripts.
 func (r *ServerResponse) Struct() *starlarkstruct.Struct {
 	// prepare struct members
 	sd := starlark.StringDict{
@@ -196,4 +177,29 @@ func (r *ServerResponse) setData(dt contentDataType) func(thread *starlark.Threa
 		r.data = data.GoBytes()
 		return starlark.None, nil
 	}
+}
+
+type contentDataType uint
+
+const (
+	contentDataBinary contentDataType = iota
+	contentDataJSON
+	contentDataText
+	contentDataHTML
+)
+
+func mapStrs2Dict(m map[string][]string) *starlark.Dict {
+	d := &starlark.Dict{}
+	for k, v := range m {
+		_ = d.SetKey(starlark.String(k), sliceStr2List(v))
+	}
+	return d
+}
+
+func sliceStr2List(s []string) *starlark.List {
+	l := make([]starlark.Value, len(s))
+	for i, v := range s {
+		l[i] = starlark.String(v)
+	}
+	return starlark.NewList(l)
 }
