@@ -395,11 +395,13 @@ func (r *Response) Text(thread *starlark.Thread, _ *starlark.Builtin, args starl
 	if err != nil {
 		return nil, err
 	}
-	r.Body.Close()
+
 	// reset reader to allow multiple calls
+	_ = r.Body.Close()
 	r.Body = ioutil.NopCloser(bytes.NewReader(data))
 
-	return starlark.String(string(data)), nil
+	// wraps as result
+	return starlark.String(data), nil
 }
 
 // JSON attempts to parse the response body as JSON
@@ -410,7 +412,7 @@ func (r *Response) JSON(thread *starlark.Thread, _ *starlark.Builtin, args starl
 	}
 
 	// reset reader to allow multiple calls
-	r.Body.Close()
+	_ = r.Body.Close()
 	r.Body = ioutil.NopCloser(bytes.NewReader(body))
 
 	// use internal marshaler to support starlark types
