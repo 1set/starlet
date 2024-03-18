@@ -178,6 +178,19 @@ func TestServerResponse(t *testing.T) {
 			`),
 		},
 		{
+			name: "status code 101",
+			script: itn.HereDoc(`
+				response.set_code(101)
+				response.set_text('Switch')
+			`),
+			request:        getMockRequest(bd),
+			expectedStatus: http.StatusSwitchingProtocols,
+			expectedResponse: itn.HereDoc(`
+		        Content-Type: text/plain
+		        Switch
+			`),
+		},
+		{
 			name: "invalid json",
 			script: itn.HereDoc(`
 				d = {"abc": [1, 2, 3]}
