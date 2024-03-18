@@ -89,6 +89,16 @@ func TestServerResponse(t *testing.T) {
 		expectedResponse string
 	}{
 		{
+			name: "no ops",
+			script: itn.HereDoc(`
+			`),
+			request:        getMockRequest(`{"name":"John","age":30}`),
+			expectedStatus: http.StatusOK,
+			expectedResponse: itn.HereDoc(`
+				Content-Type: application/octet-stream
+			`),
+		},
+		{
 			name: "full json and override",
 			script: itn.HereDoc(`
 				print(request)
@@ -108,18 +118,68 @@ func TestServerResponse(t *testing.T) {
 				Content-Type: application/json
 				X-Think: Testing
 				X-Think: Starlark
-
 				{"abc":[1,2,3]}
 			`),
 		},
 		{
-			name: "no ops",
+			name: "simple text",
 			script: itn.HereDoc(`
+				response.set_text('Hello, World!')
 			`),
 			request:        getMockRequest(`{"name":"John","age":30}`),
 			expectedStatus: http.StatusOK,
 			expectedResponse: itn.HereDoc(`
+				Content-Type: text/plain
+				Hello, World!
+			`),
+		},
+		{
+			name: "simple html",
+			script: itn.HereDoc(`
+				response.set_html('<h1>Hello, World!</h1>')
+			`),
+			request:        getMockRequest(`{"name":"John","age":30}`),
+			expectedStatus: http.StatusOK,
+			expectedResponse: itn.HereDoc(`
+				Content-Type: text/html
+				<h1>Hello, World!</h1>
+			`),
+		},
+		{
+			name: "set content type",
+			script: itn.HereDoc(`
+				response.set_content_type("application/starlark")
+			`),
+			request:        getMockRequest(`{"name":"John","age":30}`),
+			expectedStatus: http.StatusOK,
+			expectedResponse: itn.HereDoc(`
+				Content-Type: application/starlark
+			`),
+		},
+		{
+			name: "invalid json",
+			script: itn.HereDoc(`
+				d = {"abc": [1, 2, 3]}
+				d["circular"] = d
+				response.set_json(d)
+			`),
+			request:        getMockRequest(`{"name":"John","age":30}`),
+			expectedStatus: http.StatusBadRequest,
+			expectedResponse: itn.HereDoc(`
+		        Content-Type: text/plain
+				cyclic reference found
+			`),
+		},
+		{
+			name: "invalid json in request",
+			script: itn.HereDoc(`
+				response.set_data(str(request.json == None))
+			`),
+			request:        getMockRequest(`{"name":"John","age":30`),
+			expectedStatus: http.StatusOK,
+			expectedResponse: itn.HereDoc(`
 				Content-Type: application/octet-stream
+				True
 			`),
 		},
 	}
@@ -202,6 +262,7 @@ func getScriptHandler(script string) func(w http.ResponseWriter, r *http.Request
 
 		// handle error
 		if err != nil {
+			w.Header().Add("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusBadRequest)
 			_, _ = w.Write([]byte(err.Error()))
 			return
@@ -209,6 +270,7 @@ func getScriptHandler(script string) func(w http.ResponseWriter, r *http.Request
 
 		// handle response
 		if err := resp.Write(w); err != nil {
+			w.Header().Add("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusInternalServerError)
 			_, _ = w.Write([]byte(err.Error()))
 		}
