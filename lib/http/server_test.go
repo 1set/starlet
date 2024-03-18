@@ -131,6 +131,31 @@ func TestServerResponse(t *testing.T) {
 			`),
 		},
 		{
+			name: "add header",
+			script: itn.HereDoc(`
+				response.add_header("Content-Type", "Yes")
+				response.add_header("X-Think", "Testing")
+			`),
+			request:        getMockRequest(bd),
+			expectedStatus: http.StatusOK,
+			expectedResponse: itn.HereDoc(`
+		        Content-Type: application/octet-stream
+				X-Think: Testing
+			`),
+		},
+		{
+			name: "invalid header",
+			script: itn.HereDoc(`
+				response.add_header("X-Think")
+			`),
+			request:        getMockRequest(bd),
+			expectedStatus: http.StatusBadRequest,
+			expectedResponse: itn.HereDoc(`
+		        Content-Type: text/plain
+				add_header: missing argument for value
+			`),
+		},
+		{
 			name: "simple data",
 			script: itn.HereDoc(`
 				response.set_data('Hello, World!')
