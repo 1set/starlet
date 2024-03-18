@@ -89,6 +89,7 @@ func TestServerResponse(t *testing.T) {
 		return
 	}
 
+	bd := `{"name":"John","age":30}`
 	testCases := []struct {
 		name             string
 		script           string
@@ -100,7 +101,7 @@ func TestServerResponse(t *testing.T) {
 			name: "no ops",
 			script: itn.HereDoc(`
 			`),
-			request:        getMockRequest(`{"name":"John","age":30}`),
+			request:        getMockRequest(bd),
 			expectedStatus: http.StatusOK,
 			expectedResponse: itn.HereDoc(`
 				Content-Type: application/octet-stream
@@ -120,7 +121,7 @@ func TestServerResponse(t *testing.T) {
 				response.set_html('<h1>Hello, World!</h1>')
 				response.set_json({"abc": [1, 2, 3]})
 			`),
-			request:        getMockRequest(`{"name":"John","age":30}`),
+			request:        getMockRequest(bd),
 			expectedStatus: http.StatusCreated,
 			expectedResponse: itn.HereDoc(`
 				Content-Type: application/json
@@ -134,7 +135,7 @@ func TestServerResponse(t *testing.T) {
 			script: itn.HereDoc(`
 				response.set_text('Hello, World!')
 			`),
-			request:        getMockRequest(`{"name":"John","age":30}`),
+			request:        getMockRequest(bd),
 			expectedStatus: http.StatusOK,
 			expectedResponse: itn.HereDoc(`
 				Content-Type: text/plain
@@ -146,7 +147,7 @@ func TestServerResponse(t *testing.T) {
 			script: itn.HereDoc(`
 				response.set_html('<h1>Hello, World!</h1>')
 			`),
-			request:        getMockRequest(`{"name":"John","age":30}`),
+			request:        getMockRequest(bd),
 			expectedStatus: http.StatusOK,
 			expectedResponse: itn.HereDoc(`
 				Content-Type: text/html
@@ -158,10 +159,22 @@ func TestServerResponse(t *testing.T) {
 			script: itn.HereDoc(`
 				response.set_content_type("application/starlark")
 			`),
-			request:        getMockRequest(`{"name":"John","age":30}`),
+			request:        getMockRequest(bd),
 			expectedStatus: http.StatusOK,
 			expectedResponse: itn.HereDoc(`
 				Content-Type: application/starlark
+			`),
+		},
+		{
+			name: "invalid status code",
+			script: itn.HereDoc(`
+				response.set_code(999)
+			`),
+			request:        getMockRequest(bd),
+			expectedStatus: http.StatusBadRequest,
+			expectedResponse: itn.HereDoc(`
+		        Content-Type: text/plain
+		        invalid status code
 			`),
 		},
 		{
@@ -171,7 +184,7 @@ func TestServerResponse(t *testing.T) {
 				d["circular"] = d
 				response.set_json(d)
 			`),
-			request:        getMockRequest(`{"name":"John","age":30}`),
+			request:        getMockRequest(bd),
 			expectedStatus: http.StatusBadRequest,
 			expectedResponse: itn.HereDoc(`
 		        Content-Type: text/plain

@@ -76,7 +76,8 @@ type ServerResponse struct {
 func (r *ServerResponse) Struct() *starlarkstruct.Struct {
 	// prepare struct members
 	sd := starlark.StringDict{
-		"set_status":       starlark.NewBuiltin("status", r.setStatus),
+		"set_status":       starlark.NewBuiltin("set_status", r.setStatus),
+		"set_code":         starlark.NewBuiltin("set_code", r.setStatus), // alias for set_status
 		"add_header":       starlark.NewBuiltin("add_header", r.addHeaderValue),
 		"set_content_type": starlark.NewBuiltin("set_content_type", r.setContentType),
 		"set_data":         starlark.NewBuiltin("set_data", r.setData(contentDataBinary)),
@@ -163,9 +164,12 @@ func (r *ServerResponse) Write(w http.ResponseWriter) (err error) {
 }
 
 func (r *ServerResponse) setStatus(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var code uint8
+	var code uint16
 	if err := starlark.UnpackPositionalArgs(b.Name(), args, nil, 1, &code); err != nil {
 		return nil, err
+	}
+	if code < 100 || code > 599 {
+		return nil, errors.New("invalid status code")
 	}
 	r.statusCode = int(code)
 	return starlark.None, nil
