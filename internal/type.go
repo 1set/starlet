@@ -39,6 +39,11 @@ func (p *StringOrBytes) Unpack(v starlark.Value) error {
 	return fmt.Errorf("got %s, want string or bytes", v.Type())
 }
 
+// GoBytes returns the Go byte slice representation of the StringOrBytes.
+func (p StringOrBytes) GoBytes() []byte {
+	return []byte(p)
+}
+
 // GoString returns the Go string representation of the StringOrBytes.
 func (p StringOrBytes) GoString() string {
 	return string(p)

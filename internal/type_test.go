@@ -109,6 +109,9 @@ func TestStringOrBytes_Stringer(t *testing.T) {
 			if got := tt.v.GoString(); got != tt.wantGo {
 				t.Errorf("StringOrBytes.GoString() = %v, want %v", got, tt.wantGo)
 			}
+			if got := tt.v.GoBytes(); string(got) != tt.wantGo {
+				t.Errorf("StringOrBytes.GoBytes() = %v, want %v", got, []byte(tt.wantGo))
+			}
 			if got := tt.v.StarlarkString(); got != tt.wantStar {
 				t.Errorf("StringOrBytes.StarlarkString() = %v, want %v", got, tt.wantStar)
 			}
