@@ -58,6 +58,11 @@ func ConvertServerRequest(r *http.Request) *starlarkstruct.Struct {
 	return starlarkstruct.FromStringDict(starlark.String("Request"), sd)
 }
 
+// NewServerResponse creates a new ServerResponse.
+func NewServerResponse() *ServerResponse {
+	return &ServerResponse{}
+}
+
 // ServerResponse is a Starlark struct to save info in Starlark scripts to modify http.ResponseWriter outside.
 type ServerResponse struct {
 	statusCode  int
@@ -65,11 +70,6 @@ type ServerResponse struct {
 	contentType string
 	dataType    contentDataType
 	data        []byte
-}
-
-// NewServerResponse creates a new ServerResponse.
-func NewServerResponse() *ServerResponse {
-	return &ServerResponse{}
 }
 
 // Struct returns a Starlark struct for use in Starlark scripts.
