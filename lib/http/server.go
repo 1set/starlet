@@ -90,9 +90,9 @@ func (r *ServerResponse) Struct() *starlarkstruct.Struct {
 
 // ExportedServerResponse is a struct to export the response data to Go.
 type ExportedServerResponse struct {
-	StatusCode int
-	Header     http.Header
-	Data       []byte
+	StatusCode int         // StatusCode is the status code of the response.
+	Header     http.Header // Header is the header of the response, a map of string to list of strings. Content-Type is set automatically.
+	Data       []byte      // Data is the data of the response, usually the body content.
 }
 
 // Export dumps the response data to a struct for later use in Go.
@@ -144,16 +144,16 @@ func (r *ServerResponse) Export() *ExportedServerResponse {
 func (r *ServerResponse) Write(w http.ResponseWriter) (err error) {
 	// basic check
 	if w == nil {
-		err = errors.New("nil http.ResponseWriter")
+		err = errors.New("nil response writer")
 		return
 	}
 	d := r.Export()
 	if d == nil {
-		err = errors.New("nil ExportedServerResponse")
+		err = errors.New("nil exported response")
 		return
 	}
 
-	// write header, status code and then data
+	// write header first, and then status code & data
 	copyHeader(w.Header(), d.Header)
 	w.WriteHeader(d.StatusCode)
 	if d.Data != nil {

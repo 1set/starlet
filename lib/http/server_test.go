@@ -2,9 +2,6 @@ package http
 
 import (
 	"bytes"
-	itn "github.com/1set/starlet/internal"
-	"go.starlark.net/starlarktest"
-	"go.starlark.net/syntax"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
@@ -12,7 +9,10 @@ import (
 	"strings"
 	"testing"
 
+	itn "github.com/1set/starlet/internal"
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarktest"
+	"go.starlark.net/syntax"
 )
 
 func TestConvertServerRequest(t *testing.T) {
@@ -81,6 +81,14 @@ func TestConvertServerRequest(t *testing.T) {
 }
 
 func TestServerResponse(t *testing.T) {
+	if sr := NewServerResponse(); sr == nil {
+		t.Error("NewServerResponse returned nil")
+		return
+	} else if err := sr.Write(nil); err == nil {
+		t.Error("ServerResponse.Write(nil) returned nil")
+		return
+	}
+
 	testCases := []struct {
 		name             string
 		script           string
