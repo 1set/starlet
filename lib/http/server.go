@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"errors"
 	"io/ioutil"
 	"net/http"
 
@@ -91,33 +92,75 @@ type ServerResponse struct {
 	data        []byte
 }
 
+func (r *ServerResponse) Struct() *starlarkstruct.Struct {
+	// prepare struct members
+	sd := starlark.StringDict{
+		"status":      starlark.NewBuiltin("status", r.setStatus),
+		"set_header":  starlark.NewBuiltin("set_header", r.setHeader),
+		"set_content": starlark.NewBuiltin("set_content", r.setContentType),
+		"set_data":    starlark.NewBuiltin("set_data", r.setData(contentDataBinary)),
+		"set_json":    starlark.NewBuiltin("set_json", r.setData(contentDataJSON)),
+		"set_text":    starlark.NewBuiltin("set_text", r.setData(contentDataText)),
+		"set_html":    starlark.NewBuiltin("set_html", r.setData(contentDataHTML)),
+	}
+	// create struct
+	return starlarkstruct.FromStringDict(starlark.String("Response"), sd)
+}
+
+// Write writes the response to http.ResponseWriter.
+func (r *ServerResponse) Write(w http.ResponseWriter) (err error) {
+	if w == nil {
+		err = errors.New("nil http.ResponseWriter")
+		return
+	}
+
+	// status code
+	if r.statusCode > 0 {
+		w.WriteHeader(r.statusCode)
+	} else {
+		w.WriteHeader(http.StatusOK)
+	}
+
+	// headers
+	if r.headers != nil {
+		for k, vs := range r.headers {
+			for _, v := range vs {
+				w.Header().Add(k, v)
+			}
+		}
+	}
+
+	// content type
+	contentType := r.contentType
+	if contentType == "" {
+		switch r.dataType {
+		case contentDataJSON:
+			contentType = "application/json"
+		case contentDataText:
+			contentType = "text/plain"
+		case contentDataHTML:
+			contentType = "text/html"
+		case contentDataBinary:
+			fallthrough
+		default:
+			contentType = "application/octet-stream"
+		}
+	}
+	w.Header().Set("Content-Type", contentType)
+
+	// body data
+	if r.data != nil {
+		_, err = w.Write(r.data)
+	}
+	return
+}
+
 func (r *ServerResponse) setStatus(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var code uint8
 	if err := starlark.UnpackPositionalArgs(b.Name(), args, nil, 1, &code); err != nil {
 		return nil, err
 	}
 	r.statusCode = int(code)
-	return starlark.None, nil
-}
-
-func (r *ServerResponse) setData(dt contentDataType) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		var data itn.StringOrBytes
-		if err := starlark.UnpackPositionalArgs(b.Name(), args, nil, 1, &data); err != nil {
-			return nil, err
-		}
-		r.dataType = dt
-		r.data = data.GoBytes()
-		return starlark.None, nil
-	}
-}
-
-func (r *ServerResponse) setContentType(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var ct itn.StringOrBytes
-	if err := starlark.UnpackPositionalArgs(b.Name(), args, nil, 1, &ct); err != nil {
-		return nil, err
-	}
-	r.contentType = ct.GoString()
 	return starlark.None, nil
 }
 
@@ -132,4 +175,25 @@ func (r *ServerResponse) setHeader(thread *starlark.Thread, b *starlark.Builtin,
 	}
 	r.headers[k] = append(r.headers[k], v)
 	return starlark.None, nil
+}
+
+func (r *ServerResponse) setContentType(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var ct itn.StringOrBytes
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, nil, 1, &ct); err != nil {
+		return nil, err
+	}
+	r.contentType = ct.GoString()
+	return starlark.None, nil
+}
+
+func (r *ServerResponse) setData(dt contentDataType) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var data itn.StringOrBytes
+		if err := starlark.UnpackPositionalArgs(b.Name(), args, nil, 1, &data); err != nil {
+			return nil, err
+		}
+		r.dataType = dt
+		r.data = data.GoBytes()
+		return starlark.None, nil
+	}
 }
