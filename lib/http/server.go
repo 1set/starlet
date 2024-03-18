@@ -80,7 +80,7 @@ func (r *ServerResponse) Struct() *starlarkstruct.Struct {
 		"set_header":  starlark.NewBuiltin("set_header", r.setHeader),
 		"set_content": starlark.NewBuiltin("set_content", r.setContentType),
 		"set_data":    starlark.NewBuiltin("set_data", r.setData(contentDataBinary)),
-		"set_json":    starlark.NewBuiltin("set_json", r.setData(contentDataJSON)),
+		"set_json":    starlark.NewBuiltin("set_json", r.setJSONData),
 		"set_text":    starlark.NewBuiltin("set_text", r.setData(contentDataText)),
 		"set_html":    starlark.NewBuiltin("set_html", r.setData(contentDataHTML)),
 	}
@@ -167,6 +167,7 @@ func (r *ServerResponse) setContentType(thread *starlark.Thread, b *starlark.Bui
 	return starlark.None, nil
 }
 
+// setData sets the response data with the given type except JSON.
 func (r *ServerResponse) setData(dt contentDataType) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var data itn.StringOrBytes
@@ -177,6 +178,23 @@ func (r *ServerResponse) setData(dt contentDataType) func(thread *starlark.Threa
 		r.data = data.GoBytes()
 		return starlark.None, nil
 	}
+}
+
+// setJSONData marshals the given Starlark value to JSON and sets the response data.
+func (r *ServerResponse) setJSONData(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var data starlark.Value
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, nil, 1, &data); err != nil {
+		return nil, err
+	}
+	// convert to JSON
+	bs, err := dataconv.MarshalStarlarkJSON(data, 0)
+	if err != nil {
+		return nil, err
+	}
+	// set data
+	r.data = []byte(bs)
+	r.dataType = contentDataJSON
+	return starlark.None, nil
 }
 
 type contentDataType uint
