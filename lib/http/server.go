@@ -12,7 +12,7 @@ import (
 	"go.starlark.net/starlarkstruct"
 )
 
-// ConvertServerRequest converts a http.Request to a Starlark struct for use in Starlark scripts.
+// ConvertServerRequest converts a http.Request to a Starlark struct for use in Starlark scripts on the server side.
 func ConvertServerRequest(r *http.Request) *starlarkstruct.Struct {
 	// for nil request, return nil
 	if r == nil {
@@ -63,7 +63,7 @@ func NewServerResponse() *ServerResponse {
 	return &ServerResponse{}
 }
 
-// ServerResponse is a Starlark struct to save info in Starlark scripts to modify http.ResponseWriter outside.
+// ServerResponse is a Starlark struct to save info in Starlark scripts to modify http.ResponseWriter outside on the server side.
 type ServerResponse struct {
 	statusCode  int
 	headers     map[string][]string
