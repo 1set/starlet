@@ -88,18 +88,32 @@ func (r *ServerResponse) Struct() *starlarkstruct.Struct {
 	return starlarkstruct.FromStringDict(starlark.String("Response"), sd)
 }
 
-// Write writes the response to http.ResponseWriter.
-func (r *ServerResponse) Write(w http.ResponseWriter) (err error) {
-	if w == nil {
-		err = errors.New("nil http.ResponseWriter")
-		return
+// ExportedServerResponse is a struct to export the response data to Go.
+type ExportedServerResponse struct {
+	StatusCode int
+	Header     http.Header
+	Data       []byte
+}
+
+// Export dumps the response data to a struct for later use in Go.
+func (r *ServerResponse) Export() *ExportedServerResponse {
+	resp := ExportedServerResponse{
+		Header: make(http.Header, len(r.headers)),
+		Data:   r.data,
+	}
+
+	// status code
+	if r.statusCode > 0 {
+		resp.StatusCode = r.statusCode
+	} else {
+		resp.StatusCode = http.StatusOK
 	}
 
 	// headers
 	if r.headers != nil {
 		for k, vs := range r.headers {
 			for _, v := range vs {
-				w.Header().Add(k, v)
+				resp.Header.Add(k, v)
 			}
 		}
 	}
@@ -120,18 +134,30 @@ func (r *ServerResponse) Write(w http.ResponseWriter) (err error) {
 			contentType = "application/octet-stream"
 		}
 	}
-	w.Header().Set("Content-Type", contentType)
+	resp.Header.Set("Content-Type", contentType)
 
-	// status code
-	if r.statusCode > 0 {
-		w.WriteHeader(r.statusCode)
-	} else {
-		w.WriteHeader(http.StatusOK)
+	// for later use
+	return &resp
+}
+
+// Write writes the response to http.ResponseWriter.
+func (r *ServerResponse) Write(w http.ResponseWriter) (err error) {
+	// basic check
+	if w == nil {
+		err = errors.New("nil http.ResponseWriter")
+		return
+	}
+	d := r.Export()
+	if d == nil {
+		err = errors.New("nil ExportedServerResponse")
+		return
 	}
 
-	// body data
-	if r.data != nil {
-		_, err = w.Write(r.data)
+	// write header, status code and then data
+	copyHeader(w.Header(), d.Header)
+	w.WriteHeader(d.StatusCode)
+	if d.Data != nil {
+		_, err = w.Write(d.Data)
 	}
 	return
 }
@@ -220,4 +246,12 @@ func sliceStr2List(s []string) *starlark.List {
 		l[i] = starlark.String(v)
 	}
 	return starlark.NewList(l)
+}
+
+func copyHeader(dst, src http.Header) {
+	for k, vv := range src {
+		for _, v := range vv {
+			dst.Add(k, v)
+		}
+	}
 }
