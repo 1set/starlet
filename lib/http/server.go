@@ -76,8 +76,8 @@ type ServerResponse struct {
 func (r *ServerResponse) Struct() *starlarkstruct.Struct {
 	// prepare struct members
 	sd := starlark.StringDict{
-		"status":      starlark.NewBuiltin("status", r.setStatus),
-		"set_header":  starlark.NewBuiltin("set_header", r.setHeader),
+		"set_status":  starlark.NewBuiltin("status", r.setStatus),
+		"add_header":  starlark.NewBuiltin("add_header", r.addHeaderValue),
 		"set_content": starlark.NewBuiltin("set_content", r.setContentType),
 		"set_data":    starlark.NewBuiltin("set_data", r.setData(contentDataBinary)),
 		"set_json":    starlark.NewBuiltin("set_json", r.setJSONData),
@@ -93,13 +93,6 @@ func (r *ServerResponse) Write(w http.ResponseWriter) (err error) {
 	if w == nil {
 		err = errors.New("nil http.ResponseWriter")
 		return
-	}
-
-	// status code
-	if r.statusCode > 0 {
-		w.WriteHeader(r.statusCode)
-	} else {
-		w.WriteHeader(http.StatusOK)
 	}
 
 	// headers
@@ -129,6 +122,13 @@ func (r *ServerResponse) Write(w http.ResponseWriter) (err error) {
 	}
 	w.Header().Set("Content-Type", contentType)
 
+	// status code
+	if r.statusCode > 0 {
+		w.WriteHeader(r.statusCode)
+	} else {
+		w.WriteHeader(http.StatusOK)
+	}
+
 	// body data
 	if r.data != nil {
 		_, err = w.Write(r.data)
@@ -145,7 +145,7 @@ func (r *ServerResponse) setStatus(thread *starlark.Thread, b *starlark.Builtin,
 	return starlark.None, nil
 }
 
-func (r *ServerResponse) setHeader(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (r *ServerResponse) addHeaderValue(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var key, value itn.StringOrBytes
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "key", &key, "value", &value); err != nil {
 		return nil, err
