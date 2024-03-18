@@ -131,6 +131,30 @@ func TestServerResponse(t *testing.T) {
 			`),
 		},
 		{
+			name: "simple data",
+			script: itn.HereDoc(`
+				response.set_data('Hello, World!')
+			`),
+			request:        getMockRequest(bd),
+			expectedStatus: http.StatusOK,
+			expectedResponse: itn.HereDoc(`
+		        Content-Type: application/octet-stream
+				Hello, World!
+			`),
+		},
+		{
+			name: "invalid data",
+			script: itn.HereDoc(`
+				response.set_data(123)
+			`),
+			request:        getMockRequest(bd),
+			expectedStatus: http.StatusBadRequest,
+			expectedResponse: itn.HereDoc(`
+		        Content-Type: text/plain
+				set_data: for parameter 1: got int, want string or bytes
+			`),
+		},
+		{
 			name: "simple text",
 			script: itn.HereDoc(`
 				response.set_text('Hello, World!')
@@ -140,6 +164,18 @@ func TestServerResponse(t *testing.T) {
 			expectedResponse: itn.HereDoc(`
 				Content-Type: text/plain
 				Hello, World!
+			`),
+		},
+		{
+			name: "invalid text",
+			script: itn.HereDoc(`
+				response.set_text(123)
+			`),
+			request:        getMockRequest(bd),
+			expectedStatus: http.StatusBadRequest,
+			expectedResponse: itn.HereDoc(`
+				Content-Type: text/plain
+		        set_text: for parameter 1: got int, want string or bytes
 			`),
 		},
 		{
@@ -155,6 +191,18 @@ func TestServerResponse(t *testing.T) {
 			`),
 		},
 		{
+			name: "invalid html",
+			script: itn.HereDoc(`
+				response.set_html(123)
+			`),
+			request:        getMockRequest(bd),
+			expectedStatus: http.StatusBadRequest,
+			expectedResponse: itn.HereDoc(`
+				Content-Type: text/plain
+		        set_html: for parameter 1: got int, want string or bytes
+			`),
+		},
+		{
 			name: "set content type",
 			script: itn.HereDoc(`
 				response.set_content_type("application/starlark")
@@ -167,6 +215,18 @@ func TestServerResponse(t *testing.T) {
 		},
 		{
 			name: "invalid status code",
+			script: itn.HereDoc(`
+				response.set_code()
+			`),
+			request:        getMockRequest(bd),
+			expectedStatus: http.StatusBadRequest,
+			expectedResponse: itn.HereDoc(`
+		        Content-Type: text/plain
+		        set_code: got 0 arguments, want 1
+			`),
+		},
+		{
+			name: "invalid status code 2",
 			script: itn.HereDoc(`
 				response.set_code(999)
 			`),
@@ -192,6 +252,18 @@ func TestServerResponse(t *testing.T) {
 		},
 		{
 			name: "invalid json",
+			script: itn.HereDoc(`
+				response.set_json()
+			`),
+			request:        getMockRequest(bd),
+			expectedStatus: http.StatusBadRequest,
+			expectedResponse: itn.HereDoc(`
+		        Content-Type: text/plain
+				set_json: got 0 arguments, want 1
+			`),
+		},
+		{
+			name: "invalid json 2",
 			script: itn.HereDoc(`
 				d = {"abc": [1, 2, 3]}
 				d["circular"] = d
