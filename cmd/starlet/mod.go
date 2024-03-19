@@ -6,11 +6,10 @@ import (
 	"net/http"
 	"runtime"
 
-	"go.starlark.net/starlark"
-	"go.starlark.net/starlarkstruct"
-
 	"github.com/1set/starlet"
 	shttp "github.com/1set/starlet/lib/http"
+	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 )
 
 func runWebServer(port uint16, setCode func(m *starlet.Machine)) error {
