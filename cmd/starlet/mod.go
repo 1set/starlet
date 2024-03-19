@@ -7,9 +7,9 @@ import (
 	"runtime"
 
 	"github.com/1set/starlet"
+	"github.com/1set/starlet/dataconv"
 	shttp "github.com/1set/starlet/lib/http"
 	"go.starlark.net/starlark"
-	"go.starlark.net/starlarkstruct"
 )
 
 func runWebServer(port uint16, setCode func(m *starlet.Machine)) error {
@@ -85,12 +85,12 @@ func runWebServerLegacy(port uint16, setCode func(m *starlet.Machine)) error {
 }
 
 func setMachineExtras(m *starlet.Machine, args []string) {
-	m.SetGlobals(starlet.StringAnyMap{
-		"sys": loadSysModule(args),
-	})
+	sysLoader := loadSysModule(args)
+	m.AddPreloadModules(starlet.ModuleLoaderList{sysLoader})
+	m.AddLazyloadModules(starlet.ModuleLoaderMap{"sys": sysLoader})
 }
 
-func loadSysModule(args []string) *starlarkstruct.Module {
+func loadSysModule(args []string) func() (starlark.StringDict, error) {
 	// get sa
 	sa := make([]starlark.Value, 0, len(args))
 	for _, arg := range args {
@@ -103,8 +103,5 @@ func loadSysModule(args []string) *starlarkstruct.Module {
 		"version":  starlark.MakeUint(starlark.CompilerVersion),
 		"argv":     starlark.NewList(sa),
 	}
-	return &starlarkstruct.Module{
-		Name:    "sys",
-		Members: sd,
-	}
+	return dataconv.WrapModuleData("sys", sd)
 }
