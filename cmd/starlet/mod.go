@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"runtime"
+
+	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 
 	"github.com/1set/starlet"
 	shttp "github.com/1set/starlet/lib/http"
@@ -79,4 +83,29 @@ func runWebServerLegacy(port uint16, setCode func(m *starlet.Machine)) error {
 		log.Fatalf("Server failed to start: %v", err)
 	}
 	return err
+}
+
+func setMachineExtras(m *starlet.Machine, args []string) {
+	m.SetGlobals(starlet.StringAnyMap{
+		"sys": loadSysModule(args),
+	})
+}
+
+func loadSysModule(args []string) *starlarkstruct.Module {
+	// get sa
+	sa := make([]starlark.Value, 0, len(args))
+	for _, arg := range args {
+		sa = append(sa, starlark.String(arg))
+	}
+	// build module
+	sd := starlark.StringDict{
+		"platform": starlark.String(runtime.GOOS),
+		"arch":     starlark.String(runtime.GOARCH),
+		"version":  starlark.MakeUint(starlark.CompilerVersion),
+		"argv":     starlark.NewList(sa),
+	}
+	return &starlarkstruct.Module{
+		Name:    "sys",
+		Members: sd,
+	}
 }

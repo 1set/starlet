@@ -64,12 +64,12 @@ func processArgs() int {
 
 	// check arguments
 	nargs := flag.NArg()
-	hasCode := ystring.IsNotBlank(codeContent)
+	argCode := ystring.IsNotBlank(codeContent)
 	switch {
 	case webPort > 0:
 		// run web server
 		var setCode func(m *starlet.Machine)
-		if hasCode {
+		if argCode {
 			// run code string from argument
 			setCode = func(m *starlet.Machine) {
 				m.SetScript("web.star", []byte(codeContent), incFS)
@@ -90,37 +90,37 @@ func processArgs() int {
 			PrintError(err)
 			return 1
 		}
-	case nargs == 0 && hasCode:
+	case argCode:
 		// run code string from argument
+		setMachineExtras(mac, append([]string{`-c`}, flag.Args()...))
 		mac.SetScript("direct.star", []byte(codeContent), incFS)
 		_, err := mac.Run()
 		if err != nil {
 			PrintError(err)
 			return 1
 		}
-	case nargs == 0 && !hasCode:
+	case nargs == 0 && !argCode:
 		// run REPL
 		stdinIsTerminal := term.IsTerminal(int(os.Stdin.Fd()))
 		if stdinIsTerminal {
 			displayBuildInfo()
 		}
+		setMachineExtras(mac, []string{``})
 		mac.SetScript("repl", nil, incFS)
 		mac.REPL()
 		if stdinIsTerminal {
 			fmt.Println()
 		}
-	case nargs == 1:
+	case nargs >= 1:
 		// run code from file
 		fileName := flag.Arg(0)
+		setMachineExtras(mac, flag.Args())
 		mac.SetScript(fileName, nil, incFS)
 		_, err := mac.Run()
 		if err != nil {
 			PrintError(err)
 			return 1
 		}
-	case nargs > 1:
-		fmt.Println(`want at most one Starlark file name`)
-		return 1
 	default:
 		flag.Usage()
 		return 1
