@@ -25,6 +25,7 @@ jobs:
         vm-os: [
           ubuntu-20.04,
           macos-13,
+          macos-14,
           windows-2022
         ]
         go-version: [
