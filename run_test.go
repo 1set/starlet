@@ -2,6 +2,7 @@ package starlet_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -449,6 +450,29 @@ h = 8
 	} else if out["g"].(int64) != int64(7) {
 		t.Errorf("unexpected output: %v", out)
 	} else if _, ok := out["h"]; ok {
+		t.Errorf("unexpected output: %v", out)
+	}
+}
+
+func Test_Machine_Run_Custom_Error(t *testing.T) {
+	customErr := fmt.Errorf("custom error")
+	errFunc := func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		return nil, customErr
+	}
+	m := starlet.NewDefault()
+	out, err := m.RunScript([]byte(`x = attempt()`), starlet.StringAnyMap{
+		"attempt": starlark.NewBuiltin("attempt", errFunc),
+	})
+	t.Logf("out error: {%v}", err)
+	if err == nil {
+		t.Errorf("unexpected nil error")
+		return
+	}
+	if !errors.Is(err, customErr) {
+		t.Errorf("unexpected error: %v", err)
+		return
+	}
+	if len(out) > 0 {
 		t.Errorf("unexpected output: %v", out)
 	}
 }
