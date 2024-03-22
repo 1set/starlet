@@ -1,6 +1,7 @@
 package dataconv
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -492,4 +493,46 @@ func (m *myStruct) UnmarshalStarlark(value starlark.Value) error {
 		m.Drink = bool(b)
 	}
 	return nil
+}
+
+func TestStructGoJSONMarshal(t *testing.T) {
+	// create sample
+	now := time.Now()
+	srt := starlarkstruct.FromStringDict(starlarkstruct.Default, map[string]starlark.Value{
+		"Message": starlark.String("Aloha"),
+		"Times":   starlark.MakeInt(100),
+		"Later":   startime.Time(now),
+	})
+	srtNil := starlarkstruct.FromStringDict(starlarkstruct.Default, map[string]starlark.Value{
+		"Null": nil,
+	})
+	mod := &starlarkstruct.Module{
+		Name: "simple",
+		Members: starlark.StringDict{
+			"foo": starlark.String("baz"),
+			"bar": starlark.MakeInt(42),
+			"now": startime.Time(now),
+		},
+	}
+	// marshal it in go
+	if got, err := json.Marshal(srt); err != nil {
+		t.Errorf("unexpected error: %v", err)
+		return
+	} else if string(got) != `{}` {
+		t.Logf("expected: %q, got: %q", `{}`, string(got))
+	}
+
+	if got, err := json.Marshal(srtNil); err != nil {
+		t.Errorf("unexpected error: %v", err)
+		return
+	} else if string(got) != `{}` {
+		t.Logf("expected: %q, got: %q", `{}`, string(got))
+	}
+
+	if got, err := json.Marshal(mod); err != nil {
+		t.Errorf("unexpected error: %v", err)
+		return
+	} else if exp := `{"Name":"simple","Members":{"bar":{},"foo":"baz","now":{}}}`; string(got) != exp {
+		t.Logf("expected: %q, got: %q", exp, string(got))
+	}
 }
