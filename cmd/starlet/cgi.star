@@ -12,6 +12,6 @@ text = '''
     <p>This is a simple CGI script written in Starlark.</p>
 </body>
 </html>
-'''.format(now, json.dumps(reader.Header, indent=2)).strip()
+'''.format(now, json.dumps(request.header, indent=2)).strip()
 
-writer.Write(text)
+response.set_html(text)

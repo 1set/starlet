@@ -336,6 +336,7 @@ func TestServerResponse(t *testing.T) {
 			// check the status
 			if status := rr.Code; status != tc.expectedStatus {
 				t.Errorf("Unexpected status code: %v, expected %v", status, tc.expectedStatus)
+				return
 			}
 
 			// check the response by comparing the expected lines
@@ -408,6 +409,22 @@ func getScriptHandler(script string) func(w http.ResponseWriter, r *http.Request
 			w.Header().Add("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusBadRequest)
 			_, _ = w.Write([]byte(err.Error()))
+			return
+		}
+
+		// exported resp struct twice to ensure it's always the same
+		r1 := resp.Export()
+		r2 := resp.Export()
+		if r1 == nil || r2 == nil {
+			w.Header().Add("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte("exported response struct is nil"))
+			return
+		}
+		if !reflect.DeepEqual(r1, r2) {
+			w.Header().Add("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte("exported response struct is not idempotent"))
 			return
 		}
 

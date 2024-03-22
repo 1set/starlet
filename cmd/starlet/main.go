@@ -4,8 +4,6 @@ package main
 import (
 	"fmt"
 	"io/fs"
-	"log"
-	"net/http"
 	"os"
 
 	"bitbucket.org/neiku/winornot"
@@ -66,12 +64,12 @@ func processArgs() int {
 
 	// check arguments
 	nargs := flag.NArg()
-	hasCode := ystring.IsNotBlank(codeContent)
+	argCode := ystring.IsNotBlank(codeContent)
 	switch {
 	case webPort > 0:
 		// run web server
 		var setCode func(m *starlet.Machine)
-		if hasCode {
+		if argCode {
 			// run code string from argument
 			setCode = func(m *starlet.Machine) {
 				m.SetScript("web.star", []byte(codeContent), incFS)
@@ -92,72 +90,42 @@ func processArgs() int {
 			PrintError(err)
 			return 1
 		}
-	case nargs == 0 && hasCode:
+	case argCode:
 		// run code string from argument
+		setMachineExtras(mac, append([]string{`-c`}, flag.Args()...))
 		mac.SetScript("direct.star", []byte(codeContent), incFS)
 		_, err := mac.Run()
 		if err != nil {
 			PrintError(err)
 			return 1
 		}
-	case nargs == 0 && !hasCode:
+	case nargs == 0 && !argCode:
 		// run REPL
 		stdinIsTerminal := term.IsTerminal(int(os.Stdin.Fd()))
 		if stdinIsTerminal {
 			displayBuildInfo()
 		}
+		setMachineExtras(mac, []string{``})
 		mac.SetScript("repl", nil, incFS)
 		mac.REPL()
 		if stdinIsTerminal {
 			fmt.Println()
 		}
-	case nargs == 1:
+	case nargs >= 1:
 		// run code from file
 		fileName := flag.Arg(0)
+		setMachineExtras(mac, flag.Args())
 		mac.SetScript(fileName, nil, incFS)
 		_, err := mac.Run()
 		if err != nil {
 			PrintError(err)
 			return 1
 		}
-	case nargs > 1:
-		fmt.Println(`want at most one Starlark file name`)
-		return 1
 	default:
 		flag.Usage()
 		return 1
 	}
 	return 0
-}
-
-func runWebServer(port uint16, setCode func(m *starlet.Machine)) error {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		glb := starlet.StringAnyMap{
-			"reader":  r,
-			"writer":  w,
-			"fprintf": fmt.Fprintf,
-		}
-
-		mac := starlet.NewWithNames(glb, preloadModules, lazyLoadModules)
-		setCode(mac)
-		//mac.SetScript("web.star", code, incFS)
-		if _, err := mac.Run(); err != nil {
-			log.Printf("Runtime Error: %v\n", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			if _, err := fmt.Fprintf(w, "Runtime Error: %v", err); err != nil {
-				log.Printf("Error writing response: %v", err)
-			}
-			return
-		}
-	})
-
-	log.Printf("Server is starting on port: %d\n", port)
-	err := http.ListenAndServe(fmt.Sprintf(":%d", port), mux)
-	if err != nil {
-		log.Fatalf("Server failed to start: %v", err)
-	}
-	return err
 }
 
 // PrintError prints the error to stderr,
