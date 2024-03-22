@@ -8,12 +8,12 @@ require (
 	github.com/1set/gut v0.0.0-20201117175203-a82363231997
 	github.com/1set/starlet v0.0.5
 	github.com/spf13/pflag v1.0.5
-	go.starlark.net v0.0.0-20231121155337-90ade8b19d09
+	go.starlark.net v0.0.0-20240123142251-f86470692795
 	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467
 )
 
 require (
-	github.com/1set/starlight v0.0.8 // indirect
+	github.com/1set/starlight v0.0.9 // indirect
 	github.com/aymanbagabas/go-osc52 v1.0.3 // indirect
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e // indirect
 	github.com/gonutz/w32 v1.0.0 // indirect
