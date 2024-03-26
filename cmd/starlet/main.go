@@ -4,7 +4,9 @@ package main
 import (
 	"fmt"
 	"io/fs"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"bitbucket.org/neiku/winornot"
 	"github.com/1set/gut/ystring"
@@ -114,10 +116,14 @@ func processArgs() int {
 	case nargs >= 1:
 		// run code from file
 		fileName := flag.Arg(0)
-		setMachineExtras(mac, flag.Args())
-		mac.SetScript(fileName, nil, incFS)
-		_, err := mac.Run()
+		bs, err := ioutil.ReadFile(fileName)
 		if err != nil {
+			PrintError(err)
+			return 1
+		}
+		setMachineExtras(mac, flag.Args())
+		mac.SetScript(filepath.Base(fileName), bs, incFS)
+		if _, err := mac.Run(); err != nil {
 			PrintError(err)
 			return 1
 		}
