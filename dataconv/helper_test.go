@@ -496,6 +496,62 @@ func TestWrapStructData(t *testing.T) {
 	}
 }
 
+func TestMakeModule(t *testing.T) {
+	name := "test_module"
+	data := starlark.StringDict{
+		"foo": starlark.String("bar"),
+		"baz": starlark.MakeInt(42),
+	}
+
+	module := MakeModule(name, data)
+	if es := `<module "test_module">`; module.String() != es {
+		t.Errorf("MakeModule() returned a module with incorrect string representation. Expected: %s, Got: %s", es, module.String())
+	}
+	if module.Name != name {
+		t.Errorf("MakeModule() returned a module with incorrect name. Expected: %s, Got: %s", name, module.Name)
+	}
+	if len(module.Members) != len(data) {
+		t.Errorf("MakeModule() returned a module with incorrect number of members. Expected: %d, Got: %d", len(data), len(module.Members))
+	}
+	for key, value := range data {
+		member, found := module.Members[key]
+		if !found {
+			t.Errorf("MakeModule() returned a module without the expected member: %s", key)
+		}
+		if member != value {
+			t.Errorf("MakeModule() returned a module with incorrect member value. Key: %s, Expected: %v, Got: %v", key, value, member)
+		}
+	}
+}
+
+func TestMakeStruct(t *testing.T) {
+	name := "test_struct"
+	data := starlark.StringDict{
+		"foo": starlark.String("bar"),
+		"baz": starlark.MakeInt(42),
+	}
+
+	ss := MakeStruct(name, data)
+	if s, ok := ss.Constructor().(starlark.String); !ok || s.GoString() != name {
+		t.Errorf("MakeStruct() returned a struct with incorrect name. Expected: %s, Got: %s", name, s)
+	}
+	if es := `test_struct(baz = 42, foo = "bar")`; ss.String() != es {
+		t.Errorf("MakeStruct() returned a struct with incorrect string representation. Expected: %s, Got: %s", es, ss.String())
+	}
+
+	if as := ss.AttrNames(); len(as) != len(data) {
+		t.Errorf("MakeStruct() returned a struct with incorrect number of members. Expected: %d, Got: %v", len(data), as)
+	} else {
+		t.Logf("members: %v", as)
+	}
+
+	sd := starlark.StringDict{}
+	ss.ToStringDict(sd)
+	if !reflect.DeepEqual(sd, data) {
+		t.Errorf("MakeStruct() returned a struct with incorrect members. Expected: %v, Got: %v", data, sd)
+	}
+}
+
 func TestTypeConvert(t *testing.T) {
 	timestr0 := "2021-09-07T21:30:00Z"
 	timestr1 := "2021-09-07T21:30:43Z"
