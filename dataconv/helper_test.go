@@ -464,6 +464,52 @@ func TestWrapModuleData(t *testing.T) {
 	}
 }
 
+func TestWrapModuleDataNoName(t *testing.T) {
+	data := starlark.StringDict{
+		"foo": starlark.String("bar"),
+		"baz": starlark.MakeInt(42),
+	}
+
+	wrapFunc := WrapModuleData("", data)
+	result, err := wrapFunc()
+	if err != nil {
+		t.Errorf("WrapModuleData() returned an error: %v", err)
+	}
+
+	module, ok := result[""].(*starlarkstruct.Module)
+	if !ok {
+		t.Errorf("WrapModuleData() did not return a module")
+	}
+	if module.Name != "" {
+		t.Errorf("WrapModuleData() returned a module with incorrect name. Expected: %s, Got: %s", "", module.Name)
+	}
+	if es := `<module "">`; module.String() != es {
+		t.Errorf("WrapModuleData() returned a module with incorrect string representation. Expected: %s, Got: %s", es, module.String())
+	}
+	if len(module.Members) != len(data) {
+		t.Errorf("WrapModuleData() returned a module with incorrect number of members. Expected: %d, Got: %d", len(data), len(module.Members))
+	}
+	for key, value := range data {
+		member, found := module.Members[key]
+		if !found {
+			t.Errorf("WrapModuleData() returned a module without the expected member: %s", key)
+		}
+		if member != value {
+			t.Errorf("WrapModuleData() returned a module with incorrect member value. Key: %s, Expected: %v, Got: %v", key, value, member)
+		}
+	}
+
+	script := itn.HereDoc(`
+		load('', 'foo')
+		assert.eq(foo, "bar")
+		assert.eq(m.baz, 42)
+	`)
+	if _, err := itn.ExecModuleWithErrorTest(t, "", wrapFunc, script, "", starlark.StringDict{"m": module}); err != nil {
+		t.Errorf("ExecModuleWithErrorTest() error = %v", err)
+		return
+	}
+}
+
 func TestWrapStructData(t *testing.T) {
 	name := "test_struct"
 	data := starlark.StringDict{
@@ -497,6 +543,51 @@ func TestWrapStructData(t *testing.T) {
 	ss.ToStringDict(sd)
 	if !reflect.DeepEqual(sd, data) {
 		t.Errorf("WrapStructData() returned a struct with incorrect members. Expected: %v, Got: %v", data, sd)
+	}
+}
+
+func TestWrapStructDataNoName(t *testing.T) {
+	data := starlark.StringDict{
+		"foo": starlark.String("bar"),
+		"baz": starlark.MakeInt(42),
+	}
+
+	wrapFunc := WrapStructData("", data)
+	result, err := wrapFunc()
+	if err != nil {
+		t.Errorf("WrapStructData() returned an error: %v", err)
+	}
+	if es := `(baz = 42, foo = "bar")`; result[""].String() != es {
+		t.Errorf("WrapStructData() returned a struct with incorrect string representation. Expected: %s, Got: %s", es, result[""].String())
+	}
+
+	ss, ok := result[""].(*starlarkstruct.Struct)
+	if !ok {
+		t.Errorf("WrapStructData() did not return a struct")
+	}
+	if s, ok := ss.Constructor().(starlark.String); !ok || s.GoString() != "" {
+		t.Errorf("WrapStructData() returned a struct with incorrect name. Expected: %s, Got: %s", "", s)
+	}
+	if as := ss.AttrNames(); len(as) != len(data) {
+		t.Errorf("WrapStructData() returned a struct with incorrect number of members. Expected: %d, Got: %v", len(data), as)
+	} else {
+		t.Logf("members: %v", as)
+	}
+
+	sd := starlark.StringDict{}
+	ss.ToStringDict(sd)
+	if !reflect.DeepEqual(sd, data) {
+		t.Errorf("WrapStructData() returned a struct with incorrect members. Expected: %v, Got: %v", data, sd)
+	}
+
+	script := itn.HereDoc(`
+		load('', 'foo')
+		assert.eq(foo, "bar")
+		assert.eq(s.baz, 42)
+	`)
+	if _, err := itn.ExecModuleWithErrorTest(t, "", wrapFunc, script, "", starlark.StringDict{"s": ss}); err != nil {
+		t.Errorf("ExecModuleWithErrorTest() error = %v", err)
+		return
 	}
 }
 
