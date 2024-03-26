@@ -12,6 +12,11 @@ import (
 	"go.starlark.net/starlarkstruct"
 )
 
+var (
+	structNameRequest  = starlark.String("Request")
+	structNameResponse = starlark.String("Response")
+)
+
 // ConvertServerRequest converts a http.Request to a Starlark struct for use in Starlark scripts on the server side.
 func ConvertServerRequest(r *http.Request) *starlarkstruct.Struct {
 	// for nil request, return nil
@@ -55,7 +60,7 @@ func ConvertServerRequest(r *http.Request) *starlarkstruct.Struct {
 	}
 
 	// create struct
-	return starlarkstruct.FromStringDict(starlark.String("Request"), sd)
+	return starlarkstruct.FromStringDict(structNameRequest, sd)
 }
 
 // NewServerResponse creates a new ServerResponse.
@@ -86,7 +91,7 @@ func (r *ServerResponse) Struct() *starlarkstruct.Struct {
 		"set_html":         starlark.NewBuiltin("set_html", r.setData(contentDataHTML)),
 	}
 	// create struct
-	return starlarkstruct.FromStringDict(starlark.String("Response"), sd)
+	return starlarkstruct.FromStringDict(structNameResponse, sd)
 }
 
 // ExportedServerResponse is a struct to export the response data to Go.
