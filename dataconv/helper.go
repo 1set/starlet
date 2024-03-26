@@ -122,6 +122,19 @@ func WrapStructData(name string, data starlark.StringDict) func() (starlark.Stri
 	}
 }
 
+// MakeModule creates a Starlark module from the given name and data.
+func MakeModule(name string, data starlark.StringDict) *starlarkstruct.Module {
+	return &starlarkstruct.Module{
+		Name:    name,
+		Members: data,
+	}
+}
+
+// MakeStruct creates a Starlark struct from the given name and data.
+func MakeStruct(name string, data starlark.StringDict) *starlarkstruct.Struct {
+	return starlarkstruct.FromStringDict(starlark.String(name), data)
+}
+
 // TypeConvert converts JSON decoded values to their appropriate types.
 // Usually it's used after JSON Unmarshal, Starlark Unmarshal, or similar.
 func TypeConvert(data interface{}) interface{} {
