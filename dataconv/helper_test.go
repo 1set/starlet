@@ -510,6 +510,29 @@ func TestWrapModuleDataNoName(t *testing.T) {
 	}
 }
 
+func TestWrapModuleDataNoData(t *testing.T) {
+	name := "test_module"
+	wrapFunc := WrapModuleData(name, nil)
+	result, err := wrapFunc()
+	if err != nil {
+		t.Errorf("WrapModuleData() returned an error: %v", err)
+	}
+
+	module, ok := result[name].(*starlarkstruct.Module)
+	if !ok {
+		t.Errorf("WrapModuleData() did not return a module")
+	}
+	if module.Name != name {
+		t.Errorf("WrapModuleData() returned a module with incorrect name. Expected: %s, Got: %s", name, module.Name)
+	}
+	if es := `<module "test_module">`; module.String() != es {
+		t.Errorf("WrapModuleData() returned a module with incorrect string representation. Expected: %s, Got: %s", es, module.String())
+	}
+	if len(module.Members) != 0 {
+		t.Errorf("WrapModuleData() returned a module with incorrect number of members. Expected: 0, Got: %d", len(module.Members))
+	}
+}
+
 func TestWrapStructData(t *testing.T) {
 	name := "test_struct"
 	data := starlark.StringDict{
@@ -588,6 +611,37 @@ func TestWrapStructDataNoName(t *testing.T) {
 	if _, err := itn.ExecModuleWithErrorTest(t, "", wrapFunc, script, "", starlark.StringDict{"s": ss}); err != nil {
 		t.Errorf("ExecModuleWithErrorTest() error = %v", err)
 		return
+	}
+}
+
+func TestWrapStructDataNoData(t *testing.T) {
+	name := "test_struct"
+	wrapFunc := WrapStructData(name, nil)
+	result, err := wrapFunc()
+	if err != nil {
+		t.Errorf("WrapStructData() returned an error: %v", err)
+	}
+	if es := `test_struct()`; result[name].String() != es {
+		t.Errorf("WrapStructData() returned a struct with incorrect string representation. Expected: %s, Got: %s", es, result[name].String())
+	}
+
+	ss, ok := result[name].(*starlarkstruct.Struct)
+	if !ok {
+		t.Errorf("WrapStructData() did not return a struct")
+	}
+	if s, ok := ss.Constructor().(starlark.String); !ok || s.GoString() != name {
+		t.Errorf("WrapStructData() returned a struct with incorrect name. Expected: %s, Got: %s", name, s)
+	}
+	if as := ss.AttrNames(); len(as) != 0 {
+		t.Errorf("WrapStructData() returned a struct with incorrect number of members. Expected: 0, Got: %v", as)
+	} else {
+		t.Logf("members: %v", as)
+	}
+
+	sd := starlark.StringDict{}
+	ss.ToStringDict(sd)
+	if len(sd) != 0 {
+		t.Errorf("WrapStructData() returned a struct with incorrect members. Expected: 0, Got: %v", sd)
 	}
 }
 
