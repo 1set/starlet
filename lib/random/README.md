@@ -141,7 +141,7 @@ print(n)
 # Output: 7.309677873766576
 ```
 
-### `uuid4()`
+### `uuid()`
 
 Generate a random UUID (RFC 4122 version 4).
 
