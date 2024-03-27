@@ -45,7 +45,7 @@ func errorStarlarkError(action string, err error) ExecError {
 	if e, ok := err.(ExecError); ok {
 		return e
 	}
-	// error from starlark
+	// parse error from Starlark
 	var hint string
 	if se, ok := err.(*starlark.EvalError); ok {
 		hint = se.Backtrace()
