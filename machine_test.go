@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/1set/starlet"
@@ -779,7 +780,7 @@ func TestMachine_GetThreadLocal(t *testing.T) {
 	})
 	if err == nil {
 		t.Errorf("expected error, got none")
-	} else if err.Error() != "starlark: exec: manual error" {
+	} else if !strings.HasPrefix(err.Error(), "starlark: exec: manual error") {
 		t.Errorf("expected manual error, got %v", err)
 	}
 

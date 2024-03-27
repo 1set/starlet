@@ -1,12 +1,17 @@
 package starlet
 
-import "fmt"
+import (
+	"fmt"
+
+	"go.starlark.net/starlark"
+)
 
 // ExecError is a custom error type for Starlet execution errors.
 type ExecError struct {
 	pkg   string // dependency source package or component name
 	act   string // error happens when doing this action
 	cause error  // the cause of the error
+	hint  string // additional hint for the error
 }
 
 // Unwrap returns the cause of the error.
@@ -16,7 +21,11 @@ func (e ExecError) Unwrap() error {
 
 // Error returns the error message.
 func (e ExecError) Error() string {
-	return fmt.Sprintf("%s: %s: %v", e.pkg, e.act, e.cause)
+	s := fmt.Sprintf("%s: %s: %v", e.pkg, e.act, e.cause)
+	if e.hint != "" {
+		s += "\n" + e.hint
+	}
+	return s
 }
 
 // helper functions
@@ -36,10 +45,16 @@ func errorStarlarkError(action string, err error) ExecError {
 	if e, ok := err.(ExecError); ok {
 		return e
 	}
+	// parse error from Starlark
+	var hint string
+	if se, ok := err.(*starlark.EvalError); ok {
+		hint = se.Backtrace()
+	}
 	return ExecError{
 		pkg:   `starlark`,
 		act:   action,
 		cause: err,
+		hint:  hint,
 	}
 }
 

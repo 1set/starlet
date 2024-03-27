@@ -6,7 +6,7 @@ require (
 	bitbucket.org/ai69/colorlogo v0.1.1
 	bitbucket.org/neiku/winornot v0.0.4
 	github.com/1set/gut v0.0.0-20201117175203-a82363231997
-	github.com/1set/starlet v0.0.5
+	github.com/1set/starlet v0.0.12
 	github.com/spf13/pflag v1.0.5
 	go.starlark.net v0.0.0-20240123142251-f86470692795
 	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467
@@ -29,5 +29,3 @@ require (
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/sys v0.0.0-20220908164124-27713097b956 // indirect
 )
-
-replace github.com/1set/starlet => ../..
