@@ -115,9 +115,9 @@ func TestLoadModule_Log(t *testing.T) {
 			name: `error message`,
 			script: itn.HereDoc(`
 				load('log', 'error')
-				error('this is an error message only')
+				error('this is an error message only', dsat=None)
 			`),
-			keywords: []string{"ERROR", "this is an error message only"},
+			keywords: []string{"ERROR", "this is an error message only", `{"dsat": null}`},
 		},
 		{
 			name: `fatal message`,
