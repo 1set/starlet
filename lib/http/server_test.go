@@ -80,7 +80,7 @@ func TestConvertServerRequest(t *testing.T) {
 	}
 }
 
-func TestServerResponse(t *testing.T) {
+func TestServerResponse_Nil(t *testing.T) {
 	if sr := NewServerResponse(); sr == nil {
 		t.Error("NewServerResponse returned nil")
 		return
@@ -89,6 +89,22 @@ func TestServerResponse(t *testing.T) {
 		return
 	}
 
+	var esp *ExportedServerResponse
+	if err := esp.Write(nil); err == nil {
+		t.Error("ExportedServerResponse.Write(nil) returned nil")
+		return
+	} else {
+		t.Logf("ExportedServerResponse.Write(nil) = %v", err)
+	}
+	if err := esp.Write(httptest.NewRecorder()); err == nil {
+		t.Error("ExportedServerResponse.Write(w) returned nil")
+		return
+	} else {
+		t.Logf("ExportedServerResponse.Write(w) = %v", err)
+	}
+}
+
+func TestServerResponse(t *testing.T) {
 	bd := `{"name":"John","age":30}`
 	testCases := []struct {
 		name             string
@@ -98,9 +114,8 @@ func TestServerResponse(t *testing.T) {
 		expectedResponse string
 	}{
 		{
-			name: "no ops",
-			script: itn.HereDoc(`
-			`),
+			name:           "no ops",
+			script:         itn.HereDoc(``),
 			request:        getMockRequest(bd),
 			expectedStatus: http.StatusOK,
 			expectedResponse: itn.HereDoc(`
