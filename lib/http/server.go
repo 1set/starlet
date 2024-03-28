@@ -101,14 +101,12 @@ type ExportedServerResponse struct {
 	Data       []byte      // Data is the data of the response, usually the body content.
 }
 
-// Write writes the response to http.ResponseWriter.
-func (r *ServerResponse) Write(w http.ResponseWriter) (err error) {
+func (d *ExportedServerResponse) Write(w http.ResponseWriter) (err error) {
 	// basic check
 	if w == nil {
 		err = errors.New("nil response writer")
 		return
 	}
-	d := r.Export()
 	if d == nil {
 		err = errors.New("nil exported response")
 		return
@@ -121,6 +119,12 @@ func (r *ServerResponse) Write(w http.ResponseWriter) (err error) {
 		_, err = w.Write(d.Data)
 	}
 	return
+}
+
+// Write writes the response to http.ResponseWriter.
+func (r *ServerResponse) Write(w http.ResponseWriter) (err error) {
+	d := r.Export()
+	return d.Write(w)
 }
 
 // Export dumps the response data to a struct for later use in Go.
