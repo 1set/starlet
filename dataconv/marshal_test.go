@@ -51,6 +51,14 @@ func TestMarshal(t *testing.T) {
 		Times:   2,
 	}
 
+	mapEmpty := map[string]string{}
+	dictEmpty := starlark.NewDict(0)
+	mapStrOne := map[string]string{"foo": "bar"}
+	dictStrOne := starlark.NewDict(1)
+	if err := dictStrOne.SetKey(starlark.String("foo"), starlark.String("bar")); err != nil {
+		t.Fatal(err)
+	}
+
 	now := time.Now()
 	cases := []struct {
 		in   interface{}
@@ -82,6 +90,8 @@ func TestMarshal(t *testing.T) {
 		{map[interface{}]interface{}{42 * 2: 42}, expectedIntDict, ""},
 		{&customType{42}, ct, ""},
 		{map[string]interface{}{"foo": 42, "bar": &customType{42}}, expectedStrDict, ""},
+		{mapEmpty, dictEmpty, ""},
+		{mapStrOne, dictStrOne, ""},
 		{map[interface{}]interface{}{"foo": 42, "bar": &customType{42}}, expectedStrDict, ""},
 		{[]interface{}{42, &customType{42}}, starlark.NewList([]starlark.Value{starlark.MakeInt(42), ct}), ""},
 		{crt, starlark.None, `unrecognized type: struct { Message string; Times int }{Message:"random", Times:2}`},

@@ -101,6 +101,32 @@ type ExportedServerResponse struct {
 	Data       []byte      // Data is the data of the response, usually the body content.
 }
 
+func (d *ExportedServerResponse) Write(w http.ResponseWriter) (err error) {
+	// basic check
+	if w == nil {
+		err = errors.New("nil response writer")
+		return
+	}
+	if d == nil {
+		err = errors.New("nil exported response")
+		return
+	}
+
+	// write header first, and then status code & data
+	copyHeader(w.Header(), d.Header)
+	w.WriteHeader(d.StatusCode)
+	if d.Data != nil {
+		_, err = w.Write(d.Data)
+	}
+	return
+}
+
+// Write writes the response to http.ResponseWriter.
+func (r *ServerResponse) Write(w http.ResponseWriter) (err error) {
+	d := r.Export()
+	return d.Write(w)
+}
+
 // Export dumps the response data to a struct for later use in Go.
 func (r *ServerResponse) Export() *ExportedServerResponse {
 	resp := ExportedServerResponse{
@@ -144,28 +170,6 @@ func (r *ServerResponse) Export() *ExportedServerResponse {
 
 	// for later use
 	return &resp
-}
-
-// Write writes the response to http.ResponseWriter.
-func (r *ServerResponse) Write(w http.ResponseWriter) (err error) {
-	// basic check
-	if w == nil {
-		err = errors.New("nil response writer")
-		return
-	}
-	d := r.Export()
-	if d == nil {
-		err = errors.New("nil exported response")
-		return
-	}
-
-	// write header first, and then status code & data
-	copyHeader(w.Header(), d.Header)
-	w.WriteHeader(d.StatusCode)
-	if d.Data != nil {
-		_, err = w.Write(d.Data)
-	}
-	return
 }
 
 func (r *ServerResponse) setStatus(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -260,7 +264,8 @@ func sliceStr2List(s []string) *starlark.List {
 func copyHeader(dst, src http.Header) {
 	for k, vv := range src {
 		for _, v := range vv {
-			dst.Add(k, v)
+			//dst.Add(k, v)
+			dst[k] = append(dst[k], v)
 		}
 	}
 }

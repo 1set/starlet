@@ -89,6 +89,14 @@ func Marshal(data interface{}) (v starlark.Value, err error) {
 			}
 		}
 		v = dict
+	case map[string]string:
+		dict := &starlark.Dict{}
+		for key, val := range x {
+			if err = dict.SetKey(starlark.String(key), starlark.String(val)); err != nil {
+				return
+			}
+		}
+		v = dict
 	case Marshaler:
 		v, err = x.MarshalStarlark()
 	default:
