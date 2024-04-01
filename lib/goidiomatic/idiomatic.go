@@ -71,7 +71,11 @@ func isNil(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kw
 	}
 }
 
-// distinct returns a new list with distinct elements from the given list.
+// distinct returns a iterable with distinct elements from the given iterable, i.e. without duplicates.
+// for list and custom types, it returns a new list with distinct elements.
+// for tuple, it returns a new tuple with distinct elements.
+// for dict, it calls the keys() method to returns the keys in a list.
+// for set, it just returns the original set.
 func distinct(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var itr starlark.Iterable
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "iterable", &itr); err != nil {
