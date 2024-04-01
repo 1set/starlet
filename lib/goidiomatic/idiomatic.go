@@ -77,7 +77,14 @@ func distinct(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple,
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "iterable", &itr); err != nil {
 		return none, err
 	}
-	// get the list elements
+	// check if the iterable is a set or a map, just return the keys quickly
+	switch v := itr.(type) {
+	case *starlark.Dict: // get the keys of the dict
+		return starlark.NewList(v.Keys()), nil
+	case *starlark.Set: // get the original set
+		return v, nil
+	}
+	// get the list elements for list or tuple
 	var (
 		lsv  []starlark.Value
 		hm   = make(map[uint32]struct{})
@@ -95,8 +102,16 @@ func distinct(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple,
 			lsv = append(lsv, x)
 		}
 	}
-	// return the new list
-	return starlark.NewList(lsv), nil
+	// return the new iterable as per the input type
+	switch itr.(type) {
+	case *starlark.List:
+		return starlark.NewList(lsv), nil
+	case starlark.Tuple:
+		return starlark.Tuple(lsv), nil
+	default:
+		// fallback to list for other types, like the custom ones
+		return starlark.NewList(lsv), nil
+	}
 }
 
 // length returns the length of the given value.
