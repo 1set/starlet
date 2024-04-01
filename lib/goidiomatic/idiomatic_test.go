@@ -1,6 +1,7 @@
 package goidiomatic_test
 
 import (
+	"fmt"
 	"testing"
 
 	itn "github.com/1set/starlet/internal"
@@ -23,6 +24,64 @@ type testStruct struct {
 		}
 	}
 	Pointer interface{}
+}
+
+// customIntRange represents a range of integers [start, end).
+type customIntRange struct {
+	starlark.Value
+	start, end int
+}
+
+// String returns the string representation of the customIntRange.
+func (r *customIntRange) String() string {
+	return fmt.Sprintf("customIntRange(%d, %d)", r.start, r.end)
+}
+
+// Type returns the type name of the customIntRange.
+func (r *customIntRange) Type() string {
+	return "customIntRange"
+}
+
+// Freeze makes the customIntRange immutable. Required by starlark.Value interface.
+func (r *customIntRange) Freeze() {}
+
+// Truth returns the truth value of the customIntRange.
+func (r *customIntRange) Truth() starlark.Bool {
+	return r.start < r.end // true if the range is not empty
+}
+
+// Hash returns the hash value of the customIntRange.
+func (r *customIntRange) Hash() (uint32, error) {
+	return uint32(r.start*31 + r.end), nil
+}
+
+// Iterate returns an iterator for the customIntRange.
+func (r *customIntRange) Iterate() starlark.Iterator {
+	return &customIntRangeIterator{ranger: r, next: r.start}
+}
+
+// customIntRangeIterator implements the Iterator interface for customIntRange.
+type customIntRangeIterator struct {
+	ranger *customIntRange
+	next   int
+}
+
+// Next moves the iterator to the next value and returns true if there was a next value.
+func (it *customIntRangeIterator) Next(p *starlark.Value) bool {
+	if it.next >= it.ranger.end {
+		return false
+	}
+	*p = starlark.MakeInt(it.next)
+	it.next++
+	return true
+}
+
+// Done does nothing but necessary to implement the Iterator interface.
+func (it *customIntRangeIterator) Done() {}
+
+// newCustomIntRange creates a new customIntRange value.
+func newCustomIntRange(start, end int) *customIntRange {
+	return &customIntRange{start: start, end: end}
 }
 
 func TestLoadModule_GoIdiomatic(t *testing.T) {
@@ -736,10 +795,13 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				t.Errorf("convert.ToValue Map: %v", err)
 				return
 			}
-			starlark.Universe["slice"] = s
-			starlark.Universe["map"] = m
+			globals := starlark.StringDict{
+				"slice":      s,
+				"map":        m,
+				"make_range": convert.MakeStarFn("make_range", newCustomIntRange),
+			}
 
-			res, err := itn.ExecModuleWithErrorTest(t, goidiomatic.ModuleName, goidiomatic.LoadModule, tt.script, tt.wantErr, nil)
+			res, err := itn.ExecModuleWithErrorTest(t, goidiomatic.ModuleName, goidiomatic.LoadModule, tt.script, tt.wantErr, globals)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("go_idiomatic(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
 				return
