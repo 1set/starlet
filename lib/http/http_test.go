@@ -336,7 +336,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 			`),
 		},
 		{
-			name: `GET No Timeout`,
+			name: `GET With No Timeout`,
 			script: itn.HereDoc(`
 				load('http', 'get')
 				res = get(test_server_url, timeout=0)

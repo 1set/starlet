@@ -634,6 +634,71 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				assert.true(a != e)
 			`),
 		},
+		{
+			name: `distinct with list`,
+			script: itn.HereDoc(`
+        load('go_idiomatic', 'distinct')
+        result = distinct([1, 2, 2, 3, 3, 3])
+        assert.eq([1, 2, 3], result)
+    `),
+		},
+		{
+			name: `distinct with tuple`,
+			script: itn.HereDoc(`
+        load('go_idiomatic', 'distinct')
+        result = distinct((1, 2, 2, 3, 3, 3))
+        assert.eq((1, 2, 3), result)
+    `),
+		},
+		{
+			name: `distinct with dict`,
+			script: itn.HereDoc(`
+        load('go_idiomatic', 'distinct')
+        result = distinct({'a': 1, 'b': 2, 'c': 3})
+        # Note: Dict keys order is not guaranteed
+        assert.eq(['a', 'b', 'c'], sorted(result))
+    `),
+		},
+		{
+			name: `distinct with set`,
+			script: itn.HereDoc(`
+        load('go_idiomatic', 'distinct')
+        result = distinct(set([1, 2, 3, 3, 2, 1]))
+        assert.eq(set([1, 2, 3]), result)
+    `),
+		},
+		{
+			name: `distinct with empty list`,
+			script: itn.HereDoc(`
+        load('go_idiomatic', 'distinct')
+        result = distinct([])
+        assert.eq([], result)
+    `),
+		},
+		{
+			name: `distinct with incorrect type`,
+			script: itn.HereDoc(`
+        load('go_idiomatic', 'distinct')
+        distinct(123)
+    `),
+			wantErr: `distinct: for parameter iterable: got int, want iterable`,
+		},
+		{
+			name: `distinct with none`,
+			script: itn.HereDoc(`
+        load('go_idiomatic', 'distinct')
+        distinct(None)
+    `),
+			wantErr: `distinct: for parameter iterable: got NoneType, want iterable`,
+		},
+		{
+			name: `distinct with multiple arguments`,
+			script: itn.HereDoc(`
+        load('go_idiomatic', 'distinct')
+        distinct([1, 2, 3], [4, 5, 6])
+    `),
+			wantErr: `distinct: got 2 arguments, want at most 1`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
