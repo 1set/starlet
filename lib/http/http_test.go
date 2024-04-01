@@ -336,6 +336,16 @@ func TestLoadModule_HTTP(t *testing.T) {
 			`),
 		},
 		{
+			name: `GET No Timeout`,
+			script: itn.HereDoc(`
+				load('http', 'get')
+				res = get(test_server_url, timeout=0)
+				assert.eq(res.status_code, 200)
+				b = res.body()
+				assert.true(b.startswith("GET /"))
+			`),
+		},
+		{
 			name: `GET SSL Error`,
 			script: itn.HereDoc(`
 				load('http', 'get')

@@ -4,7 +4,7 @@
 
 ## Functions
 
-### `get(url,params={},headers={},auth=(),timeout=0,allow_redirects=True,verify=True) response`
+### `get(url,params={},headers={},auth=(),timeout=30,allow_redirects=True,verify=True) response`
 
 Perform an HTTP GET request, returning a response.
 
@@ -19,7 +19,7 @@ Perform an HTTP GET request, returning a response.
 | `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                       |
 | `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                    |
 
-### `put(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=(),timeout=0,allow_redirects=True,verify=True) response`
+### `put(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=(),timeout=30,allow_redirects=True,verify=True) response`
 
 Perform an HTTP PUT request, returning a response.
 
@@ -38,7 +38,7 @@ Perform an HTTP PUT request, returning a response.
 | `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                       |
 | `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                    |
 
-### `post(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=(),timeout=0,allow_redirects=True,verify=True) response`
+### `post(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=(),timeout=30,allow_redirects=True,verify=True) response`
 
 Perform an HTTP POST request, returning a response.
 
@@ -57,7 +57,7 @@ Perform an HTTP POST request, returning a response.
 | `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                       |
 | `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                    |
 
-### `postForm(url,params={},headers={},form_body={},form_encoding="",auth=(),timeout=0,allow_redirects=True,verify=True) response`
+### `postForm(url,params={},headers={},form_body={},form_encoding="",auth=(),timeout=30,allow_redirects=True,verify=True) response`
 
 Perform an HTTP POST request with form data, returning a response.
 
@@ -74,7 +74,7 @@ Perform an HTTP POST request with form data, returning a response.
 | `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                       |
 | `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                    |
 
-### `delete(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=(),timeout=0,allow_redirects=True,verify=True) response`
+### `delete(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=(),timeout=30,allow_redirects=True,verify=True) response`
 
 Perform an HTTP DELETE request, returning a response.
 
@@ -93,7 +93,7 @@ Perform an HTTP DELETE request, returning a response.
 | `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                       |
 | `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                    |
 
-### `patch(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=(),timeout=0,allow_redirects=True,verify=True) response`
+### `patch(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=(),timeout=30,allow_redirects=True,verify=True) response`
 
 Perform an HTTP PATCH request, returning a response.
 
@@ -112,7 +112,7 @@ Perform an HTTP PATCH request, returning a response.
 | `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                       |
 | `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                    |
 
-### `options(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=(),timeout=0,allow_redirects=True,verify=True) response`
+### `options(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=(),timeout=30,allow_redirects=True,verify=True) response`
 
 Perform an HTTP OPTIONS request, returning a response.
 
