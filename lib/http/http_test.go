@@ -346,6 +346,18 @@ func TestLoadModule_HTTP(t *testing.T) {
 			`),
 		},
 		{
+			name: `GET Header`,
+			script: itn.HereDoc(`
+				load('http', 'get')
+				res = get(test_server_url, timeout=0)
+				assert.eq(res.status_code, 200)
+				head = res.headers
+				enc = res.encoding
+				assert.eq(head['Content-Type'], 'text/plain; charset=utf-8')
+				assert.eq(enc, '')
+			`),
+		},
+		{
 			name: `GET SSL Error`,
 			script: itn.HereDoc(`
 				load('http', 'get')
