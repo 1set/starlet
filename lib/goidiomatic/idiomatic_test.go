@@ -85,9 +85,6 @@ func newCustomIntRange(start, end int) *customIntRange {
 }
 
 func TestLoadModule_GoIdiomatic(t *testing.T) {
-	starlark.Universe["test_custom_struct"] = convert.NewStruct(testStruct{})
-	starlark.Universe["test_custom_struct_pointer"] = convert.NewStruct(&testStruct{})
-
 	// test cases
 	tests := []struct {
 		name    string
@@ -781,6 +778,23 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
     `),
 			wantErr: `distinct: got 2 arguments, want at most 1`,
 		},
+		{
+			name: `distinct with custom type`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'distinct')
+				r1 = make_range(1, 6)
+				r2 = distinct(r1)
+				assert.eq([1, 2, 3, 4, 5], r2)
+			`),
+		},
+		{
+			name: `distinct with invalid custom type`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'distinct')
+				distinct(test_custom_struct_pointer)
+			`),
+			wantErr: `distinct: for parameter iterable: got starlight_struct<*goidiomatic_test.testStruct>, want iterable`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -796,9 +810,11 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				return
 			}
 			globals := starlark.StringDict{
-				"slice":      s,
-				"map":        m,
-				"make_range": convert.MakeStarFn("make_range", newCustomIntRange),
+				"slice":                      s,
+				"map":                        m,
+				"make_range":                 convert.MakeStarFn("make_range", newCustomIntRange),
+				"test_custom_struct":         convert.NewStruct(testStruct{}),
+				"test_custom_struct_pointer": convert.NewStruct(&testStruct{}),
 			}
 
 			res, err := itn.ExecModuleWithErrorTest(t, goidiomatic.ModuleName, goidiomatic.LoadModule, tt.script, tt.wantErr, globals)
