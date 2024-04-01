@@ -38,6 +38,7 @@ func LoadModule() (starlark.StringDict, error) {
 		"module":      starlark.NewBuiltin("module", starlarkstruct.MakeModule),
 		"struct":      starlark.NewBuiltin("struct", starlarkstruct.Make),
 		"make_struct": starlark.NewBuiltin("make_struct", makeCustomStruct),
+		"distinct":    starlark.NewBuiltin("distinct", distinct),
 	}, nil
 }
 
@@ -68,6 +69,34 @@ func isNil(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kw
 	default:
 		return none, fmt.Errorf("%s: unsupported type: %T", b.Name(), t)
 	}
+}
+
+// distinct returns a new list with distinct elements from the given list.
+func distinct(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var itr starlark.Iterable
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "iterable", &itr); err != nil {
+		return none, err
+	}
+	// get the list elements
+	var (
+		lsv  []starlark.Value
+		hm   = make(map[uint32]struct{})
+		x    starlark.Value
+		iter = itr.Iterate()
+	)
+	// loop through the list/tuple and add distinct elements
+	for iter.Next(&x) {
+		h, e := x.Hash()
+		if e != nil {
+			return none, e
+		}
+		if _, ok := hm[h]; !ok {
+			hm[h] = struct{}{}
+			lsv = append(lsv, x)
+		}
+	}
+	// return the new list
+	return starlark.NewList(lsv), nil
 }
 
 // length returns the length of the given value.
