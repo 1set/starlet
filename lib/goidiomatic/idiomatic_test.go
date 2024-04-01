@@ -676,6 +676,13 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
     `),
 		},
 		{
+			name: "distinct with list with single element",
+			script: itn.HereDoc(`
+        load('go_idiomatic', 'distinct')
+        assert.eq([1], distinct([1]))
+    `),
+		},
+		{
 			name: `distinct with incorrect type`,
 			script: itn.HereDoc(`
         load('go_idiomatic', 'distinct')
@@ -690,6 +697,22 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
         distinct(None)
     `),
 			wantErr: `distinct: for parameter iterable: got NoneType, want iterable`,
+		},
+		{
+			name: "distinct with non-iterable arg",
+			script: itn.HereDoc(`
+        load('go_idiomatic', 'distinct')
+        distinct(True)
+    `),
+			wantErr: `distinct: for parameter iterable: got bool, want iterable`,
+		},
+		{
+			name: "distinct with no args",
+			script: itn.HereDoc(`
+        load('go_idiomatic', 'distinct')
+        distinct()
+    `),
+			wantErr: `distinct: missing argument for iterable`,
 		},
 		{
 			name: `distinct with multiple arguments`,
