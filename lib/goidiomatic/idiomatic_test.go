@@ -732,11 +732,20 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
     `),
 		},
 		{
-			name: "distinct with list with single element",
+			name: "distinct with list of single element",
 			script: itn.HereDoc(`
         load('go_idiomatic', 'distinct')
         assert.eq([1], distinct([1]))
     `),
+		},
+		{
+			name: `distinct with list of non-hashable elements`,
+			script: itn.HereDoc(`
+		load('go_idiomatic', 'distinct')
+		l = []
+		distinct([12, l])
+	`),
+			wantErr: `distinct: unhashable type: list`,
 		},
 		{
 			name: `distinct with incorrect type`,

@@ -99,7 +99,7 @@ func distinct(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple,
 	for iter.Next(&x) {
 		h, e := x.Hash()
 		if e != nil {
-			return none, e
+			return none, fmt.Errorf("%s: %w", b.Name(), e)
 		}
 		if _, ok := hm[h]; !ok {
 			hm[h] = struct{}{}
