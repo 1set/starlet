@@ -18,6 +18,7 @@ func TestLoadModule_File(t *testing.T) {
 		script      string
 		wantErr     string
 		fileContent string
+		skipWindows bool
 	}{
 		{
 			name: `trim bom`,
@@ -453,7 +454,8 @@ func TestLoadModule_File(t *testing.T) {
 				load('file', 'stat')
 				s = stat('not-such-file7.txt')
 			`),
-			wantErr: `file.stat: lstat not-such-file7.txt`,
+			wantErr:     `file.stat: lstat not-such-file7.txt`,
+			skipWindows: true,
 		},
 		{
 			name: `stat: file`,
@@ -487,6 +489,18 @@ func TestLoadModule_File(t *testing.T) {
 			`),
 		},
 		{
+			name: `stat: device`,
+			script: itn.HereDoc(`
+				load('file', 'stat')
+				fp = '/dev/null'
+				s = stat(fp)
+				assert.eq(s.name, 'null')
+				assert.eq(s.path, fp)
+				assert.eq(s.ext, '')
+				assert.eq(s.type, 'char_device')
+			`),
+		},
+		{
 			name: `stat: dir get hash`,
 			script: itn.HereDoc(`
 				load('file', 'stat')
@@ -494,7 +508,8 @@ func TestLoadModule_File(t *testing.T) {
 				s = stat(fp)
 				s.get_md5()
 			`),
-			wantErr: `testdata: is a directory`,
+			wantErr:     `testdata: is a directory`,
+			skipWindows: true,
 		},
 	}
 	for _, tt := range tests {
@@ -512,8 +527,8 @@ func TestLoadModule_File(t *testing.T) {
 				tt.script = fmt.Sprintf(tt.script, tp)
 			}
 			// execute test
-			if isOnWindows && tt.wantErr != "" {
-				t.Skipf("Skip test on Windows: %s", tt.wantErr)
+			if isOnWindows && tt.skipWindows {
+				t.Skipf("Skip test on Windows")
 				return
 			}
 			res, err := itn.ExecModuleWithErrorTest(t, lf.ModuleName, lf.LoadModule, tt.script, tt.wantErr, nil)
