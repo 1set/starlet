@@ -28,6 +28,7 @@ func LoadModule() (starlark.StringDict, error) {
 			ModuleName: &starlarkstruct.Module{
 				Name: ModuleName,
 				Members: starlark.StringDict{
+					"stat":          starlark.NewBuiltin(ModuleName+".stat", getFileStat),
 					"trim_bom":      starlark.NewBuiltin(ModuleName+".trim_bom", trimBom),
 					"count_lines":   starlark.NewBuiltin(ModuleName+".count_lines", countLinesInFile),
 					"head_lines":    readTopOrBottomLines("head_lines", ReadFirstLines),

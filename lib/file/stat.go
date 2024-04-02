@@ -68,12 +68,21 @@ func (f *FileStat) Struct() *starlarkstruct.Struct {
 }
 
 func getFileStat(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var inputPath string
-	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "name", &inputPath); err != nil {
+	var (
+		inputPath     string
+		followSymlink = false
+	)
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "name", &inputPath, "follow?", &followSymlink); err != nil {
 		return starlark.None, err
 	}
 	// get file stat
-	stat, err := os.Stat(inputPath)
+	var statFn func(string) (os.FileInfo, error)
+	if followSymlink {
+		statFn = os.Stat
+	} else {
+		statFn = os.Lstat
+	}
+	stat, err := statFn(inputPath)
 	if err != nil {
 		return none, fmt.Errorf("%s: %v", b.Name(), err)
 	}
