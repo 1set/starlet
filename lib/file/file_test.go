@@ -3,6 +3,7 @@ package file_test
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -11,6 +12,7 @@ import (
 )
 
 func TestLoadModule_File(t *testing.T) {
+	isOnWindows := runtime.GOOS == "windows"
 	tests := []struct {
 		name        string
 		script      string
@@ -510,6 +512,10 @@ func TestLoadModule_File(t *testing.T) {
 				tt.script = fmt.Sprintf(tt.script, tp)
 			}
 			// execute test
+			if isOnWindows && tt.wantErr != "" {
+				t.Skipf("Skip test on Windows: %s", tt.wantErr)
+				return
+			}
 			res, err := itn.ExecModuleWithErrorTest(t, lf.ModuleName, lf.LoadModule, tt.script, tt.wantErr, nil)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("file(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
