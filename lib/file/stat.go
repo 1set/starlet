@@ -12,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 
-	itn "github.com/1set/starlet/internal"
 	stdtime "go.starlark.net/lib/time"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
@@ -98,12 +97,6 @@ func getFileStat(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tup
 
 func genFileHashFunc(fp string, algo func() hash.Hash) func(*starlark.Thread, *starlark.Builtin, starlark.Tuple, []starlark.Tuple) (starlark.Value, error) {
 	return func(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		// check args
-		var sb itn.StringOrBytes
-		if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &sb); err != nil {
-			return none, err
-		}
-
 		// open file
 		file, err := os.Open(fp)
 		if err != nil {
