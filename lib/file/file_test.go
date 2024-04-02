@@ -458,6 +458,15 @@ func TestLoadModule_File(t *testing.T) {
 			skipWindows: true,
 		},
 		{
+			name: `stat: empty path`,
+			script: itn.HereDoc(`
+				load('file', 'stat')
+				s = stat('')
+			`),
+			wantErr:     `file.stat: lstat :`,
+			skipWindows: true,
+		},
+		{
 			name: `stat: file`,
 			script: itn.HereDoc(`
 				load('file', 'stat')
@@ -476,11 +485,42 @@ func TestLoadModule_File(t *testing.T) {
 			`),
 		},
 		{
+			name: `stat: follow file`,
+			script: itn.HereDoc(`
+				load('file', 'stat')
+				fp = 'testdata/aloha.txt'
+				s = stat(fp, True)
+				assert.eq(s.name, 'aloha.txt')
+				assert.eq(s.size, 6)
+				assert.eq(s.type, 'file')
+				assert.eq(s.ext, '.txt')
+				assert.true(s.path.endswith(fp))
+				assert.true(s.modified.unix > 0)
+				assert.eq(s.get_md5(), '6a12867bd5e0810f2dae51da4a51f001')
+				assert.eq(s.get_sha1(), '71a45eadccd2f29bbf60f46b13e019ae62c8b0bd')
+				assert.eq(s.get_sha256(), 'eb69c86a84164b23808dcda13fdfbe664760701cf605df28272d4efd2ed18ab4')
+				assert.eq(s.get_sha512(), '9946cf3ba83eff33d9798fe933785b8a0f20aa179ca1d18418fd401d955a1270edf9542eb7b10833bbfe1de84b31dde6924e4e01f0e335174c45fede9f9e80ef')
+			`),
+		},
+		{
 			name: `stat: dir`,
 			script: itn.HereDoc(`
 				load('file', 'stat')
 				fp = 'testdata'
 				s = stat(fp)
+				assert.eq(s.name, 'testdata')
+				assert.eq(s.type, 'dir')
+				assert.eq(s.ext, '')
+				assert.true(s.path.endswith(fp))
+				assert.true(s.modified.unix > 0)
+			`),
+		},
+		{
+			name: `stat: follow dir`,
+			script: itn.HereDoc(`
+				load('file', 'stat')
+				fp = 'testdata'
+				s = stat(fp, follow=True)
 				assert.eq(s.name, 'testdata')
 				assert.eq(s.type, 'dir')
 				assert.eq(s.ext, '')
