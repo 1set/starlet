@@ -505,6 +505,40 @@ func TestLoadModule_File(t *testing.T) {
 			`),
 		},
 		{
+			name: `stat: empty file`,
+			script: itn.HereDoc(`
+				load('file', 'stat')
+				fp = 'testdata/empty.txt'
+				s = stat(fp)
+				assert.eq(s.name, 'empty.txt')
+				assert.eq(s.size, 0)
+				assert.eq(s.type, 'file')
+				assert.eq(s.ext, '.txt')
+			`),
+		},
+		{
+			name: `stat: file no ext`,
+			script: itn.HereDoc(`
+				load('file', 'stat')
+				fp = 'testdata/noext'
+				s = stat(fp)
+				assert.eq(s.type, 'file')
+				assert.eq(s.name, 'noext')
+				assert.eq(s.ext, '')
+			`),
+		},
+		//{
+		//	name: `stat: file dot ext`,
+		//	script: itn.HereDoc(`
+		//		load('file', 'stat')
+		//		fp = 'testdata/dotext.'
+		//		s = stat(fp)
+		//		assert.eq(s.type, 'file')
+		//		assert.eq(s.name, 'dotext.')
+		//		assert.eq(s.ext, '.')
+		//	`),
+		//},
+		{
 			name: `stat: dir`,
 			script: itn.HereDoc(`
 				load('file', 'stat')
