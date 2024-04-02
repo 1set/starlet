@@ -499,6 +499,7 @@ func TestLoadModule_File(t *testing.T) {
 				assert.eq(s.ext, '')
 				assert.eq(s.type, 'char_device')
 			`),
+			skipWindows: true,
 		},
 		{
 			name: `stat: dir get hash`,
