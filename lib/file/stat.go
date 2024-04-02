@@ -1,10 +1,18 @@
 package file
 
 import (
+	"crypto/md5"
+	"crypto/sha1"
+	"crypto/sha256"
+	"crypto/sha512"
+	"encoding/hex"
 	"fmt"
+	"hash"
+	"io"
 	"os"
 	"path/filepath"
 
+	itn "github.com/1set/starlet/internal"
 	stdtime "go.starlark.net/lib/time"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
@@ -45,12 +53,16 @@ func (f *FileStat) Struct() *starlarkstruct.Struct {
 	// create struct
 	fileName := f.Name()
 	fields := starlark.StringDict{
-		"name":     starlark.String(fileName),
-		"path":     starlark.String(f.fullPath),
-		"ext":      starlark.String(filepath.Ext(fileName)),
-		"size":     starlark.MakeInt64(f.Size()),
-		"type":     starlark.String(modeStr),
-		"modified": stdtime.Time(f.ModTime()),
+		"name":       starlark.String(fileName),
+		"path":       starlark.String(f.fullPath),
+		"ext":        starlark.String(filepath.Ext(fileName)),
+		"size":       starlark.MakeInt64(f.Size()),
+		"type":       starlark.String(modeStr),
+		"modified":   stdtime.Time(f.ModTime()),
+		"get_md5":    starlark.NewBuiltin("get_md5", genFileHashFunc(f.fullPath, md5.New)),
+		"get_sha1":   starlark.NewBuiltin("get_sha1", genFileHashFunc(f.fullPath, sha1.New)),
+		"get_sha256": starlark.NewBuiltin("get_sha256", genFileHashFunc(f.fullPath, sha256.New)),
+		"get_sha512": starlark.NewBuiltin("get_sha512", genFileHashFunc(f.fullPath, sha512.New)),
 	}
 	return starlarkstruct.FromStringDict(starlark.String("file_stat"), fields)
 }
@@ -73,4 +85,28 @@ func getFileStat(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tup
 	// return file stat
 	fs := &FileStat{stat, absPath}
 	return fs.Struct(), nil
+}
+
+func genFileHashFunc(fp string, algo func() hash.Hash) func(*starlark.Thread, *starlark.Builtin, starlark.Tuple, []starlark.Tuple) (starlark.Value, error) {
+	return func(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		// check args
+		var sb itn.StringOrBytes
+		if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "path", &sb); err != nil {
+			return none, err
+		}
+
+		// open file
+		file, err := os.Open(fp)
+		if err != nil {
+			return none, fmt.Errorf("%s: %v", fn.Name(), err)
+		}
+		defer file.Close()
+
+		// get hash
+		h := algo()
+		if _, err := io.Copy(h, file); err != nil {
+			return none, fmt.Errorf("%s: %v", fn.Name(), err)
+		}
+		return starlark.String(hex.EncodeToString(h.Sum(nil))), nil
+	}
 }
