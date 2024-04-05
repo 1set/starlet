@@ -48,6 +48,7 @@ func LoadModule() (md starlark.StringDict, err error) {
 					"uptime":    starlark.NewBuiltin(ModuleName+".uptime", getUpTime),
 					"getenv":    starlark.NewBuiltin(ModuleName+".getenv", getenv),
 					"putenv":    starlark.NewBuiltin(ModuleName+".putenv", putenv),
+					"setenv":    starlark.NewBuiltin(ModuleName+".setenv", putenv), // alias "setenv" to "putenv"
 					"unsetenv":  starlark.NewBuiltin(ModuleName+".unsetenv", unsetenv),
 				},
 			},

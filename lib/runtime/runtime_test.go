@@ -49,6 +49,41 @@ func TestLoadModule_Runtime(t *testing.T) {
 			`),
 			wantErr: `runtime.uptime: got 1 arguments, want 0`,
 		},
+		{
+			name: `getenv: no args`,
+			script: itn.HereDoc(`
+				load('runtime', 'getenv')
+				getenv()
+			`),
+			wantErr: `runtime.getenv: missing argument for key`,
+		},
+		{
+			name: `getenv: invalid`,
+			script: itn.HereDoc(`
+				load('runtime', 'getenv')
+				getenv(123)
+			`),
+			wantErr: `runtime.getenv: for parameter key: got int, want string`,
+		},
+		{
+			name: `getenv: no result`,
+			script: itn.HereDoc(`
+				load('runtime', 'getenv')
+				x = getenv("very-long-long-non-existent")
+				assert.eq(x, None)
+				y = getenv("very-long-long-non-existent", 1000)
+				assert.eq(y, 1000)
+			`),
+		},
+		{
+			name: `getenv: with result`,
+			script: itn.HereDoc(`
+				load('runtime', 'getenv')
+				x = getenv("PATH")
+				print("PATH:", x)
+				assert.eq(type(x), "string")
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
