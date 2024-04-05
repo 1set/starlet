@@ -84,6 +84,88 @@ func TestLoadModule_Runtime(t *testing.T) {
 				assert.eq(type(x), "string")
 			`),
 		},
+		{
+			name: `putenv: no args`,
+			script: itn.HereDoc(`
+				load('runtime', 'putenv')
+				putenv()	
+			`),
+			wantErr: `runtime.putenv: missing argument for key`,
+		},
+		{
+			name: `putenv: invalid`,
+			script: itn.HereDoc(`
+				load('runtime', 'putenv')
+				putenv(123, "value")
+			`),
+			wantErr: `runtime.putenv: for parameter key: got int, want string`,
+		},
+		{
+			name: `putenv: no value`,
+			script: itn.HereDoc(`
+				load('runtime', 'putenv')
+				putenv("key")
+			`),
+			wantErr: `runtime.putenv: missing argument for value`,
+		},
+		{
+			name: `putenv: new value`,
+			script: itn.HereDoc(`
+				load('runtime', 'putenv', 'getenv')
+				putenv("STARLET_TEST", 123456)
+				x = getenv("STARLET_TEST")
+				print("STARLET_TEST:", x)
+				assert.eq(x, "123456")
+			`),
+		},
+		{
+			name: `putenv: existing value`,
+			script: itn.HereDoc(`
+				load('runtime', 'putenv', 'getenv')
+				putenv("STARLET_TEST", 123456)
+				putenv("STARLET_TEST", 654321)
+				x = getenv("STARLET_TEST")
+				print("STARLET_TEST:", x)
+				assert.eq(x, "654321")
+			`),
+		},
+		{
+			name: `unsetenv: no args`,
+			script: itn.HereDoc(`
+				load('runtime', 'unsetenv')
+				unsetenv()
+			`),
+			wantErr: `runtime.unsetenv: missing argument for key`,
+		},
+		{
+			name: `unsetenv: invalid`,
+			script: itn.HereDoc(`
+				load('runtime', 'unsetenv')
+				unsetenv(123)
+			`),
+			wantErr: `runtime.unsetenv: for parameter key: got int, want string`,
+		},
+		{
+			name: `unsetenv: non-existent`,
+			script: itn.HereDoc(`
+				load('runtime', 'unsetenv')
+				unsetenv("very-long-long-non-existent")
+			`),
+		},
+		{
+			name: `unsetenv: existing`,
+			script: itn.HereDoc(`
+				load('runtime', 'putenv', 'unsetenv', 'getenv')
+				putenv("STARLET_TEST", 123456)
+				x = getenv("STARLET_TEST")
+				print("STARLET_TEST:", x)
+				assert.eq(x, "123456")
+				unsetenv("STARLET_TEST")
+				y = getenv("STARLET_TEST")
+				print("STARLET_TEST:", y)
+				assert.eq(y, None)
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
