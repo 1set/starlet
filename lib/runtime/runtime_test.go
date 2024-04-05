@@ -166,6 +166,16 @@ func TestLoadModule_Runtime(t *testing.T) {
 				assert.eq(y, None)
 			`),
 		},
+		{
+			name: `setenv like putenv`,
+			script: itn.HereDoc(`
+				load('runtime', 'setenv', 'getenv')
+				setenv("STARLET_TEST", 123456)
+				x = getenv("STARLET_TEST")
+				print("STARLET_TEST:", x)
+				assert.eq(x, "123456")
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
