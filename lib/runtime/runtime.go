@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/1set/starlet/dataconv"
 	stdtime "go.starlark.net/lib/time"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
@@ -45,6 +46,9 @@ func LoadModule() (md starlark.StringDict, err error) {
 					"gid":       starlark.MakeInt(os.Getgid()),
 					"app_start": stdtime.Time(appStart),
 					"uptime":    starlark.NewBuiltin(ModuleName+".uptime", getUpTime),
+					"getenv":    starlark.NewBuiltin(ModuleName+".getenv", getenv),
+					"putenv":    starlark.NewBuiltin(ModuleName+".putenv", putenv),
+					"unsetenv":  starlark.NewBuiltin(ModuleName+".unsetenv", unsetenv),
 				},
 			},
 		}
@@ -62,4 +66,46 @@ func getUpTime(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple
 		return nil, err
 	}
 	return stdtime.Duration(time.Since(appStart)), nil
+}
+
+// getenv returns the value of the environment variable key as a string if it exists, or default if it doesn't.
+func getenv(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var (
+		key    string
+		defVal starlark.Value = starlark.None
+	)
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "key", &key, "default?", &defVal); err != nil {
+		return nil, err
+	}
+	// get the value
+	if val, ok := os.LookupEnv(key); ok {
+		return starlark.String(val), nil
+	}
+	return defVal, nil
+}
+
+// putenv sets the value of the environment variable named by the key, returning an error if any.
+// value should be a string, or it will be converted to a string.
+func putenv(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var (
+		key string
+		val starlark.Value
+	)
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "key", &key, "value", &val); err != nil {
+		return nil, err
+	}
+	// set the value
+	err := os.Setenv(key, dataconv.StarString(val))
+	return starlark.None, err
+}
+
+// unsetenv unsets a single environment variable.
+func unsetenv(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var key string
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "key", &key); err != nil {
+		return nil, err
+	}
+	// unset the value
+	err := os.Unsetenv(key)
+	return starlark.None, err
 }
