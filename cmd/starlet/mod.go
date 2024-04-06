@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"runtime"
+	"strings"
 
 	"github.com/1set/starlet"
 	"github.com/1set/starlet/dataconv"
@@ -102,6 +105,28 @@ func loadSysModule(args []string) func() (starlark.StringDict, error) {
 		"arch":     starlark.String(runtime.GOARCH),
 		"version":  starlark.MakeUint(starlark.CompilerVersion),
 		"argv":     starlark.NewList(sa),
+		"input":    starlark.NewBuiltin("sys.input", rawStdInput),
 	}
 	return dataconv.WrapModuleData("sys", sd)
+}
+
+func rawStdInput(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// unpack arguments
+	var prompt string
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "prompt?", &prompt); err != nil {
+		return starlark.None, err
+	}
+	// display prompt
+	if prompt != "" {
+		fmt.Print(prompt)
+	}
+	// read input from stdin
+	reader := bufio.NewReader(os.Stdin)
+	input, err := reader.ReadString('\n')
+	if err != nil {
+		return nil, err
+	}
+	// trim newline characters
+	input = strings.TrimRight(input, "\r\n")
+	return starlark.String(input), nil
 }
