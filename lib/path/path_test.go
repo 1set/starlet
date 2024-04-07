@@ -252,8 +252,17 @@ func TestLoadModule_Path(t *testing.T) {
 				p = listdir('.')
 				print("listdir:", p)
 				assert.true('path_test.go' in p)
-				print("listdir device:", listdir('/dev'))
 			`),
+		},
+		{
+			name: `listdir: list dev`,
+			script: itn.HereDoc(`
+				load('path', 'listdir')
+				p = listdir('/dev')
+				print("listdir device:", p)
+				assert.true(len(p) > 0)
+			`),
+			skipWindows: true,
 		},
 		{
 			name: `listdir: existing dir parent`,
