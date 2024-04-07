@@ -59,7 +59,7 @@ func joinPaths(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple
 	for i, arg := range args {
 		s, ok := starlark.AsString(arg)
 		if !ok {
-			return nil, fmt.Errorf("%s: got %s, want string", b.Name(), arg.Type())
+			return nil, fmt.Errorf("%s: for parameter path: got %s, want string", b.Name(), arg.Type())
 		}
 		paths[i] = s
 	}

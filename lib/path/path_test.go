@@ -44,6 +44,48 @@ func TestLoadModule_Path(t *testing.T) {
 			`),
 			skipWindows: true,
 		},
+		{
+			name: `join: invalid type`,
+			script: itn.HereDoc(`
+				load('path', 'join')
+				p = join('a', 1)
+			`),
+			wantErr: "path.join: for parameter path: got int, want string",
+		},
+		{
+			name: `abs: no args`,
+			script: itn.HereDoc(`
+				load('path', 'abs')
+				abs()
+			`),
+			wantErr: "path.abs: missing argument for path",
+		},
+		{
+			name: `abs: invalid type`,
+			script: itn.HereDoc(`
+				load('path', 'abs')
+				p = abs(1)
+			`),
+			wantErr: "path.abs: for parameter path: got int, want string",
+		},
+		{
+			name: `abs: non-existent path`,
+			script: itn.HereDoc(`
+				load('path', 'abs')	
+				p = abs('non-existent-path')
+				assert.true(p.endswith('lib/path/non-existent-path'))			
+			`),
+			skipWindows: true,
+		},
+		{
+			name: `abs: existing path`,
+			script: itn.HereDoc(`
+				load('path', 'abs')
+				p = abs('path_test.go')
+				assert.true(p.endswith('lib/path/path_test.go'))
+			`),
+			skipWindows: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
