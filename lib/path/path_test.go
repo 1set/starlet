@@ -1,10 +1,7 @@
 package path_test
 
 import (
-	"fmt"
-	"os"
 	"runtime"
-	"strings"
 	"testing"
 
 	itn "github.com/1set/starlet/internal"
@@ -299,18 +296,6 @@ func TestLoadModule_Path(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// prepare temp file if needed
-			var tp string
-			if strings.Contains(tt.script, "%q") {
-				tf, err := os.CreateTemp("", "starlet-file-test-write")
-				if err != nil {
-					t.Errorf("os.CreateTemp() expects no error, actual error = '%v'", err)
-					return
-				}
-				tp = tf.Name()
-				//t.Logf("Temp file to write: %s", tp)
-				tt.script = fmt.Sprintf(tt.script, tp)
-			}
 			// execute test
 			if isOnWindows && tt.skipWindows {
 				t.Skipf("Skip test on Windows")
