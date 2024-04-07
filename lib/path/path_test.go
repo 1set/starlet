@@ -42,7 +42,7 @@ func TestLoadModule_Path(t *testing.T) {
 				p = join('a', 'b')
 				assert.eq(p, 'a/b')
 			`),
-			skipWindows: true,
+			//skipWindows: true,
 		},
 	}
 	for _, tt := range tests {
