@@ -121,7 +121,7 @@ func listDirContents(thread *starlark.Thread, b *starlark.Builtin, args starlark
 	// check root stat
 	rootInfo, err := os.Lstat(path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %v", b.Name(), err)
 	}
 	// check if path is a directory, if not return empty list
 	var sl []starlark.Value
@@ -145,7 +145,7 @@ func listDirContents(thread *starlark.Thread, b *starlark.Builtin, args starlark
 		}
 		return nil
 	}); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %v", b.Name(), err)
 	}
 	return starlark.NewList(sl), nil
 }
