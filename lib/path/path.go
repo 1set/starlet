@@ -112,20 +112,23 @@ func checkSymlinkExist(path string) bool {
 // listDirContents returns a list of directory contents.
 func listDirContents(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
-		path           string
-		followSymlinks bool
-		recursive      bool
+		path      string
+		recursive bool
 	)
-	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "path", &path, "follow_symlinks?", &followSymlinks, "recursive?", &recursive); err != nil {
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "path", &path, "recursive?", &recursive); err != nil {
 		return nil, err
 	}
 	// check root stat
-	rootInfo, err := os.Stat(path)
+	rootInfo, err := os.Lstat(path)
 	if err != nil {
 		return nil, err
 	}
-	// scan directory contents
+	// check if path is a directory, if not return empty list
 	var sl []starlark.Value
+	if !rootInfo.IsDir() {
+		return starlark.NewList(sl), nil
+	}
+	// scan directory contents
 	if err := filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -136,10 +139,6 @@ func listDirContents(thread *starlark.Thread, b *starlark.Builtin, args starlark
 		}
 		// add path to list
 		sl = append(sl, starlark.String(p))
-		// check if we should follow symbolic links
-		if !followSymlinks && info.Mode()&os.ModeSymlink != 0 {
-			return filepath.SkipDir
-		}
 		// check if we should list recursively
 		if !recursive && p != path && info.IsDir() {
 			return filepath.SkipDir
