@@ -96,58 +96,58 @@ func TestLoadModule_Path(t *testing.T) {
 			skipWindows: true,
 		},
 		{
-			name: `exist: no args`,
+			name: `exists: no args`,
 			script: itn.HereDoc(`
-				load('path', 'exist')
-				exist()
+				load('path', 'exists')
+				exists()
 			`),
-			wantErr: "path.exist: missing argument for path",
+			wantErr: "path.exists: missing argument for path",
 		},
 		{
-			name: `exist: invalid type`,
+			name: `exists: invalid type`,
 			script: itn.HereDoc(`
-				load('path', 'exist')
-				p = exist(1)
+				load('path', 'exists')
+				p = exists(1)
 			`),
-			wantErr: "path.exist: for parameter path: got int, want string",
+			wantErr: "path.exists: for parameter path: got int, want string",
 		},
 		{
-			name: `exist: empty path`,
+			name: `exists: empty path`,
 			script: itn.HereDoc(`
-				load('path', 'exist')
-				p = exist('')
+				load('path', 'exists')
+				p = exists('')
 				assert.true(not p)
 			`),
 		},
 		{
-			name: `exist: non-existent path`,
+			name: `exists: non-existent path`,
 			script: itn.HereDoc(`
-				load('path', 'exist')
-				p = exist('non-existent-path')
+				load('path', 'exists')
+				p = exists('non-existent-path')
 				assert.true(not p)
 			`),
 		},
 		{
-			name: `exist: existing file`,
+			name: `exists: existing file`,
 			script: itn.HereDoc(`
-				load('path', 'exist')
-				p = exist('path_test.go')
+				load('path', 'exists')
+				p = exists('path_test.go')
 				assert.true(p)
 			`),
 		},
 		{
-			name: `exist: existing dot`,
+			name: `exists: existing dot`,
 			script: itn.HereDoc(`
-				load('path', 'exist')
-				p = exist('.')
+				load('path', 'exists')
+				p = exists('.')
 				assert.true(p)
 			`),
 		},
 		{
-			name: `exist: existing dot-dot`,
+			name: `exists: existing dot-dot`,
 			script: itn.HereDoc(`
-				load('path', 'exist')
-				p = exist('..')
+				load('path', 'exists')
+				p = exists('..')
 				assert.true(p)
 			`),
 		},

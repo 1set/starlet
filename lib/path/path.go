@@ -26,9 +26,12 @@ func LoadModule() (starlark.StringDict, error) {
 			ModuleName: &starlarkstruct.Module{
 				Name: ModuleName,
 				Members: starlark.StringDict{
-					"join":  starlark.NewBuiltin(ModuleName+".join", joinPaths),
-					"abs":   starlark.NewBuiltin(ModuleName+".abs", absPath),
-					"exist": starlark.NewBuiltin(ModuleName+".exist", existPath),
+					"join":    starlark.NewBuiltin(ModuleName+".join", joinPaths),
+					"abs":     starlark.NewBuiltin(ModuleName+".abs", absPath),
+					"exists":  wrapExistPath("exists", checkExistPath),
+					"is_file": wrapExistPath("is_file", checkFileExist),
+					"is_dir":  wrapExistPath("is_dir", checkDirExist),
+					"is_link": wrapExistPath("is_link", checkSymlinkExist),
 				},
 			},
 		}
@@ -70,13 +73,37 @@ func joinPaths(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple
 	return starlark.String(joined), nil
 }
 
-// existPath returns true if the path exists, if it's a symbolic link, the symbolic link is followed.
-func existPath(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var path string
-	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "path", &path); err != nil {
-		return nil, err
-	}
-	// check if path exists
+// wrapExistPath wraps the existPath function to be used in Starlark with a given function to check if the path exists.
+func wrapExistPath(funcName string, workLoad func(path string) bool) starlark.Callable {
+	return starlark.NewBuiltin(ModuleName+"."+funcName, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var path string
+		if err := starlark.UnpackArgs(b.Name(), args, kwargs, "path", &path); err != nil {
+			return starlark.None, err
+		}
+		return starlark.Bool(workLoad(path)), nil
+	})
+}
+
+// checkExistPath returns true if the path exists, if it's a symbolic link, the symbolic link is followed.
+func checkExistPath(path string) bool {
 	_, err := os.Stat(path)
-	return starlark.Bool(err == nil), nil
+	return err == nil
+}
+
+// checkFileExist returns true if the file exists, if it's a symbolic link, the symbolic link is followed.
+func checkFileExist(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info != nil && info.Mode().IsRegular()
+}
+
+// checkDirExist returns true if the directory exists, if it's a symbolic link, the symbolic link is followed.
+func checkDirExist(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info != nil && info.IsDir()
+}
+
+// checkSymlinkExist returns true if the symbolic link exists.
+func checkSymlinkExist(path string) bool {
+	info, err := os.Lstat(path)
+	return err == nil && info != nil && info.Mode()&os.ModeSymlink == os.ModeSymlink
 }
