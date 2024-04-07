@@ -293,6 +293,51 @@ func TestLoadModule_Path(t *testing.T) {
 			`),
 			wantErr: `path.getcwd: got 1 arguments, want 0`,
 		},
+		{
+			name: `chdir: no args`,
+			script: itn.HereDoc(`
+				load('path', 'chdir')
+				chdir()
+			`),
+			wantErr: `path.chdir: missing argument for path`,
+		},
+		{
+			name: `chdir: invalid type`,
+			script: itn.HereDoc(`
+				load('path', 'chdir')
+				chdir(123)
+			`),
+			wantErr: `path.chdir: for parameter path: got int, want string`,
+		},
+		{
+			name: `chdir: non-existent path`,
+			script: itn.HereDoc(`
+				load('path', 'chdir')
+				chdir('non-existent-path')
+			`),
+			wantErr: `path.chdir: chdir non-existent-path`,
+		},
+		{
+			name: `chdir: current path`,
+			script: itn.HereDoc(`
+				load('path', 'chdir', 'abs')
+				a = abs('.')
+				chdir('.')
+				b = abs('.')
+				assert.eq(a, b)
+			`),
+		},
+		{
+			name: `chdir: parent path`,
+			script: itn.HereDoc(`
+				load('path', 'chdir', 'abs')
+				a = abs('.')
+				chdir('..')
+				b = abs('.')
+				assert.ne(a, b)
+				assert.true(a.startswith(b))
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

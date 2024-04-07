@@ -34,6 +34,7 @@ func LoadModule() (starlark.StringDict, error) {
 					"is_link": wrapExistPath("is_link", checkSymlinkExist),
 					"listdir": starlark.NewBuiltin(ModuleName+".listdir", listDirContents),
 					"getcwd":  starlark.NewBuiltin(ModuleName+".getcwd", getCWD),
+					"chdir":   starlark.NewBuiltin(ModuleName+".chdir", changeCWD),
 				},
 			},
 		}
@@ -110,20 +111,6 @@ func checkSymlinkExist(path string) bool {
 	return err == nil && info != nil && info.Mode()&os.ModeSymlink == os.ModeSymlink
 }
 
-// getCWD returns the current working directory.
-func getCWD(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	// check the arguments: no arguments
-	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
-		return nil, err
-	}
-	// get current working directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("%s: %v", b.Name(), err)
-	}
-	return starlark.String(cwd), nil
-}
-
 // listDirContents returns a list of directory contents.
 func listDirContents(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
@@ -163,4 +150,31 @@ func listDirContents(thread *starlark.Thread, b *starlark.Builtin, args starlark
 		return nil, fmt.Errorf("%s: %v", b.Name(), err)
 	}
 	return starlark.NewList(sl), nil
+}
+
+// getCWD returns the current working directory.
+func getCWD(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// check the arguments: no arguments
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+		return nil, err
+	}
+	// get current working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("%s: %v", b.Name(), err)
+	}
+	return starlark.String(cwd), nil
+}
+
+// changeCWD changes the current working directory.
+func changeCWD(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var path string
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "path", &path); err != nil {
+		return nil, err
+	}
+	// change working directory
+	if err := os.Chdir(path); err != nil {
+		return nil, fmt.Errorf("%s: %v", b.Name(), err)
+	}
+	return starlark.None, nil
 }
