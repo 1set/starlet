@@ -264,6 +264,7 @@ func TestLoadModule_Path(t *testing.T) {
 				p = listdir('..')
 				print("listdir parent:", p)
 				assert.true('../path' in p)
+				assert.true('../path/path_test.go' not in p)
 			`),
 			skipWindows: true,
 		},
@@ -273,6 +274,7 @@ func TestLoadModule_Path(t *testing.T) {
 				load('path', 'listdir')
 				p = listdir('..', True)
 				print("listdir parent recursively:", p)
+				assert.true('../path' in p)
 				assert.true('../path/path_test.go' in p)
 			`),
 			skipWindows: true,
