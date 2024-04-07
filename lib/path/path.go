@@ -33,6 +33,7 @@ func LoadModule() (starlark.StringDict, error) {
 					"is_dir":  wrapExistPath("is_dir", checkDirExist),
 					"is_link": wrapExistPath("is_link", checkSymlinkExist),
 					"listdir": starlark.NewBuiltin(ModuleName+".listdir", listDirContents),
+					"getcwd":  starlark.NewBuiltin(ModuleName+".getcwd", getCWD),
 				},
 			},
 		}
@@ -107,6 +108,20 @@ func checkDirExist(path string) bool {
 func checkSymlinkExist(path string) bool {
 	info, err := os.Lstat(path)
 	return err == nil && info != nil && info.Mode()&os.ModeSymlink == os.ModeSymlink
+}
+
+// getCWD returns the current working directory.
+func getCWD(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// check the arguments: no arguments
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+		return nil, err
+	}
+	// get current working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("%s: %v", b.Name(), err)
+	}
+	return starlark.String(cwd), nil
 }
 
 // listDirContents returns a list of directory contents.

@@ -277,6 +277,23 @@ func TestLoadModule_Path(t *testing.T) {
 			`),
 			skipWindows: true,
 		},
+		{
+			name: `getcwd: no args`,
+			script: itn.HereDoc(`
+				load('path', 'getcwd')
+				p = getcwd()
+				print("cwd:", p)
+				assert.true(p.endswith('path'))
+			`),
+		},
+		{
+			name: `getcwd: extra args`,
+			script: itn.HereDoc(`
+				load('path', 'getcwd')
+				getcwd(123)
+			`),
+			wantErr: `path.getcwd: got 1 arguments, want 0`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
