@@ -69,6 +69,15 @@ func TestLoadModule_Path(t *testing.T) {
 			wantErr: "path.abs: for parameter path: got int, want string",
 		},
 		{
+			name: `abs: empty path`,
+			script: itn.HereDoc(`
+				load('path', 'abs')	
+				p = abs('')
+				assert.true(p.endswith('lib/path'))			
+			`),
+			skipWindows: true,
+		},
+		{
 			name: `abs: non-existent path`,
 			script: itn.HereDoc(`
 				load('path', 'abs')	
