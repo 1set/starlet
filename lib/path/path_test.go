@@ -151,6 +151,46 @@ func TestLoadModule_Path(t *testing.T) {
 				assert.true(p)
 			`),
 		},
+		{
+			name: `is_file: check file`,
+			script: itn.HereDoc(`
+				load('path', 'is_file')
+				p = is_file('path_test.go')
+				assert.true(p)
+			`),
+		},
+		{
+			name: `is_file: check dir`,
+			script: itn.HereDoc(`
+				load('path', 'is_file')
+				p = is_file('.')
+				assert.true(not p)
+			`),
+		},
+		{
+			name: `is_dir: check file`,
+			script: itn.HereDoc(`
+				load('path', 'is_dir')
+				p = is_dir('path_test.go')
+				assert.true(not p)
+			`),
+		},
+		{
+			name: `is_dir: check dir`,
+			script: itn.HereDoc(`
+				load('path', 'is_dir')
+				p = is_dir('.')
+				assert.true(p)
+			`),
+		},
+		{
+			name: `is_link: check file and dir`,
+			script: itn.HereDoc(`
+				load('path', 'is_link')
+				assert.true(is_link('path_test.go') == False)
+				assert.true(is_link('.') == False)
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
