@@ -324,7 +324,10 @@ func TestLoadModule_Path(t *testing.T) {
 				a = abs('.')
 				chdir('.')
 				b = abs('.')
+				chdir('../path')
+				c = abs('.')
 				assert.eq(a, b)
+				assert.eq(a, c)
 			`),
 		},
 		{
