@@ -25,7 +25,7 @@ func TestLoadModule_Path(t *testing.T) {
 				load('path', 'join')
 				join()
 			`),
-			wantErr: "path.join: got 0 arguments, want at least 1'",
+			wantErr: "path.join: got 0 arguments, want at least 1",
 		},
 		{
 			name: `join: 1 arg`,
@@ -42,7 +42,7 @@ func TestLoadModule_Path(t *testing.T) {
 				p = join('a', 'b')
 				assert.eq(p, 'a/b')
 			`),
-			//skipWindows: true,
+			skipWindows: true,
 		},
 	}
 	for _, tt := range tests {
