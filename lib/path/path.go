@@ -119,22 +119,31 @@ func listDirContents(thread *starlark.Thread, b *starlark.Builtin, args starlark
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "path", &path, "follow_symlinks?", &followSymlinks, "recursive?", &recursive); err != nil {
 		return nil, err
 	}
+	// check root stat
+	rootInfo, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
 	// scan directory contents
 	var sl []starlark.Value
 	if err := filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		// check if we should follow symbolic links
-		if !followSymlinks && info.Mode()&os.ModeSymlink == os.ModeSymlink {
+		// skip same path to avoid infinite loop in case of symbolic links
+		if os.SameFile(rootInfo, info) {
 			return nil
+		}
+		// add path to list
+		sl = append(sl, starlark.String(p))
+		// check if we should follow symbolic links
+		if !followSymlinks && info.Mode()&os.ModeSymlink != 0 {
+			return filepath.SkipDir
 		}
 		// check if we should list recursively
 		if !recursive && p != path && info.IsDir() {
 			return filepath.SkipDir
 		}
-		// add path to list
-		sl = append(sl, starlark.String(p))
 		return nil
 	}); err != nil {
 		return nil, err
