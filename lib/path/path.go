@@ -26,8 +26,8 @@ func LoadModule() (starlark.StringDict, error) {
 			ModuleName: &starlarkstruct.Module{
 				Name: ModuleName,
 				Members: starlark.StringDict{
-					"join":    starlark.NewBuiltin(ModuleName+".join", joinPaths),
 					"abs":     starlark.NewBuiltin(ModuleName+".abs", absPath),
+					"join":    starlark.NewBuiltin(ModuleName+".join", joinPaths),
 					"exists":  wrapExistPath("exists", checkExistPath),
 					"is_file": wrapExistPath("is_file", checkFileExist),
 					"is_dir":  wrapExistPath("is_dir", checkDirExist),
