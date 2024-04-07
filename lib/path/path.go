@@ -3,6 +3,7 @@ package path
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"sync"
 
@@ -25,8 +26,9 @@ func LoadModule() (starlark.StringDict, error) {
 			ModuleName: &starlarkstruct.Module{
 				Name: ModuleName,
 				Members: starlark.StringDict{
-					"join": starlark.NewBuiltin(ModuleName+".join", joinPaths),
-					"abs":  starlark.NewBuiltin(ModuleName+".abs", absPath),
+					"join":  starlark.NewBuiltin(ModuleName+".join", joinPaths),
+					"abs":   starlark.NewBuiltin(ModuleName+".abs", absPath),
+					"exist": starlark.NewBuiltin(ModuleName+".exist", existPath),
 				},
 			},
 		}
@@ -66,4 +68,19 @@ func joinPaths(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple
 	// join paths
 	joined := filepath.Join(paths...)
 	return starlark.String(joined), nil
+}
+
+// existPath returns true if the path exists, if it's a symbolic link, the symbolic link is followed.
+func existPath(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var path string
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "path", &path); err != nil {
+		return nil, err
+	}
+	// if path is empty, return false
+	if path == "" {
+		return starlark.Bool(false), nil
+	}
+	// check if path exists
+	_, err := os.Stat(path)
+	return starlark.Bool(err == nil), nil
 }

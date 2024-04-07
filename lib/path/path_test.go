@@ -71,18 +71,18 @@ func TestLoadModule_Path(t *testing.T) {
 		{
 			name: `abs: empty path`,
 			script: itn.HereDoc(`
-				load('path', 'abs')	
+				load('path', 'abs')
 				p = abs('')
-				assert.true(p.endswith('lib/path'))			
+				assert.true(p.endswith('lib/path'))
 			`),
 			skipWindows: true,
 		},
 		{
 			name: `abs: non-existent path`,
 			script: itn.HereDoc(`
-				load('path', 'abs')	
+				load('path', 'abs')
 				p = abs('non-existent-path')
-				assert.true(p.endswith('lib/path/non-existent-path'))			
+				assert.true(p.endswith('lib/path/non-existent-path'))
 			`),
 			skipWindows: true,
 		},
@@ -94,6 +94,46 @@ func TestLoadModule_Path(t *testing.T) {
 				assert.true(p.endswith('lib/path/path_test.go'))
 			`),
 			skipWindows: true,
+		},
+		{
+			name: `exist: no args`,
+			script: itn.HereDoc(`
+				load('path', 'exist')
+				exist()
+			`),
+			wantErr: "path.exist: missing argument for path",
+		},
+		{
+			name: `exist: invalid type`,
+			script: itn.HereDoc(`
+				load('path', 'exist')
+				p = exist(1)
+			`),
+			wantErr: "path.exist: for parameter path: got int, want string",
+		},
+		{
+			name: `exist: empty path`,
+			script: itn.HereDoc(`
+				load('path', 'exist')
+				p = exist('')
+				assert.true(not p)
+			`),
+		},
+		{
+			name: `exist: non-existent path`,
+			script: itn.HereDoc(`
+				load('path', 'exist')
+				p = exist('non-existent-path')
+				assert.true(not p)
+			`),
+		},
+		{
+			name: `exist: existing path`,
+			script: itn.HereDoc(`
+				load('path', 'exist')
+				p = exist('path_test.go')
+				assert.true(p)
+			`),
 		},
 	}
 	for _, tt := range tests {
