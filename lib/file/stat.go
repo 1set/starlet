@@ -40,9 +40,9 @@ func (f *FileStat) Struct() *starlarkstruct.Struct {
 		modeStr = "socket"
 	case mode&os.ModeDevice != 0:
 		if mode&os.ModeCharDevice != 0 {
-			modeStr = "char_device"
+			modeStr = "char"
 		} else {
-			modeStr = "block_device"
+			modeStr = "block"
 		}
 	case mode&os.ModeIrregular != 0:
 		modeStr = "irregular"

@@ -565,7 +565,19 @@ func TestLoadModule_File(t *testing.T) {
 			`),
 		},
 		{
-			name: `stat: device`,
+			name: `stat: symlink`,
+			script: itn.HereDoc(`
+				load('file', 'stat')
+				fp = '/dev/stdin'
+				s = stat(fp)
+				assert.eq(s.name, 'stdin')
+				assert.eq(s.type, 'symlink')
+				assert.eq(s.ext, '')
+			`),
+			skipWindows: true,
+		},
+		{
+			name: `stat: char device`,
 			script: itn.HereDoc(`
 				load('file', 'stat')
 				fp = '/dev/null'
@@ -573,10 +585,23 @@ func TestLoadModule_File(t *testing.T) {
 				assert.eq(s.name, 'null')
 				assert.eq(s.path, fp)
 				assert.eq(s.ext, '')
-				assert.eq(s.type, 'char_device')
+				assert.eq(s.type, 'char')
 			`),
 			skipWindows: true,
 		},
+		//{
+		//	name: `stat: block device`,
+		//	script: itn.HereDoc(`
+		//		load('file', 'stat')
+		//		fp = '/dev/disk0'
+		//		s = stat(fp)
+		//		assert.eq(s.name, 'disk0')
+		//		assert.eq(s.path, fp)
+		//		assert.eq(s.ext, '')
+		//		assert.eq(s.type, 'block')
+		//	`),
+		//	skipWindows: true,
+		//},
 		{
 			name: `stat: dir get hash`,
 			script: itn.HereDoc(`

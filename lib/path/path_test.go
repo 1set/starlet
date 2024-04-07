@@ -252,6 +252,7 @@ func TestLoadModule_Path(t *testing.T) {
 				p = listdir('.')
 				print("listdir:", p)
 				assert.true('path_test.go' in p)
+				print("listdir device:", listdir('/dev'))
 			`),
 		},
 		{
