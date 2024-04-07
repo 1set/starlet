@@ -152,6 +152,14 @@ func TestLoadModule_Path(t *testing.T) {
 			`),
 		},
 		{
+			name: `is_file: not exist`,
+			script: itn.HereDoc(`
+				load('path', 'is_file')
+				p = is_file('non-existent-path')
+				assert.true(not p)
+			`),
+		},
+		{
 			name: `is_file: check file`,
 			script: itn.HereDoc(`
 				load('path', 'is_file')
@@ -164,6 +172,14 @@ func TestLoadModule_Path(t *testing.T) {
 			script: itn.HereDoc(`
 				load('path', 'is_file')
 				p = is_file('.')
+				assert.true(not p)
+			`),
+		},
+		{
+			name: `is_dir: not exist`,
+			script: itn.HereDoc(`
+				load('path', 'is_dir')
+				p = is_dir('non-existent-path')
 				assert.true(not p)
 			`),
 		},
@@ -181,6 +197,14 @@ func TestLoadModule_Path(t *testing.T) {
 				load('path', 'is_dir')
 				p = is_dir('.')
 				assert.true(p)
+			`),
+		},
+		{
+			name: `is_link: not exist`,
+			script: itn.HereDoc(`
+				load('path', 'is_link')
+				p = is_link('non-existent-path')
+				assert.true(not p)
 			`),
 		},
 		{
