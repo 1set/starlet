@@ -76,10 +76,6 @@ func existPath(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "path", &path); err != nil {
 		return nil, err
 	}
-	// if path is empty, return false
-	if path == "" {
-		return starlark.Bool(false), nil
-	}
 	// check if path exists
 	_, err := os.Stat(path)
 	return starlark.Bool(err == nil), nil

@@ -128,10 +128,26 @@ func TestLoadModule_Path(t *testing.T) {
 			`),
 		},
 		{
-			name: `exist: existing path`,
+			name: `exist: existing file`,
 			script: itn.HereDoc(`
 				load('path', 'exist')
 				p = exist('path_test.go')
+				assert.true(p)
+			`),
+		},
+		{
+			name: `exist: existing dot`,
+			script: itn.HereDoc(`
+				load('path', 'exist')
+				p = exist('.')
+				assert.true(p)
+			`),
+		},
+		{
+			name: `exist: existing dot-dot`,
+			script: itn.HereDoc(`
+				load('path', 'exist')
+				p = exist('..')
 				assert.true(p)
 			`),
 		},
