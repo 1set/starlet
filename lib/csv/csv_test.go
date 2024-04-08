@@ -72,6 +72,44 @@ assert.eq(read_all(csv_string_1), [["a","b","c"],["1","2","3"],["4","5","6"],["7
 			`),
 		},
 		{
+			name: `read_all: abnormal`,
+			script: itn.HereDoc(`
+load('csv', 'read_all')
+csv_string_1 = """a,b,c,d
+1,2,3
+4,5,6
+7,8,9
+"""
+assert.eq(read_all(csv_string_1, fields_per_record=-1), [["a","b","c", "d"],["1","2","3"],["4","5","6"],["7","8","9"]])
+			`),
+		},
+		{
+			name: `read_all: check`,
+			script: itn.HereDoc(`
+load('csv', 'read_all')
+csv_string_1 = """a,b,c,d
+1,2,3
+4,5,6
+7,8,9
+"""
+assert.eq(read_all(csv_string_1, fields_per_record=3), [["a","b","c", "d"],["1","2","3"],["4","5","6"],["7","8","9"]])
+			`),
+			wantErr: `csv.read_all: record on line 1: wrong number of fields`,
+		},
+		{
+			name: `read_all: default check`,
+			script: itn.HereDoc(`
+load('csv', 'read_all')
+csv_string_1 = """a,b,c
+1,2,3,4
+4,5,6
+7,8,9
+"""
+assert.eq(read_all(csv_string_1), [["a","b","c", "d"],["1","2","3"],["4","5","6"],["7","8","9"]])
+			`),
+			wantErr: `csv.read_all: record on line 2: wrong number of fields`,
+		},
+		{
 			name: `read_all: skip`,
 			script: itn.HereDoc(`
 load('csv', 'read_all')
@@ -95,8 +133,8 @@ write_all()
 		{
 			name: `write_all: invalid type`,
 			script: itn.HereDoc(`
-load('csv', 'write_all')	
-write_all(1)	
+load('csv', 'write_all')
+write_all(1)
 			`),
 			wantErr: "csv.write_all: expected value to be an array type",
 		},
@@ -111,7 +149,7 @@ assert.eq(write_all([[]]), "\n")
 		{
 			name: `write_all: one`,
 			script: itn.HereDoc(`
-load('csv', 'write_all')	
+load('csv', 'write_all')
 assert.eq(write_all([["1","2","3"]]), "1,2,3\n")
 			`),
 		},
