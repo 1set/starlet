@@ -57,6 +57,58 @@ print(sum([1, 2, 3], 10))
 # Output: 16
 ```
 
+### `distinct(iterable)`
+
+Returns an iterable with distinct elements from the given iterable, i.e., without duplicates. For a list and custom types, it returns a new list with distinct elements. For a tuple, it returns a new tuple with distinct elements. For a dict, it returns the keys in a list. For a set, it just returns the original set.
+
+#### Parameters
+
+| name       | type       | description                                    |
+|------------|------------|------------------------------------------------|
+| `iterable` | `iterable` | The iterable to process for distinct elements. |
+
+#### Examples
+
+**List**
+
+Get distinct elements from a list.
+
+```python
+load("go_idiomatic", "distinct")
+print(distinct([1, 2, 2, 3, 3, 3]))
+# Output: [1, 2, 3]
+```
+
+**Tuple**
+
+Get distinct elements from a tuple.
+
+```python
+load("go_idiomatic", "distinct")
+print(distinct((1, 2, 2, 3, 3, 3)))
+# Output: (1, 2, 3)
+```
+
+**Dict**
+
+Get distinct keys from a dictionary.
+
+```python
+load("go_idiomatic", "distinct")
+print(distinct({1: 'a', 2: 'b', 3: 'c'}))
+# Output: [1, 2, 3]
+```
+
+**Set**
+
+Return original set (already distinct).
+
+```python
+load("go_idiomatic", "distinct")
+print(distinct(set([1, 2, 3, 3])))
+# Output: {1, 2, 3}
+```
+
 ### `hex(x)`
 
 Convert an integer number to a lowercase hexadecimal string prefixed with `0x`.

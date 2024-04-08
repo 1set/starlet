@@ -296,3 +296,59 @@ Append a list of lines to a file.
 load('file', 'append_lines')
 append_lines('existing_file.txt', ['This is line1', 'This is line2', 'This is line3'])
 ```
+
+### `stat(name, follow=False) FileStat`
+
+Returns a FileStat object representing information about the given file or directory.
+
+#### Parameters
+
+| name     | type     | description                           |
+|----------|----------|---------------------------------------|
+| `name`   | `string` | The path of the file or directory.    |
+| `follow` | `bool`   | If true, symbolic links are followed. |
+
+#### Examples
+
+**Get file information**
+
+Retrieve information about a file.
+
+```python
+load('file', 'stat')
+info = stat('path/to/file.txt')
+print(info.name, info.size, info.type)
+# Output: file.txt 3759 file
+```
+
+**Get directory information**
+
+Retrieve information about a directory.
+
+```python
+load('file', 'stat')
+info = stat('path/to/folder', follow=True)
+print(info.name, info.size, info.type)
+# Output: folder 448 dir
+```
+
+## Types
+
+### `FileStat`
+
+Represents information about a file.
+
+**Fields**
+
+| name           | type        | description                                                                                                                                                                                                                                                                                |
+|----------------|-------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `name`         | `string`    | The name of the file.                                                                                                                                                                                                                                                                      |
+| `path`         | `string`    | The full path of the file.                                                                                                                                                                                                                                                                 |
+| `ext`          | `string`    | The file extension.                                                                                                                                                                                                                                                                        |
+| `size`         | `int`       | The size of the file in bytes.                                                                                                                                                                                                                                                             |
+| `type`         | `string`    | The type of the file: `file` for regular file, `dir` for directory, `symlink` for symbolic link, `fifo` for FIFO pipe, `socket` for network socket, `char` for character device file, `block` for block device file, `irregular` for irregular file type, `unknown` for unknown file type. |
+| `modified`     | `time.Time` | The last modified time of the file.                                                                                                                                                                                                                                                        |
+| `get_md5()`    | `function`  | Returns the MD5 hash of the file contents.                                                                                                                                                                                                                                                 |
+| `get_sha1()`   | `function`  | Returns the SHA-1 hash of the file contents.                                                                                                                                                                                                                                               |
+| `get_sha256()` | `function`  | Returns the SHA-256 hash of the file contents.                                                                                                                                                                                                                                             |
+| `get_sha512()` | `function`  | Returns the SHA-512 hash of the file contents.                                                                                                                                                                                                                                             |
