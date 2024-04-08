@@ -1,17 +1,17 @@
+// Package csv reads comma-separated values files
 package csv
 
 import (
 	"bytes"
 	"encoding/csv"
 	"fmt"
+	"github.com/1set/starlet/dataconv"
+	"github.com/1set/starlet/internal/replacecr"
+	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 	"io"
 	"strings"
 	"sync"
-
-	"github.com/qri-io/starlib/util"
-	"github.com/qri-io/starlib/util/replacecr"
-	"go.starlark.net/starlark"
-	"go.starlark.net/starlarkstruct"
 )
 
 // ModuleName defines the expected name for this Module when used
@@ -138,7 +138,7 @@ func WriteAll(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple,
 	}
 	csvw.Comma = []rune(comma)[0]
 
-	val, err := util.Unmarshal(source)
+	val, err := dataconv.Unmarshal(source)
 	if err != nil {
 		return starlark.None, err
 	}
