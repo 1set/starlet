@@ -42,7 +42,7 @@ func LoadModule() (starlark.StringDict, error) {
 }
 
 // readAll gets all values from a csv source string.
-func readAll(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func readAll(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		source                       string
 		lazyQuotes, trimLeadingSpace bool
@@ -71,13 +71,13 @@ func readAll(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, 
 	if comma == "" {
 		comma = ","
 	} else if len(comma) != 1 {
-		return starlark.None, fmt.Errorf("expected comma param to be a single-character string")
+		return starlark.None, fmt.Errorf("%s: expected comma param to be a single-character string", b.Name())
 	}
 	csvr.Comma = []rune(comma)[0]
 
 	comment := string(_comment)
 	if comment != "" && len(comment) != 1 {
-		return starlark.None, fmt.Errorf("expected comment param to be a single-character string")
+		return starlark.None, fmt.Errorf("%s: expected comment param to be a single-character string", b.Name())
 	} else if comment != "" {
 		csvr.Comment = []rune(comment)[0]
 	}
@@ -90,7 +90,7 @@ func readAll(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, 
 	if skipRow > 0 {
 		for i := 0; i < skipRow; i++ {
 			if _, err := csvr.Read(); err != nil {
-				return starlark.None, err
+				return starlark.None, fmt.Errorf("%s: %w", b.Name(), err)
 			}
 		}
 	}
@@ -98,7 +98,7 @@ func readAll(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, 
 	// read all rows
 	strs, err := csvr.ReadAll()
 	if err != nil {
-		return starlark.None, err
+		return starlark.None, fmt.Errorf("%s: %w", b.Name(), err)
 	}
 
 	// convert and limit rows
@@ -117,7 +117,7 @@ func readAll(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, 
 }
 
 // writeAll writes a csv file to a string.
-func writeAll(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func writeAll(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		buf    = &bytes.Buffer{}
 		source starlark.Value
@@ -133,26 +133,26 @@ func writeAll(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple,
 	if comma == "" {
 		comma = ","
 	} else if len(comma) != 1 {
-		return starlark.None, fmt.Errorf("expected comma param to be a single-character string")
+		return starlark.None, fmt.Errorf("%s: expected comma param to be a single-character string", b.Name())
 	}
 	csvw.Comma = []rune(comma)[0]
 
 	// convert source to [][]string
 	val, err := dataconv.Unmarshal(source)
 	if err != nil {
-		return starlark.None, err
+		return starlark.None, fmt.Errorf("%s: %w", b.Name(), err)
 	}
 
 	sl, ok := val.([]interface{})
 	if !ok {
-		return starlark.None, fmt.Errorf("expected value to be an array type")
+		return starlark.None, fmt.Errorf("%s: expected value to be an array type", b.Name())
 	}
 
 	var records [][]string
 	for i, v := range sl {
 		sl, ok := v.([]interface{})
 		if !ok {
-			return starlark.None, fmt.Errorf("row %d is not an array type", i)
+			return starlark.None, fmt.Errorf("%s: row %d is not an array type", b.Name(), i)
 		}
 		var row = make([]string, len(sl))
 		for j, v := range sl {
@@ -163,7 +163,7 @@ func writeAll(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple,
 
 	// write all records
 	if err := csvw.WriteAll(records); err != nil {
-		return starlark.None, err
+		return starlark.None, fmt.Errorf("%s: %w", b.Name(), err)
 	}
 	return starlark.String(buf.String()), nil
 }
