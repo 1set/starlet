@@ -33,8 +33,9 @@ func LoadModule() (starlark.StringDict, error) {
 			ModuleName: &starlarkstruct.Module{
 				Name: ModuleName,
 				Members: starlark.StringDict{
-					"read_all":  starlark.NewBuiltin(ModuleName+".read_all", readAll),
-					"write_all": starlark.NewBuiltin(ModuleName+".write_all", writeAll),
+					"read_all":   starlark.NewBuiltin(ModuleName+".read_all", readAll),
+					"write_all":  starlark.NewBuiltin(ModuleName+".write_all", writeAll),
+					"write_dict": starlark.NewBuiltin(ModuleName+".write_dict", writeDict),
 				},
 			},
 		}
@@ -173,7 +174,7 @@ func writeDict(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple
 		header starlark.Iterable
 		comma  string
 	)
-	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "data", &data, "header", header, "comma?", &comma); err != nil {
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "data", &data, "header", &header, "comma?", &comma); err != nil {
 		return nil, err
 	}
 
@@ -207,17 +208,26 @@ func writeDict(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple
 	if err != nil {
 		return starlark.None, fmt.Errorf("%s: %w", b.Name(), err)
 	}
-
-	sl, ok := val.([]map[string]interface{})
+	sl, ok := val.([]interface{})
 	if !ok {
 		return starlark.None, fmt.Errorf("%s: expected value to be an array type", b.Name())
 	}
 
+	// write header
 	var records [][]string
+	records = append(records, headerStr)
 	for _, m := range sl {
+		// cast to map
+		mm, ok := m.(map[string]interface{})
+		if !ok {
+			return starlark.None, fmt.Errorf("%s: expected value to be a map type", b.Name())
+		}
+		// write row
 		var row = make([]string, len(headerStr))
 		for j, k := range headerStr {
-			row[j] = fmt.Sprintf("%v", m[k])
+			if v, ok := mm[k]; ok {
+				row[j] = fmt.Sprintf("%v", v)
+			}
 		}
 		records = append(records, row)
 	}

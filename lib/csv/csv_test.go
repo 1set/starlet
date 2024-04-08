@@ -215,6 +215,78 @@ a,b,c
 assert.eq(write_all(csv_data), csv_data_string)
 			`),
 		},
+		{
+			name: `write_dict: no args`,
+			script: itn.HereDoc(`
+load('csv', 'write_dict')
+write_dict()
+			`),
+			wantErr: "csv.write_dict: missing argument for data",
+		},
+		{
+			name: `write_dict: invalid header`,
+			script: itn.HereDoc(`
+load('csv', 'write_dict')
+write_dict([], header="a")
+			`),
+			wantErr: "csv.write_dict: for parameter \"header\": got string, want iterable",
+		},
+		{
+			name: `write_dict: invalid header type`,
+			script: itn.HereDoc(`
+load('csv', 'write_dict')
+write_dict([], header=[1,2,3])
+			`),
+			wantErr: "csv.write_dict: for parameter header: got int, want string",
+		},
+		{
+			name: `write_dict: invalid comma`,
+			script: itn.HereDoc(`
+load('csv', 'write_dict')
+write_dict([], header=["a"], comma=", ")
+			`),
+			wantErr: "csv.write_dict: expected comma param to be a single-character string",
+		},
+		{
+			name: `write_dict: invalid comma`,
+			script: itn.HereDoc(`
+load('csv', 'write_dict')
+write_dict([], header=["a"], comma=", ")
+			`),
+			wantErr: "csv.write_dict: expected comma param to be a single-character string",
+		},
+		{
+			name: `write_dict: invalid dict`,
+			script: itn.HereDoc(`
+load('csv', 'write_dict')
+x = write_dict([[1,2]], header=["a"])
+			`),
+			wantErr: `csv.write_dict: expected value to be a map type`,
+		},
+		{
+			name: `write_dict: empty`,
+			script: itn.HereDoc(`
+load('csv', 'write_dict')
+x = write_dict([], header=["a"])
+assert.eq(x, "a\n")
+			`),
+		},
+		{
+			name: `write_dict: one`,
+			script: itn.HereDoc(`
+load('csv', 'write_dict')
+x = write_dict([{"a": 100}], header=["a"])
+assert.eq(x, "a\n100\n")
+			`),
+		},
+		{
+			name: `write_dict: normal`,
+			script: itn.HereDoc(`
+load('csv', 'write_dict')
+x = write_dict([{"a": 200, "b": 100, "c": 500},{"b": 1024, "C": 2048}], header=["c","b"])
+assert.eq(x, "c,b\n500,100\n,1024\n")
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
