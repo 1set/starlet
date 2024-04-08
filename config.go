@@ -2,6 +2,7 @@ package starlet
 
 import (
 	libb64 "github.com/1set/starlet/lib/base64"
+	libcsv "github.com/1set/starlet/lib/csv"
 	libfile "github.com/1set/starlet/lib/file"
 	libgoid "github.com/1set/starlet/lib/goidiomatic"
 	libhash "github.com/1set/starlet/lib/hashlib"
@@ -51,6 +52,7 @@ var allBuiltinModules = ModuleLoaderMap{
 	liblog.ModuleName:  liblog.LoadModule,
 	libfile.ModuleName: libfile.LoadModule,
 	libpath.ModuleName: libpath.LoadModule,
+	libcsv.ModuleName:  libcsv.LoadModule,
 }
 
 // GetAllBuiltinModuleNames returns a list of all builtin module names.

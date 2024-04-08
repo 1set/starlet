@@ -1,9 +1,10 @@
 package csv_test
 
 import (
+	"testing"
+
 	itn "github.com/1set/starlet/internal"
 	libcsv "github.com/1set/starlet/lib/csv"
-	"testing"
 )
 
 func TestLoadModule_CSV(t *testing.T) {

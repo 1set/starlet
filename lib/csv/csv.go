@@ -7,13 +7,14 @@ import (
 	"bytes"
 	"encoding/csv"
 	"fmt"
+	"io"
+	"strings"
+	"sync"
+
 	"github.com/1set/starlet/dataconv"
 	"github.com/1set/starlet/internal/replacecr"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
-	"io"
-	"strings"
-	"sync"
 )
 
 // ModuleName defines the expected name for this Module when used in starlark's load() function, eg: load('csv', 'read_all')
