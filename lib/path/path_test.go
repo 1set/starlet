@@ -6,6 +6,7 @@ import (
 
 	itn "github.com/1set/starlet/internal"
 	lpath "github.com/1set/starlet/lib/path"
+	"go.starlark.net/starlark"
 )
 
 func TestLoadModule_Path(t *testing.T) {
@@ -287,6 +288,22 @@ func TestLoadModule_Path(t *testing.T) {
 			skipWindows: true,
 		},
 		{
+			name: `listdir: no permission`,
+			script: itn.HereDoc(`
+				load('path', 'listdir')
+				def run():
+					if runtime_os == "darwin":
+						p = listdir('/var/root')
+					elif runtime_os == "linux":
+						p = listdir('/root')
+					else:
+						print("skip for", runtime_os)
+				run()
+			`),
+			wantErr:     `path.listdir: open /`,
+			skipWindows: true,
+		},
+		{
 			name: `getcwd: no args`,
 			script: itn.HereDoc(`
 				load('path', 'getcwd')
@@ -351,6 +368,14 @@ func TestLoadModule_Path(t *testing.T) {
 				assert.true(a.startswith(b))
 			`),
 		},
+		{
+			name: `chdir: file path`,
+			script: itn.HereDoc(`
+				load('path', 'chdir')
+				chdir('path_test.go')
+			`),
+			wantErr: `path.chdir: chdir path_test.go`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -359,7 +384,10 @@ func TestLoadModule_Path(t *testing.T) {
 				t.Skipf("Skip test on Windows")
 				return
 			}
-			res, err := itn.ExecModuleWithErrorTest(t, lpath.ModuleName, lpath.LoadModule, tt.script, tt.wantErr, nil)
+			globals := starlark.StringDict{
+				"runtime_os": starlark.String(runtime.GOOS),
+			}
+			res, err := itn.ExecModuleWithErrorTest(t, lpath.ModuleName, lpath.LoadModule, tt.script, tt.wantErr, globals)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("path(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
 			}
