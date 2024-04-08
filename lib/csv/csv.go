@@ -114,14 +114,13 @@ func readAll(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, 
 	return starlark.NewList(vals), nil
 }
 
-// writeAll writes a csv file to a string.
+// writeAll writes a list of lists to a csv string.
 func writeAll(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		buf   = &bytes.Buffer{}
 		data  starlark.Value
 		comma string
 	)
-
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "data", &data, "comma?", &comma); err != nil {
 		return nil, err
 	}
@@ -155,6 +154,70 @@ func writeAll(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple,
 		var row = make([]string, len(sl))
 		for j, v := range sl {
 			row[j] = fmt.Sprintf("%v", v)
+		}
+		records = append(records, row)
+	}
+
+	// write all records
+	if err := csvw.WriteAll(records); err != nil {
+		return starlark.None, fmt.Errorf("%s: %w", b.Name(), err)
+	}
+	return starlark.String(buf.String()), nil
+}
+
+// writeDict writes a list of dictionaries to a csv string.
+func writeDict(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var (
+		buf    = &bytes.Buffer{}
+		data   starlark.Value
+		header starlark.Iterable
+		comma  string
+	)
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "data", &data, "header", header, "comma?", &comma); err != nil {
+		return nil, err
+	}
+
+	// prepare writer
+	csvw := csv.NewWriter(buf)
+	if comma == "" {
+		comma = ","
+	} else if len(comma) != 1 {
+		return starlark.None, fmt.Errorf("%s: expected comma param to be a single-character string", b.Name())
+	}
+	csvw.Comma = []rune(comma)[0]
+
+	// convert header to []string
+	var headerStr []string
+	iter := header.Iterate()
+	defer iter.Done()
+	var hv starlark.Value
+	for iter.Next(&hv) {
+		s, ok := starlark.AsString(hv)
+		if !ok {
+			return starlark.None, fmt.Errorf("%s: for parameter header: got %s, want string", b.Name(), hv.Type())
+		}
+		headerStr = append(headerStr, s)
+	}
+	if len(headerStr) == 0 {
+		return starlark.None, fmt.Errorf("%s: header cannot be empty", b.Name())
+	}
+
+	// convert data to []map[string]interface{}
+	val, err := dataconv.Unmarshal(data)
+	if err != nil {
+		return starlark.None, fmt.Errorf("%s: %w", b.Name(), err)
+	}
+
+	sl, ok := val.([]map[string]interface{})
+	if !ok {
+		return starlark.None, fmt.Errorf("%s: expected value to be an array type", b.Name())
+	}
+
+	var records [][]string
+	for _, m := range sl {
+		var row = make([]string, len(headerStr))
+		for j, k := range headerStr {
+			row[j] = fmt.Sprintf("%v", m[k])
 		}
 		records = append(records, row)
 	}
