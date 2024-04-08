@@ -240,12 +240,12 @@ write_dict([], header=[1,2,3])
 			wantErr: "csv.write_dict: for parameter header: got int, want string",
 		},
 		{
-			name: `write_dict: invalid comma`,
+			name: `write_dict: empty header`,
 			script: itn.HereDoc(`
 load('csv', 'write_dict')
-write_dict([], header=["a"], comma=", ")
+write_dict([], header=[])
 			`),
-			wantErr: "csv.write_dict: expected comma param to be a single-character string",
+			wantErr: "csv.write_dict: header cannot be empty",
 		},
 		{
 			name: `write_dict: invalid comma`,
@@ -256,7 +256,15 @@ write_dict([], header=["a"], comma=", ")
 			wantErr: "csv.write_dict: expected comma param to be a single-character string",
 		},
 		{
-			name: `write_dict: invalid dict`,
+			name: `write_dict: invalid data`,
+			script: itn.HereDoc(`
+load('csv', 'write_dict')
+x = write_dict("123", header=["a"])
+			`),
+			wantErr: `csv.write_dict: expected value to be an array type`,
+		},
+		{
+			name: `write_dict: invalid list`,
 			script: itn.HereDoc(`
 load('csv', 'write_dict')
 x = write_dict([[1,2]], header=["a"])
