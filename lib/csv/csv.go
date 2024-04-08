@@ -1,4 +1,6 @@
-// Package csv reads comma-separated values files
+// Package csv reads comma-separated values from strings and writes CSV data to strings.
+//
+// Migrated from https://github.com/qri-io/starlib/tree/master/encoding/csv
 package csv
 
 import (
@@ -14,9 +16,8 @@ import (
 	"sync"
 )
 
-// ModuleName defines the expected name for this Module when used
-// in starlark's load() function, eg: load('csv.star', 'csv')
-const ModuleName = "encoding/csv.star"
+// ModuleName defines the expected name for this Module when used in starlark's load() function, eg: load('csv', 'read_all')
+const ModuleName = "csv"
 
 var (
 	once      sync.Once
@@ -28,11 +29,11 @@ var (
 func LoadModule() (starlark.StringDict, error) {
 	once.Do(func() {
 		csvModule = starlark.StringDict{
-			"csv": &starlarkstruct.Module{
-				Name: "csv",
+			ModuleName: &starlarkstruct.Module{
+				Name: ModuleName,
 				Members: starlark.StringDict{
-					"read_all":  starlark.NewBuiltin("read_all", ReadAll),
-					"write_all": starlark.NewBuiltin("write_all", WriteAll),
+					"read_all":  starlark.NewBuiltin("read_all", readAll),
+					"write_all": starlark.NewBuiltin("write_all", writeAll),
 				},
 			},
 		}
@@ -40,8 +41,8 @@ func LoadModule() (starlark.StringDict, error) {
 	return csvModule, nil
 }
 
-// ReadAll gets all values from a csv source
-func ReadAll(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+// readAll gets all values from a csv source string.
+func readAll(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		r io.Reader
 
@@ -116,8 +117,8 @@ func ReadAll(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, 
 	return starlark.NewList(vals), nil
 }
 
-// WriteAll writes a csv file to a string
-func WriteAll(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+// writeAll writes a csv file to a string.
+func writeAll(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		buf = &bytes.Buffer{}
 
@@ -164,6 +165,5 @@ func WriteAll(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple,
 	if err := csvw.WriteAll(records); err != nil {
 		return starlark.None, err
 	}
-
 	return starlark.String(buf.String()), nil
 }
