@@ -613,6 +613,17 @@ func TestLoadModule_File(t *testing.T) {
 			wantErr:     `testdata: is a directory`,
 			skipWindows: true,
 		},
+		{
+			name: `stat: no perm`,
+			script: itn.HereDoc(`
+				load('file', 'stat')
+				fp = '/etc/sudoers'
+				s = stat(fp)
+				s.get_md5()
+			`),
+			wantErr:     `get_md5: open /etc/sudoers`,
+			skipWindows: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

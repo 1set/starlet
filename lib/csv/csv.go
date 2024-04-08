@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/1set/starlet/dataconv"
+	itn "github.com/1set/starlet/internal"
 	"github.com/1set/starlet/internal/replacecr"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
@@ -44,7 +45,7 @@ func LoadModule() (starlark.StringDict, error) {
 // readAll gets all values from a csv source string.
 func readAll(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
-		source                       string
+		source                       itn.StringOrBytes
 		lazyQuotes, trimLeadingSpace bool
 		skipRow, limitRow            int
 		fieldsPerRecord              int
@@ -56,14 +57,14 @@ func readAll(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, 
 		"comment", &_comment,
 		"lazy_quotes", &lazyQuotes,
 		"trim_leading_space", &trimLeadingSpace,
-		"limit_column?", &fieldsPerRecord,
-		"skip_row?", &skipRow,
-		"limit_row?", &limitRow); err != nil {
+		"fields_per_record?", &fieldsPerRecord,
+		"skip?", &skipRow,
+		"limit?", &limitRow); err != nil {
 		return nil, err
 	}
 
 	// prepare reader
-	csvr := csv.NewReader(replacecr.Reader(strings.NewReader(source)))
+	csvr := csv.NewReader(replacecr.Reader(strings.NewReader(source.GoString())))
 	csvr.LazyQuotes = lazyQuotes
 	csvr.TrimLeadingSpace = trimLeadingSpace
 
@@ -81,10 +82,7 @@ func readAll(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, 
 	} else if comment != "" {
 		csvr.Comment = []rune(comment)[0]
 	}
-
-	if fieldsPerRecord > 0 {
-		csvr.FieldsPerRecord = fieldsPerRecord
-	}
+	csvr.FieldsPerRecord = fieldsPerRecord
 
 	// pre-read to skip rows
 	if skipRow > 0 {
@@ -102,7 +100,7 @@ func readAll(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, 
 	}
 
 	// convert and limit rows
-	vals := make([]starlark.Value, len(strs))
+	vals := make([]starlark.Value, 0, len(strs))
 	for i, rowStr := range strs {
 		if limitRow > 0 && i >= limitRow {
 			break
@@ -111,7 +109,7 @@ func readAll(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, 
 		for j, cell := range rowStr {
 			row[j] = starlark.String(cell)
 		}
-		vals[i] = starlark.NewList(row)
+		vals = append(vals, starlark.NewList(row))
 	}
 	return starlark.NewList(vals), nil
 }
@@ -119,12 +117,12 @@ func readAll(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, 
 // writeAll writes a csv file to a string.
 func writeAll(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
-		buf    = &bytes.Buffer{}
-		source starlark.Value
-		comma  string
+		buf   = &bytes.Buffer{}
+		data  starlark.Value
+		comma string
 	)
 
-	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "source", &source, "comma?", &comma); err != nil {
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "data", &data, "comma?", &comma); err != nil {
 		return nil, err
 	}
 
@@ -137,8 +135,8 @@ func writeAll(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple,
 	}
 	csvw.Comma = []rune(comma)[0]
 
-	// convert source to [][]string
-	val, err := dataconv.Unmarshal(source)
+	// convert data to [][]string
+	val, err := dataconv.Unmarshal(data)
 	if err != nil {
 		return starlark.None, fmt.Errorf("%s: %w", b.Name(), err)
 	}

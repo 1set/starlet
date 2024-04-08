@@ -35,7 +35,7 @@ read_all(1)
 load('csv', 'write_all')
 write_all()
 			`),
-			wantErr: "csv.write_all: missing argument for source",
+			wantErr: "csv.write_all: missing argument for data",
 		},
 
 		{
@@ -47,7 +47,7 @@ write_all(1)
 			wantErr: "csv.write_all: expected value to be an array type",
 		},
 		{
-			name: `read_all`,
+			name: `read_all: normal`,
 			script: itn.HereDoc(`
 load('csv', 'read_all')
 csv_string_1 = """a,b,c
@@ -56,6 +56,18 @@ csv_string_1 = """a,b,c
 7,8,9
 """
 assert.eq(read_all(csv_string_1), [["a","b","c"],["1","2","3"],["4","5","6"],["7","8","9"]])
+			`),
+		},
+		{
+			name: `read_all: skip`,
+			script: itn.HereDoc(`
+load('csv', 'read_all')
+csv_string_1 = """a,b,c
+1,2,3
+4,5,6
+7,8,9
+"""
+assert.eq(read_all(csv_string_1, skip=1, limit=2, fields_per_record=3), [["1","2","3"],["4","5","6"]])
 			`),
 		},
 		{
