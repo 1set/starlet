@@ -83,12 +83,12 @@ func getFileStat(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tup
 	}
 	stat, err := statFn(inputPath)
 	if err != nil {
-		return none, fmt.Errorf("%s: %v", b.Name(), err)
+		return none, fmt.Errorf("%s: %w", b.Name(), err)
 	}
 	// get file abs path
 	absPath, err := filepath.Abs(inputPath)
 	if err != nil {
-		return none, fmt.Errorf("%s: %v", b.Name(), err)
+		return none, fmt.Errorf("%s: %w", b.Name(), err)
 	}
 	// return file stat
 	fs := &FileStat{stat, absPath}
