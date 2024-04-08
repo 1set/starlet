@@ -1,4 +1,4 @@
-// Package path defines functions that manipulate directories, it's inspired by path helpers from Mojo.
+// Package path defines functions that manipulate directories, it's inspired by pathlib module from Mojo.
 package path
 
 import (
