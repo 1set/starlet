@@ -264,6 +264,16 @@ x = write_dict("123", header=["a"])
 			wantErr: `csv.write_dict: expected value to be an array type`,
 		},
 		{
+			name: `write_all: invalid data type`,
+			script: itn.HereDoc(`
+load('csv', 'write_dict')
+def hello():
+	print("Hello, World!")
+write_dict(hello, header=["a"])
+			`),
+			wantErr: "csv.write_dict: unrecognized starlark type: *starlark.Function",
+		},
+		{
 			name: `write_dict: invalid list`,
 			script: itn.HereDoc(`
 load('csv', 'write_dict')
