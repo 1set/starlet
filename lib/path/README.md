@@ -6,7 +6,7 @@
 
 ### `abs(path) string`
 
-Returns a normalized absolutized version of the pathname path
+Returns an absolute representation of path. If the path is not absolute it will be joined with the current working directory to turn it into an absolute path. The absolute path name for a given file is not guaranteed to be unique.
 
 #### Parameters
 
@@ -29,7 +29,7 @@ print(p)
 
 ### `join(path, *paths) string`
 
-Join one or more path segments intelligently. The return value is the concatenation of path and all members of *paths, with exactly one directory separator following each non-empty part, except the last.
+Joins one or more path elements into a single path intelligently, separating them with an OS specific separator. Empty elements are ignored.
 
 #### Parameters
 
