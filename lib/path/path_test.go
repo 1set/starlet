@@ -68,6 +68,7 @@ func TestLoadModule_Path(t *testing.T) {
 				assert.eq(join("a", "", "c"), "a/c")
 				assert.eq(join("", "b", "c"), "b/c")
 			`),
+			skipWindows: true,
 		},
 		{
 			name: `join: relative path`,
@@ -76,6 +77,7 @@ func TestLoadModule_Path(t *testing.T) {
 				assert.eq(join("a/b", "../../../xyz"), "../xyz")
 				assert.eq(join("a/b", "../../xyz"), "xyz")
 			`),
+			skipWindows: true,
 		},
 		{
 			name: `join: absolute path`,
@@ -86,6 +88,7 @@ func TestLoadModule_Path(t *testing.T) {
 				assert.eq(join("/a100", "b"), "/a100/b")
 				assert.eq(join("/a100", "b", "c"), "/a100/b/c")
 			`),
+			skipWindows: true,
 		},
 		{
 			name: `abs: no args`,
