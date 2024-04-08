@@ -1,12 +1,12 @@
 # path
 
-`path` provides functions to manipulate directories and file paths. It is inspired by `pathlib` from Mojo.
+`path` provides functions to manipulate directories and file paths. It is inspired by `pathlib` module from Mojo.
 
 ## Functions
 
 ### `abs(path) string`
 
-Returns the absolute representation of path.
+Returns a normalized absolutized version of the pathname path
 
 #### Parameters
 
@@ -27,9 +27,9 @@ print(p)
 # Output: '/current/absolute/path'
 ```
 
-### `join(paths...) string`
+### `join(path, *paths) string`
 
-Joins any number of path elements into a single path.
+Join one or more path segments intelligently. The return value is the concatenation of path and all members of *paths, with exactly one directory separator following each non-empty part, except the last.
 
 #### Parameters
 
