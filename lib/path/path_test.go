@@ -51,6 +51,43 @@ func TestLoadModule_Path(t *testing.T) {
 			wantErr: "path.join: for parameter path: got int, want string",
 		},
 		{
+			name: `join: empty path`,
+			script: itn.HereDoc(`
+				load('path', 'join')
+				assert.eq(join(""), "")
+				assert.eq(join("",""), "")
+				assert.eq(join("","",""), "")
+			`),
+		},
+		{
+			name: `join: partial empty`,
+			script: itn.HereDoc(`
+				load('path', 'join')
+				assert.eq(join("a", "", ""), "a")
+				assert.eq(join("a", "b", ""), "a/b")
+				assert.eq(join("a", "", "c"), "a/c")
+				assert.eq(join("", "b", "c"), "b/c")
+			`),
+		},
+		{
+			name: `join: relative path`,
+			script: itn.HereDoc(`
+				load('path', 'join')
+				assert.eq(join("a/b", "../../../xyz"), "../xyz")
+				assert.eq(join("a/b", "../../xyz"), "xyz")
+			`),
+		},
+		{
+			name: `join: absolute path`,
+			script: itn.HereDoc(`
+				load('path', 'join')
+				assert.eq(join("/a100"), "/a100")
+				assert.eq(join("/a100", ""), "/a100")
+				assert.eq(join("/a100", "b"), "/a100/b")
+				assert.eq(join("/a100", "b", "c"), "/a100/b/c")
+			`),
+		},
+		{
 			name: `abs: no args`,
 			script: itn.HereDoc(`
 				load('path', 'abs')
