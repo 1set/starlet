@@ -30,21 +30,34 @@ read_all(1)
 			wantErr: "csv.read_all: for parameter source: got int, want string",
 		},
 		{
-			name: `write_all: no args`,
+			name: `read_all: invalid comma`,
 			script: itn.HereDoc(`
-load('csv', 'write_all')
-write_all()
+load('csv', 'read_all')
+read_all("1,2,3", comma=", ")
 			`),
-			wantErr: "csv.write_all: missing argument for data",
+			wantErr: "csv.read_all: expected comma param to be a single-character string",
 		},
-
 		{
-			name: `write_all: invalid type`,
+			name: `read_all: invalid comment`,
 			script: itn.HereDoc(`
-load('csv', 'write_all')	
-write_all(1)	
+load('csv', 'read_all')
+read_all("1,2,3", comment="##")
 			`),
-			wantErr: "csv.write_all: expected value to be an array type",
+			wantErr: "csv.read_all: expected comment param to be a single-character string",
+		},
+		{
+			name: `read_all: empty`,
+			script: itn.HereDoc(`
+load('csv', 'read_all')
+assert.eq(read_all(''), [])
+			`),
+		},
+		{
+			name: `read_all: one`,
+			script: itn.HereDoc(`
+load('csv', 'read_all')
+assert.eq(read_all('1,2,3\n\n'), [["1","2","3"]])
+			`),
 		},
 		{
 			name: `read_all: normal`,
@@ -71,7 +84,39 @@ assert.eq(read_all(csv_string_1, skip=1, limit=2, fields_per_record=3), [["1","2
 			`),
 		},
 		{
-			name: `write_all`,
+			name: `write_all: no args`,
+			script: itn.HereDoc(`
+load('csv', 'write_all')
+write_all()
+			`),
+			wantErr: "csv.write_all: missing argument for data",
+		},
+
+		{
+			name: `write_all: invalid type`,
+			script: itn.HereDoc(`
+load('csv', 'write_all')	
+write_all(1)	
+			`),
+			wantErr: "csv.write_all: expected value to be an array type",
+		},
+		{
+			name: `write_all: empty`,
+			script: itn.HereDoc(`
+load('csv', 'write_all')
+assert.eq(write_all([]), "")
+assert.eq(write_all([[]]), "\n")
+			`),
+		},
+		{
+			name: `write_all: one`,
+			script: itn.HereDoc(`
+load('csv', 'write_all')	
+assert.eq(write_all([["1","2","3"]]), "1,2,3\n")
+			`),
+		},
+		{
+			name: `write_all: normal`,
 			script: itn.HereDoc(`
 load('csv', 'write_all')
 csv_data = [[1,2,3],[4,5,6],['a','b','c']]
@@ -81,6 +126,14 @@ a,b,c
 """
 assert.eq(write_all(csv_data), csv_data_string)
 			`),
+		},
+		{
+			name: `write_all: invalid comma`,
+			script: itn.HereDoc(`
+load('csv', 'write_all')
+write_all([[1,2,3]], comma=", ")
+			`),
+			wantErr: "csv.write_all: expected comma param to be a single-character string",
 		},
 	}
 	for _, tt := range tests {
