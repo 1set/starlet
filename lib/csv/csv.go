@@ -32,8 +32,8 @@ func LoadModule() (starlark.StringDict, error) {
 			ModuleName: &starlarkstruct.Module{
 				Name: ModuleName,
 				Members: starlark.StringDict{
-					"read_all":  starlark.NewBuiltin("read_all", readAll),
-					"write_all": starlark.NewBuiltin("write_all", writeAll),
+					"read_all":  starlark.NewBuiltin(ModuleName+".read_all", readAll),
+					"write_all": starlark.NewBuiltin(ModuleName+".write_all", writeAll),
 				},
 			},
 		}
@@ -50,7 +50,7 @@ func readAll(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, 
 		fieldsPerRecord              int
 		_comma, _comment             starlark.String
 	)
-	if err := starlark.UnpackArgs("read_all", args, kwargs,
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs,
 		"source", &source,
 		"comma?", &_comma,
 		"comment", &_comment,
@@ -124,7 +124,7 @@ func writeAll(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple,
 		comma  string
 	)
 
-	if err := starlark.UnpackArgs("write_all", args, kwargs, "source", &source, "comma?", &comma); err != nil {
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "source", &source, "comma?", &comma); err != nil {
 		return nil, err
 	}
 
