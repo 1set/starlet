@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/1set/starlet/dataconv"
@@ -28,7 +29,7 @@ var (
 	// UserAgent is the default user agent for http requests, override with a custom value before calling LoadModule.
 	UserAgent = "Starlet-http-client/" + itn.StarletVersion
 	// TimeoutSecond is the default timeout in seconds for http requests, override with a custom value before calling LoadModule.
-	TimeoutSecond = 30
+	TimeoutSecond = 30.0
 	// SkipInsecureVerify controls whether to skip TLS verification, override with a custom value before calling LoadModule.
 	SkipInsecureVerify = false
 	// DisableRedirect controls whether to follow redirects, override with a custom value before calling LoadModule.
@@ -37,6 +38,8 @@ var (
 	Client *http.Client
 	// Guard is a global RequestGuard used in LoadModule, override with a custom implementation before calling LoadModule.
 	Guard RequestGuard
+	// ConfigLock is a global lock for settings, use it to ensure thread safety when setting.
+	ConfigLock sync.RWMutex
 )
 
 // RequestGuard controls access to http by checking before making requests
@@ -79,8 +82,36 @@ func (m *Module) StringDict() starlark.StringDict {
 	for _, name := range methods {
 		sd[name] = starlark.NewBuiltin(ModuleName+"."+name, m.reqMethod(name))
 	}
-	// TODO: add new here like setRequestTimeout or getRequestTimeout
+	sd["set_timeout"] = starlark.NewBuiltin(ModuleName+".set_timeout", setRequestTimeout)
+	sd["get_timeout"] = starlark.NewBuiltin(ModuleName+".get_timeout", getRequestTimeout)
 	return sd
+}
+
+// setRequestTimeout sets the timeout for http requests
+func setRequestTimeout(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var timeout itn.FloatOrInt
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "timeout", &timeout); err != nil {
+		return nil, err
+	}
+	if timeout < 0 {
+		return nil, fmt.Errorf("timeout must be non-negative")
+	}
+	// update the global TimeoutSecond variable which influences all future HTTP requests.
+	ConfigLock.Lock()
+	defer ConfigLock.Unlock()
+	TimeoutSecond = float64(timeout)
+	return starlark.None, nil
+}
+
+// getRequestTimeout returns the current timeout for http requests
+func getRequestTimeout(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// check the arguments: no arguments
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+		return nil, err
+	}
+	ConfigLock.RLock()
+	defer ConfigLock.RUnlock()
+	return starlark.Float(TimeoutSecond), nil
 }
 
 // reqMethod is a factory function for generating starlark builtin functions for different http request methods
