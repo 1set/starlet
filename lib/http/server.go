@@ -19,34 +19,45 @@ var (
 )
 
 // ExportedServerRequest is a struct that holds the data of an HTTP request in a Go-friendly format,
-// allowing Starlark scripts to read and modify the request data before processing it on the server side.
+// allowing Go code to read and process the request data, and enabling Starlark scripts to access the request data.
 type ExportedServerRequest struct {
-	Method   string      // The HTTP method (e.g., GET, POST, PUT, DELETE)
-	URL      string      // The request URL
-	Proto    string      // The protocol used for the request (e.g., HTTP/1.1)
-	Host     string      // The host specified in the request
-	Remote   string      // The remote address of the client
-	Header   http.Header // The HTTP headers included in the request
-	Query    url.Values  // The query parameters included in the request URL
-	Body     []byte      // The request body data
-	Encoding []string    // The transfer encodings specified in the request
+	Method   string         // The HTTP method (e.g., GET, POST, PUT, DELETE)
+	URL      string         // The request URL
+	Proto    string         // The protocol used for the request (e.g., HTTP/1.1)
+	Host     string         // The host specified in the request
+	Remote   string         // The remote address of the client
+	Header   http.Header    // The HTTP headers included in the request
+	Query    url.Values     // The query parameters included in the request URL
+	Encoding []string       // The transfer encodings specified in the request
+	Body     []byte         // The request body data
+	JSONData starlark.Value // The request body data as Starlark value
 }
 
 // NewExportedServerRequest creates a new ExportedServerRequest from an http.Request.
 func NewExportedServerRequest(r *http.Request) (*ExportedServerRequest, error) {
 	if r == nil {
-		return nil, nil
+		return nil, errors.New("nil request")
 	}
 
+	// attempt to read the request body
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return nil, err
 	}
 
-	// Reset the request body to allow multiple reads
-	r.Body.Close()
+	// reset the request body to allow multiple reads
+	_ = r.Body.Close()
 	r.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 
+	// marshal body as json
+	var sv starlark.Value = starlark.None
+	if len(body) > 0 {
+		if sv, err = dataconv.UnmarshalStarlarkJSON(body); err != nil {
+			sv = starlark.None
+		}
+	}
+
+	// create the exported request
 	return &ExportedServerRequest{
 		Method:   r.Method,
 		URL:      r.URL.String(),
@@ -56,54 +67,47 @@ func NewExportedServerRequest(r *http.Request) (*ExportedServerRequest, error) {
 		Header:   r.Header,
 		Query:    r.URL.Query(),
 		Body:     body,
+		JSONData: sv,
 		Encoding: r.TransferEncoding,
 	}, nil
 }
 
-// ConvertServerRequest converts a http.Request to a Starlark struct for use in Starlark scripts on the server side.
-func ConvertServerRequest(r *http.Request) *starlarkstruct.Struct {
-	// for nil request, return nil
-	if r == nil {
-		return nil
-	}
-
+// Struct returns a Starlark struct representation of the ExportedServerRequest, which exposes the following fields to Starlark scripts:
+//   - method: The HTTP method (e.g., GET, POST, PUT, DELETE)
+//   - url: The request URL
+//   - proto: The protocol used for the request (e.g., HTTP/1.1)
+//   - host: The host specified in the request
+//   - remote: The remote address of the client
+//   - header: The HTTP headers included in the request
+//   - query: The query parameters included in the request URL
+//   - encoding: The transfer encodings specified in the request
+//   - body: The request body data
+//   - json: The request body data as Starlark value, if it is valid JSON or None otherwise
+func (r *ExportedServerRequest) Struct() *starlarkstruct.Struct {
 	// prepare struct members
 	sd := starlark.StringDict{
-		"body": starlark.None,
-		"json": starlark.None,
+		"method":   starlark.String(r.Method),
+		"url":      starlark.String(r.URL),
+		"proto":    starlark.String(r.Proto),
+		"host":     starlark.String(r.Host),
+		"remote":   starlark.String(r.Remote),
+		"header":   mapStrs2Dict(r.Header),
+		"query":    mapStrs2Dict(r.Query),
+		"encoding": sliceStr2List(r.Encoding),
+		"body":     starlark.String(r.Body),
+		"json":     r.JSONData,
 	}
-
-	// set headers, query, and other fields
-	sd["host"] = starlark.String(r.Host)
-	sd["remote"] = starlark.String(r.RemoteAddr)
-	sd["url"] = starlark.String(r.URL.String())
-	sd["proto"] = starlark.String(r.Proto)
-	sd["method"] = starlark.String(r.Method)
-	sd["header"] = mapStrs2Dict(r.Header)
-	sd["query"] = mapStrs2Dict(r.URL.Query())
-	sd["encoding"] = sliceStr2List(r.TransferEncoding)
-
-	// for body content
-	var (
-		bs  []byte
-		err error
-	)
-	if r.Body != nil {
-		if bs, err = ioutil.ReadAll(r.Body); err == nil {
-			sd["body"] = starlark.String(bs)
-			// reset reader to allow multiple calls outside
-			_ = r.Body.Close()
-			r.Body = ioutil.NopCloser(bytes.NewBuffer(bs))
-		}
-	}
-	if bs != nil {
-		if sv, err := dataconv.UnmarshalStarlarkJSON(bs); err == nil {
-			sd["json"] = sv
-		}
-	}
-
 	// create struct
 	return starlarkstruct.FromStringDict(structNameRequest, sd)
+}
+
+// ConvertServerRequest converts a http.Request to a Starlark struct for use in Starlark scripts on the server side.
+func ConvertServerRequest(r *http.Request) *starlarkstruct.Struct {
+	sr, err := NewExportedServerRequest(r)
+	if err != nil || sr == nil {
+		return nil
+	}
+	return sr.Struct()
 }
 
 // NewServerResponse creates a new ServerResponse.
