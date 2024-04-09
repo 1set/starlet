@@ -131,6 +131,22 @@ Perform an HTTP OPTIONS request, returning a response.
 | `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                       |
 | `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                    |
 
+### `set_timeout(timeout)`
+
+Set the global timeout for all HTTP requests.
+
+#### Parameters
+
+| name      | type    | description                                                                                                                  |
+|-----------|---------|------------------------------------------------------------------------------------------------------------------------------|
+| `timeout` | `float` | The timeout in seconds. Must be non-negative. This timeout will be used for all subsequent HTTP requests made by the module. |
+
+### `get_timeout() float`
+
+Get the current global timeout setting for HTTP requests.
+returns:
+The current timeout in seconds used for HTTP requests.
+
 ## Types
 
 ### `response`
