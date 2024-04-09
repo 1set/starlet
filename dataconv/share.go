@@ -289,6 +289,47 @@ func (s *SharedDict) ToJSON() (string, error) {
 	return string(ss), nil
 }
 
+// LoadJSON loads the SharedDict from a JSON string, it merges the new dictionary into the existing one.
+// Notice that this method is not a must for the starlark.Value interface, but it's useful for Go code.
+func (s *SharedDict) LoadJSON(jsonStr string) error {
+	// prepare thread
+	thread := &starlark.Thread{Name: "inline", Print: noopPrintFunc}
+
+	// get the JSON decoder
+	jm, ok := stdjson.Module.Members["decode"]
+	if !ok {
+		return fmt.Errorf("json.decode not found")
+	}
+	dec := jm.(*starlark.Builtin)
+
+	// call the builtin
+	val, err := dec.CallInternal(thread, starlark.Tuple{starlark.String(jsonStr)}, nil)
+	if err != nil {
+		return err
+	}
+
+	// convert to dict
+	nd, ok := val.(*starlark.Dict)
+	if !ok {
+		return fmt.Errorf("got %s result, want dict", val.Type())
+	}
+
+	// lock the shared dict
+	s.Lock()
+	defer s.Unlock()
+
+	// merge the new dict into the shared dict
+	for _, r := range nd.Items() {
+		if len(r) < 2 {
+			continue
+		}
+		if e := s.dict.SetKey(r[0], r[1]); e != nil {
+			return e
+		}
+	}
+	return nil
+}
+
 var (
 	customSharedDictMethods = map[string]*starlark.Builtin{
 		"len":       starlark.NewBuiltin("len", sharedDictLen),
@@ -420,7 +461,3 @@ func cloneDict(od *starlark.Dict) (*starlark.Dict, error) {
 	}
 	return nd, nil
 }
-
-var (
-	noopPrintFunc = func(thread *starlark.Thread, msg string) {}
-)

@@ -15,7 +15,8 @@ import (
 )
 
 var (
-	emptyStr string
+	emptyStr      string
+	noopPrintFunc = func(thread *starlark.Thread, msg string) {}
 )
 
 // IsEmptyString checks is a starlark string is empty ("" for a go string)
