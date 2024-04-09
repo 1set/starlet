@@ -66,9 +66,9 @@ func NewExportedServerRequest(r *http.Request) (*ExportedServerRequest, error) {
 		Remote:   r.RemoteAddr,
 		Header:   r.Header,
 		Query:    r.URL.Query(),
+		Encoding: r.TransferEncoding,
 		Body:     body,
 		JSONData: sv,
-		Encoding: r.TransferEncoding,
 	}, nil
 }
 
@@ -99,6 +99,27 @@ func (r *ExportedServerRequest) Struct() *starlarkstruct.Struct {
 	}
 	// create struct
 	return starlarkstruct.FromStringDict(structNameRequest, sd)
+}
+
+// Write writes the request data back to http.Request.
+func (r *ExportedServerRequest) Write(req *http.Request) (err error) {
+	if req == nil {
+		return errors.New("nil request")
+	}
+
+	// set request method, URL, and protocol
+	req.Method = r.Method
+	req.URL, err = url.Parse(r.URL)
+	req.Proto = r.Proto
+	req.Host = r.Host
+	req.RemoteAddr = r.Remote
+	req.Header = r.Header
+	req.TransferEncoding = r.Encoding
+
+	// set request body
+	req.Body = ioutil.NopCloser(bytes.NewReader(r.Body))
+
+	return err
 }
 
 // ConvertServerRequest converts a http.Request to a Starlark struct for use in Starlark scripts on the server side.
