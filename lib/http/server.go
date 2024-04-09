@@ -18,29 +18,28 @@ var (
 	structNameResponse = starlark.String("Response")
 )
 
-// ExportedServerRequest is a struct that holds the data of an HTTP request in a Go-friendly format,
-// allowing Go code to read and process the request data, and enabling Starlark scripts to access the request data.
-// This dual accessibility allows for a seamless interaction between Go's robust HTTP handling features and Starlark's
-// dynamic scripting capabilities.
+// ExportedServerRequest encapsulates HTTP request data in a format accessible to both Go code and Starlark scripts.
+// This struct bridges Go's HTTP handling features with Starlark's dynamic scripting capabilities, enabling seamless
+// interaction and manipulation of request properties in Go, while providing a structured, read-only view of the request
+// data to Starlark scripts.
 //
 // Key Features:
-//   - Full access to HTTP request properties such as method, URL, headers, and body.
-//   - Ability to read and modify these properties from Go code.
-//   - Structured representation of request data for easy interaction with Starlark scripts.
-//   - Support for JSON body data, enabling scripts to work with JSON payloads easily.
+//   - Full access to HTTP request properties (method, URL, headers, body) for reading and modification in Go.
+//   - Structured, read-only representation of request data for Starlark scripts, enhancing scripting flexibility.
+//   - JSON body support simplifies working with JSON payloads directly in scripts.
 //
-// Usage:
-//   1. Capture an incoming http.Request in Go and convert it to an ExportedServerRequest using NewExportedServerRequest.
-//   2. Before passing the request to a Starlark script, modification can be applied directly to the ExportedServerRequest.
-//   3. Convert the ExportedServerRequest to a Starlark struct using the Struct method, which can then be passed to Starlark scripts for read only.
-//   4. Scripts can read request properties, and work with JSON payloads without additional parsing logic.
-//   5. During script execution, no modifications can be made to the Struct since it is read-only.
+// Usage Pattern:
+//   1. Convert an incoming http.Request to ExportedServerRequest with NewExportedServerRequest for access in Go.
+//   2. Modify the ExportedServerRequest properties as needed in Go before handing off to Starlark.
+//   3. Use the Struct method to convert the ExportedServerRequest to a Starlark struct, passing it to Starlark scripts
+//      for read-only access. This step allows scripts to inspect the request's properties.
+//   4. Since the Starlark struct is read-only, modifications to the request must be performed in Go, either before
+//      or after script execution.
 //
-// The design focuses on ease of use, security, and performance. By providing a structured
-// approach to HTTP request handling in conjunction with Starlark scripting, it allows
-// developers to implement complex request processing logic dynamically. Key to this design
-// is ensuring that the system remains secure from injection attacks or unauthorized modifications,
-// thereby maintaining the integrity of the server's request handling pipeline.
+// This design prioritizes ease of use, security, and performance, facilitating dynamic and complex request processing
+// logic through Go and Starlark. It ensures the integrity of the HTTP request handling by preventing unauthorized
+// modifications and protecting against potential security threats. Developers are encouraged to validate all modifications
+// and interactions with the request data to maintain the server's security posture.
 type ExportedServerRequest struct {
 	Method   string         // The HTTP method (e.g., GET, POST, PUT, DELETE)
 	URL      string         // The request URL
@@ -160,13 +159,13 @@ func NewServerResponse() *ServerResponse {
 // ServerResponse is a struct that enables HTTP response manipulation within Starlark scripts,
 // facilitating dynamic preparation of HTTP responses in Go-based web servers executing such scripts.
 //
-// Key functionalities include:
+// Key Features:
 //   - Setting HTTP status codes.
 //   - Adding and managing HTTP headers.
 //   - Specifying the content type of the response.
 //   - Setting the response body with support for various data types (e.g., binary, text, HTML, JSON).
 //
-// Usage:
+// Usage Pattern:
 //   1. Create a ServerResponse instance using NewServerResponse().
 //   2. Utilize the Struct() method to obtain a Starlark struct that exposes ServerResponse functionalities to Starlark scripts.
 //   3. In the Starlark script, utilize provided methods (e.g., set_status, add_header, set_content_type) to prepare the response.
