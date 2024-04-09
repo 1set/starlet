@@ -68,7 +68,33 @@ func NewServerResponse() *ServerResponse {
 	return &ServerResponse{}
 }
 
-// ServerResponse is a Starlark struct to save info in Starlark scripts to modify http.ResponseWriter outside on the server side.
+// ServerResponse is a struct that enables HTTP response manipulation within Starlark scripts,
+// facilitating dynamic preparation of HTTP responses in Go-based web servers executing such scripts.
+//
+// Key functionalities include:
+//   - Setting HTTP status codes.
+//   - Adding and managing HTTP headers.
+//   - Specifying the content type of the response.
+//   - Setting the response body with support for various data types (e.g., binary, text, HTML, JSON).
+//
+// Usage:
+//   1. Create a ServerResponse instance using NewServerResponse().
+//   2. Utilize the Struct() method to obtain a Starlark struct that exposes ServerResponse functionalities to Starlark scripts.
+//   3. In the Starlark script, utilize provided methods (e.g., set_status, add_header, set_content_type) to prepare the response.
+//   4. Back in Go, the ServerResponse instance can directly write its content to an http.ResponseWriter using its Write() method.
+//      Alternatively, you can call the Export() method to convert the ServerResponse into an ExportedServerResponse for modification,
+//      which is then capable of being written to an http.ResponseWriter using its Write() method.
+//
+// Internally, ServerResponse uses a private contentDataType enum to manage the intended type of the response data,
+// allowing for automatic adjustment of the Content-Type header based on the set data type by the Starlark script.
+//
+// The ExportedServerResponse struct simplifies ServerResponse for interoperability with Go's standard http package,
+// comprising an HTTP status code, headers, and data for the HTTP response. Its Write() method allows for the prepared
+// response to be efficiently written to an http.ResponseWriter, ensuring correct header setting and response body data writing.
+//
+// Note: Direct manipulation of ServerResponse and its methods by Starlark scripts necessitates validation of script inputs
+// to mitigate potential security issues like header injection attacks. This design allows scripts to dynamically prepare
+// HTTP responses while maintaining a secure and controlled server environment.
 type ServerResponse struct {
 	statusCode  int
 	headers     map[string][]string
@@ -77,7 +103,15 @@ type ServerResponse struct {
 	data        []byte
 }
 
-// Struct returns a Starlark struct for use in Starlark scripts.
+// Struct returns a Starlark struct representation of the ServerResponse, which exposes the following methods to Starlark scripts:
+//   - set_status(code): Sets the HTTP status code for the response.
+//   - set_code(code): An alias for set_status.
+//   - add_header(key, value): Adds a header with the given key and value to the response.
+//   - set_content_type(contentType): Sets the Content-Type header for the response.
+//   - set_data(data): Sets the response data as binary data.
+//   - set_json(data): Sets the response data as JSON, marshaling the given Starlark value to JSON.
+//   - set_text(data): Sets the response data as plain text.
+//   - set_html(data): Sets the response data as HTML.
 func (r *ServerResponse) Struct() *starlarkstruct.Struct {
 	// prepare struct members
 	sd := starlark.StringDict{
