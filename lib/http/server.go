@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 
 	"github.com/1set/starlet/dataconv"
 	itn "github.com/1set/starlet/internal"
@@ -16,6 +17,48 @@ var (
 	structNameRequest  = starlark.String("Request")
 	structNameResponse = starlark.String("Response")
 )
+
+// ExportedServerRequest is a struct that holds the data of an HTTP request in a Go-friendly format,
+// allowing Starlark scripts to read and modify the request data before processing it on the server side.
+type ExportedServerRequest struct {
+	Method   string      // The HTTP method (e.g., GET, POST, PUT, DELETE)
+	URL      string      // The request URL
+	Proto    string      // The protocol used for the request (e.g., HTTP/1.1)
+	Host     string      // The host specified in the request
+	Remote   string      // The remote address of the client
+	Header   http.Header // The HTTP headers included in the request
+	Query    url.Values  // The query parameters included in the request URL
+	Body     []byte      // The request body data
+	Encoding []string    // The transfer encodings specified in the request
+}
+
+// NewExportedServerRequest creates a new ExportedServerRequest from an http.Request.
+func NewExportedServerRequest(r *http.Request) (*ExportedServerRequest, error) {
+	if r == nil {
+		return nil, nil
+	}
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// Reset the request body to allow multiple reads
+	r.Body.Close()
+	r.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+
+	return &ExportedServerRequest{
+		Method:   r.Method,
+		URL:      r.URL.String(),
+		Proto:    r.Proto,
+		Host:     r.Host,
+		Remote:   r.RemoteAddr,
+		Header:   r.Header,
+		Query:    r.URL.Query(),
+		Body:     body,
+		Encoding: r.TransferEncoding,
+	}, nil
+}
 
 // ConvertServerRequest converts a http.Request to a Starlark struct for use in Starlark scripts on the server side.
 func ConvertServerRequest(r *http.Request) *starlarkstruct.Struct {
