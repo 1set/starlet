@@ -3,7 +3,7 @@ module github.com/1set/starlet
 go 1.18
 
 require (
-	github.com/1set/starlight v0.0.9
+	github.com/1set/starlight v0.0.10
 	github.com/google/uuid v1.6.0
 	go.starlark.net v0.0.0-20240123142251-f86470692795
 	go.uber.org/zap v1.24.0
