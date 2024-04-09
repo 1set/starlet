@@ -50,6 +50,13 @@ func TestNewExportedServerRequest_ValidRequest(t *testing.T) {
 	}
 }
 
+func TestExportedServerRequest_Write_Nil(t *testing.T) {
+	expReq := &ExportedServerRequest{}
+	if err := expReq.Write(nil); err == nil {
+		t.Error("Expected an error when writing to nil http.Request, got nil")
+	}
+}
+
 func TestExportedServerRequest_Write(t *testing.T) {
 	bodyContent := `test body`
 	req, _ := http.NewRequest("GET", "/", bytes.NewBufferString(bodyContent))
