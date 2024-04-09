@@ -359,9 +359,18 @@ func TestLoadModule_HTTP(t *testing.T) {
 			wantErr: `context deadline exceeded (Client.Timeout exceeded while awaiting headers)`,
 		},
 		{
+			name: `GET Global Timeout`,
+			script: itn.HereDoc(`
+				load('http', 'get', 'set_timeout')
+				set_timeout(0.01)
+				res = get(test_server_url)
+			`),
+			wantErr: `context deadline exceeded (Client.Timeout exceeded while awaiting headers)`,
+		},
+		{
 			name: `GET Not Timeout`,
 			script: itn.HereDoc(`
-				load('http', 'get')
+				load('http', 'get', 'set_timeout')
 				res = get(test_server_url, timeout=0.5)
 				assert.eq(res.status_code, 200)
 				b = res.body()
@@ -449,6 +458,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 			if tt.preset != nil {
 				tt.preset()
 			}
+			TimeoutSecond = 30.0
 			res, err := itn.ExecModuleWithErrorTest(t, ModuleName, LoadModule, tt.script, tt.wantErr, nil)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("http(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
