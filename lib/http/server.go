@@ -42,12 +42,11 @@ var (
 // and interactions with the request data to maintain the server's security posture.
 type ExportedServerRequest struct {
 	Method   string         // The HTTP method (e.g., GET, POST, PUT, DELETE)
-	URL      string         // The request URL
+	URL      *url.URL       // The request URL
 	Proto    string         // The protocol used for the request (e.g., HTTP/1.1)
 	Host     string         // The host specified in the request
 	Remote   string         // The remote address of the client
 	Header   http.Header    // The HTTP headers included in the request
-	Query    url.Values     // The query parameters included in the request URL
 	Encoding []string       // The transfer encodings specified in the request
 	Body     []byte         // The request body data
 	JSONData starlark.Value // The request body data as Starlark value
@@ -80,12 +79,11 @@ func NewExportedServerRequest(r *http.Request) (*ExportedServerRequest, error) {
 	// create the exported request
 	return &ExportedServerRequest{
 		Method:   r.Method,
-		URL:      r.URL.String(),
+		URL:      r.URL,
 		Proto:    r.Proto,
 		Host:     r.Host,
 		Remote:   r.RemoteAddr,
 		Header:   r.Header,
-		Query:    r.URL.Query(),
 		Encoding: r.TransferEncoding,
 		Body:     body,
 		JSONData: sv,
@@ -107,12 +105,12 @@ func (r *ExportedServerRequest) Struct() *starlarkstruct.Struct {
 	// prepare struct members
 	sd := starlark.StringDict{
 		"method":   starlark.String(r.Method),
-		"url":      starlark.String(r.URL),
+		"url":      starlark.String(r.URL.String()),
 		"proto":    starlark.String(r.Proto),
 		"host":     starlark.String(r.Host),
 		"remote":   starlark.String(r.Remote),
 		"header":   mapStrs2Dict(r.Header),
-		"query":    mapStrs2Dict(r.Query),
+		"query":    mapStrs2Dict(r.URL.Query()),
 		"encoding": sliceStr2List(r.Encoding),
 		"body":     starlark.String(r.Body),
 		"json":     r.JSONData,
@@ -129,13 +127,12 @@ func (r *ExportedServerRequest) Write(req *http.Request) (err error) {
 
 	// set request method, URL, and protocol
 	req.Method = r.Method
-	req.URL, err = url.Parse(r.URL)
+	req.URL = r.URL
 	req.Proto = r.Proto
 	req.Host = r.Host
 	req.RemoteAddr = r.Remote
 	req.Header = r.Header
 	req.TransferEncoding = r.Encoding
-
 	// set request body
 	req.Body = ioutil.NopCloser(bytes.NewReader(r.Body))
 

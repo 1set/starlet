@@ -2,9 +2,11 @@ package http
 
 import (
 	"bytes"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
+	"net/url"
 	"reflect"
 	"strings"
 	"testing"
@@ -14,6 +16,63 @@ import (
 	"go.starlark.net/starlarktest"
 	"go.starlark.net/syntax"
 )
+
+func TestNewExportedServerRequest_NilRequest(t *testing.T) {
+	_, err := NewExportedServerRequest(nil)
+	if err == nil {
+		t.Error("Expected an error when creating ExportedServerRequest with nil http.Request, got nil")
+	}
+}
+
+func TestNewExportedServerRequest_ValidRequest(t *testing.T) {
+	bodyContent := `{"key": "value"}`
+	req := httptest.NewRequest("POST", "http://example.com?query=123", bytes.NewBufferString(bodyContent))
+	req.Header.Add("Content-Type", "application/json")
+
+	expReq, err := NewExportedServerRequest(req)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	ul, err := url.Parse("http://example.com?query=123")
+	if expReq.Method != "POST" || !reflect.DeepEqual(expReq.URL, ul) || string(expReq.Body) != bodyContent {
+		t.Errorf("ExportedServerRequest fields not correctly populated")
+	}
+
+	if _, ok := expReq.JSONData.(*starlark.Dict); !ok {
+		t.Errorf("Expected JSONData to be a starlark Dict, got %T", expReq.JSONData)
+	}
+}
+
+func TestExportedServerRequest_Write(t *testing.T) {
+	bodyContent := `test body`
+	req, _ := http.NewRequest("GET", "/", bytes.NewBufferString(bodyContent))
+	expReq, _ := NewExportedServerRequest(req)
+	expReq.Method = "POST"
+	expReq.URL, _ = url.Parse("http://modified.com?query=123")
+	expReq.Proto = "HTTP/2.0"
+	expReq.Host = "modified.com"
+	expReq.Header = http.Header{"X-Custom-Header": []string{"Custom Value"}}
+
+	modifiedRequest := new(http.Request)
+	err := expReq.Write(modifiedRequest)
+	if err != nil {
+		t.Fatalf("Unexpected error on write: %v", err)
+	}
+
+	if modifiedRequest.Method != "POST" ||
+		modifiedRequest.URL.String() != "http://modified.com?query=123" ||
+		modifiedRequest.Proto != "HTTP/2.0" ||
+		modifiedRequest.Host != "modified.com" ||
+		modifiedRequest.Header.Get("X-Custom-Header") != "Custom Value" {
+		t.Errorf("Modified http.Request did not match expected values")
+	}
+
+	modifiedBody, _ := ioutil.ReadAll(modifiedRequest.Body)
+	if string(modifiedBody) != bodyContent {
+		t.Errorf("Request body was not correctly written. Got %s, want %s", string(modifiedBody), bodyContent)
+	}
+}
 
 func TestConvertServerRequest(t *testing.T) {
 	// just a taste
