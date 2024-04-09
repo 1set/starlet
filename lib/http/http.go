@@ -94,7 +94,7 @@ func setRequestTimeout(thread *starlark.Thread, b *starlark.Builtin, args starla
 		return nil, err
 	}
 	if timeout < 0 {
-		return nil, fmt.Errorf("timeout must be non-negative")
+		return nil, fmt.Errorf("%s: timeout must be non-negative", b.Name())
 	}
 	// update the global TimeoutSecond variable which influences all future HTTP requests.
 	ConfigLock.Lock()

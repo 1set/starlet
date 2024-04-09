@@ -318,6 +318,39 @@ func TestLoadModule_HTTP(t *testing.T) {
 			`),
 		},
 		{
+			name: `Global Timeout`,
+			script: itn.HereDoc(`
+				load('http', 'get_timeout', 'set_timeout')
+				assert.eq(get_timeout(), 30)
+				set_timeout(10.5)
+				assert.eq(get_timeout(), 10.5)
+			`),
+		},
+		{
+			name: `Invalid Timeout`,
+			script: itn.HereDoc(`
+				load('http', 'get_timeout', 'set_timeout')
+				set_timeout("10")
+			`),
+			wantErr: `http.set_timeout: for parameter timeout: got string, want float or int`,
+		},
+		{
+			name: `Invalid Timeout Value`,
+			script: itn.HereDoc(`
+				load('http', 'get_timeout', 'set_timeout')
+				set_timeout(-10)
+			`),
+			wantErr: `http.set_timeout: timeout must be non-negative`,
+		},
+		{
+			name: `Invalid Get Timeout`,
+			script: itn.HereDoc(`
+				load('http', 'get_timeout')
+				get_timeout(0.5)
+			`),
+			wantErr: `http.get_timeout: got 1 arguments, want 0`,
+		},
+		{
 			name: `GET Timeout`,
 			script: itn.HereDoc(`
 				load('http', 'get')
