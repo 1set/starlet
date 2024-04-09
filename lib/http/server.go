@@ -20,6 +20,27 @@ var (
 
 // ExportedServerRequest is a struct that holds the data of an HTTP request in a Go-friendly format,
 // allowing Go code to read and process the request data, and enabling Starlark scripts to access the request data.
+// This dual accessibility allows for a seamless interaction between Go's robust HTTP handling features and Starlark's
+// dynamic scripting capabilities.
+//
+// Key Features:
+//   - Full access to HTTP request properties such as method, URL, headers, and body.
+//   - Ability to read and modify these properties from Go code.
+//   - Structured representation of request data for easy interaction with Starlark scripts.
+//   - Support for JSON body data, enabling scripts to work with JSON payloads easily.
+//
+// Usage:
+//   1. Capture an incoming http.Request in Go and convert it to an ExportedServerRequest using NewExportedServerRequest.
+//   2. Before passing the request to a Starlark script, modification can be applied directly to the ExportedServerRequest.
+//   3. Convert the ExportedServerRequest to a Starlark struct using the Struct method, which can then be passed to Starlark scripts for read only.
+//   4. Scripts can read request properties, and work with JSON payloads without additional parsing logic.
+//   5. During script execution, no modifications can be made to the Struct since it is read-only.
+//
+// The design focuses on ease of use, security, and performance. By providing a structured
+// approach to HTTP request handling in conjunction with Starlark scripting, it allows
+// developers to implement complex request processing logic dynamically. Key to this design
+// is ensuring that the system remains secure from injection attacks or unauthorized modifications,
+// thereby maintaining the integrity of the server's request handling pipeline.
 type ExportedServerRequest struct {
 	Method   string         // The HTTP method (e.g., GET, POST, PUT, DELETE)
 	URL      string         // The request URL

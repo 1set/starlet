@@ -1,6 +1,7 @@
-// Package http defines a module for doing http operations in Starlark.
+// Package http provides tools for integrating HTTP request handling within Go-based web servers and clients with Starlark scripting capabilities.
+// This enables dynamic inspection and modification of HTTP requests and responses through scripts, enhancing flexibility and control over processing.
 //
-// Migrated from: https://github.com/qri-io/starlib/tree/master/http
+// Migrated from: https://github.com/qri-io/starlib/tree/master/http with modifications.
 package http
 
 import (
