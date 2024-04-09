@@ -962,7 +962,7 @@ func TestSharedDict_Concurrent(t *testing.T) {
 	}
 }
 
-func TestSharedDictToJSON(t *testing.T) {
+func TestSharedDict_ToJSON(t *testing.T) {
 	sd0 := NewSharedDict()
 	sd1 := NewSharedDict()
 	if err := sd1.SetKey(starlark.String("foo"), starlark.String("bar")); err != nil {
@@ -1045,5 +1045,126 @@ func getSDLoader(name string, sd *SharedDict) func() (starlark.StringDict, error
 			"frozen":  md2,
 			"broken":  md3,
 		}, nil
+	}
+}
+
+func TestSharedDict_LoadJSON(t *testing.T) {
+	sd0 := NewSharedDict()
+	sd1 := NewSharedDict()
+	if err := sd1.SetKey(starlark.String("foo"), starlark.String("bar")); err != nil {
+		t.Errorf("set key error: %v", err)
+		return
+	}
+	sd2 := NewSharedDict()
+	if err := sd2.SetKey(starlark.String("foo"), starlark.String("bar")); err != nil {
+		t.Errorf("set key error: %v", err)
+		return
+	}
+	if err := sd2.SetKey(starlark.String("cat"), starlark.MakeInt(100)); err != nil {
+		t.Errorf("set key error: %v", err)
+		return
+	}
+	sd3 := NewSharedDict()
+	if err := sd3.SetKey(starlark.String("self"), sd3.dict); err != nil {
+		t.Errorf("set key error: %v", err)
+		return
+	}
+	if err := sd3.SetKey(starlark.String("foo"), starlark.String("bar")); err != nil {
+		t.Errorf("set key error: %v", err)
+		return
+	}
+	sd4 := NewSharedDict()
+	if err := sd4.SetKey(starlark.String("foo"), starlark.String("bar")); err != nil {
+		t.Errorf("set key error: %v", err)
+		return
+	}
+	if err := sd4.SetKey(starlark.String("123"), starlark.String("456")); err != nil {
+		t.Errorf("set key error: %v", err)
+		return
+	}
+	if err := sd4.SetKey(starlark.String("cat"), starlark.Bool(true)); err != nil {
+		t.Errorf("set key error: %v", err)
+		return
+	}
+
+	sdA := NewSharedDict()
+	if err := sdA.SetKey(starlark.String("foo"), starlark.String("ball")); err != nil {
+		t.Errorf("set key error: %v", err)
+		return
+	}
+	sdB := NewSharedDict()
+	if err := sdB.SetKey(starlark.String("self"), sd3.dict); err != nil {
+		t.Errorf("set key error: %v", err)
+		return
+	}
+	sdC := NewSharedDict()
+	if err := sdC.SetKey(starlark.String("foo"), starlark.String("okay")); err != nil {
+		t.Errorf("set key error: %v", err)
+		return
+	}
+	if err := sdC.SetKey(starlark.String("123"), starlark.String("456")); err != nil {
+		t.Errorf("set key error: %v", err)
+		return
+	}
+
+	tests := []struct {
+		name    string
+		startSD *SharedDict
+		jsonStr string
+		wantSD  *SharedDict
+		wantErr string
+	}{
+		{
+			name:    "empty->empty",
+			jsonStr: `{}`,
+			startSD: NewSharedDict(),
+			wantSD:  sd0,
+		},
+		{
+			name:    "empty->one",
+			jsonStr: `{"foo":"bar"}`,
+			startSD: NewSharedDict(),
+			wantSD:  sd1,
+		},
+		{
+			name:    "nil->one",
+			jsonStr: `{"foo":"bar"}`,
+			startSD: nil,
+			wantSD:  sd1,
+			wantErr: `nil shared dict`,
+		},
+		{
+			name:    "one override",
+			jsonStr: `{"foo":"bar"}`,
+			startSD: sdA,
+			wantSD:  sd1,
+		},
+		{
+			name:    "cycle",
+			jsonStr: `{"foo":"bar"}`,
+			startSD: sdB,
+			wantSD:  sd3,
+		},
+		{
+			name:    "two->three",
+			jsonStr: `{"cat":true,"foo":"bar"}`,
+			startSD: sdC,
+			wantSD:  sd4,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.startSD.LoadJSON(tt.jsonStr)
+			if (err != nil) && (tt.wantErr == "") {
+				t.Errorf("sd(%q).LoadJSON() expects no error, actual error = '%v'", tt.name, err)
+				return
+			}
+			if err == nil {
+				if !reflect.DeepEqual(tt.startSD, tt.wantSD) {
+					t.Errorf("sd(%q).LoadJSON() expects '%v', actual '%v'", tt.name, tt.wantSD, tt.startSD)
+					return
+				}
+			}
+		})
 	}
 }

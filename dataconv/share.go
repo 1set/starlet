@@ -292,6 +292,11 @@ func (s *SharedDict) ToJSON() (string, error) {
 // LoadJSON loads the SharedDict from a JSON string, it merges the new dictionary into the existing one.
 // Notice that this method is not a must for the starlark.Value interface, but it's useful for Go code.
 func (s *SharedDict) LoadJSON(jsonStr string) error {
+	// check the dict itself
+	if s == nil {
+		return fmt.Errorf("nil shared dict")
+	}
+
 	// prepare thread
 	thread := &starlark.Thread{Name: "inline", Print: noopPrintFunc}
 
