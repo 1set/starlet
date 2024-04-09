@@ -1106,6 +1106,12 @@ func TestSharedDict_LoadJSON(t *testing.T) {
 		t.Errorf("set key error: %v", err)
 		return
 	}
+	sdD := NewSharedDict()
+	if err := sdD.SetKey(starlark.String("cat"), starlark.Bool(true)); err != nil {
+		t.Errorf("set key error: %v", err)
+		return
+	}
+	sdD.Freeze()
 
 	tests := []struct {
 		name    string
@@ -1150,6 +1156,24 @@ func TestSharedDict_LoadJSON(t *testing.T) {
 			jsonStr: `{"cat":true,"foo":"bar"}`,
 			startSD: sdC,
 			wantSD:  sd4,
+		},
+		{
+			name:    "frozen",
+			jsonStr: `{"foo":"bar"}`,
+			startSD: sdD,
+			wantErr: `cannot insert into frozen hash table`,
+		},
+		{
+			name:    "invalid json",
+			jsonStr: `{"foo":"bar"`,
+			startSD: NewSharedDict(),
+			wantErr: `json.decode: at offset 12, unexpected end of file`,
+		},
+		{
+			name:    "invalid type",
+			jsonStr: `123`,
+			startSD: NewSharedDict(),
+			wantErr: `got int result, want dict`,
 		},
 	}
 	for _, tt := range tests {
