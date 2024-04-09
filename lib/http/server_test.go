@@ -42,6 +42,12 @@ func TestNewExportedServerRequest_ValidRequest(t *testing.T) {
 	if _, ok := expReq.JSONData.(*starlark.Dict); !ok {
 		t.Errorf("Expected JSONData to be a starlark Dict, got %T", expReq.JSONData)
 	}
+
+	if data, err := ioutil.ReadAll(req.Body); err != nil {
+		t.Errorf("Unexpected error re-reading body: %v", err)
+	} else if string(data) != bodyContent {
+		t.Errorf("Unexpected body content after reading: %s", data)
+	}
 }
 
 func TestExportedServerRequest_Write(t *testing.T) {
