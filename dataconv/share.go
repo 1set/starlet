@@ -262,6 +262,33 @@ func (s *SharedDict) CloneDict() (*starlark.Dict, error) {
 	return cloneDict(s.dict)
 }
 
+// ToJSON converts the SharedDict to a JSON string.
+// Notice that this method is not a must for the starlark.Value interface, but it's useful for Go code.
+func (s *SharedDict) ToJSON() (string, error) {
+	// prepare thread
+	thread := &starlark.Thread{Name: "inline", Print: noopPrintFunc}
+
+	// get the JSON encoder
+	jm, ok := stdjson.Module.Members["encode"]
+	if !ok {
+		return emptyStr, fmt.Errorf("json.encode not found")
+	}
+	enc := jm.(*starlark.Builtin)
+
+	// call the builtin
+	val, err := enc.CallInternal(thread, starlark.Tuple{s.dict}, nil)
+	if err != nil {
+		return emptyStr, err
+	}
+
+	// convert to string
+	ss, ok := val.(starlark.String)
+	if !ok {
+		return "", fmt.Errorf("got %s as result, want string", val.Type())
+	}
+	return string(ss), nil
+}
+
 var (
 	customSharedDictMethods = map[string]*starlark.Builtin{
 		"len":       starlark.NewBuiltin("len", sharedDictLen),
@@ -393,3 +420,7 @@ func cloneDict(od *starlark.Dict) (*starlark.Dict, error) {
 	}
 	return nd, nil
 }
+
+var (
+	noopPrintFunc = func(thread *starlark.Thread, msg string) {}
+)

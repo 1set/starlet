@@ -962,6 +962,70 @@ func TestSharedDict_Concurrent(t *testing.T) {
 	}
 }
 
+func TestSharedDictToJSON(t *testing.T) {
+	sd0 := NewSharedDict()
+	sd1 := NewSharedDict()
+	if err := sd1.SetKey(starlark.String("foo"), starlark.String("bar")); err != nil {
+		t.Errorf("set key error: %v", err)
+		return
+	}
+	sd2 := NewSharedDict()
+	if err := sd2.SetKey(starlark.String("foo"), starlark.String("bar")); err != nil {
+		t.Errorf("set key error: %v", err)
+		return
+	}
+	if err := sd2.SetKey(starlark.String("cat"), starlark.MakeInt(100)); err != nil {
+		t.Errorf("set key error: %v", err)
+		return
+	}
+	sd3 := NewSharedDict()
+	if err := sd3.SetKey(starlark.String("self"), sd3.dict); err != nil {
+		t.Errorf("set key error: %v", err)
+		return
+	}
+
+	tests := []struct {
+		name    string
+		sd      *SharedDict
+		wantStr string
+		wantErr string
+	}{
+		{
+			name:    "empty",
+			sd:      sd0,
+			wantStr: `{}`,
+		},
+		{
+			name:    "one",
+			sd:      sd1,
+			wantStr: `{"foo":"bar"}`,
+		},
+		{
+			name:    "two",
+			sd:      sd2,
+			wantStr: `{"cat":100,"foo":"bar"}`,
+		},
+		{
+			name:    "cycle",
+			sd:      sd3,
+			wantErr: `json.encode: in dict key "self": cycle in JSON structure`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res, err := tt.sd.ToJSON()
+			if (tt.wantErr == "") && (tt.wantStr != res) {
+				t.Errorf("sd(%q).ToJSON() expects '%v', actual '%v'", tt.name, tt.wantStr, res)
+				return
+			}
+			if (err != nil) != (tt.wantErr != "") {
+				t.Errorf("sd(%q).ToJSON() expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
+				return
+			}
+		})
+	}
+}
+
 func getSDLoader(name string, sd *SharedDict) func() (starlark.StringDict, error) {
 	md := NewSharedDict()
 	if err := md.SetKey(starlark.String("your"), starlark.String("name")); err != nil {
