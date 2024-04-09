@@ -121,7 +121,7 @@ func (r *ExportedServerRequest) Struct() *starlarkstruct.Struct {
 	return starlarkstruct.FromStringDict(structNameRequest, sd)
 }
 
-// Write writes the request data back to http.Request.
+// Write writes the request data back to a provided http.Request instance.
 func (r *ExportedServerRequest) Write(req *http.Request) (err error) {
 	if req == nil {
 		return errors.New("nil request")

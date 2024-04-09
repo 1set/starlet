@@ -21,8 +21,7 @@ import (
 	"go.starlark.net/starlarkstruct"
 )
 
-// ModuleName defines the expected name for this Module when used
-// in starlark's load() function, eg: load('http', 'get')
+// ModuleName defines the expected name for this Module when used in starlark's load() function, eg: load('http', 'get')
 const ModuleName = "http"
 
 var (
@@ -56,7 +55,7 @@ func LoadModule() (starlark.StringDict, error) {
 		m.rg = Guard
 	}
 	ns := starlark.StringDict{
-		"http": m.Struct(),
+		ModuleName: m.Struct(),
 	}
 	return ns, nil
 }
@@ -80,6 +79,7 @@ func (m *Module) StringDict() starlark.StringDict {
 	for _, name := range methods {
 		sd[name] = starlark.NewBuiltin(ModuleName+"."+name, m.reqMethod(name))
 	}
+	// TODO: add new here like setRequestTimeout or getRequestTimeout
 	return sd
 }
 
