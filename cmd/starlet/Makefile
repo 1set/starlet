@@ -49,7 +49,7 @@ build_windows:
 
 run: build
 	./$(BINARY)
-test:
+test: build
 	./$(BINARY) arg.star Aloha
 
 install: build
