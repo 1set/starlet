@@ -38,13 +38,13 @@ default:
 ci:
 	$(GOTEST) -v -race -cover -covermode=atomic -coverprofile=coverage.txt -count 1 ./...
 	$(GOTEST) -v -parallel=4 -run="none" -benchtime="2s" -benchmem -bench=.
+	make -C cmd/starlet test
 
 build:
 	make -C cmd/starlet build
 
 test:
 	$(GOTEST) -v -race -cover -covermode=atomic -count 1 ./...
-	make -C cmd/starlet test
 
 test_loop:
 	while true; do \
