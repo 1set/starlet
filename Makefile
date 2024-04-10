@@ -44,6 +44,7 @@ build:
 
 test:
 	$(GOTEST) -v -race -cover -covermode=atomic -count 1 ./...
+	make -C cmd/starlet test
 
 test_loop:
 	while true; do \
