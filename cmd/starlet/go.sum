@@ -5,10 +5,10 @@ bitbucket.org/neiku/winornot v0.0.4/go.mod h1:xzKlwxkpGIumHbxwUrB41kFIra8gz/ZZgJ
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 github.com/1set/gut v0.0.0-20201117175203-a82363231997 h1:za2jSkE1Rx56hTzBko3ZZ4gA/nq+rA/jVovWuAF4jyo=
 github.com/1set/gut v0.0.0-20201117175203-a82363231997/go.mod h1:DpCCAL0dgBMQdiqPUIIRpdU9zNcIZwJjW+L/8Mb30mw=
-github.com/1set/starlet v0.0.14 h1:xA4xVY7BOnb1/gmCBhZOfqofE5mBOHNSivI3wcb8AaY=
-github.com/1set/starlet v0.0.14/go.mod h1:prMOKyhKx6BUpFElDQBD7SPL2MdWsJhLHbw8EvcPvdY=
-github.com/1set/starlight v0.0.9 h1:5PJ9fDE5gHxFi4szUt1gk44Qh5YnToTV/yZmcae1+LU=
-github.com/1set/starlight v0.0.9/go.mod h1:UBovtihT3K/JtaX+Nv/xBmdDk3LW6kr5yzqaYFo4KDQ=
+github.com/1set/starlet v0.0.15 h1:3DuScBWsWz8AWQBUJrBgyr7rEvo5hwXQIfu7pHD7kO8=
+github.com/1set/starlet v0.0.15/go.mod h1:B8p8ICO3rHdRBpVwLQnWk1lkNFWSr1JdK/VNNVP/s4I=
+github.com/1set/starlight v0.0.10 h1:R7/gKmMPJvuQVAS4Xc2XnX94A/xinvXho6l1ihZ1gvc=
+github.com/1set/starlight v0.0.10/go.mod h1:UBovtihT3K/JtaX+Nv/xBmdDk3LW6kr5yzqaYFo4KDQ=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/aymanbagabas/go-osc52 v1.0.3 h1:DTwqENW7X9arYimJrPeGZcV0ln14sGMt3pHZspWD+Mg=
 github.com/aymanbagabas/go-osc52 v1.0.3/go.mod h1:zT8H+Rk4VSabYN90pWyugflM3ZhpTZNC7cASDfUCdT4=
