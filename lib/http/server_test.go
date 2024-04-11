@@ -183,7 +183,7 @@ func TestServerResponse_Nil(t *testing.T) {
 	}
 }
 
-func TestServerResponse(t *testing.T) {
+func TestServerResponse_Full(t *testing.T) {
 	bd := `{"name":"John","age":30}`
 	testCases := []struct {
 		name             string
