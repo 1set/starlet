@@ -5,6 +5,7 @@ package atom
 import (
 	"encoding/binary"
 	"fmt"
+	"go.starlark.net/syntax"
 	"go.uber.org/atomic"
 	"hash/fnv"
 	"math"
@@ -64,7 +65,8 @@ func LoadModule() (starlark.StringDict, error) {
 }
 
 var (
-	_ starlark.Value = (*AtomicInt)(nil)
+	_ starlark.Value    = (*AtomicInt)(nil)
+	_ starlark.HasAttrs = (*AtomicInt)(nil)
 )
 
 type AtomicInt struct {
@@ -91,6 +93,21 @@ func (a *AtomicInt) Truth() starlark.Bool {
 func (a *AtomicInt) Hash() (uint32, error) {
 	//return 0, fmt.Errorf("unhashable: %s", a.Type())
 	return hashInt64(a.val.Load()), nil
+}
+
+func (a *AtomicInt) Attr(name string) (starlark.Value, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a *AtomicInt) AttrNames() []string {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a *AtomicInt) CompareSameType(op syntax.Token, y starlark.Value, depth int) (bool, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 // hashInt64 hashes an int64 value to a uint32 hash value using little-endian byte order
