@@ -202,6 +202,15 @@ func TestServerResponse(t *testing.T) {
 			`),
 		},
 		{
+			name:           "get",
+			script:         itn.HereDoc(`response.set_data("Hello")`),
+			request:        getMockGETRequest(),
+			expectedStatus: http.StatusOK,
+			expectedResponse: itn.HereDoc(`
+				Content-Type: application/octet-stream
+			`),
+		},
+		{
 			name: "full json and override",
 			script: itn.HereDoc(`
 				print(request)
@@ -475,6 +484,15 @@ func getMockRequest(s string) *http.Request {
 	q.Add("param2", "value2")
 	q.Add("param2", "value_two")
 	req.URL.RawQuery = q.Encode()
+	req.RemoteAddr = "127.0.0.1:12345"
+	return req
+}
+
+func getMockGETRequest() *http.Request {
+	req, _ := http.NewRequest("GET", "/?param1=value1&param2=value2&param2=value_two", nil)
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("X-Custom-Header", "Custom Value 1")
+	req.Header.Add("X-Custom-Header", "Custom Value 2")
 	req.RemoteAddr = "127.0.0.1:12345"
 	return req
 }
