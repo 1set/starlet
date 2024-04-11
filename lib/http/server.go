@@ -65,7 +65,7 @@ func NewExportedServerRequest(r *http.Request) (*ExportedServerRequest, error) {
 		sv   starlark.Value = starlark.None
 	)
 	if r.Body != nil {
-		// request like GET may not have body
+		// request like faked GET may not have body
 		if body, err = ioutil.ReadAll(r.Body); err != nil {
 			return nil, err
 		}
