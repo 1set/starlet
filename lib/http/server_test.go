@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -17,6 +18,15 @@ import (
 	"go.starlark.net/syntax"
 )
 
+// errorReader is an io.Reader that always returns an error.
+type errorReader struct{}
+
+// Read satisfies the io.Reader interface and simulates an error.
+func (e *errorReader) Read(p []byte) (n int, err error) {
+	// You can return any error of your choice here.
+	return 0, errors.New("simulated read error")
+}
+
 func TestNewExportedServerRequest_NilRequest(t *testing.T) {
 	_, err := NewExportedServerRequest(nil)
 	if err == nil {
@@ -28,6 +38,13 @@ func TestNewExportedServerRequest_NilRequestBody(t *testing.T) {
 	req, _ := http.NewRequest("GET", "https://localhost", nil)
 	if _, err := NewExportedServerRequest(req); err != nil {
 		t.Errorf("Unexpected error: %v", err)
+	}
+}
+
+func TestNewExportedServerRequest_RequestBodyFails(t *testing.T) {
+	req, _ := http.NewRequest("GET", "https://localhost", &errorReader{})
+	if _, err := NewExportedServerRequest(req); err == nil {
+		t.Error("Expected an error when reading request body, got nil")
 	}
 }
 
