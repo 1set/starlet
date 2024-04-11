@@ -1,5 +1,13 @@
-// Package atom provides atomic operations for integers, floats and strings, inspired by the sync/atomic and go.uber.org/atomic Go packages.
+// Package atom provides atomic operations for integers, floats and strings.
+// Inspired by the sync/atomic and go.uber.org/atomic packages from Go.
 package atom
+
+import (
+	"sync"
+
+	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
+)
 
 /*
 new_int(value: int) -> AtomicInt
@@ -27,3 +35,25 @@ AtomicString.cas(old: string, new: string) -> bool
 
 // ModuleName defines the expected name for this Module when used in starlark's load() function, eg: load('atom', 'new_int')
 const ModuleName = "atom"
+
+var (
+	once       sync.Once
+	atomModule starlark.StringDict
+)
+
+// LoadModule loads the atom module. It is concurrency-safe and idempotent.
+func LoadModule() (starlark.StringDict, error) {
+	once.Do(func() {
+		atomModule = starlark.StringDict{
+			ModuleName: &starlarkstruct.Module{
+				Name:    ModuleName,
+				Members: starlark.StringDict{
+					//"new_int":    starlark.NewBuiltin(ModuleName+".new_int", newInt),
+					//"new_float":  starlark.NewBuiltin(ModuleName+".new_float", newFloat),
+					//"new_string": starlark.NewBuiltin(ModuleName+".new_string", newString),
+				},
+			},
+		}
+	})
+	return atomModule, nil
+}

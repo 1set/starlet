@@ -1,6 +1,7 @@
 package starlet
 
 import (
+	libatom "github.com/1set/starlet/lib/atom"
 	libb64 "github.com/1set/starlet/lib/base64"
 	libcsv "github.com/1set/starlet/lib/csv"
 	libfile "github.com/1set/starlet/lib/file"
@@ -53,6 +54,7 @@ var allBuiltinModules = ModuleLoaderMap{
 	libfile.ModuleName: libfile.LoadModule,
 	libpath.ModuleName: libpath.LoadModule,
 	libcsv.ModuleName:  libcsv.LoadModule,
+	libatom.ModuleName: libatom.LoadModule,
 }
 
 // GetAllBuiltinModuleNames returns a list of all builtin module names.
