@@ -3,6 +3,10 @@
 package atom
 
 import (
+	"encoding/binary"
+	"fmt"
+	"go.uber.org/atomic"
+	"hash/fnv"
 	"sync"
 
 	"go.starlark.net/starlark"
@@ -56,4 +60,48 @@ func LoadModule() (starlark.StringDict, error) {
 		}
 	})
 	return atomModule, nil
+}
+
+var (
+	_ starlark.Value = (*AtomicInt)(nil)
+)
+
+type AtomicInt struct {
+	val    atomic.Int64
+	frozen bool
+}
+
+func (a *AtomicInt) String() string {
+	return fmt.Sprintf("<atom_int:%d>", a.val.Load())
+}
+
+func (a *AtomicInt) Type() string {
+	return "atom_int"
+}
+
+func (a *AtomicInt) Freeze() {
+	a.frozen = true
+}
+
+func (a *AtomicInt) Truth() starlark.Bool {
+	return a.val.Load() != 0
+}
+
+func (a *AtomicInt) Hash() (uint32, error) {
+	//return 0, fmt.Errorf("unhashable: %s", a.Type())
+	return hashInt64(a.val.Load()), nil
+}
+
+// hashInt64 hashes an int64 value to a uint32 hash value using little-endian byte order
+func hashInt64(value int64) uint32 {
+	// Allocate a byte slice
+	bytes := make([]byte, 8)
+	// Convert the int64 value into bytes using little-endian encoding
+	binary.LittleEndian.PutUint64(bytes, uint64(value))
+	// Initialize a new 32-bit FNV-1a hash
+	h := fnv.New32a()
+	// Write the bytes to the hasher, and ignore the error returned by Write, as hashing can't really fail here
+	_, _ = h.Write(bytes)
+	// Calculate the hash and return it
+	return h.Sum32()
 }
