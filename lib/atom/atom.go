@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"go.uber.org/atomic"
 	"hash/fnv"
+	"math"
 	"sync"
 
 	"go.starlark.net/starlark"
@@ -98,6 +99,22 @@ func hashInt64(value int64) uint32 {
 	bytes := make([]byte, 8)
 	// Convert the int64 value into bytes using little-endian encoding
 	binary.LittleEndian.PutUint64(bytes, uint64(value))
+	// Initialize a new 32-bit FNV-1a hash
+	h := fnv.New32a()
+	// Write the bytes to the hasher, and ignore the error returned by Write, as hashing can't really fail here
+	_, _ = h.Write(bytes)
+	// Calculate the hash and return it
+	return h.Sum32()
+}
+
+// Hash a float64 value to a uint32 hash value
+func hashFloat64(value float64) uint32 {
+	// Convert the float64 value into its binary representation as uint64
+	bits := math.Float64bits(value)
+	// Allocate a byte slice
+	bytes := make([]byte, 8)
+	// Convert the uint64 bits into bytes using little-endian encoding
+	binary.LittleEndian.PutUint64(bytes, bits)
 	// Initialize a new 32-bit FNV-1a hash
 	h := fnv.New32a()
 	// Write the bytes to the hasher, and ignore the error returned by Write, as hashing can't really fail here

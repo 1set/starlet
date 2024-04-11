@@ -40,3 +40,39 @@ func Test_hashInt64(t *testing.T) {
 		})
 	}
 }
+
+func Test_hashFloat64(t *testing.T) {
+	tests := []struct {
+		name  string
+		value float64
+		want  uint32
+	}{
+		{
+			name:  "zero",
+			value: 0,
+			want:  2615243109,
+		},
+		{
+			name:  "+1",
+			value: 1,
+			want:  2355796088,
+		},
+		{
+			name:  "-1",
+			value: -1,
+			want:  208260856,
+		},
+		{
+			name:  "max",
+			value: math.MaxFloat64,
+			want:  3968320621,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := hashFloat64(tt.value); got != tt.want {
+				t.Errorf("hashFloat64(%f) = %v, want %v", tt.value, got, tt.want)
+			}
+		})
+	}
+}
