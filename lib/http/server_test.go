@@ -24,6 +24,13 @@ func TestNewExportedServerRequest_NilRequest(t *testing.T) {
 	}
 }
 
+func TestNewExportedServerRequest_NilRequestBody(t *testing.T) {
+	req, _ := http.NewRequest("GET", "https://localhost", nil)
+	if _, err := NewExportedServerRequest(req); err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+}
+
 func TestNewExportedServerRequest_ValidRequest(t *testing.T) {
 	bodyContent := `{"key": "value"}`
 	req := httptest.NewRequest("POST", "http://example.com?query=123", bytes.NewBufferString(bodyContent))

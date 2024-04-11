@@ -59,17 +59,23 @@ func NewExportedServerRequest(r *http.Request) (*ExportedServerRequest, error) {
 	}
 
 	// attempt to read the request body
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return nil, err
+	var (
+		err  error
+		body []byte
+		sv   starlark.Value = starlark.None
+	)
+	if r.Body != nil {
+		// request like GET may not have body
+		if body, err = ioutil.ReadAll(r.Body); err != nil {
+			return nil, err
+		}
+
+		// reset the request body to allow multiple reads
+		_ = r.Body.Close()
+		r.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 	}
 
-	// reset the request body to allow multiple reads
-	_ = r.Body.Close()
-	r.Body = ioutil.NopCloser(bytes.NewBuffer(body))
-
 	// marshal body as json
-	var sv starlark.Value = starlark.None
 	if len(body) > 0 {
 		if sv, err = dataconv.UnmarshalStarlarkJSON(body); err != nil {
 			sv = starlark.None
