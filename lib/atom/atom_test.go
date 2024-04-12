@@ -15,22 +15,56 @@ func TestLoadModule_Atom(t *testing.T) {
 	}{
 		// for integer
 		{
-			name: `int: new, no args`,
+			name: `int: missing attrs`,
+			script: itn.HereDoc(`
+				load('atom', 'new_int')
+				x = new_int(1)
+				x.guess()
+			`),
+			wantErr: "atom_int has no .guess field or method",
+		},
+		{
+			name: `int: default`,
 			script: itn.HereDoc(`
 				load('atom', 'new_int')
 				x = new_int()
-				assert.eq(str(x), '<atom_int:0>')
 				assert.eq(x.get(), 0)
+				assert.eq(type(x), 'atom_int')
+				assert.eq(str(x), '<atom_int:0>')
+				assert.eq(dir(x), ["add", "cas", "dec", "get", "inc", "set", "sub"])
+				assert.true(not bool(x))
+				
+				m = {}
+				m[x] = 1
+				# assert.eq(m[x], 1)
 			`),
 		},
 		{
-			name: `int: new, with args`,
+			name: `int: new with args`,
 			script: itn.HereDoc(`
 				load('atom', 'new_int')
 				x = new_int(42)
 				assert.eq(str(x), '<atom_int:42>')
 				assert.eq(x.get(), 42)
+				assert.true(bool(x))
 			`),
+		},
+		{
+			name: `int: new invalid args`,
+			script: itn.HereDoc(`
+				load('atom', 'new_int')
+				x = new_int('42')
+			`),
+			wantErr: "new_int: for parameter value: got string, want int",
+		},
+		{
+			name: `int: set invalid args`,
+			script: itn.HereDoc(`
+				load('atom', 'new_int')
+				x = new_int(1)
+				x.set('2')
+			`),
+			wantErr: "set: for parameter value: got string, want int",
 		},
 		{
 			name: `int: get with args`,
