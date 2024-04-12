@@ -13,6 +13,7 @@ func TestLoadModule_Atom(t *testing.T) {
 		script  string
 		wantErr string
 	}{
+		// for integer
 		{
 			name: `int: new, no args`,
 			script: itn.HereDoc(`
@@ -29,6 +30,78 @@ func TestLoadModule_Atom(t *testing.T) {
 				x = new_int(42)
 				assert.eq(str(x), '<atom_int:42>')
 				assert.eq(x.get(), 42)
+			`),
+		},
+		{
+			name: `int: get with args`,
+			script: itn.HereDoc(`
+				load('atom', 'new_int')
+				x = new_int(1)
+				x.get(2)
+			`),
+			wantErr: "get: got 1 arguments, want 0",
+		},
+		{
+			name: `int: inc with args`,
+			script: itn.HereDoc(`
+				load('atom', 'new_int')
+				x = new_int(1)
+				x.inc(2)
+			`),
+			wantErr: "inc: got 1 arguments, want 0",
+		},
+		{
+			name: `int: dec with args`,
+			script: itn.HereDoc(`
+				load('atom', 'new_int')
+				x = new_int(1)	
+				x.dec(2)	
+			`),
+			wantErr: "dec: got 1 arguments, want 0",
+		},
+		{
+			name: `int: add invalid args`,
+			script: itn.HereDoc(`
+				load('atom', 'new_int')
+				x = new_int(1)	
+				x.add('2')
+			`),
+			wantErr: "add: for parameter delta: got string, want int",
+		},
+		{
+			name: `int: sub invalid args`,
+			script: itn.HereDoc(`
+				load('atom', 'new_int')
+				x = new_int(1)
+				x.sub('2')
+			`),
+			wantErr: "sub: for parameter delta: got string, want int",
+		},
+		{
+			name: `int: cas invalid args`,
+			script: itn.HereDoc(`
+				load('atom', 'new_int')
+				x = new_int(1)
+				x.cas('1', 2)
+			`),
+			wantErr: "cas: for parameter old: got string, want int",
+		},
+		{
+			name: `int: full`,
+			script: itn.HereDoc(`
+				load('atom', 'new_int')
+				x = new_int(1)	
+				assert.eq(x.get(), 1)	
+				x.set(20)	
+				assert.eq(x.get(), 20)
+				assert.eq(x.add(5), 25)
+				assert.eq(x.sub(3), 22)
+				assert.eq(x.inc(), 23)
+				assert.eq(x.dec(), 22)
+				assert.eq(x.cas(22, 100), True)
+				assert.eq(x.get(), 100)
+				assert.eq(x.cas(22, 200), False)
+				assert.eq(x.get(), 100)
 			`),
 		},
 	}
