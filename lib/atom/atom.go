@@ -5,14 +5,15 @@ package atom
 import (
 	"encoding/binary"
 	"fmt"
-	"go.starlark.net/syntax"
-	"go.uber.org/atomic"
 	"hash/fnv"
 	"math"
+	"sort"
 	"sync"
 
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
+	"go.starlark.net/syntax"
+	"go.uber.org/atomic"
 )
 
 /*
@@ -65,8 +66,9 @@ func LoadModule() (starlark.StringDict, error) {
 }
 
 var (
-	_ starlark.Value    = (*AtomicInt)(nil)
-	_ starlark.HasAttrs = (*AtomicInt)(nil)
+	_ starlark.Value     = (*AtomicInt)(nil)
+	_ starlark.HasAttrs  = (*AtomicInt)(nil)
+	_ starlark.HasBinary = (*AtomicInt)(nil)
 )
 
 type AtomicInt struct {
@@ -108,6 +110,30 @@ func (a *AtomicInt) AttrNames() []string {
 func (a *AtomicInt) CompareSameType(op syntax.Token, y starlark.Value, depth int) (bool, error) {
 	//TODO implement me
 	panic("implement me")
+}
+
+func (a *AtomicInt) Binary(op syntax.Token, y starlark.Value, side starlark.Side) (starlark.Value, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+// newInt creates a new AtomicInt with the given initial value.
+
+func builtinAttr(recv starlark.Value, name string, methods map[string]*starlark.Builtin) (starlark.Value, error) {
+	b := methods[name]
+	if b == nil {
+		return nil, nil // no such method
+	}
+	return b.BindReceiver(recv), nil
+}
+
+func builtinAttrNames(methods map[string]*starlark.Builtin) []string {
+	names := make([]string, 0, len(methods))
+	for name := range methods {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 // hashInt64 hashes an int64 value to a uint32 hash value using little-endian byte order
