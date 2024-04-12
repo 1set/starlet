@@ -3,11 +3,7 @@
 package atom
 
 import (
-	"encoding/binary"
 	"fmt"
-	"hash/fnv"
-	"math"
-	"sort"
 	"sync"
 
 	"go.starlark.net/starlark"
@@ -53,9 +49,9 @@ func LoadModule() (starlark.StringDict, error) {
 	once.Do(func() {
 		atomModule = starlark.StringDict{
 			ModuleName: &starlarkstruct.Module{
-				Name:    ModuleName,
+				Name: ModuleName,
 				Members: starlark.StringDict{
-					//"new_int":    starlark.NewBuiltin(ModuleName+".new_int", newInt),
+					"new_int": starlark.NewBuiltin(ModuleName+".new_int", newInt),
 					//"new_float":  starlark.NewBuiltin(ModuleName+".new_float", newFloat),
 					//"new_string": starlark.NewBuiltin(ModuleName+".new_string", newString),
 				},
@@ -65,14 +61,24 @@ func LoadModule() (starlark.StringDict, error) {
 	return atomModule, nil
 }
 
+// for integer
+
 var (
 	_ starlark.Value     = (*AtomicInt)(nil)
 	_ starlark.HasAttrs  = (*AtomicInt)(nil)
 	_ starlark.HasBinary = (*AtomicInt)(nil)
 )
 
+func newInt(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var value int64
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "value", &value); err != nil {
+		return nil, err
+	}
+	return &AtomicInt{val: atomic.NewInt64(value)}, nil
+}
+
 type AtomicInt struct {
-	val    atomic.Int64
+	val    *atomic.Int64
 	frozen bool
 }
 
@@ -98,13 +104,11 @@ func (a *AtomicInt) Hash() (uint32, error) {
 }
 
 func (a *AtomicInt) Attr(name string) (starlark.Value, error) {
-	//TODO implement me
-	panic("implement me")
+	return builtinAttr(a, name, intMethods)
 }
 
 func (a *AtomicInt) AttrNames() []string {
-	//TODO implement me
-	panic("implement me")
+	return builtinAttrNames(intMethods)
 }
 
 func (a *AtomicInt) CompareSameType(op syntax.Token, y starlark.Value, depth int) (bool, error) {
@@ -115,53 +119,4 @@ func (a *AtomicInt) CompareSameType(op syntax.Token, y starlark.Value, depth int
 func (a *AtomicInt) Binary(op syntax.Token, y starlark.Value, side starlark.Side) (starlark.Value, error) {
 	//TODO implement me
 	panic("implement me")
-}
-
-// newInt creates a new AtomicInt with the given initial value.
-
-func builtinAttr(recv starlark.Value, name string, methods map[string]*starlark.Builtin) (starlark.Value, error) {
-	b := methods[name]
-	if b == nil {
-		return nil, nil // no such method
-	}
-	return b.BindReceiver(recv), nil
-}
-
-func builtinAttrNames(methods map[string]*starlark.Builtin) []string {
-	names := make([]string, 0, len(methods))
-	for name := range methods {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return names
-}
-
-// hashInt64 hashes an int64 value to a uint32 hash value using little-endian byte order
-func hashInt64(value int64) uint32 {
-	// Allocate a byte slice
-	bytes := make([]byte, 8)
-	// Convert the int64 value into bytes using little-endian encoding
-	binary.LittleEndian.PutUint64(bytes, uint64(value))
-	// Initialize a new 32-bit FNV-1a hash
-	h := fnv.New32a()
-	// Write the bytes to the hasher, and ignore the error returned by Write, as hashing can't really fail here
-	_, _ = h.Write(bytes)
-	// Calculate the hash and return it
-	return h.Sum32()
-}
-
-// Hash a float64 value to a uint32 hash value
-func hashFloat64(value float64) uint32 {
-	// Convert the float64 value into its binary representation as uint64
-	bits := math.Float64bits(value)
-	// Allocate a byte slice
-	bytes := make([]byte, 8)
-	// Convert the uint64 bits into bytes using little-endian encoding
-	binary.LittleEndian.PutUint64(bytes, bits)
-	// Initialize a new 32-bit FNV-1a hash
-	h := fnv.New32a()
-	// Write the bytes to the hasher, and ignore the error returned by Write, as hashing can't really fail here
-	_, _ = h.Write(bytes)
-	// Calculate the hash and return it
-	return h.Sum32()
 }
