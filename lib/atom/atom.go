@@ -70,8 +70,8 @@ var (
 )
 
 func newInt(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var value int64
-	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "value", &value); err != nil {
+	var value int64 = 0
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "value?", &value); err != nil {
 		return nil, err
 	}
 	return &AtomicInt{val: atomic.NewInt64(value)}, nil
