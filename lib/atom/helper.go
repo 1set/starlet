@@ -2,11 +2,13 @@ package atom
 
 import (
 	"encoding/binary"
+	"fmt"
 	"hash/fnv"
 	"math"
 	"sort"
 
 	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
 )
 
 func builtinAttr(recv starlark.Value, name string, methods map[string]*starlark.Builtin) (starlark.Value, error) {
@@ -54,4 +56,24 @@ func hashFloat64(value float64) uint32 {
 	_, _ = h.Write(bytes)
 	// Calculate the hash and return it
 	return h.Sum32()
+}
+
+// threeway interprets a three-way comparison value cmp (-1, 0, +1)
+// as a boolean comparison (e.g. x < y).
+func threewayCompare(op syntax.Token, cmp int) (bool, error) {
+	switch op {
+	case syntax.EQL:
+		return cmp == 0, nil
+	case syntax.NEQ:
+		return cmp != 0, nil
+	case syntax.LE:
+		return cmp <= 0, nil
+	case syntax.LT:
+		return cmp < 0, nil
+	case syntax.GE:
+		return cmp >= 0, nil
+	case syntax.GT:
+		return cmp > 0, nil
+	}
+	return false, fmt.Errorf("unexpected comparison operator %s", op)
 }

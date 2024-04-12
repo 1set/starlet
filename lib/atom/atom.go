@@ -116,22 +116,15 @@ func (a *AtomicInt) CompareSameType(op syntax.Token, y_ starlark.Value, depth in
 	y := y_.(*AtomicInt)
 	vy := y.val.Load()
 
-	switch op {
-	case syntax.EQL:
-		return vx == vy, nil
-	case syntax.NEQ:
-		return vx != vy, nil
-	case syntax.LT:
-		return vx < vy, nil
-	case syntax.LE:
-		return vx <= vy, nil
-	case syntax.GT:
-		return vx > vy, nil
-	case syntax.GE:
-		return vx >= vy, nil
-	default:
-		return false, fmt.Errorf("%s %s %s not implemented", a.Type(), op, y.Type())
+	cmp := 0
+	if vx < vy {
+		cmp = -1
+	} else if vx > vy {
+		cmp = 1
+	} else {
+		cmp = 0
 	}
+	return threewayCompare(op, cmp)
 }
 
 // for float
@@ -188,20 +181,13 @@ func (a *AtomicFloat) CompareSameType(op syntax.Token, y_ starlark.Value, depth 
 	y := y_.(*AtomicFloat)
 	vy := y.val.Load()
 
-	switch op {
-	case syntax.EQL:
-		return vx == vy, nil
-	case syntax.NEQ:
-		return vx != vy, nil
-	case syntax.LT:
-		return vx < vy, nil
-	case syntax.LE:
-		return vx <= vy, nil
-	case syntax.GT:
-		return vx > vy, nil
-	case syntax.GE:
-		return vx >= vy, nil
-	default:
-		return false, fmt.Errorf("%s %s %s not implemented", a.Type(), op, y.Type())
+	cmp := 0
+	if vx < vy {
+		cmp = -1
+	} else if vx > vy {
+		cmp = 1
+	} else {
+		cmp = 0
 	}
+	return threewayCompare(op, cmp)
 }
