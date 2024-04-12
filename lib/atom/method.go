@@ -150,3 +150,12 @@ func floatSub(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple,
 	recv := b.Receiver().(*AtomicFloat)
 	return starlark.Float(recv.val.Sub(delta)), nil
 }
+
+// for string
+
+var (
+	stringMethods = map[string]*starlark.Builtin{
+		//"get": starlark.NewBuiltin("get", stringGet),
+
+	}
+)

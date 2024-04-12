@@ -4,6 +4,7 @@ package atom
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"go.starlark.net/starlark"
@@ -190,4 +191,61 @@ func (a *AtomicFloat) CompareSameType(op syntax.Token, y_ starlark.Value, depth 
 		cmp = 0
 	}
 	return threewayCompare(op, cmp)
+}
+
+// for string
+
+var (
+	_ starlark.Value      = (*AtomicString)(nil)
+	_ starlark.HasAttrs   = (*AtomicString)(nil)
+	_ starlark.Comparable = (*AtomicString)(nil)
+)
+
+type AtomicString struct {
+	val    *atomic.String
+	frozen bool
+}
+
+func newString(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var value string = ""
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "value?", &value); err != nil {
+		return nil, err
+	}
+	return &AtomicString{val: atomic.NewString(value)}, nil
+}
+
+func (a *AtomicString) String() string {
+	return fmt.Sprintf("<atom_string:%q>", a.val.Load())
+}
+
+func (a *AtomicString) Type() string {
+	return "atom_string"
+}
+
+func (a *AtomicString) Freeze() {
+	a.frozen = true
+}
+
+func (a *AtomicString) Truth() starlark.Bool {
+	return a.val.Load() != ""
+}
+
+func (a *AtomicString) Hash() (uint32, error) {
+	return hashString(a.val.Load()), nil
+}
+
+func (a *AtomicString) Attr(name string) (starlark.Value, error) {
+	return builtinAttr(a, name, stringMethods)
+}
+
+func (a *AtomicString) AttrNames() []string {
+	return builtinAttrNames(stringMethods)
+}
+
+func (a *AtomicString) CompareSameType(op syntax.Token, y_ starlark.Value, depth int) (bool, error) {
+	vx := a.val.Load()
+	y := y_.(*AtomicString)
+	vy := y.val.Load()
+
+	return threewayCompare(op, strings.Compare(vx, vy))
 }
