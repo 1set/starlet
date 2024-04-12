@@ -121,6 +121,25 @@ func TestLoadModule_Atom(t *testing.T) {
 			wantErr: "cas: for parameter old: got string, want int",
 		},
 		{
+			name: `int: compare`,
+			script: itn.HereDoc(`
+				load('atom', 'new_int')
+				x = new_int(1)
+				y = new_int(1)
+				z = new_int(2)
+				assert.eq(x, y)
+				assert.ne(x, z)
+				assert.true(x == y)
+				assert.true(x != z)
+				assert.true(x < z)
+				assert.true(x <= z)
+				assert.true(z > x)
+				assert.true(z >= x)
+				assert.true(x >= y)
+				assert.true(x <= y)
+			`),
+		},
+		{
 			name: `int: full`,
 			script: itn.HereDoc(`
 				load('atom', 'new_int')

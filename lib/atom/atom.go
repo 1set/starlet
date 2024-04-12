@@ -64,9 +64,9 @@ func LoadModule() (starlark.StringDict, error) {
 // for integer
 
 var (
-	_ starlark.Value     = (*AtomicInt)(nil)
-	_ starlark.HasAttrs  = (*AtomicInt)(nil)
-	_ starlark.HasBinary = (*AtomicInt)(nil)
+	_ starlark.Value      = (*AtomicInt)(nil)
+	_ starlark.HasAttrs   = (*AtomicInt)(nil)
+	_ starlark.Comparable = (*AtomicInt)(nil)
 )
 
 func newInt(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -111,12 +111,25 @@ func (a *AtomicInt) AttrNames() []string {
 	return builtinAttrNames(intMethods)
 }
 
-func (a *AtomicInt) CompareSameType(op syntax.Token, y starlark.Value, depth int) (bool, error) {
-	//TODO implement me
-	panic("implement me")
-}
+func (a *AtomicInt) CompareSameType(op syntax.Token, y_ starlark.Value, depth int) (bool, error) {
+	vx := a.val.Load()
+	y := y_.(*AtomicInt)
+	vy := y.val.Load()
 
-func (a *AtomicInt) Binary(op syntax.Token, y starlark.Value, side starlark.Side) (starlark.Value, error) {
-	//TODO implement me
-	panic("implement me")
+	switch op {
+	case syntax.EQL:
+		return vx == vy, nil
+	case syntax.NEQ:
+		return vx != vy, nil
+	case syntax.LT:
+		return vx < vy, nil
+	case syntax.LE:
+		return vx <= vy, nil
+	case syntax.GT:
+		return vx > vy, nil
+	case syntax.GE:
+		return vx >= vy, nil
+	default:
+		return false, fmt.Errorf("%s %s %s not implemented", a.Type(), op, y.Type())
+	}
 }
