@@ -85,3 +85,68 @@ func intDec(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 	recv := b.Receiver().(*AtomicInt)
 	return starlark.MakeInt64(recv.val.Dec()), nil
 }
+
+// for float
+/*
+new_float(value: float) -> AtomicFloat
+AtomicFloat.get() -> float
+AtomicFloat.set(value: float)
+AtomicFloat.cas(old: float, new: float) -> bool
+AtomicFloat.add(delta: float) -> float
+AtomicFloat.sub(delta: float) -> float
+*/
+
+var (
+	floatMethods = map[string]*starlark.Builtin{
+		"get": starlark.NewBuiltin("get", floatGet),
+		"set": starlark.NewBuiltin("set", floatSet),
+		"cas": starlark.NewBuiltin("cas", floatCAS),
+		"add": starlark.NewBuiltin("add", floatAdd),
+		"sub": starlark.NewBuiltin("sub", floatSub),
+	}
+)
+
+func floatGet(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+		return nil, err
+	}
+	recv := b.Receiver().(*AtomicFloat)
+	return starlark.Float(recv.val.Load()), nil
+}
+
+func floatSet(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var value float64
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "value", &value); err != nil {
+		return nil, err
+	}
+	recv := b.Receiver().(*AtomicFloat)
+	recv.val.Store(value)
+	return starlark.None, nil
+}
+
+func floatCAS(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var oldVal, newVal float64
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "old", &oldVal, "new", &newVal); err != nil {
+		return nil, err
+	}
+	recv := b.Receiver().(*AtomicFloat)
+	return starlark.Bool(recv.val.CAS(oldVal, newVal)), nil
+}
+
+func floatAdd(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var delta float64
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "delta", &delta); err != nil {
+		return nil, err
+	}
+	recv := b.Receiver().(*AtomicFloat)
+	return starlark.Float(recv.val.Add(delta)), nil
+}
+
+func floatSub(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var delta float64
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "delta", &delta); err != nil {
+		return nil, err
+	}
+	recv := b.Receiver().(*AtomicFloat)
+	return starlark.Float(recv.val.Sub(delta)), nil
+}

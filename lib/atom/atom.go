@@ -51,8 +51,8 @@ func LoadModule() (starlark.StringDict, error) {
 			ModuleName: &starlarkstruct.Module{
 				Name: ModuleName,
 				Members: starlark.StringDict{
-					"new_int": starlark.NewBuiltin(ModuleName+".new_int", newInt),
-					//"new_float":  starlark.NewBuiltin(ModuleName+".new_float", newFloat),
+					"new_int":   starlark.NewBuiltin(ModuleName+".new_int", newInt),
+					"new_float": starlark.NewBuiltin(ModuleName+".new_float", newFloat),
 					//"new_string": starlark.NewBuiltin(ModuleName+".new_string", newString),
 				},
 			},
@@ -114,6 +114,78 @@ func (a *AtomicInt) AttrNames() []string {
 func (a *AtomicInt) CompareSameType(op syntax.Token, y_ starlark.Value, depth int) (bool, error) {
 	vx := a.val.Load()
 	y := y_.(*AtomicInt)
+	vy := y.val.Load()
+
+	switch op {
+	case syntax.EQL:
+		return vx == vy, nil
+	case syntax.NEQ:
+		return vx != vy, nil
+	case syntax.LT:
+		return vx < vy, nil
+	case syntax.LE:
+		return vx <= vy, nil
+	case syntax.GT:
+		return vx > vy, nil
+	case syntax.GE:
+		return vx >= vy, nil
+	default:
+		return false, fmt.Errorf("%s %s %s not implemented", a.Type(), op, y.Type())
+	}
+}
+
+// for float
+
+var (
+	_ starlark.Value      = (*AtomicFloat)(nil)
+	_ starlark.HasAttrs   = (*AtomicFloat)(nil)
+	_ starlark.Comparable = (*AtomicFloat)(nil)
+)
+
+type AtomicFloat struct {
+	val    *atomic.Float64
+	frozen bool
+}
+
+func newFloat(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var value float64 = 0
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "value?", &value); err != nil {
+		return nil, err
+	}
+	return &AtomicFloat{val: atomic.NewFloat64(value)}, nil
+}
+
+func (a *AtomicFloat) String() string {
+	return fmt.Sprintf("<atom_float:%f>", a.val.Load())
+}
+
+func (a *AtomicFloat) Type() string {
+	return "atom_float"
+}
+
+func (a *AtomicFloat) Freeze() {
+	a.frozen = true
+}
+
+func (a *AtomicFloat) Truth() starlark.Bool {
+	return a.val.Load() != 0
+}
+
+func (a *AtomicFloat) Hash() (uint32, error) {
+	return hashFloat64(a.val.Load()), nil
+}
+
+func (a *AtomicFloat) Attr(name string) (starlark.Value, error) {
+	return builtinAttr(a, name, floatMethods)
+}
+
+func (a *AtomicFloat) AttrNames() []string {
+	return builtinAttrNames(floatMethods)
+}
+
+func (a *AtomicFloat) CompareSameType(op syntax.Token, y_ starlark.Value, depth int) (bool, error) {
+	vx := a.val.Load()
+	y := y_.(*AtomicFloat)
 	vy := y.val.Load()
 
 	switch op {
