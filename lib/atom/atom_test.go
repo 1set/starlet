@@ -157,6 +157,17 @@ func TestLoadModule_Atom(t *testing.T) {
 				assert.eq(x.get(), 100)
 			`),
 		},
+		{
+			name: `int: usage`,
+			script: itn.HereDoc(`
+				load('atom', 'new_int')
+				x = new_int()
+				def work():
+					x.inc()
+				[work() for _ in range(10)]
+				assert.eq(x.get(), 10)
+			`),
+		},
 
 		// for float
 		{
@@ -284,6 +295,17 @@ func TestLoadModule_Atom(t *testing.T) {
 				assert.eq(x.get(), 100)
 			`),
 		},
+		{
+			name: `float: usage`,
+			script: itn.HereDoc(`
+				load('atom', 'new_float')
+				x = new_float()
+				def work():
+					x.add(1)
+				[work() for _ in range(10)]
+				assert.eq(x.get(), 10.0)
+			`),
+		},
 
 		// for string
 		{
@@ -387,6 +409,18 @@ func TestLoadModule_Atom(t *testing.T) {
 				assert.eq(x.get(), "new")
 				assert.eq(x.cas("world", "new2"), False)
 				assert.eq(x.get(), "new")
+			`),
+		},
+		{
+			name: `string: usage`,
+			script: itn.HereDoc(`
+				load('atom', 'new_string')
+				x = new_string()
+				def work():
+					s = x.get()
+					x.set(s + "!")
+				[work() for _ in range(10)]
+				assert.eq(x.get(), "!!!!!!!!!!")
 			`),
 		},
 	}
