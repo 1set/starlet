@@ -42,6 +42,50 @@ func TestFloatOrInt_Unpack(t *testing.T) {
 	}
 }
 
+func TestFloatOrInt_Value(t *testing.T) {
+	tests := []struct {
+		name    string
+		v       FloatOrInt
+		wantInt int
+		wantFlt float64
+	}{
+		{
+			name:    "zero",
+			v:       0,
+			wantInt: 0,
+			wantFlt: 0,
+		},
+		{
+			name:    "int",
+			v:       1,
+			wantInt: 1,
+			wantFlt: 1,
+		},
+		{
+			name:    "float",
+			v:       1.2,
+			wantInt: 1,
+			wantFlt: 1.2,
+		},
+		{
+			name:    "large",
+			v:       1e20 + 1,
+			wantInt: 9223372036854775807,
+			wantFlt: 1e20,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.v.GoInt(); got != tt.wantInt {
+				t.Errorf("FloatOrInt.GoInt() = %v, want %v", got, tt.wantInt)
+			}
+			if got := tt.v.GoFloat(); got != tt.wantFlt {
+				t.Errorf("FloatOrInt.GoFloat() = %v, want %v", got, tt.wantFlt)
+			}
+		})
+	}
+}
+
 func TestStringOrBytes_Unpack(t *testing.T) {
 	tests := []struct {
 		name    string
