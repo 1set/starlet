@@ -6,17 +6,6 @@ import (
 )
 
 // for integer
-/*
-new_int(value: int) -> AtomicInt
-
-AtomicInt.get() -> int
-AtomicInt.set(value: int)
-AtomicInt.cas(old: int, new: int) -> bool
-AtomicInt.add(delta: int) -> int
-AtomicInt.sub(delta: int) -> int
-AtomicInt.inc() -> int
-AtomicInt.dec() -> int
-*/
 
 var (
 	intMethods = map[string]*starlark.Builtin{
@@ -92,15 +81,6 @@ func intDec(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 }
 
 // for float
-/*
-new_float(value: float) -> AtomicFloat
-
-AtomicFloat.get() -> float
-AtomicFloat.set(value: float)
-AtomicFloat.cas(old: float, new: float) -> bool
-AtomicFloat.add(delta: float) -> float
-AtomicFloat.sub(delta: float) -> float
-*/
 
 var (
 	floatMethods = map[string]*starlark.Builtin{
@@ -158,13 +138,6 @@ func floatSub(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple,
 }
 
 // for string
-/*
-new_string(value: string) -> AtomicString
-
-AtomicString.get() -> string
-AtomicString.set(value: string)
-AtomicString.cas(old: string, new: string) -> bool
-*/
 
 var (
 	stringMethods = map[string]*starlark.Builtin{
