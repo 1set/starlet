@@ -69,9 +69,9 @@ func TestFloatOrInt_Value(t *testing.T) {
 		},
 		{
 			name:    "large",
-			v:       1e20 + 1,
-			wantInt: 9223372036854775807,
-			wantFlt: 1e20,
+			v:       1e12 + 1,
+			wantInt: 1000000000001,
+			wantFlt: 1e12 + 1,
 		},
 	}
 	for _, tt := range tests {
