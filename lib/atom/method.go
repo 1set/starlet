@@ -4,6 +4,8 @@ import "go.starlark.net/starlark"
 
 // for integer
 /*
+new_int(value: int) -> AtomicInt
+
 AtomicInt.get() -> int
 AtomicInt.set(value: int)
 AtomicInt.cas(old: int, new: int) -> bool
@@ -89,6 +91,7 @@ func intDec(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 // for float
 /*
 new_float(value: float) -> AtomicFloat
+
 AtomicFloat.get() -> float
 AtomicFloat.set(value: float)
 AtomicFloat.cas(old: float, new: float) -> bool
@@ -152,6 +155,13 @@ func floatSub(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple,
 }
 
 // for string
+/*
+new_string(value: string) -> AtomicString
+
+AtomicString.get() -> string
+AtomicString.set(value: string)
+AtomicString.cas(old: string, new: string) -> bool
+*/
 
 var (
 	stringMethods = map[string]*starlark.Builtin{
@@ -159,3 +169,30 @@ var (
 
 	}
 )
+
+func stringGet(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+		return nil, err
+	}
+	recv := b.Receiver().(*AtomicString)
+	return starlark.String(recv.val.Load()), nil
+}
+
+func stringSet(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var value string
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "value", &value); err != nil {
+		return nil, err
+	}
+	recv := b.Receiver().(*AtomicString)
+	recv.val.Store(value)
+	return starlark.None, nil
+}
+
+func stringCAS(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var oldVal, newVal string
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "old", &oldVal, "new", &newVal); err != nil {
+		return nil, err
+	}
+	recv := b.Receiver().(*AtomicString)
+	return starlark.Bool(recv.val.CompareAndSwap(oldVal, newVal)), nil
+}
