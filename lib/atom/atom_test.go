@@ -248,6 +248,25 @@ func TestLoadModule_Atom(t *testing.T) {
 			wantErr: "cas: for parameter old: got string, want float",
 		},
 		{
+			name: `float: compare`,
+			script: itn.HereDoc(`
+				load('atom', 'new_float')
+				x = new_float(1.1)
+				y = new_float(1.1)
+				z = new_float(2.2)
+				assert.eq(x, y)
+				assert.ne(x, z)
+				assert.true(x == y)
+				assert.true(x != z)
+				assert.true(x < z)
+				assert.true(x <= z)
+				assert.true(z > x)
+				assert.true(z >= x)
+				assert.true(x >= y)
+				assert.true(x <= y)
+			`),
+		},
+		{
 			name: `float: full`,
 			script: itn.HereDoc(`
 				load('atom', 'new_float')
@@ -336,6 +355,25 @@ func TestLoadModule_Atom(t *testing.T) {
 				x.cas(1, "world")
 			`),
 			wantErr: "cas: for parameter old: got int, want string",
+		},
+		{
+			name: `string: compare`,
+			script: itn.HereDoc(`
+				load('atom', 'new_string')
+				x = new_string("hello")
+				y = new_string("hello")
+				z = new_string("world")
+				assert.eq(x, y)
+				assert.ne(x, z)
+				assert.true(x == y)
+				assert.true(x != z)
+				assert.true(x < z)
+				assert.true(x <= z)
+				assert.true(z > x)
+				assert.true(z >= x)
+				assert.true(x >= y)
+				assert.true(x <= y)
+			`),
 		},
 		{
 			name: `string: full`,

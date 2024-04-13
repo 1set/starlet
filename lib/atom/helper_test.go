@@ -2,6 +2,7 @@ package atom
 
 import (
 	"math"
+	"strings"
 	"testing"
 )
 
@@ -74,5 +75,50 @@ func Test_hashFloat64(t *testing.T) {
 				t.Errorf("hashFloat64(%f) = %v, want %v", tt.value, got, tt.want)
 			}
 		})
+	}
+}
+
+func Test_hashString(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  uint32
+	}{
+		{
+			name:  "empty",
+			input: "",
+			want:  2166136261,
+		},
+		{
+			name:  "single",
+			input: "a",
+			want:  3826002220,
+		},
+		{
+			name:  "next",
+			input: "b",
+			want:  3876335077,
+		},
+		{
+			name:  "add",
+			input: "ab",
+			want:  1294271946,
+		},
+		{
+			name:  "hello",
+			input: "hello",
+			want:  1335831723,
+		},
+		{
+			name:  "long",
+			input: strings.Repeat("this is a long string", 100),
+			want:  229378413,
+		},
+	}
+	for _, tt := range tests {
+		got := hashString(tt.input)
+		if got != tt.want {
+			t.Errorf("hashString(%q) = %v, want %v", tt.input, got, tt.want)
+		}
 	}
 }
