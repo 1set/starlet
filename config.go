@@ -42,19 +42,19 @@ var allBuiltinModules = ModuleLoaderMap{
 		}, nil
 	},
 	// add third-party modules
+	libatom.ModuleName: libatom.LoadModule,
+	libb64.ModuleName:  libb64.LoadModule,
+	libcsv.ModuleName:  libcsv.LoadModule,
+	libfile.ModuleName: libfile.LoadModule,
 	libhash.ModuleName: libhash.LoadModule,
 	libhttp.ModuleName: libhttp.LoadModule,
-	libre.ModuleName:   libre.LoadModule,
-	libb64.ModuleName:  libb64.LoadModule,
-	librand.ModuleName: librand.LoadModule,
 	libjson.ModuleName: libjson.LoadModule,
-	libstr.ModuleName:  libstr.LoadModule,
-	librt.ModuleName:   librt.LoadModule,
 	liblog.ModuleName:  liblog.LoadModule,
-	libfile.ModuleName: libfile.LoadModule,
 	libpath.ModuleName: libpath.LoadModule,
-	libcsv.ModuleName:  libcsv.LoadModule,
-	libatom.ModuleName: libatom.LoadModule,
+	librand.ModuleName: librand.LoadModule,
+	libre.ModuleName:   libre.LoadModule,
+	librt.ModuleName:   librt.LoadModule,
+	libstr.ModuleName:  libstr.LoadModule,
 }
 
 // GetAllBuiltinModuleNames returns a list of all builtin module names.
