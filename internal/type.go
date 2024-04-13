@@ -22,6 +22,16 @@ func (p *FloatOrInt) Unpack(v starlark.Value) error {
 	return fmt.Errorf("got %s, want float or int", v.Type())
 }
 
+// GoFloat returns the Go float64 representation of the FloatOrInt.
+func (p FloatOrInt) GoFloat() float64 {
+	return float64(p)
+}
+
+// GoInt returns the Go int representation of the FloatOrInt.
+func (p FloatOrInt) GoInt() int {
+	return int(p)
+}
+
 // StringOrBytes is an Unpacker that converts a Starlark string or bytes to Go's string.
 // It works because Go Starlark strings and bytes are both represented as Go strings.
 type StringOrBytes string

@@ -1,6 +1,9 @@
 package atom
 
-import "go.starlark.net/starlark"
+import (
+	itn "github.com/1set/starlet/internal"
+	"go.starlark.net/starlark"
+)
 
 // for integer
 /*
@@ -118,40 +121,40 @@ func floatGet(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple,
 }
 
 func floatSet(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var value float64
+	var value itn.FloatOrInt
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "value", &value); err != nil {
 		return nil, err
 	}
 	recv := b.Receiver().(*AtomicFloat)
-	recv.val.Store(value)
+	recv.val.Store(value.GoFloat())
 	return starlark.None, nil
 }
 
 func floatCAS(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var oldVal, newVal float64
+	var oldVal, newVal itn.FloatOrInt
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "old", &oldVal, "new", &newVal); err != nil {
 		return nil, err
 	}
 	recv := b.Receiver().(*AtomicFloat)
-	return starlark.Bool(recv.val.CAS(oldVal, newVal)), nil
+	return starlark.Bool(recv.val.CAS(oldVal.GoFloat(), newVal.GoFloat())), nil
 }
 
 func floatAdd(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var delta float64
+	var delta itn.FloatOrInt
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "delta", &delta); err != nil {
 		return nil, err
 	}
 	recv := b.Receiver().(*AtomicFloat)
-	return starlark.Float(recv.val.Add(delta)), nil
+	return starlark.Float(recv.val.Add(delta.GoFloat())), nil
 }
 
 func floatSub(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var delta float64
+	var delta itn.FloatOrInt
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "delta", &delta); err != nil {
 		return nil, err
 	}
 	recv := b.Receiver().(*AtomicFloat)
-	return starlark.Float(recv.val.Sub(delta)), nil
+	return starlark.Float(recv.val.Sub(delta.GoFloat())), nil
 }
 
 // for string
