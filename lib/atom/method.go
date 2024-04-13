@@ -165,8 +165,9 @@ AtomicString.cas(old: string, new: string) -> bool
 
 var (
 	stringMethods = map[string]*starlark.Builtin{
-		//"get": starlark.NewBuiltin("get", stringGet),
-
+		"get": starlark.NewBuiltin("get", stringGet),
+		"set": starlark.NewBuiltin("set", stringSet),
+		"cas": starlark.NewBuiltin("cas", stringCAS),
 	}
 )
 
