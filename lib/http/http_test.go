@@ -492,6 +492,46 @@ func TestLoadModule_HTTP(t *testing.T) {
 			`),
 		},
 		{
+			name: `POST Invalid Form File`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				res = post(test_server_url, headers={"ABC": "123"}, form_body={
+					"a" : ["better.txt"],
+				})
+			`),
+			wantErr: `expected 2 values for key "a" in form_body to be a tuple of (filename, content)`,
+		},
+		{
+			name: `POST Invalid Form File 1`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				res = post(test_server_url, headers={"ABC": "123"}, form_body={
+					"a" : [123, "abc"],
+				})
+			`),
+			wantErr: `expected 1st value for key "a" in form_body to be a string. got: "int"`,
+		},
+		{
+			name: `POST Invalid Form File 2`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				res = post(test_server_url, headers={"ABC": "123"}, form_body={
+					"a" : ["abc", [123]],
+				})
+			`),
+			wantErr: `expected 2nd value for key "a" in form_body to be a string. got: "list"`,
+		},
+		{
+			name: `POST Invalid Form File 3`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				res = post(test_server_url, headers={"ABC": "123"}, form_body={
+					"a" : 100,
+				})
+			`),
+			wantErr: `expected param value for key "a" in form_body to be a string or tuple. got: "int"`,
+		},
+		{
 			name: `POST Force Form`,
 			script: itn.HereDoc(`
 				load('http', post='postForm')

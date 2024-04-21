@@ -358,7 +358,7 @@ func setBody(req *http.Request, body starlark.String, formData *starlark.Dict, f
 			case starlark.Indexable:
 				// for key, file paris
 				if v.Len() < 2 {
-					return fmt.Errorf("expected 2 values for key '%s' to be a tuple of (filename, content)", key)
+					return fmt.Errorf("expected 2 values for key %s in form_body to be a tuple of (filename, content)", key)
 				}
 				// extract file name and content
 				ffi := &formFI{}
@@ -366,18 +366,18 @@ func setBody(req *http.Request, body starlark.String, formData *starlark.Dict, f
 				v1 := v.Index(1)
 				// check types
 				if vs, ok := v0.(starlark.String); !ok {
-					return fmt.Errorf("expected 1st value for key '%s' to be a string. got: '%s'", key, v0.Type())
+					return fmt.Errorf("expected 1st value for key %s in form_body to be a string. got: %q", key, v0.Type())
 				} else {
 					ffi.name = vs.GoString()
 				}
 				if vs, ok := v1.(starlark.String); !ok {
-					return fmt.Errorf("expected 2nd value for key '%s' to be a string. got: '%s'", key, v1.Type())
+					return fmt.Errorf("expected 2nd value for key %s in form_body to be a string. got: %q", key, v1.Type())
 				} else {
 					ffi.content = vs.GoString()
 				}
 				formFile[keystr] = ffi
 			default:
-				return fmt.Errorf("expected param value for key '%s' to be a string or tuple. got: '%s'", key, val.Type())
+				return fmt.Errorf("expected param value for key %s in form_body to be a string or tuple. got: %q", key, val.Type())
 			}
 
 			//if val.Type() != "string" {
