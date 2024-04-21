@@ -492,6 +492,28 @@ func TestLoadModule_HTTP(t *testing.T) {
 			`),
 		},
 		{
+			name: `POST Form Key Type`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				res = post(test_server_url, headers={"ABC": "123"}, form_body={123: "abc"})
+				assert.eq(res.status_code, 200)
+				rb = res.body()
+				assert.true('POST /' in rb)
+				assert.true('Content-Type: application/x-www-form-urlencoded' in rb)
+				assert.true('123=abc' in rb)
+			`),
+		},
+		{
+			name: `POST Invalid Form Value`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				res = post(test_server_url, headers={"ABC": "123"}, form_body={
+					"a" : 100,
+				})
+			`),
+			wantErr: `expected param value for key "a" in form_body to be a string or tuple. got: "int"`,
+		},
+		{
 			name: `POST Invalid Form File`,
 			script: itn.HereDoc(`
 				load('http', 'post')
@@ -520,16 +542,6 @@ func TestLoadModule_HTTP(t *testing.T) {
 				})
 			`),
 			wantErr: `expected 2nd value for key "a" in form_body to be a string. got: "list"`,
-		},
-		{
-			name: `POST Invalid Form File 3`,
-			script: itn.HereDoc(`
-				load('http', 'post')
-				res = post(test_server_url, headers={"ABC": "123"}, form_body={
-					"a" : 100,
-				})
-			`),
-			wantErr: `expected param value for key "a" in form_body to be a string or tuple. got: "int"`,
 		},
 		{
 			name: `POST Force Form`,

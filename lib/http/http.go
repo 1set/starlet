@@ -341,11 +341,7 @@ func setBody(req *http.Request, body starlark.String, formData *starlark.Dict, f
 		formFile := map[string]*formFI{}
 
 		for _, key := range formData.Keys() {
-			keystr, err := AsString(key)
-			if err != nil {
-				return err
-			}
-
+			keystr := dataconv.StarString(key)
 			val, _, err := formData.Get(key)
 			if err != nil {
 				return err
@@ -379,16 +375,6 @@ func setBody(req *http.Request, body starlark.String, formData *starlark.Dict, f
 			default:
 				return fmt.Errorf("expected param value for key %s in form_body to be a string or tuple. got: %q", key, val.Type())
 			}
-
-			//if val.Type() != "string" {
-			//	return fmt.Errorf("expected param value for key '%s' to be a string. got: '%s'", key, val.Type())
-			//}
-			//valstr, err := AsString(val)
-			//if err != nil {
-			//	return err
-			//}
-			//
-			//formVal.Add(keystr, valstr)
 		}
 
 		// set form encoding implicitly if not set
