@@ -144,6 +144,12 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 			return nil, err
 		}
 
+		// hack for postForm
+		if method == "postForm" {
+			method = "post"
+			formEncoding = formEncodingURL
+		}
+
 		req, err := http.NewRequest(strings.ToUpper(method), rawURL, nil)
 		if err != nil {
 			return nil, err

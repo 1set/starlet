@@ -452,6 +452,26 @@ func TestLoadModule_HTTP(t *testing.T) {
 			`),
 			wantErr: `invalid character 'P' looking for beginning of value`,
 		},
+		{
+			name: `POST Form`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				res = post(test_server_url, headers={"ABC": "123"}, form_encoding="multipart/form-data", form_body={ "a" : "better", "c" : "dance"})
+				assert.eq(res.status_code, 200)
+				assert.true('POST /' in res.body())
+				assert.true('multipart/form-data; boundary=' in res.body())
+			`),
+		},
+		{
+			name: `POST postForm`,
+			script: itn.HereDoc(`
+				load('http', post='postForm')
+				res = post(test_server_url, headers={"ABC": "123"}, form_body={ "a" : "better", "c" : "dance"})
+				assert.eq(res.status_code, 200)
+				assert.true('POST /' in res.body())
+				assert.true('application/x-www-form-urlencoded' in res.body())
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
