@@ -472,6 +472,42 @@ func TestLoadModule_HTTP(t *testing.T) {
 				assert.true('application/x-www-form-urlencoded' in res.body())
 			`),
 		},
+		{
+			name: `POST Form File`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				res = post(test_server_url, headers={"ABC": "123"}, form_body={
+					"a" : ["better.txt", "123456"],
+					"b" : ["dance.md", '"abcdef(@!'],
+				})
+				assert.eq(res.status_code, 200)
+				rb = res.body()
+				assert.true('POST /' in rb)
+				assert.true('Content-Type: multipart/form-data; boundary=' in rb)
+				assert.true('filename="better.txt"' in rb)
+				assert.true('filename="dance.md"' in rb)
+				assert.true('Content-Type: application/octet-stream' in rb)
+				assert.true('123456' in rb)
+				assert.true('"abcdef(@!' in rb)
+			`),
+		},
+		{
+			name: `POST Force Form`,
+			script: itn.HereDoc(`
+				load('http', post='postForm')
+				res = post(test_server_url, headers={"ABC": "123"}, form_body={
+					"a" : ["better.txt", "123456"],
+					"b" : ["dance.md", '"abcdef(@!'],
+				})
+				assert.eq(res.status_code, 200)
+				rb = res.body()
+				assert.true('POST /' in rb)
+				assert.true('Content-Type: application/x-www-form-urlencoded' in rb)
+				assert.true('filename="better.txt"' not in rb)
+				assert.true('filename="dance.md"' not in rb)
+				assert.true('Content-Type: application/octet-stream' not in rb)
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
