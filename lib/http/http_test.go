@@ -456,7 +456,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 			name: `POST Form`,
 			script: itn.HereDoc(`
 				load('http', 'post')
-				res = post(test_server_url, headers={"ABC": "123"}, form_encoding="multipart/form-data", form_body={ "a" : "better", "c" : "dance"})
+				res = post(test_server_url, headers={"ABC": "123"}, form_encoding="multipart/form-data", form_body={ "a" : "better", "c" : "dance", 123: "abc"})
 				assert.eq(res.status_code, 200)
 				assert.true('POST /' in res.body())
 				assert.true('multipart/form-data; boundary=' in res.body())
@@ -502,6 +502,16 @@ func TestLoadModule_HTTP(t *testing.T) {
 				assert.true('Content-Type: application/x-www-form-urlencoded' in rb)
 				assert.true('123=abc' in rb)
 			`),
+		},
+		{
+			name: `POST Invalid JSON`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				res = post(test_server_url, headers={"ABC": "123"}, json_body={
+					"fn" : post,
+				})
+			`),
+			wantErr: `unmarshaling starlark value: unrecognized starlark type: *starlark.Builtin`,
 		},
 		{
 			name: `POST Invalid Form Value`,
