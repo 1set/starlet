@@ -311,7 +311,7 @@ func setHeaders(req *http.Request, headers *starlark.Dict) error {
 	return nil
 }
 
-func setBody(req *http.Request, body starlark.String, formData *starlark.Dict, formEncoding starlark.String, jsondata starlark.Value) error {
+func setBody(req *http.Request, body starlark.String, formData *starlark.Dict, formEncoding starlark.String, jsonData starlark.Value) error {
 	if !dataconv.IsEmptyString(body) {
 		uq, err := strconv.Unquote(body.String())
 		if err != nil {
@@ -325,9 +325,9 @@ func setBody(req *http.Request, body starlark.String, formData *starlark.Dict, f
 		return nil
 	}
 
-	if jsondata != nil && jsondata.String() != "" {
+	if jsonData != nil && jsonData.String() != "" {
 		req.Header.Set("Content-Type", "application/json")
-		data, err := dataconv.MarshalStarlarkJSON(jsondata, 0)
+		data, err := dataconv.MarshalStarlarkJSON(jsonData, 0)
 		if err != nil {
 			return err
 		}
@@ -336,7 +336,7 @@ func setBody(req *http.Request, body starlark.String, formData *starlark.Dict, f
 	}
 
 	if formData != nil && formData.Len() > 0 {
-		form := url.Values{}
+		formVal := url.Values{}
 		for _, key := range formData.Keys() {
 			keystr, err := AsString(key)
 			if err != nil {
@@ -355,15 +355,15 @@ func setBody(req *http.Request, body starlark.String, formData *starlark.Dict, f
 				return err
 			}
 
-			form.Add(keystr, valstr)
+			formVal.Add(keystr, valstr)
 		}
 
 		var contentType string
 		switch formEncoding {
 		case formEncodingURL, "":
 			contentType = formEncodingURL
-			req.Body = ioutil.NopCloser(strings.NewReader(form.Encode()))
-			req.ContentLength = int64(len(form.Encode()))
+			req.Body = ioutil.NopCloser(strings.NewReader(formVal.Encode()))
+			req.ContentLength = int64(len(formVal.Encode()))
 
 		case formEncodingMultipart:
 			var b bytes.Buffer
@@ -372,7 +372,7 @@ func setBody(req *http.Request, body starlark.String, formData *starlark.Dict, f
 
 			contentType = mw.FormDataContentType()
 
-			for k, values := range form {
+			for k, values := range formVal {
 				for _, v := range values {
 					w, err := mw.CreateFormField(k)
 					if err != nil {
