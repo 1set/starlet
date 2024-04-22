@@ -24,7 +24,7 @@ func LoadModule() (starlark.StringDict, error) {
 			ModuleName: &starlarkstruct.Module{
 				Name: ModuleName,
 				Members: starlark.StringDict{
-					"call": starlark.NewBuiltin(ModuleName+".call", asyncCallFunc),
+					"run": starlark.NewBuiltin(ModuleName+".run", asyncCallFunc),
 				},
 			},
 		}
