@@ -427,6 +427,87 @@ print(sd)
 # Output: custom_dict({"key1": "value1", "key2": "value2"})
 ```
 
+### `eprint(*args, sep=" ")`
+
+Works like the standard `print()` function but prints the given arguments to `stderr` instead of `Print` handler defined in Go.
+This is useful for logging errors or important warnings that should be separated from standard output.
+
+#### Parameters
+
+| name   | type     | description                                                             |
+|--------|----------|-------------------------------------------------------------------------|
+| `args` | `*args`  | The values to be printed.                                               |
+| `sep`  | `string` | An optional separator between values. Defaults to a single space (" "). |
+
+#### Examples
+
+**Basic**
+
+Print an error message to stderr.
+
+```python
+load("go_idiomatic", "eprint")
+eprint("Error:", "An unexpected error occurred")
+```
+
+**Custom Separator**
+
+Print multiple values to stderr with a custom separator.
+
+```python
+load("go_idiomatic", "eprint")
+eprint("Path", "/home/user/docs", sep=" -> ")
+# Output: Path -> /home/user/docs
+```
+
+### `pprint(*args, sep=" ")`
+
+Works like the standard `print()` function but formats the given arguments in pretty JSON format with indentation.
+If an argument cannot be converted to JSON, it falls back to converting the value to a string.
+This is particularly useful for printing complex data structures in a human-readable format.
+
+#### Parameters
+
+| name   | type     | description                                                                                                    |
+|--------|----------|----------------------------------------------------------------------------------------------------------------|
+| `args` | `*args`  | The values to be printed. These can be any Starlark values, including lists, dictionaries, and custom structs. |
+| `sep`  | `string` | An optional separator between values. Defaults to a single space (" ").                                        |
+
+#### Examples
+
+**Basic**
+
+Pretty print a dictionary.
+
+```python
+load("go_idiomatic", "pprint")
+pprint({"key": "value", "list": [1, 2, 3]})
+# Output: {
+#     "key": "value",
+#     "list": [
+#         1,
+#         2,
+#         3
+#     ]
+# }
+```
+
+**Multiple Values**
+
+Pretty print multiple values with a custom separator.
+
+```python
+load("go_idiomatic", "pprint")
+pprint({"key1": "value1"}, {"key2": "value2"}, sep="\n---\n")
+# Output: {
+#     "key1": "value1"
+# }
+# ---
+# {
+#     "key2": "value2"
+# }
+```
+
 ## Types
 
 ### `nil`
