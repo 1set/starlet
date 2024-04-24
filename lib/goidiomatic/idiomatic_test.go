@@ -863,6 +863,36 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 			`),
 			wantErr: `distinct: for parameter iterable: got starlight_struct<*goidiomatic_test.testStruct>, want iterable`,
 		},
+		{
+			name: `eprint with string`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'eprint')
+				eprint("Hello, World!")
+			`),
+		},
+		{
+			name: `eprint with multiple values`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'eprint')
+				def mul(x): return x*100
+				eprint("Value:", 42, "Boolean:", True, mul)
+			`),
+		},
+		{
+			name: `pprint with dictionary`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'pprint')
+				pprint({"name": "Alice", "age": 30})
+			`),
+		},
+		{
+			name: `pprint with list and custom separator`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'pprint')
+				def mul(x): return x*100
+				pprint(["apple", "banana", "cherry"], mul, sep=", ")
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
