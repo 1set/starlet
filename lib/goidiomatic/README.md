@@ -485,8 +485,7 @@ Perform a custom operation on the shared dictionary.
 ```python
 load("go_idiomatic", "make_shared_dict")
 sd = make_shared_dict()
-def my_operation(d):
-d["cnt"] = d.get("cnt", 0) + 1
+def my_operation(d): d["cnt"] = d.get("cnt", 0) + 1
 sd.perform(my_operation)
 print(sd)
 # Output: shared_dict({"new_key": "new_value"})
