@@ -864,6 +864,14 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 			wantErr: `distinct: for parameter iterable: got starlight_struct<*goidiomatic_test.testStruct>, want iterable`,
 		},
 		{
+			name: `eprint with invalid sep`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'eprint')
+				eprint("Hello, World!", sep=1)
+			`),
+			wantErr: `eprint: for parameter "sep": got int, want string`,
+		},
+		{
 			name: `eprint with string`,
 			script: itn.HereDoc(`
 				load('go_idiomatic', 'eprint')
@@ -877,6 +885,14 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				def mul(x): return x*100
 				eprint("Value:", 42, "Boolean:", True, mul)
 			`),
+		},
+		{
+			name: `pprint with invalid sep`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'pprint')
+				pprint("Hello, World!", sep=1)
+			`),
+			wantErr: `pprint: for parameter "sep": got int, want string`,
 		},
 		{
 			name: `pprint with dictionary`,
