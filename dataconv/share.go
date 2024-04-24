@@ -198,7 +198,7 @@ func (s *SharedDict) Attr(name string) (starlark.Value, error) {
 		defer s.Unlock()
 
 		// call the original builtin
-		return btl.CallInternal(thread, args, kwargs)
+		return starlark.Call(thread, btl, args, kwargs)
 	}), nil
 }
 
@@ -296,7 +296,7 @@ func (s *SharedDict) ToJSON() (string, error) {
 	enc := jm.(*starlark.Builtin)
 
 	// call the builtin
-	val, err := enc.CallInternal(thread, starlark.Tuple{s.dict}, nil)
+	val, err := starlark.Call(thread, enc, starlark.Tuple{s.dict}, nil)
 	if err != nil {
 		return emptyStr, err
 	}
@@ -335,7 +335,7 @@ func (s *SharedDict) LoadJSON(jsonStr string) error {
 	dec := jm.(*starlark.Builtin)
 
 	// call the builtin
-	val, err := dec.CallInternal(thread, starlark.Tuple{starlark.String(jsonStr)}, nil)
+	val, err := starlark.Call(thread, dec, starlark.Tuple{starlark.String(jsonStr)}, nil)
 	if err != nil {
 		return err
 	}
@@ -396,7 +396,7 @@ func sharedDictPerform(thread *starlark.Thread, b *starlark.Builtin, args starla
 	// call the function with the receiver
 	switch pr := pr.(type) {
 	case starlark.Callable:
-		return pr.CallInternal(thread, starlark.Tuple{d}, nil)
+		return starlark.Call(thread, pr, starlark.Tuple{d}, nil)
 	default:
 		return nil, fmt.Errorf("%s: not callable type: %s", b.Name(), pr.Type())
 	}
@@ -432,7 +432,7 @@ func sharedDictToJSON(thread *starlark.Thread, b *starlark.Builtin, args starlar
 	enc := jm.(*starlark.Builtin)
 
 	// convert to JSON
-	return enc.CallInternal(thread, starlark.Tuple{d}, nil)
+	return starlark.Call(thread, enc, starlark.Tuple{d}, nil)
 }
 
 // sharedDictFromJSON converts a starlark.Value to a starlark.Dict, and wraps it with a SharedDict.
@@ -451,7 +451,7 @@ func sharedDictFromJSON(thread *starlark.Thread, b *starlark.Builtin, args starl
 	dec := jm.(*starlark.Builtin)
 
 	// convert from JSON
-	v, err := dec.CallInternal(thread, starlark.Tuple{s.StarlarkString()}, nil)
+	v, err := starlark.Call(thread, dec, starlark.Tuple{s.StarlarkString()}, nil)
 	if err != nil {
 		return nil, err
 	}
