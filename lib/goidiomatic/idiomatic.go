@@ -42,6 +42,8 @@ func LoadModule() (starlark.StringDict, error) {
 		"shared_dict":      starlark.NewBuiltin("shared_dict", makeSharedDict),
 		"make_shared_dict": starlark.NewBuiltin("make_shared_dict", makeCustomSharedDict),
 		"distinct":         starlark.NewBuiltin("distinct", distinct),
+		"eprint":           starlark.NewBuiltin("eprint", stderrPrint),
+		"pprint":           starlark.NewBuiltin("pprint", prettyPrint),
 	}, nil
 }
 
