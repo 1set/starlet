@@ -888,6 +888,16 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 			`),
 		},
 		{
+			name: `pprint with circle`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'pprint')
+				x = {"num": 1}
+				x["self"] = x
+				y = {"name": "Alice", "age": 30}
+				pprint(y, x, y, sep="\n")
+			`),
+		},
+		{
 			name: `pprint with list and custom separator`,
 			script: itn.HereDoc(`
 				load('go_idiomatic', 'pprint')
