@@ -883,6 +883,8 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 			script: itn.HereDoc(`
 				load('go_idiomatic', 'pprint')
 				pprint({"name": "Alice", "age": 30})
+				pprint({"key": "value", "list": [1, 2, 3]})
+				pprint({"key1": "value1"}, {"key2": "value2"}, sep="\n---\n")
 			`),
 		},
 		{

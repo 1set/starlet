@@ -380,7 +380,7 @@ func prettyPrint(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tup
 			buf.WriteString(sep)
 		}
 		// convert to JSON or string as fallback
-		raw, err := dataconv.MarshalStarlarkJSON(v, 2)
+		raw, err := dataconv.MarshalStarlarkJSON(v, 4)
 		if err != nil {
 			buf.WriteString(dataconv.StarString(v))
 		} else {
