@@ -371,6 +371,62 @@ print(person)
 # Output: Person(age = 30, name = "Alice")
 ```
 
+### `shared_dict()`
+
+Creates a new instance of a thread-safe, mutable shared dictionary.
+This allows for concurrent access and modification by multiple Starlark threads, ensuring data consistency and preventing race conditions.
+The function initializes a SharedDict with default settings.
+
+#### Examples
+
+**Basic**
+
+Create a new shared dictionary.
+
+```python
+load("go_idiomatic", "shared_dict")
+sd = shared_dict()
+print(sd)
+# Output: shared_dict({})
+```
+
+### `make_shared_dict(name="", data=None)`
+
+Creates a customized shared dictionary with an optional name and initial data.
+The name parameter allows for more descriptive representations and debugging, while the data parameter lets you initialize the shared dictionary with pre-existing key-value pairs.
+
+#### Parameters
+
+| name   | type     | description                                                                                                                              |
+|--------|----------|------------------------------------------------------------------------------------------------------------------------------------------|
+| `name` | `string` | An optional name for the shared dictionary. Defaults to an empty string, which results in the default name "shared_dict".                |
+| `data` | `dict`   | An optional Starlark dictionary to initialize the shared dictionary with. Defaults to None, which results in an empty shared dictionary. |
+
+#### Examples
+
+**Named Shared Dict**
+
+Create a named shared dictionary without initial data.
+
+```python
+load("go_idiomatic", "make_shared_dict")
+sd = make_shared_dict(name="my_dict")
+print(sd)
+# Output: my_dict({})
+```
+
+**Named Shared Dict with Data**
+
+Create a named shared dictionary with initial data.
+
+```python
+load("go_idiomatic", "make_shared_dict")
+initial_data = {"key1": "value1", "key2": "value2"}
+sd = make_shared_dict(name="custom_dict", data=initial_data)
+print(sd)
+# Output: custom_dict({"key1": "value1", "key2": "value2"})
+```
+
 ## Types
 
 ### `nil`
@@ -384,3 +440,117 @@ Value as an alias for `True`.
 ### `false`
 
 Value as an alias for `False`.
+
+### `SharedDict`
+
+A thread-safe, mutable dictionary that can be concurrently accessed and modified by multiple Starlark threads.
+It ensures data consistency and prevents race conditions in concurrent environments.
+
+**Methods**
+
+#### `len()`
+
+Returns the number of items in the shared dictionary.
+
+##### Examples
+
+**Basic**
+
+Get the length of a shared dictionary.
+
+```python
+load("go_idiomatic", "make_shared_dict")
+sd = make_shared_dict()
+sd["key1"] = "value1"
+print(sd.len())
+# Output: 1
+```
+
+#### `perform(fn)`
+
+Calls the given function with the shared dictionary as its argument. The function must be callable.
+
+##### Parameters
+
+| name | type       | description                                                                                                   |
+|------|------------|---------------------------------------------------------------------------------------------------------------|
+| `fn` | `callable` | The function to be called with the shared dictionary, and accepts the shared dictionary as its only argument. |
+
+##### Examples
+
+**Basic**
+
+Perform a custom operation on the shared dictionary.
+
+```python
+load("go_idiomatic", "make_shared_dict")
+sd = make_shared_dict()
+def my_operation(d):
+d["cnt"] = d.get("cnt", 0) + 1
+sd.perform(my_operation)
+print(sd)
+# Output: shared_dict({"new_key": "new_value"})
+```
+
+#### `to_dict()`
+
+Returns a shadow-clone of the shared dictionary. Modifications to the clone do not affect the original shared dictionary.
+
+##### Examples
+
+**Clone and Modify**
+
+Clone a shared dictionary and add new data to the clone.
+
+```python
+load("go_idiomatic", "make_shared_dict")
+sd = make_shared_dict()
+sd_clone = sd.to_dict()
+sd_clone["clone_key"] = "clone_value"
+print(sd)
+print(sd_clone)
+# Output: shared_dict({})
+#         {"clone_key": "clone_value"}
+```
+
+#### `to_json()`
+
+Serializes the shared dictionary to a JSON string.
+
+##### Examples
+
+**Serialize**
+
+Convert a shared dictionary to a JSON string.
+
+```python
+load("go_idiomatic", "make_shared_dict")
+sd = make_shared_dict(data={"key": "value"})
+json_str = sd.to_json()
+print(json_str)
+# Output: {"key": "value"}
+```
+
+#### `from_json(json_str)`
+
+Deserializes a JSON string into the shared dictionary, updating it with the key-value pairs decoded from the string.
+
+##### Parameters
+
+| name       | type     | description                                                          |
+|------------|----------|----------------------------------------------------------------------|
+| `json_str` | `string` | The JSON string to deserialize and merge into the shared dictionary. |
+
+##### Examples
+
+**Deserialize**
+
+Update a shared dictionary with data from a JSON string.
+
+```python
+load("go_idiomatic", "make_shared_dict")
+sd = make_shared_dict()
+sd.from_json('{"new_key": "new_value"}')
+print(sd)
+# Output: shared_dict({"new_key": "new_value"})
+```
