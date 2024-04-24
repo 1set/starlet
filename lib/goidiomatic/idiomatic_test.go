@@ -691,6 +691,65 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 			`),
 		},
 		{
+			name: `shared_dict: args`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'shared_dict')
+				shared_dict(123)
+			`),
+			wantErr: `shared_dict: got 1 arguments, want 0`,
+		},
+		{
+			name: `shared_dict: no args`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'shared_dict')
+				d = shared_dict()
+				assert.eq(type(d), 'shared_dict')
+			`),
+		},
+		{
+			name: `make_shared_dict: no args`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', msd='make_shared_dict')
+				d = msd()
+				assert.eq(type(d), 'shared_dict')
+			`),
+		},
+		{
+			name: `make_shared_dict: invalid`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', msd='make_shared_dict')
+				d = msd({"abc": 100})
+			`),
+			wantErr: `make_shared_dict: for parameter name: got dict, want string`,
+		},
+		{
+			name: `make_shared_dict: name`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', msd='make_shared_dict')
+				d = msd("manaʻo")
+				assert.eq(type(d), 'manaʻo')
+				assert.eq(str(d), 'manaʻo({})')
+			`),
+		},
+		{
+			name: `make_shared_dict: values`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', msd='make_shared_dict')
+				d = msd(data={"abc": 100})
+				assert.eq(type(d), 'shared_dict')
+				assert.eq(str(d), 'shared_dict({"abc": 100})')
+			`),
+		},
+		{
+			name: `make_shared_dict: name and values`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', msd='make_shared_dict')
+				d = msd("manaʻo", {"abc": 123})
+				assert.eq(type(d), 'manaʻo')
+				assert.eq(str(d), 'manaʻo({"abc": 123})')
+			`),
+		},
+		{
 			name: `distinct with list`,
 			script: itn.HereDoc(`
         load('go_idiomatic', 'distinct')

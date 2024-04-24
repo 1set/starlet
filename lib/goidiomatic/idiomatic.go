@@ -323,21 +323,21 @@ func makeSharedDict(thread *starlark.Thread, b *starlark.Builtin, args starlark.
 func makeCustomSharedDict(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		name string
-		dict *starlark.Dict
+		data *starlark.Dict
 	)
-	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "name?", &name, "data?", &dict); err != nil {
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "name?", &name, "data?", &data); err != nil {
 		return nil, err
 	}
-	// create the shared dict
-	if name == "" && dict == nil {
-		// if no name or data given, create the default shared dict
+	// create the shared data
+	if name == "" && data == nil {
+		// if no name or data given, create the default shared data
 		return dataconv.NewSharedDict(), nil
-	} else if dict == nil {
-		// if only name given, create the named shared dict
+	} else if data == nil {
+		// if only name given, create the named shared data
 		return dataconv.NewNamedSharedDict(name), nil
 	} else {
-		// if both name and data given, create the named shared dict with data
-		sd := dataconv.NewSharedDictFromDict(dict)
+		// if both name and data given, create the named shared data with data
+		sd := dataconv.NewSharedDictFromDict(data)
 		sd.SetTypeName(name)
 		return sd, nil
 	}
