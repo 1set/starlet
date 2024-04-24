@@ -22,23 +22,25 @@ const ModuleName = "go_idiomatic"
 // LoadModule loads the Go idiomatic module.
 func LoadModule() (starlark.StringDict, error) {
 	return starlark.StringDict{
-		"true":        starlark.True,
-		"false":       starlark.False,
-		"nil":         starlark.None,
-		"length":      starlark.NewBuiltin("length", length),
-		"sum":         starlark.NewBuiltin("sum", sum),
-		"oct":         starlark.NewBuiltin("oct", oct),
-		"hex":         starlark.NewBuiltin("hex", hex),
-		"bytes_hex":   starlark.NewBuiltin("bytes_hex", bytesToHex),
-		"is_nil":      starlark.NewBuiltin("is_nil", isNil),
-		"bin":         starlark.NewBuiltin("bin", bin),
-		"sleep":       starlark.NewBuiltin("sleep", sleep),
-		"exit":        starlark.NewBuiltin("exit", exit),
-		"quit":        starlark.NewBuiltin("quit", exit), // alias for exit
-		"module":      starlark.NewBuiltin("module", starlarkstruct.MakeModule),
-		"struct":      starlark.NewBuiltin("struct", starlarkstruct.Make),
-		"make_struct": starlark.NewBuiltin("make_struct", makeCustomStruct),
-		"distinct":    starlark.NewBuiltin("distinct", distinct),
+		"true":             starlark.True,
+		"false":            starlark.False,
+		"nil":              starlark.None,
+		"length":           starlark.NewBuiltin("length", length),
+		"sum":              starlark.NewBuiltin("sum", sum),
+		"oct":              starlark.NewBuiltin("oct", oct),
+		"hex":              starlark.NewBuiltin("hex", hex),
+		"bytes_hex":        starlark.NewBuiltin("bytes_hex", bytesToHex),
+		"is_nil":           starlark.NewBuiltin("is_nil", isNil),
+		"bin":              starlark.NewBuiltin("bin", bin),
+		"sleep":            starlark.NewBuiltin("sleep", sleep),
+		"exit":             starlark.NewBuiltin("exit", exit),
+		"quit":             starlark.NewBuiltin("quit", exit), // alias for exit
+		"module":           starlark.NewBuiltin("module", starlarkstruct.MakeModule),
+		"struct":           starlark.NewBuiltin("struct", starlarkstruct.Make),
+		"make_struct":      starlark.NewBuiltin("make_struct", makeCustomStruct),
+		"shared_dict":      starlark.NewBuiltin("shared_dict", makeSharedDict),
+		"make_shared_dict": starlark.NewBuiltin("make_shared_dict", makeCustomSharedDict),
+		"distinct":         starlark.NewBuiltin("distinct", distinct),
 	}, nil
 }
 
@@ -305,4 +307,38 @@ func makeCustomStruct(thread *starlark.Thread, b *starlark.Builtin, args starlar
 		return nil, err
 	}
 	return starlarkstruct.FromKeywords(ctor, kwargs), nil
+}
+
+// makeSharedDict creates a new shared dictionary with default name.
+func makeSharedDict(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// check the arguments: no arguments
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
+		return nil, err
+	}
+	// do the job
+	return dataconv.NewSharedDict(), nil
+}
+
+// makeCustomSharedDict creates a custom shared dictionary with the given name and default members.
+func makeCustomSharedDict(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var (
+		name string
+		dict *starlark.Dict
+	)
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "name?", &name, "data?", &dict); err != nil {
+		return nil, err
+	}
+	// create the shared dict
+	if name == "" && dict == nil {
+		// if no name or data given, create the default shared dict
+		return dataconv.NewSharedDict(), nil
+	} else if dict == nil {
+		// if only name given, create the named shared dict
+		return dataconv.NewNamedSharedDict(name), nil
+	} else {
+		// if both name and data given, create the named shared dict with data
+		sd := dataconv.NewSharedDictFromDict(dict)
+		sd.SetTypeName(name)
+		return sd, nil
+	}
 }
