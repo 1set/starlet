@@ -23,13 +23,38 @@ func TestLoadModule_File(t *testing.T) {
 		skipWindows bool
 	}{
 		{
-			name: `make dir`,
+			name: `make dir: existing`,
 			script: itn.HereDoc(`
 				load('file', 'mkdir')
 				fp = %q
-				print(fp, temp_file, temp_dir)
-				mkdir("x", mode=0x700)
+				mkdir(temp_dir)
 			`),
+		},
+		{
+			name: `make dir: conflict`,
+			script: itn.HereDoc(`
+				load('file', 'mkdir')
+				fp = %q
+				mkdir(temp_file)
+			`),
+			wantErr: `not a directory`,
+		},
+		{
+			name: `make dir: new`,
+			script: itn.HereDoc(`
+				load('file', 'mkdir')
+				fp = %q
+				mkdir(temp_dir + "/newdir")
+			`),
+		},
+		{
+			name: `make dir: invalid`,
+			script: itn.HereDoc(`
+				load('file', 'mkdir')
+				fp = %q
+				mkdir()
+			`),
+			wantErr: `file.mkdir: missing argument for path`,
 		},
 		{
 			name: `trim bom`,
