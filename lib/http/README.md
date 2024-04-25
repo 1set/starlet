@@ -170,4 +170,61 @@ output response body as a string.
 
 #### `json() object`
 
-attempt to parse response body as json, returning a JSON-decoded result, or None if the response body is not valid JSON.
+attempt to parse response body as json, returning a JSON-decoded result, or None if the response body is empty or not valid JSON.
+
+### `ExportedServerRequest`
+
+Encapsulates HTTP request data in a format accessible to both Go code and Starlark scripts.
+
+**Fields**
+
+| name       | type       | description                                                                            |
+|------------|------------|----------------------------------------------------------------------------------------|
+| `method`   | `string`   | The HTTP method (e.g., GET, POST, PUT, DELETE)                                         |
+| `url`      | `string`   | The request URL.                                                                       |
+| `proto`    | `string`   | The protocol used for the request (e.g., HTTP/1.1).                                    |
+| `host`     | `string`   | The host specified in the request.                                                     |
+| `remote`   | `string`   | The remote address of the client.                                                      |
+| `headers`  | `dict`     | The HTTP headers included in the request.                                              |
+| `query`    | `dict`     | The query parameters included in the request.                                          |
+| `encoding` | `[]string` | The transfer encodings specified in the request.                                       |
+| `body`     | `string`   | The request body data                                                                  |
+| `json`     | `any`      | The request body data as JSON, or None if the request body is empty or not valid JSON. |
+
+### `ServerResponse`
+
+Enables HTTP response manipulation within Starlark scripts, facilitating dynamic preparation of HTTP responses in Go-based web servers.
+
+**Methods**
+
+#### `set_status(code uint16)`
+
+Sets the HTTP status code for the response.
+
+#### `set_code(code uint16)`
+
+Alias for set_status.
+
+#### `add_header(key, value string)`
+
+Adds a header with the given key and value to the response.
+
+#### `set_content_type(contentType string)`
+
+Sets the Content-Type header for the response, it will overwrite any existing or implicit Content-Type header.
+
+#### `set_data(data string|bytes)`
+
+Sets the response data as binary data, and the Content-Type header to `application/octet-stream`.
+
+#### `set_json(data starlark.Value)`
+
+Sets the response data as JSON, marshaling the given Starlark value to JSON, and the Content-Type header to `application/json`.
+
+#### `set_text(data string|bytes)`
+
+Sets the response data as plain text, and the Content-Type header to `text/plain`.
+
+#### `set_html(data string|bytes)`
+
+Sets the response data as HTML, and the Content-Type header to `text/html`.
