@@ -37,7 +37,8 @@ func TestLoadModule_File(t *testing.T) {
 				fp = %q
 				mkdir(temp_file)
 			`),
-			wantErr: `not a directory`,
+			wantErr:     `not a directory`,
+			skipWindows: true,
 		},
 		{
 			name: `make dir: new`,
