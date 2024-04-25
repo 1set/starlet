@@ -102,7 +102,7 @@ func NewExportedServerRequest(r *http.Request) (*ExportedServerRequest, error) {
 //   - proto: The protocol used for the request (e.g., HTTP/1.1)
 //   - host: The host specified in the request
 //   - remote: The remote address of the client
-//   - header: The HTTP headers included in the request
+//   - headers: The HTTP headers included in the request
 //   - query: The query parameters included in the request URL
 //   - encoding: The transfer encodings specified in the request
 //   - body: The request body data
@@ -115,7 +115,7 @@ func (r *ExportedServerRequest) Struct() *starlarkstruct.Struct {
 		"proto":    starlark.String(r.Proto),
 		"host":     starlark.String(r.Host),
 		"remote":   starlark.String(r.Remote),
-		"header":   mapStrs2Dict(r.Header),
+		"headers":  mapStrs2Dict(r.Header),
 		"query":    mapStrs2Dict(r.URL.Query()),
 		"encoding": sliceStr2List(r.Encoding),
 		"body":     starlark.String(r.Body),
