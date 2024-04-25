@@ -448,9 +448,8 @@ func TestLoadModule_HTTP(t *testing.T) {
 				res = post(test_server_url, headers={ "Task" : "JSONError"})
 				assert.eq(res.status_code, 200)
 				data = res.json()
-				print(data)
+				assert.eq(data, None)
 			`),
-			wantErr: `invalid character 'P' looking for beginning of value`,
 		},
 		{
 			name: `POST Form`,

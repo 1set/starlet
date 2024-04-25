@@ -491,6 +491,10 @@ func (r *Response) JSON(thread *starlark.Thread, _ *starlark.Builtin, args starl
 	_ = r.Body.Close()
 	r.Body = ioutil.NopCloser(bytes.NewReader(body))
 
-	// use internal marshaler to support starlark types
-	return dataconv.UnmarshalStarlarkJSON(body)
+	// use internal marshaler to support starlark types, returns None on error
+	sv, err := dataconv.UnmarshalStarlarkJSON(body)
+	if err != nil {
+		return starlark.None, nil
+	}
+	return sv, nil
 }
