@@ -159,7 +159,7 @@ func TestConvertServerRequest(t *testing.T) {
 		{"method", starlark.String("POST")},
 		{"body", starlark.String(s)},
 		{"json", sd},
-		{"header", sh},
+		{"headers", sh},
 		{"query", sq},
 	}
 
