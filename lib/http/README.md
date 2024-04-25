@@ -166,8 +166,8 @@ The result of performing a HTTP request.
 
 #### `body() string`
 
-output response body as a string
+output response body as a string.
 
 #### `json() object`
 
-attempt to parse response body as json, returning a JSON-decoded result.
+attempt to parse response body as json, returning a JSON-decoded result, or None if the response body is not valid JSON.
