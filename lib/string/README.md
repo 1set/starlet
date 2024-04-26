@@ -49,7 +49,7 @@ Returns the reversed string of the given value.
 
 #### Examples
 
-**String**
+**Basic**
 
 Reverse a string.
 
@@ -72,7 +72,7 @@ Converts the characters "&", "<", ">", '"' and "'" in string to their correspond
 
 #### Examples
 
-**String**
+**Basic**
 
 Escape a string.
 
@@ -95,7 +95,7 @@ Converts the HTML entities in a string back to their corresponding characters.
 
 #### Examples
 
-**String**
+**Basic**
 
 Unescape a string.
 
@@ -118,7 +118,7 @@ Returns a shell-escaped version of the string str. This returns a string that ca
 
 #### Examples
 
-**String**
+**Basic**
 
 Quote a string.
 
@@ -141,7 +141,7 @@ Returns a shell-unescaped version of the string str. This returns a string that 
 
 #### Examples
 
-**String**
+**Basic**
 
 Unquote a string.
 

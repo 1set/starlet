@@ -16,7 +16,7 @@ Removes the Byte Order Mark (BOM) from a byte literal string or bytes.
 
 #### Examples
 
-**String**
+**basic**
 
 Removes the Byte Order Mark (BOM) from a string.
 
@@ -39,7 +39,7 @@ Counts the total lines in a file located at the provided path.
 
 #### Examples
 
-**String**
+**basic**
 
 Count the lines of a file.
 
@@ -63,7 +63,7 @@ Returns the first 'n' lines of a file.
 
 #### Examples
 
-**String**
+**basic**
 
 Get the top 10 lines of a file.
 
@@ -86,7 +86,7 @@ Returns the last 'n' lines of a file.
 
 #### Examples
 
-**String**
+**basic**
 
 Get the bottom 10 lines of a file.
 
@@ -108,7 +108,7 @@ Reads a file and returns its contents as bytes.
 
 #### Examples
 
-**String**
+**basic**
 
 Read a file in bytes.
 
@@ -130,7 +130,7 @@ Reads a file and returns its contents as string.
 
 #### Examples
 
-**String**
+**basic**
 
 Read a file in string.
 
@@ -152,7 +152,7 @@ Reads a file and returns its contents as a list of lines.
 
 #### Examples
 
-**String**
+**basic**
 
 Get lines of a file in a list.
 
@@ -175,7 +175,7 @@ Writes/overwrites bytes or a byte literal string to a file. If the file isn't pr
 
 #### Examples
 
-**String**
+**basic**
 
 Write a byte string to a file.
 
@@ -199,7 +199,7 @@ Writes/overwrites a string to a file. If the file isn't present, a new file woul
 
 #### Examples
 
-**String**
+**basic**
 
 Write a string to a file.
 
@@ -244,7 +244,7 @@ Appends bytes or a byte literal string to a file. If the file isn't present, a n
 
 #### Examples
 
-**String**
+**basic**
 
 Append a byte string to a file.
 
@@ -266,7 +266,7 @@ Appends a string to a file. If the file isn't present, a new file would be creat
 
 #### Examples
 
-**String**
+**basic**
 
 Append a string to a file.
 
@@ -288,7 +288,7 @@ Appends a list, tuple or set of lines to a file. If the file isn't present, a ne
 
 #### Examples
 
-**List**
+**basic**
 
 Append a list of lines to a file.
 
@@ -310,7 +310,7 @@ Returns a FileStat object representing information about the given file or direc
 
 #### Examples
 
-**Get file information**
+**file information**
 
 Retrieve information about a file.
 
@@ -321,7 +321,7 @@ print(info.name, info.size, info.type)
 # Output: file.txt 3759 file
 ```
 
-**Get directory information**
+**directory information**
 
 Retrieve information about a directory.
 

@@ -16,7 +16,7 @@ Returns an absolute representation of path. If the path is not absolute it will 
 
 #### Examples
 
-**String**
+**basic**
 
 Convert a relative path to an absolute path.
 
@@ -39,7 +39,7 @@ Joins one or more path elements into a single path intelligently, separating the
 
 #### Examples
 
-**String**
+**basic**
 
 Join multiple path parts.
 
@@ -62,7 +62,7 @@ Returns true if the path exists.
 
 #### Examples
 
-**String**
+**basic**
 
 Check if a path exists.
 
@@ -85,7 +85,7 @@ Returns true if the path exists and is a file.
 
 #### Examples
 
-**String**
+**basic**
 
 Check if a path is a file.
 
@@ -108,7 +108,7 @@ Returns true if the path exists and is a directory.
 
 #### Examples
 
-**String**
+**basic**
 
 Check if a path is a directory.
 
@@ -131,7 +131,7 @@ Returns true if the path exists and is a symbolic link.
 
 #### Examples
 
-**String**
+**basic**
 
 Check if a path is a symbolic link.
 
@@ -155,7 +155,7 @@ Returns a list of directory contents.
 
 #### Examples
 
-**String**
+**basic**
 
 List directory contents.
 
@@ -172,7 +172,7 @@ Returns the current working directory.
 
 #### Examples
 
-**String**
+**basic**
 
 Get the current working directory.
 
@@ -195,7 +195,7 @@ Changes the current working directory.
 
 #### Examples
 
-**String**
+**basic**
 
 Change the current working directory.
 
@@ -218,7 +218,7 @@ Creates a directory with the given name. If the directory already exists, no err
 
 #### Examples
 
-**Default**
+**default**
 
 Create a new directory.
 
@@ -228,7 +228,7 @@ mkdir('new_directory')
 # New directory named 'new_directory' is created with default permissions
 ```
 
-**Permission**
+**permission**
 
 Create a new directory with specific permissions.
 
