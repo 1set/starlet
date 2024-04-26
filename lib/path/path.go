@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"sync"
 
+	itn "github.com/1set/starlet/internal"
+
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
@@ -35,6 +37,7 @@ func LoadModule() (starlark.StringDict, error) {
 					"listdir": starlark.NewBuiltin(ModuleName+".listdir", listDirContents),
 					"getcwd":  starlark.NewBuiltin(ModuleName+".getcwd", getCWD),
 					"chdir":   starlark.NewBuiltin(ModuleName+".chdir", changeCWD),
+					"mkdir":   starlark.NewBuiltin(ModuleName+".mkdir", makeDir),
 				},
 			},
 		}
@@ -177,4 +180,18 @@ func changeCWD(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple
 		return nil, fmt.Errorf("%s: %w", b.Name(), err)
 	}
 	return starlark.None, nil
+}
+
+// makeDir creates a directory with the given name.
+func makeDir(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var (
+		pathVal itn.StringOrBytes
+		modeVal = uint32(0755)
+	)
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "path", &pathVal, "mode?", &modeVal); err != nil {
+		return starlark.None, err
+	}
+	// do the work
+	mode := os.FileMode(modeVal)
+	return starlark.None, os.MkdirAll(pathVal.GoString(), mode)
 }

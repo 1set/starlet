@@ -1,6 +1,7 @@
 package path_test
 
 import (
+	"os"
 	"runtime"
 	"testing"
 
@@ -416,9 +417,62 @@ func TestLoadModule_Path(t *testing.T) {
 			`),
 			wantErr: `path.chdir: chdir path_test.go`,
 		},
+		{
+			name: `make dir: existing`,
+			script: itn.HereDoc(`
+				load('path', 'mkdir')
+				mkdir(temp_dir)
+			`),
+		},
+		{
+			name: `make dir: conflict`,
+			script: itn.HereDoc(`
+				load('path', 'mkdir')
+				mkdir(temp_file)
+			`),
+			wantErr:     `not a directory`,
+			skipWindows: true,
+		},
+		{
+			name: `make dir: new`,
+			script: itn.HereDoc(`
+				load('path', 'mkdir')
+				mkdir(temp_dir + "/newdir")
+			`),
+		},
+		{
+			name: `make dir: invalid`,
+			script: itn.HereDoc(`
+				load('path', 'mkdir')
+				mkdir()
+			`),
+			wantErr: `path.mkdir: missing argument for path`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// prepare temp file if needed
+			var (
+				tp string
+				td string
+			)
+			{
+				// temp file
+				tf, err := os.CreateTemp("", "starlet-path-test-write")
+				if err != nil {
+					t.Errorf("os.CreateTemp() expects no error, actual error = '%v'", err)
+					return
+				}
+				tp = tf.Name()
+
+				// temp dir
+				td, err = os.MkdirTemp("", "starlet-path-test-dir")
+				if err != nil {
+					t.Errorf("os.MkdirTemp() expects no error, actual error = '%v'", err)
+					return
+				}
+			}
+
 			// execute test
 			if isOnWindows && tt.skipWindows {
 				t.Skipf("Skip test on Windows")
@@ -426,6 +480,8 @@ func TestLoadModule_Path(t *testing.T) {
 			}
 			globals := starlark.StringDict{
 				"runtime_os": starlark.String(runtime.GOOS),
+				"temp_file":  starlark.String(tp),
+				"temp_dir":   starlark.String(td),
 			}
 			res, err := itn.ExecModuleWithErrorTest(t, lpath.ModuleName, lpath.LoadModule, tt.script, tt.wantErr, globals)
 			if (err != nil) != (tt.wantErr != "") {

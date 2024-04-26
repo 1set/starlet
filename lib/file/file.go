@@ -3,7 +3,6 @@ package file
 
 import (
 	"fmt"
-	"os"
 	"sync"
 
 	dc "github.com/1set/starlet/dataconv"
@@ -29,7 +28,6 @@ func LoadModule() (starlark.StringDict, error) {
 			ModuleName: &starlarkstruct.Module{
 				Name: ModuleName,
 				Members: starlark.StringDict{
-					"mkdir":         starlark.NewBuiltin(ModuleName+".mkdir", makeDir),
 					"stat":          starlark.NewBuiltin(ModuleName+".stat", getFileStat),
 					"trim_bom":      starlark.NewBuiltin(ModuleName+".trim_bom", trimBom),
 					"count_lines":   starlark.NewBuiltin(ModuleName+".count_lines", countLinesInFile),
@@ -49,20 +47,6 @@ func LoadModule() (starlark.StringDict, error) {
 		}
 	})
 	return fileModule, nil
-}
-
-// makeDir creates a directory with the given name.
-func makeDir(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var (
-		pathVal itn.StringOrBytes
-		modeVal = uint32(0755)
-	)
-	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "path", &pathVal, "mode?", &modeVal); err != nil {
-		return starlark.None, err
-	}
-	// do the work
-	mode := os.FileMode(modeVal)
-	return starlark.None, os.MkdirAll(pathVal.GoString(), mode)
 }
 
 // trimBom removes the UTF-8 BOM (Byte Order Mark) from the beginning of a string.
