@@ -204,3 +204,36 @@ load("path", "chdir")
 chdir('/new/directory')
 # Current directory is now '/new/directory'
 ```
+
+### `mkdir(path, mode=0o755)`
+
+Creates a directory with the given name. If the directory already exists, no error is thrown. It's capable of creating nested directories.
+
+#### Parameters
+
+| name   | type     | description                                                                                                           |
+|--------|----------|-----------------------------------------------------------------------------------------------------------------------|
+| `path` | `string` | The directory path to be created                                                                                      |
+| `mode` | `int`    | The file mode (permissions) to use for the newly-created directory, represented as an octal number. Defaults to 0755. |
+
+#### Examples
+
+**Default**
+
+Create a new directory.
+
+```python
+load("path", "mkdir")
+mkdir('new_directory')
+# New directory named 'new_directory' is created with default permissions
+```
+
+**Permission**
+
+Create a new directory with specific permissions.
+
+```python
+load("path", "mkdir")
+mkdir('secure_directory', 0o700)
+# New directory named 'secure_directory' is created with permissions set to 0700
+```

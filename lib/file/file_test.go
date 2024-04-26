@@ -7,10 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"go.starlark.net/starlark"
-
 	itn "github.com/1set/starlet/internal"
 	lf "github.com/1set/starlet/lib/file"
+	"go.starlark.net/starlark"
 )
 
 func TestLoadModule_File(t *testing.T) {
