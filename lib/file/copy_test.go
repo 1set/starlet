@@ -33,6 +33,20 @@ func TestLoadModule_FileCopy(t *testing.T) {
 			wantErr: `file.copyfile: missing argument for dst`,
 		},
 		{
+			name: `copyfile: empty src`,
+			script: itn.HereDoc(`
+				cf(src="", dst=temp_file+"_another")
+			`),
+			wantErr: `source path is empty`,
+		},
+		{
+			name: `copyfile: empty dst`,
+			script: itn.HereDoc(`
+				cf(src=temp_file, dst="")
+			`),
+			wantErr: `destination path is empty`,
+		},
+		{
 			name: `copyfile: invalid args`,
 			script: itn.HereDoc(`
 				cf(src=temp_file, dst=temp_file+"_another", overwrite="abc")

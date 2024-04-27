@@ -33,10 +33,10 @@ func copyFile(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple,
 func copyFileGo(src, dst string, overwrite bool) (string, error) {
 	// No empty input
 	if src == emptyStr {
-		return emptyStr, errors.New("source file is empty")
+		return emptyStr, errors.New("source path is empty")
 	}
 	if dst == emptyStr {
-		return emptyStr, errors.New("destination file is empty")
+		return emptyStr, errors.New("destination path is empty")
 	}
 
 	// Open the source file.
