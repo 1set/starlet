@@ -332,6 +332,56 @@ print(info.name, info.size, info.type)
 # Output: folder 448 dir
 ```
 
+### `copyfile(src, dst, overwrite=False) string`
+
+Copies a file from source to destination. If the destination exists and overwrite is set to False, an error is returned. If the destination is a directory, the file is copied into that directory with its original filename. Symbolic links are followed. Mode, access, and modification times are preserved.
+
+#### Parameters
+
+| name        | type     | description                                                                       |
+|-------------|----------|-----------------------------------------------------------------------------------|
+| `src`       | `string` | The path of the source file to be copied.                                         |
+| `dst`       | `string` | The path of the destination file or directory. The parent directory must exist.   |
+| `overwrite` | `bool`   | If true, allows overwriting the destination file if it exists. Defaults to False. |
+
+#### Examples
+
+**basic copy**
+
+Copy a file to a new location without overwrite.
+
+```python
+load('file', 'copyfile')
+src = 'path/to/source.txt'
+dst = 'path/to/destination.txt'
+copyfile(src, dst)
+# The file at 'path/to/source.txt' is copied to 'path/to/destination.txt'
+```
+
+**overwrite copy**
+
+Copy a file to a new location with overwrite enabled.
+
+```python
+load('file', 'copyfile')
+src = 'path/to/source.txt'
+dst = 'path/to/existing_destination.txt'
+copyfile(src, dst, overwrite=True)
+# The file at 'path/to/source.txt' is copied to 'path/to/existing_destination.txt', overwriting it.
+```
+
+**copy to directory**
+
+Copy a file into a directory.
+
+```python
+load('file', 'copyfile')
+src = 'path/to/source.txt'
+dst = 'path/to/directory'
+copyfile(src, dst)
+# The file at 'path/to/source.txt' is copied into 'path/to/directory' with its original filename.
+```
+
 ## Types
 
 ### `FileStat`
