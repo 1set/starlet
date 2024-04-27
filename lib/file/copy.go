@@ -8,7 +8,17 @@ import (
 	"path/filepath"
 )
 
-func copyfile(src, dst string, override bool) error {
+// copyFile copies the contents of the source file to the destination file or directory with the same mode and times.
+// If the destination file exists and overwrite is false, an error is returned.
+func copyFile(src, dst string, overwrite bool) error {
+	// No empty input
+	if src == "" {
+		return errors.New("source file is empty")
+	}
+	if dst == "" {
+		return errors.New("destination file is empty")
+	}
+
 	// Open the source file.
 	srcFile, err := os.Open(src)
 	if err != nil {
@@ -42,34 +52,34 @@ func copyfile(src, dst string, override bool) error {
 
 	// for destination file exists
 	if err == nil {
-		// If override is false, return an error if the destination file exists.
-		if !override {
-			return &os.PathError{Op: "copy", Path: dst, Err: os.ErrExist}
-		}
 		// If the source and destination files are the same, return an error.
 		if os.SameFile(srcStat, dstStat) {
 			return fmt.Errorf("source and destination are the same file: %s", src)
+		}
+		// If overwrite is false, return an error if the destination file exists.
+		if !overwrite {
+			return &os.PathError{Op: "copy", Path: dst, Err: os.ErrExist}
 		}
 	}
 
 	// Create the destination file.
 	dstFile, err := os.Create(dst)
 	if err != nil {
-		return fmt.Errorf("create destination file: %w", err)
+		return fmt.Errorf("cannot create file: %w", err)
 	}
 	defer dstFile.Close()
 
 	// Copy the source file to the destination file.
 	if _, err := io.Copy(dstFile, srcFile); err != nil {
-		return fmt.Errorf("copy file: %w", err)
+		return fmt.Errorf("cannot copy file: %w", err)
 	}
 
 	// Set the mode, times file to match the source file. HACK: ignore the error maybe
 	if err := os.Chmod(dst, srcStat.Mode()); err != nil {
-		return fmt.Errorf("chmod destination file: %w", err)
+		return fmt.Errorf("cannot chmod file: %w", err)
 	}
 	if err := os.Chtimes(dst, srcStat.ModTime(), srcStat.ModTime()); err != nil {
-		return fmt.Errorf("chtimes destination file: %w", err)
+		return fmt.Errorf("cannot chtimes file: %w", err)
 	}
 	return nil
 }
