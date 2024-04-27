@@ -141,11 +141,9 @@ func TestLoadModule_FileCopy(t *testing.T) {
 		{
 			name: `dst is device`,
 			script: itn.HereDoc(`
-			def run():
-				if runtime_os == "linux":
-					cf(temp_file, "/dev/null", overwrite=True)
-			run()
+				cf(temp_file, "/dev/null", overwrite=True)
 			`),
+			wantErr:     `operation not permitted`,
 			skipWindows: true,
 		},
 	}
