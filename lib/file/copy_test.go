@@ -1,6 +1,7 @@
 package file_test
 
 import (
+	"io/ioutil"
 	"os"
 	"runtime"
 	"testing"
@@ -53,13 +54,87 @@ func TestLoadModule_FileCopy(t *testing.T) {
 			`),
 			wantErr: `file.copyfile: for parameter "overwrite": got string, want bool`,
 		},
+
+		{
+			name: `normal copy`,
+			script: itn.HereDoc(`
+				cf("", "")
+			`),
+			wantErr: ``,
+		},
+		{
+			name: `overwrite copy enabled`,
+			script: itn.HereDoc(`
+				cf("", "")
+			`),
+			wantErr: ``,
+		},
+		{
+			name: `overwrite copy disabled`,
+			script: itn.HereDoc(`
+				cf("", "")
+			`),
+			wantErr: ``,
+		},
+		{
+			name: `src not exists`,
+			script: itn.HereDoc(`
+				cf("", "")
+			`),
+			wantErr: ``,
+		},
+		{
+			name: `src is dir`,
+			script: itn.HereDoc(`
+				cf("", "")
+			`),
+			wantErr: ``,
+		},
+		{
+			name: `src is device`,
+			script: itn.HereDoc(`
+				cf("", "")
+			`),
+			wantErr:     ``,
+			skipWindows: true,
+		},
+		{
+			name: `dst not exist`,
+			script: itn.HereDoc(`
+				cf("", "")
+			`),
+			wantErr: ``,
+		},
+		{
+			name: `dst is dir`,
+			script: itn.HereDoc(`
+				cf("", "")
+			`),
+			wantErr: ``,
+		},
+		{
+			name: `dst is file`,
+			script: itn.HereDoc(`
+				cf("", "")
+			`),
+			wantErr: ``,
+		},
+		{
+			name: `dst is device`,
+			script: itn.HereDoc(`
+				cf("", "")
+			`),
+			wantErr:     ``,
+			skipWindows: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// prepare temp file if needed
+			// prepare temp file/dir if needed
 			var (
 				tp  string
 				tp2 string
+				tp3 string
 				td  string
 			)
 			{
@@ -69,6 +144,10 @@ func TestLoadModule_FileCopy(t *testing.T) {
 					return
 				} else {
 					tp = tf.Name()
+					if err = ioutil.WriteFile(tp, []byte("Aloha"), 0644); err != nil {
+						t.Errorf("ioutil.WriteFile() expects no error, actual error = '%v'", err)
+						return
+					}
 				}
 				// temp file 2
 				if tf, err := os.CreateTemp("", "starlet-copy-test-write2"); err != nil {
@@ -76,6 +155,17 @@ func TestLoadModule_FileCopy(t *testing.T) {
 					return
 				} else {
 					tp2 = tf.Name()
+					if err = ioutil.WriteFile(tp2, []byte("A hui hou"), 0644); err != nil {
+						t.Errorf("ioutil.WriteFile() expects no error, actual error = '%v'", err)
+						return
+					}
+				}
+				// temp file 3
+				if tf, err := os.CreateTemp("", "starlet-copy-test-write3"); err != nil {
+					t.Errorf("os.CreateTemp() expects no error, actual error = '%v'", err)
+					return
+				} else {
+					tp3 = tf.Name()
 				}
 				// temp dir
 				if tt, err := os.MkdirTemp("", "starlet-copy-test-dir"); err != nil {
@@ -95,6 +185,7 @@ func TestLoadModule_FileCopy(t *testing.T) {
 				"runtime_os": starlark.String(runtime.GOOS),
 				"temp_file":  starlark.String(tp),
 				"temp_file2": starlark.String(tp2),
+				"temp_file3": starlark.String(tp3),
 				"temp_dir":   starlark.String(td),
 			}
 			script := `load('file', cf='copyfile')` + "\n" + tt.script
