@@ -144,7 +144,6 @@ func TestLoadModule_FileCopy(t *testing.T) {
 			script: itn.HereDoc(`
 				cf(temp_file, "/dev/null", overwrite=True)
 			`),
-			wantErr:     `operation not permitted`,
 			skipWindows: true,
 		},
 	}

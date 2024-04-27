@@ -27,9 +27,10 @@ func copyFile(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple,
 	return starlark.String(dp), nil
 }
 
-// copyFileGo copies the contents of the source file to the destination file or directory with the same mode and times.
+// copyFileGo copies the contents of the source file to the destination file or directory with the same mode and access and modification times.
 // If the destination file exists and overwrite is false, an error is returned.
 // Symbolic links are followed on both source and destination.
+// Errors occurred while setting the mode or access and modification times are ignored.
 func copyFileGo(src, dst string, overwrite bool) (string, error) {
 	// No empty input
 	if src == emptyStr {
@@ -94,12 +95,8 @@ func copyFileGo(src, dst string, overwrite bool) (string, error) {
 		return emptyStr, fmt.Errorf("cannot copy file: %w", err)
 	}
 
-	// Set the mode, times file to match the source file. HACK: ignore the error maybe
-	if err := os.Chmod(dst, srcStat.Mode()); err != nil {
-		return emptyStr, fmt.Errorf("cannot chmod file: %w", err)
-	}
-	if err := os.Chtimes(dst, srcStat.ModTime(), srcStat.ModTime()); err != nil {
-		return emptyStr, fmt.Errorf("cannot chtimes file: %w", err)
-	}
+	// Attempt to set the mode, times file to match the source file, i.e. ignore the errors
+	_ = os.Chmod(dst, srcStat.Mode())
+	_ = os.Chtimes(dst, srcStat.ModTime(), srcStat.ModTime())
 	return dst, nil
 }
