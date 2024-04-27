@@ -103,7 +103,8 @@ func TestLoadModule_FileCopy(t *testing.T) {
 				s, d = temp_file + "_not", temp_file+"_another"
 				cf(s, d)
 			`),
-			wantErr: `no such file or directory`,
+			wantErr:     `no such file or directory`,
+			skipWindows: true,
 		},
 		{
 			name: `src is dir`,
