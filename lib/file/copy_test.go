@@ -54,77 +54,98 @@ func TestLoadModule_FileCopy(t *testing.T) {
 			`),
 			wantErr: `file.copyfile: for parameter "overwrite": got string, want bool`,
 		},
-
 		{
 			name: `normal copy`,
 			script: itn.HereDoc(`
-				cf("", "")
+				load('file', 'stat')
+				s, d = temp_file, temp_file+"_another"
+				d2 = cf(s, d)
+				assert.eq(d2, d)
+				ss, sd = stat(s), stat(d)
+				assert.eq(ss.type, sd.type)
+				assert.eq(ss.size, sd.size)
+				assert.eq(ss.modified, sd.modified)
+				assert.eq(ss.get_md5(), sd.get_md5())
 			`),
-			wantErr: ``,
 		},
 		{
 			name: `overwrite copy enabled`,
 			script: itn.HereDoc(`
-				cf("", "")
+				load('file', 'stat')
+				s, d = temp_file, temp_file2
+				d2 = cf(s, d, overwrite=True)
+				assert.eq(d2, d)
+				ss, sd = stat(s), stat(d)
+				assert.eq(ss.type, sd.type)
+				assert.eq(ss.size, sd.size)
+				assert.eq(ss.modified, sd.modified)
+				assert.eq(ss.get_md5(), sd.get_md5())
 			`),
 			wantErr: ``,
 		},
 		{
 			name: `overwrite copy disabled`,
 			script: itn.HereDoc(`
-				cf("", "")
+				cf(temp_file, temp_file2)
 			`),
-			wantErr: ``,
+			wantErr: `file already exists`,
+		},
+		{
+			name: `src dst same`,
+			script: itn.HereDoc(`
+				cf(temp_file, temp_file)
+			`),
+			wantErr: `source and destination are the same file`,
 		},
 		{
 			name: `src not exists`,
 			script: itn.HereDoc(`
-				cf("", "")
+				s, d = temp_file + "_not", temp_file+"_another"
+				cf(s, d)
 			`),
-			wantErr: ``,
+			wantErr: `no such file or directory`,
 		},
 		{
 			name: `src is dir`,
 			script: itn.HereDoc(`
-				cf("", "")
+				s, d = temp_dir, temp_file+"_another"
+				cf(s, d)
 			`),
-			wantErr: ``,
+			wantErr: `source file is not a regular file`,
 		},
 		{
 			name: `src is device`,
 			script: itn.HereDoc(`
-				cf("", "")
+				s, d = "/dev/null", temp_file+"_another"
+				cf(s, d)
 			`),
-			wantErr:     ``,
+			wantErr:     `source file is not a regular file`,
 			skipWindows: true,
-		},
-		{
-			name: `dst not exist`,
-			script: itn.HereDoc(`
-				cf("", "")
-			`),
-			wantErr: ``,
 		},
 		{
 			name: `dst is dir`,
 			script: itn.HereDoc(`
-				cf("", "")
+				load('file', 'stat')
+				s, d = temp_file, temp_dir
+				nd = cf(s, d)
+				print("dst dir", d)
+				print("dst file", nd)
+				assert.ne(nd, d)
+				ss, sd = stat(s), stat(nd)
+				assert.eq(ss.type, sd.type)
+				assert.eq(ss.size, sd.size)
+				assert.eq(ss.modified, sd.modified)
+				assert.eq(ss.get_md5(), sd.get_md5())
 			`),
-			wantErr: ``,
-		},
-		{
-			name: `dst is file`,
-			script: itn.HereDoc(`
-				cf("", "")
-			`),
-			wantErr: ``,
 		},
 		{
 			name: `dst is device`,
 			script: itn.HereDoc(`
-				cf("", "")
+			def run():
+				if runtime_os == "linux":
+					cf(temp_file, "/dev/null", overwrite=True)
+			run()
 			`),
-			wantErr:     ``,
 			skipWindows: true,
 		},
 	}
