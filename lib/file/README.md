@@ -334,7 +334,8 @@ print(info.name, info.size, info.type)
 
 ### `copyfile(src, dst, overwrite=False) string`
 
-Copies a file from source to destination. If the destination exists and overwrite is set to False, an error is returned. If the destination is a directory, the file is copied into that directory with its original filename. Symbolic links are followed. Mode, access, and modification times are preserved.
+Copies a file from source to destination, and returns the destination file path.
+If the destination exists and overwrite is set to False, an error is returned. If the destination is a directory, the file is copied into that directory with its original filename. Symbolic links are followed. Mode, access, and modification times are preserved.
 
 #### Parameters
 
