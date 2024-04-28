@@ -20,6 +20,7 @@ import (
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 	stdstruct "go.starlark.net/starlarkstruct"
+	libtest "go.starlark.net/starlarktest"
 )
 
 var allBuiltinModules = ModuleLoaderMap{
@@ -41,6 +42,7 @@ var allBuiltinModules = ModuleLoaderMap{
 			"time": stdtime.Module,
 		}, nil
 	},
+	"assert": libtest.LoadAssertModule,
 	// add third-party modules
 	libatom.ModuleName: libatom.LoadModule,
 	libb64.ModuleName:  libb64.LoadModule,
