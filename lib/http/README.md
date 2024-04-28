@@ -1,4 +1,4 @@
-# HTTP
+# http
 
 `http` defines an HTTP client implementation. It is a thin wrapper around the Go standard package `net/http` but in Python `requests` style.
 

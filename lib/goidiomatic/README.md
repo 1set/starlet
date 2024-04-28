@@ -1,4 +1,4 @@
-# Go Idiomatic
+# go_idiomatic
 
 `go_idiomatic` provides a Starlark module that defines Go idiomatic functions and values.
 

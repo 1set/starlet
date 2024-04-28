@@ -1,4 +1,4 @@
-# HashLib
+# hashlib
 
 `hashlib` defines hash primitives for Starlark.
 
