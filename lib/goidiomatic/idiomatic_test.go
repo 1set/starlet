@@ -921,6 +921,27 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				pprint(["apple", "banana", "cherry"], mul, sep=", ")
 			`),
 		},
+		{
+			name: `eprint with starlight`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'eprint')
+				eprint("custom", make_range(1, 7))
+				eprint("struct", test_custom_struct)
+				eprint("pointer", test_custom_struct_pointer)
+				print("custom", make_range(1, 7))
+				print("struct", test_custom_struct)
+				print("pointer", test_custom_struct_pointer)
+			`),
+		},
+		{
+			name: `pprint with starlight`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'pprint')
+				pprint("custom", make_range(1, 8))
+				pprint("struct", test_custom_struct)
+				pprint("pointer", test_custom_struct_pointer)
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
