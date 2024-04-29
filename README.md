@@ -10,7 +10,7 @@
 
 *Starlet* is yet another Go wrapper for the official [*Starlark in Go*](https://github.com/google/starlark-go) project, designed to enhance the Starlark scripting experience with powerful extensions and enriched wrappers, and provide a more user-friendly and powerful interface for embedding Starlark scripting in your Go applications.
 
-Inspired by the [*Starlight*](https://github.com/starlight-go/starlight) and [*Starlib*](https://github.com/qri-io/starlib) projects, Starlet focuses on three main objectives: providing an easier-to-use **Go wrapper** for Starlark, offering seamless **data conversion** between Go and Starlark, and supplying a set of **useful libraries** for Starlark.
+Inspired by the [*Starlight*](https://github.com/starlight-go/starlight) and [*Starlib*](https://github.com/qri-io/starlib) projects, Starlet focuses on three main objectives: providing an easier-to-use **Go wrapper** for Starlark, offering flexible **data conversion** between Go and Starlark, and supplying a set of **useful libraries** for Starlark.
 
 ## Key Features
 
@@ -49,4 +49,66 @@ Starlet comes with a set of libraries to extend the standard Starlark library. H
 | [`runtime`](/lib/runtime)         | [![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/runtime.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/runtime)         | Provides Go and app runtime information                       |
 | [`string`](/lib/string)           | [![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/string.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/string)           | Constants and functions to manipulate strings                 |
 
-For more detailed documentation on each library, please refer to the respective README files in the `lib` directory.
+For more detailed documentation on each library, please refer to the respective README files in the [`lib`](/lib) directory.
+
+## Installation
+
+To install *Starlet*, use the following Go command under your project directory:
+
+```bash
+go get github.com/1set/starlet
+```
+
+To explore the capabilities of the Starlet CLI tool, use the command below to install:
+
+```bash
+go install github.com/1set/starlet/cmd/starlet@latest
+```
+
+## Usage
+
+You can use Starlet to enhance your Starlark scripting experience. Here's a quick example of how to use Starlet:
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/1set/starlet"
+)
+
+func main() {
+    machine := starlet.NewDefault()
+    globals := starlet.StringAnyMap{
+        "greeting": "Hello",
+        "target": "World",
+    }
+    script := `print(greeting + ", " + target + "!")`
+    if _, err := machine.RunScript([]byte(script), globals); err != nil {
+        fmt.Println("Script error:", err)
+    }
+}
+```
+
+This will output:
+
+```
+Hello, World!
+```
+
+## Contributing
+
+Contributions to *Starlet* are all welcomed. If you encounter any issues or have suggestions for improvements, please feel free to open an issue or submit a pull request. Before undertaking any significant changes, please let us know by filing an issue or claiming an existing one to ensure there is no duplication of effort.
+
+## License
+
+*Starlet* is licensed under the [MIT License](LICENSE).
+
+## Credits
+
+Starlet is inspired by two projects:
+
+1. [Starlight](https://github.com/starlight-go/starlight): A Go wrapper and data conversion tool between Go and Starlark.
+2. [Starlib](https://github.com/qri-io/starlib): A collection of third-party libraries for Starlark.
+
+We appreciate the work done by the creators and contributors of these projects. Their efforts have paved the way for the development of *Starlet*. Special thanks to the authors and contributors of these projects! 🎉
