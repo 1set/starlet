@@ -10,7 +10,7 @@
 
 *Starlet* is yet another Go wrapper for the official [*Starlark in Go*](https://github.com/google/starlark-go) project, designed to enhance the Starlark scripting experience with powerful extensions and enriched wrappers, and provide a more user-friendly and powerful interface for embedding Starlark scripting in your Go applications.
 
-Inspired by the [*Starlight*](https://github.com/starlight-go/starlight) and [*Starlib*](https://github.com/qri-io/starlib) projects, Starlet focuses on three main objectives: providing an easier-to-use **Go wrapper** for Starlark, offering flexible **data conversion** between Go and Starlark, and supplying a set of **useful libraries** for Starlark.
+Inspired by the [*Starlight*](https://github.com/starlight-go/starlight) and [*Starlib*](https://github.com/qri-io/starlib) projects, *Starlet* focuses on three main objectives: providing an easier-to-use **Go wrapper** for Starlark, offering flexible **data conversion** between Go and Starlark, and supplying a set of **useful libraries** for Starlark.
 
 ## Key Features
 
@@ -30,9 +30,9 @@ Inspired by the [*Starlight*](https://github.com/starlight-go/starlight) and [*S
 
 ## Libraries
 
-Starlet comes with a set of libraries to extend the standard Starlark library. Here's a brief overview:
+*Starlet* comes with a set of libraries to extend the standard Starlark library. Here's a brief overview:
 
-| Package                           | Go Docs                                                                                                                                      | Description                                                   |
+| Package                           | Go Doc                                                                                                                                       | Description                                                   |
 |:----------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------|:--------------------------------------------------------------|
 | [`atom`](/lib/atom)               | [![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/atom.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/atom)               | Atomic operations for integers, floats, and strings           |
 | [`base64`](/lib/base64)           | [![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/base64.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/base64)           | Base64 encoding & decoding functions                          |
@@ -115,7 +115,7 @@ Contributions to *Starlet* are all welcomed. If you encounter any issues or have
 
 ## Credits
 
-Starlet is inspired by two projects:
+*Starlet* is inspired by two projects:
 
 1. [Starlight](https://github.com/starlight-go/starlight): A Go wrapper and data conversion tool between Go and Starlark.
 2. [Starlib](https://github.com/qri-io/starlib): A collection of third-party libraries for Starlark.
