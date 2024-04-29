@@ -8,7 +8,7 @@
 
 > Enhancing your Starlark scripting experience with powerful extensions and enriched wrappers. Start your Starlark journey with Starlet, where simplicity meets functionality.
 
-Starlet is yet another Go wrapper for the official [*Starlark in Go*](https://github.com/google/starlark-go) project, designed to enhance the Starlark scripting experience with powerful extensions and enriched wrappers, and provide a more user-friendly and powerful interface for embedding Starlark scripting in your Go applications.
+*Starlet* is yet another Go wrapper for the official [*Starlark in Go*](https://github.com/google/starlark-go) project, designed to enhance the Starlark scripting experience with powerful extensions and enriched wrappers, and provide a more user-friendly and powerful interface for embedding Starlark scripting in your Go applications.
 
 Inspired by the [*Starlight*](https://github.com/starlight-go/starlight) and [*Starlib*](https://github.com/qri-io/starlib) projects, Starlet focuses on three main objectives: providing an easier-to-use **Go wrapper** for Starlark, offering seamless **data conversion** between Go and Starlark, and supplying a set of **useful libraries** for Starlark.
 
@@ -18,7 +18,7 @@ Inspired by the [*Starlight*](https://github.com/starlight-go/starlight) and [*S
 
 ### Flexible Machine Abstraction
 
-*Starlet* introduces a streamlined interface for executing Starlark scripts, encapsulating the complexities of setting up and running the scripts --- The [`Machine`](https://pkg.go.dev/github.com/1set/starlet#Machine) type in *Starlet* serves as a comprehensive wrapper for Starlark runtime environments, offering an intuitive API for executing Starlark scripts, managing global variables, loading modules, controlling the script execution flow., and handling script outputs.
+*Starlet* introduces a streamlined interface for executing Starlark scripts, encapsulating the complexities of setting up and running the scripts: The [`Machine`](https://pkg.go.dev/github.com/1set/starlet#Machine) type serves as a comprehensive wrapper for Starlark runtime environments, offering an intuitive API for executing Starlark scripts, managing global variables, loading modules, controlling the script execution flow., and handling script outputs.
 
 ### Enhanced Data Conversion
 
@@ -30,7 +30,7 @@ Inspired by the [*Starlight*](https://github.com/starlight-go/starlight) and [*S
 
 ## Libraries
 
-Starlet offers a variety of libraries that extend the functionality of Starlark. Below is a brief introduction of each library:
+Starlet comes with a set of libraries to extend the standard Starlark library. Here's a brief overview:
 
 | Package                           | Go Docs                                                                                                                                      | Description                                                   |
 |:----------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------|:--------------------------------------------------------------|
@@ -48,3 +48,5 @@ Starlet offers a variety of libraries that extend the functionality of Starlark.
 | [`re`](/lib/re)                   | [![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/re.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/re)                   | Regular expression functions for Starlark                     |
 | [`runtime`](/lib/runtime)         | [![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/runtime.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/runtime)         | Provides Go and app runtime information                       |
 | [`string`](/lib/string)           | [![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/string.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/string)           | Constants and functions to manipulate strings                 |
+
+For more detailed documentation on each library, please refer to the respective README files in the `lib` directory.
