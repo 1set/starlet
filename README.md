@@ -8,7 +8,7 @@
 
 > Enhancing your Starlark scripting experience with powerful extensions and enriched wrappers. Start your Starlark journey with Starlet, where simplicity meets functionality.
 
-Starlet is a Go wrapper for the official [*Starlark in Go*](https://github.com/google/starlark-go) project, designed to enhance the Starlark scripting experience with powerful extensions and enriched wrappers, and provide a more user-friendly and powerful interface for embedding Starlark scripting in your Go applications.
+Starlet is yet another Go wrapper for the official [*Starlark in Go*](https://github.com/google/starlark-go) project, designed to enhance the Starlark scripting experience with powerful extensions and enriched wrappers, and provide a more user-friendly and powerful interface for embedding Starlark scripting in your Go applications.
 
 Inspired by the [*Starlight*](https://github.com/starlight-go/starlight) and [*Starlib*](https://github.com/qri-io/starlib) projects, Starlet focuses on three main objectives: providing an easier-to-use **Go wrapper** for Starlark, offering seamless **data conversion** between Go and Starlark, and supplying a set of **useful libraries** for Starlark.
 
@@ -27,3 +27,24 @@ Inspired by the [*Starlight*](https://github.com/starlight-go/starlight) and [*S
 ### Extended Libraries & Functionalities
 
 *Starlet* includes a set of custom modules and libraries that extend the functionality of the Starlark language. These modules cover a wide range of use cases, such as file manipulation, HTTP client, JSON/CSV handling, and more, making Starlark scripts even more powerful and versatile.
+
+## Libraries
+
+Starlet offers a variety of libraries that extend the functionality of Starlark. Below is a brief introduction of each library:
+
+| Package | Go Docs |Description |
+| :------- | :---------- | :---------- |
+| [`atom`](/lib/atom) |  [![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/atom.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/atom)  | Provides atomic operations for integers, floats, and strings |
+| [`base64`](/lib/base64) |[![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/base64.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/base64)    | Defines base64 encoding & decoding functions |
+| [`csv`](/lib/csv) |[![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/csv.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/csv)    | Parses and writes comma-separated values files (csv) |
+| [`file`](/lib/file) |[![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/file.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/file)    | Provides functions to interact with the file system |
+| [`goidiomatic`](/lib/goidiomatic) |[![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/goidiomatic.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/goidiomatic)    | Provides Go idiomatic functions and values for Starlark |
+| [`hashlib`](/lib/hashlib) |[![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/hashlib.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/hashlib)    | Defines hash primitives for Starlark |
+| [`http`](/lib/http) |[![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/http.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/http)    | Defines an HTTP client implementation for Starlark |
+| [`json`](/lib/json) |[![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/json.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/json)    | Defines utilities for converting Starlark values to/from JSON strings |
+| [`log`](/lib/log) |[![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/log.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/log)    | Provides functionality for logging messages at various severity levels |
+| [`path`](/lib/path) |[![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/path.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/path)    | Provides functions to manipulate directories and file paths |
+| [`random`](/lib/random) |[![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/random.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/random)    | Defines functions that generate random values for various distributions |
+| [`re`](/lib/re) |[![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/re.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/re)    | Defines regular expression functions for Starlark |
+| [`runtime`](/lib/runtime) |[![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/runtime.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/runtime)    | Provides Go and app runtime information |
+| [`string`](/lib/string) |[![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/string.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/string)    | Provides constants and functions to manipulate strings |
