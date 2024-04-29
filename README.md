@@ -49,7 +49,7 @@ Starlet comes with a set of libraries to extend the standard Starlark library. H
 | [`runtime`](/lib/runtime)         | [![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/runtime.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/runtime)         | Provides Go and app runtime information                       |
 | [`string`](/lib/string)           | [![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/string.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/string)           | Constants and functions to manipulate strings                 |
 
-For more detailed documentation on each library, please refer to the respective README files in the [`lib`](/lib) directory.
+For more detailed documentation on each library, please refer to the respective README files in the [`lib`](/lib) directory. Apart from these libraries, *Starlet* also includes a set of official modules as well, you can check all provided out by using [`GetAllBuiltinModuleNames()`](https://pkg.go.dev/github.com/1set/starlet#GetAllBuiltinModuleNames) method.
 
 ## Installation
 
@@ -67,33 +67,42 @@ go install github.com/1set/starlet/cmd/starlet@latest
 
 ## Usage
 
-You can use Starlet to enhance your Starlark scripting experience. Here's a quick example of how to use Starlet:
+You can use *Starlet* to enhance your Starlark scripting experience. Here's a quick example:
 
 ```go
-package main
+import "github.com/1set/starlet"
 
-import (
-    "fmt"
-    "github.com/1set/starlet"
-)
-
-func main() {
-    machine := starlet.NewDefault()
-    globals := starlet.StringAnyMap{
-        "greeting": "Hello",
-        "target": "World",
-    }
-    script := `print(greeting + ", " + target + "!")`
-    if _, err := machine.RunScript([]byte(script), globals); err != nil {
-        fmt.Println("Script error:", err)
-    }
+// Define your machine with global variables and modules
+globals := starlet.StringAnyMap{
+    "greet": func(name string) string {
+        return fmt.Sprintf("Hello, %s!", name)
+    },
 }
+mac := starlet.NewWithNames(globals, []string{"random"}, nil)
+
+// Run a Starlark script in the machine
+script := `
+target = random.choice(["World", "Starlark", "Starlet"])
+text = greet(target)
+print("Starlark:", text)
+`
+res, err := mac.RunScript([]byte(script), nil)
+
+// Check for errors and results
+if err != nil {
+    fmt.Println("Error executing script:", err)
+    return
+}
+fmt.Println("Go:", res["text"].(string))
+fmt.Println("Modules:", starlet.GetAllBuiltinModuleNames())
 ```
 
-This will output:
+This may output:
 
 ```
-Hello, World!
+Starlark: Hello, Starlet!
+Go: Hello, Starlet!
+Modules: [atom base64 csv file go_idiomatic hashlib http json log math path random re runtime string struct time]
 ```
 
 ## Contributing
