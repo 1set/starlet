@@ -49,7 +49,7 @@ Starlet comes with a set of libraries to extend the standard Starlark library. H
 | [`runtime`](/lib/runtime)         | [![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/runtime.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/runtime)         | Provides Go and app runtime information                       |
 | [`string`](/lib/string)           | [![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/string.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/string)           | Constants and functions to manipulate strings                 |
 
-For more detailed documentation on each library, please refer to the respective README files in the [`lib`](/lib) directory. Apart from these libraries, *Starlet* also includes a set of official modules as well, you can check all provided out by using [`GetAllBuiltinModuleNames()`](https://pkg.go.dev/github.com/1set/starlet#GetAllBuiltinModuleNames) method.
+For extensive documentation on each library, please refer to the respective README files in the [`lib`](/lib) directory. Additionally, *Starlet* includes an array of official modules. You can explore all provided modules by using [`GetAllBuiltinModuleNames()`](https://pkg.go.dev/github.com/1set/starlet#GetAllBuiltinModuleNames) method.
 
 ## Installation
 
