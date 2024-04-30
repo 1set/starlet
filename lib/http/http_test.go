@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -577,6 +578,62 @@ func TestLoadModule_HTTP(t *testing.T) {
 			}
 			TimeoutSecond = 30.0
 			res, err := itn.ExecModuleWithErrorTest(t, ModuleName, LoadModule, tt.script, tt.wantErr, nil)
+			if (err != nil) != (tt.wantErr != "") {
+				t.Errorf("http(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
+				return
+			}
+		})
+	}
+}
+
+func TestLoadModule_CustomLoad(t *testing.T) {
+	md := &Module{}
+	proxyURL, _ := url.Parse("http://127.0.0.1:80")
+	client := &http.Client{
+		Transport: &http.Transport{
+			Proxy: http.ProxyURL(proxyURL),
+		},
+	}
+	md.SetClient(client)
+
+	httpHand := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, err := httputil.DumpRequest(r, true)
+		if err != nil {
+			t.Errorf("Error dumping request: %v", err)
+		}
+		t.Logf("Web server received request: [[%s]]", b)
+		time.Sleep(10 * time.Millisecond)
+		w.Write(b)
+	})
+	ts := httptest.NewServer(httpHand)
+	defer ts.Close()
+
+	tests := []struct {
+		name    string
+		preset  func()
+		script  string
+		wantErr string
+	}{
+		{
+			name: `Simple GET`,
+			script: itn.HereDoc(`
+				load('http', 'get')
+				res = get(test_server_url)
+				assert.eq(res.status_code, 200)
+				print(res.body())
+			`),
+			wantErr: `proxyconnect tcp: dial tcp 127.0.0.1:80: connect: connection refused`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.preset != nil {
+				tt.preset()
+			}
+			TimeoutSecond = 30.0
+			res, err := itn.ExecModuleWithErrorTest(t, ModuleName, md.LoadModule, tt.script, tt.wantErr, starlark.StringDict{
+				"test_server_url": starlark.String(ts.URL),
+			})
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("http(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
 				return

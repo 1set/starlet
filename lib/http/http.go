@@ -69,6 +69,23 @@ type Module struct {
 	rg  RequestGuard
 }
 
+// SetClient sets the http client for this module, useful for setting custom clients for testing or multiple loadings.
+func (m *Module) SetClient(c *http.Client) {
+	m.cli = c
+}
+
+// SetGuard sets the request guard for this module, useful for setting custom guards for testing or multiple loadings.
+func (m *Module) SetGuard(g RequestGuard) {
+	m.rg = g
+}
+
+// LoadModule creates an http Module.
+func (m *Module) LoadModule() (starlark.StringDict, error) {
+	return starlark.StringDict{
+		ModuleName: m.Struct(),
+	}, nil
+}
+
 // Struct returns this module's methods as a starlark Struct
 func (m *Module) Struct() *starlarkstruct.Struct {
 	return starlarkstruct.FromStringDict(starlarkstruct.Default, m.StringDict())
