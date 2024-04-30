@@ -2,6 +2,7 @@ package http_test
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
@@ -585,6 +586,30 @@ func TestLoadModule_HTTP(t *testing.T) {
 	}
 }
 
+// DomainWhitelistGuard allows requests only to domains in its whitelist.
+type DomainWhitelistGuard struct {
+	whitelist map[string]struct{} // Set of allowed domains
+}
+
+// NewDomainWhitelistGuard creates a new DomainWhitelistGuard with the specified domains.
+func NewDomainWhitelistGuard(domains []string) *DomainWhitelistGuard {
+	whitelist := make(map[string]struct{})
+	for _, domain := range domains {
+		whitelist[domain] = struct{}{}
+	}
+	return &DomainWhitelistGuard{whitelist: whitelist}
+}
+
+// Allowed checks if the request's domain is in the whitelist.
+func (g *DomainWhitelistGuard) Allowed(thread *starlark.Thread, req *http.Request) (*http.Request, error) {
+	if _, ok := g.whitelist[req.URL.Host]; ok {
+		// Domain is in the whitelist, allow the request
+		return req, nil
+	}
+	// Domain is not in the whitelist, deny the request
+	return nil, errors.New("request to this domain is not allowed")
+}
+
 func TestLoadModule_CustomLoad(t *testing.T) {
 	md := &lh.Module{}
 	proxyURL, _ := url.Parse("http://127.0.0.1:9999")
@@ -594,6 +619,8 @@ func TestLoadModule_CustomLoad(t *testing.T) {
 		},
 	}
 	md.SetClient(client)
+	guard := NewDomainWhitelistGuard([]string{"allowed.com"})
+	md.SetGuard(guard)
 
 	httpHand := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		b, err := httputil.DumpRequest(r, true)
@@ -617,11 +644,19 @@ func TestLoadModule_CustomLoad(t *testing.T) {
 			name: `Simple GET`,
 			script: itn.HereDoc(`
 				load('http', 'get')
-				res = get(test_server_url)
+				res = get("http://allowed.com/hello")
 				assert.eq(res.status_code, 200)
-				print(res.body())
 			`),
 			wantErr: `proxyconnect tcp: dial tcp 127.0.0.1:9999: connect: connection refused`,
+		},
+		{
+			name: `Not Allowed`,
+			script: itn.HereDoc(`
+				load('http', 'get')
+				res = get("http://topsecret.com/text")
+				assert.eq(res.status_code, 200)
+			`),
+			wantErr: `request to this domain is not allowed`,
 		},
 	}
 	for _, tt := range tests {
