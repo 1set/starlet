@@ -105,6 +105,28 @@ Go: Hello, Starlet!
 Modules: [atom base64 csv file go_idiomatic hashlib http json log math path random re runtime string struct time]
 ```
 
+Use CLI to interact with the read-eval-print loop (REPL):
+
+```python
+>>> resp = http.get("https://api.github.com/repos/1set/starlet")
+>>> resp.status_code
+200
+>>> data = resp.json()
+>>> data["description"]
+"✨ Enhancing your Starlark scripting experience with powerful extensions and enriched wrappers. Start your Starlark journey with Starlet, where simplicity meets functionality."
+>>> ",".join(data["topics"])
+"go,golang,script,scripting,scripting-language,starlark,starlark-go,starlark-lang,starlark-language,starlarky"
+>>> pprint(data["license"])
+{
+    "key": "mit",
+    "name": "MIT License",
+    "node_id": "MDc6TGljZW5zZTEz",
+    "spdx_id": "MIT",
+    "url": "https://api.github.com/licenses/mit"
+}
+>>>
+```
+
 ## Contributing
 
 Contributions to *Starlet* are all welcomed. If you encounter any issues or have suggestions for improvements, please feel free to open an issue or submit a pull request. Before undertaking any significant changes, please let us know by filing an issue or claiming an existing one to ensure there is no duplication of effort.
