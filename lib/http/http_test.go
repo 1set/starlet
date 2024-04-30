@@ -1,17 +1,16 @@
-package http
+package http_test
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
 	"net/url"
-	"strings"
 	"testing"
 	"time"
 
 	itn "github.com/1set/starlet/internal"
+	lh "github.com/1set/starlet/lib/http"
 	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarktest"
@@ -28,7 +27,7 @@ func TestAsString(t *testing.T) {
 	}
 
 	for i, c := range cases {
-		got, err := AsString(c.in)
+		got, err := lh.AsString(c.in)
 		if !(err == nil && c.err == "" || err != nil && err.Error() == c.err) {
 			t.Errorf("case %d error mismatch. expected: '%s', got: '%s'", i, c.err, err)
 			continue
@@ -50,7 +49,7 @@ func TestLoadModule_HTTP_One(t *testing.T) {
 	defer ts.Close()
 	starlark.Universe["test_server_url"] = starlark.String(ts.URL)
 
-	thread := &starlark.Thread{Load: itn.NewAssertLoader(ModuleName, LoadModule)}
+	thread := &starlark.Thread{Load: itn.NewAssertLoader(lh.ModuleName, lh.LoadModule)}
 	starlarktest.SetReporter(thread, t)
 
 	code := itn.HereDoc(`
@@ -297,7 +296,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 		{
 			name: `POST with UA Set`,
 			preset: func() {
-				UserAgent = "GqQdYX3eIJw2DTt"
+				lh.UserAgent = "GqQdYX3eIJw2DTt"
 			},
 			script: itn.HereDoc(`
 				load('http', 'post')
@@ -576,8 +575,8 @@ func TestLoadModule_HTTP(t *testing.T) {
 			if tt.preset != nil {
 				tt.preset()
 			}
-			TimeoutSecond = 30.0
-			res, err := itn.ExecModuleWithErrorTest(t, ModuleName, LoadModule, tt.script, tt.wantErr, nil)
+			lh.TimeoutSecond = 30.0
+			res, err := itn.ExecModuleWithErrorTest(t, lh.ModuleName, lh.LoadModule, tt.script, tt.wantErr, nil)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("http(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
 				return
@@ -587,8 +586,8 @@ func TestLoadModule_HTTP(t *testing.T) {
 }
 
 func TestLoadModule_CustomLoad(t *testing.T) {
-	md := &Module{}
-	proxyURL, _ := url.Parse("http://127.0.0.1:80")
+	md := &lh.Module{}
+	proxyURL, _ := url.Parse("http://127.0.0.1:9999")
 	client := &http.Client{
 		Transport: &http.Transport{
 			Proxy: http.ProxyURL(proxyURL),
@@ -622,7 +621,7 @@ func TestLoadModule_CustomLoad(t *testing.T) {
 				assert.eq(res.status_code, 200)
 				print(res.body())
 			`),
-			wantErr: `proxyconnect tcp: dial tcp 127.0.0.1:80: connect: connection refused`,
+			wantErr: `proxyconnect tcp: dial tcp 127.0.0.1:9999: connect: connection refused`,
 		},
 	}
 	for _, tt := range tests {
@@ -630,8 +629,7 @@ func TestLoadModule_CustomLoad(t *testing.T) {
 			if tt.preset != nil {
 				tt.preset()
 			}
-			TimeoutSecond = 30.0
-			res, err := itn.ExecModuleWithErrorTest(t, ModuleName, md.LoadModule, tt.script, tt.wantErr, starlark.StringDict{
+			res, err := itn.ExecModuleWithErrorTest(t, lh.ModuleName, md.LoadModule, tt.script, tt.wantErr, starlark.StringDict{
 				"test_server_url": starlark.String(ts.URL),
 			})
 			if (err != nil) != (tt.wantErr != "") {
@@ -642,6 +640,7 @@ func TestLoadModule_CustomLoad(t *testing.T) {
 	}
 }
 
+/*
 // we're ok with testing private functions if it simplifies the test :)
 func TestSetBody(t *testing.T) {
 	fd := map[string]string{
@@ -704,3 +703,4 @@ func TestSetBody(t *testing.T) {
 		}
 	}
 }
+*/
