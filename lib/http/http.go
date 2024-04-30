@@ -63,8 +63,7 @@ func LoadModule() (starlark.StringDict, error) {
 	return ns, nil
 }
 
-// Module joins http tools to a dataset, allowing dataset
-// to follow along with http requests
+// Module defines the actual HTTP module with methods for making requests.
 type Module struct {
 	cli *http.Client
 	rg  RequestGuard
