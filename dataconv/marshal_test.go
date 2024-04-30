@@ -85,6 +85,7 @@ func TestMarshal(t *testing.T) {
 		{time.Unix(1588540633, 0), startime.Time(time.Unix(1588540633, 0)), ""},
 		{now, startime.Time(now), ""},
 		{[]interface{}{42}, starlark.NewList([]starlark.Value{starlark.MakeInt(42)}), ""},
+		{[]string{"hello", "world"}, starlark.NewList([]starlark.Value{starlark.String("hello"), starlark.String("world")}), ""},
 		{map[string]interface{}{"foo": 42}, expectedStringDict, ""},
 		{map[interface{}]interface{}{"foo": 42}, expectedStringDict, ""},
 		{map[interface{}]interface{}{42 * 2: 42}, expectedIntDict, ""},
