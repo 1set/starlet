@@ -1,4 +1,4 @@
-package http
+package http_test
 
 import (
 	"bytes"
@@ -13,13 +13,14 @@ import (
 	"testing"
 
 	itn "github.com/1set/starlet/internal"
+	lh "github.com/1set/starlet/lib/http"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarktest"
 	"go.starlark.net/syntax"
 )
 
 func TestNewExportedServerRequest_NilRequest(t *testing.T) {
-	_, err := NewExportedServerRequest(nil)
+	_, err := lh.NewExportedServerRequest(nil)
 	if err == nil {
 		t.Error("Expected an error when creating ExportedServerRequest with nil http.Request, got nil")
 	}
@@ -27,7 +28,7 @@ func TestNewExportedServerRequest_NilRequest(t *testing.T) {
 
 func TestNewExportedServerRequest_NilRequestBody(t *testing.T) {
 	req := getNilGETRequest()
-	if r, err := NewExportedServerRequest(req); err != nil {
+	if r, err := lh.NewExportedServerRequest(req); err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	} else if r.Body != nil {
 		t.Error("Expected body to be nil")
@@ -38,7 +39,7 @@ func TestNewExportedServerRequest_NilRequestBody(t *testing.T) {
 
 func TestNewExportedServerRequest_EmptyRequestBody(t *testing.T) {
 	req := getMockGETRequest("")
-	if r, err := NewExportedServerRequest(req); err != nil {
+	if r, err := lh.NewExportedServerRequest(req); err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	} else if r.Body == nil {
 		t.Error("Expected body to be not nil")
@@ -49,7 +50,7 @@ func TestNewExportedServerRequest_EmptyRequestBody(t *testing.T) {
 
 func TestNewExportedServerRequest_RequestBodyFails(t *testing.T) {
 	req, _ := http.NewRequest("GET", "https://localhost", &errorReader{})
-	if _, err := NewExportedServerRequest(req); err == nil {
+	if _, err := lh.NewExportedServerRequest(req); err == nil {
 		t.Error("Expected an error when reading request body, got nil")
 	}
 }
@@ -59,7 +60,7 @@ func TestNewExportedServerRequest_ValidRequest(t *testing.T) {
 	req := httptest.NewRequest("POST", "http://example.com?query=123", bytes.NewBufferString(bodyContent))
 	req.Header.Add("Content-Type", "application/json")
 
-	expReq, err := NewExportedServerRequest(req)
+	expReq, err := lh.NewExportedServerRequest(req)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -81,7 +82,7 @@ func TestNewExportedServerRequest_ValidRequest(t *testing.T) {
 }
 
 func TestExportedServerRequest_Write_Nil(t *testing.T) {
-	expReq := &ExportedServerRequest{}
+	expReq := &lh.ExportedServerRequest{}
 	if err := expReq.Write(nil); err == nil {
 		t.Error("Expected an error when writing to nil http.Request, got nil")
 	}
@@ -90,7 +91,7 @@ func TestExportedServerRequest_Write_Nil(t *testing.T) {
 func TestExportedServerRequest_Write(t *testing.T) {
 	bodyContent := `test body`
 	req, _ := http.NewRequest("GET", "/", bytes.NewBufferString(bodyContent))
-	expReq, _ := NewExportedServerRequest(req)
+	expReq, _ := lh.NewExportedServerRequest(req)
 	expReq.Method = "POST"
 	expReq.URL, _ = url.Parse("http://modified.com?query=123")
 	expReq.Proto = "HTTP/2.0"
@@ -119,7 +120,7 @@ func TestExportedServerRequest_Write(t *testing.T) {
 
 func TestConvertServerRequest(t *testing.T) {
 	// just a taste
-	if r := ConvertServerRequest(nil); r != nil {
+	if r := lh.ConvertServerRequest(nil); r != nil {
 		t.Errorf("ConvertServerRequest(nil) = %v, want nil", r)
 		return
 	}
@@ -129,7 +130,7 @@ func TestConvertServerRequest(t *testing.T) {
 	req := getMockRequest(s)
 
 	// do the convert
-	sr := ConvertServerRequest(req)
+	sr := lh.ConvertServerRequest(req)
 
 	// check the result
 	if sr == nil {
@@ -183,7 +184,7 @@ func TestConvertServerRequest(t *testing.T) {
 }
 
 func TestServerResponse_Nil(t *testing.T) {
-	if sr := NewServerResponse(); sr == nil {
+	if sr := lh.NewServerResponse(); sr == nil {
 		t.Error("NewServerResponse returned nil")
 		return
 	} else if err := sr.Write(nil); err == nil {
@@ -191,7 +192,7 @@ func TestServerResponse_Nil(t *testing.T) {
 		return
 	}
 
-	var esp *ExportedServerResponse
+	var esp *lh.ExportedServerResponse
 	if err := esp.Write(nil); err == nil {
 		t.Error("ExportedServerResponse.Write(nil) returned nil")
 		return
@@ -533,9 +534,9 @@ func getScriptHandler(script string) func(w http.ResponseWriter, r *http.Request
 	// create a new http handler
 	return func(w http.ResponseWriter, r *http.Request) {
 		// prepare envs
-		resp := NewServerResponse()
+		resp := lh.NewServerResponse()
 		pred := starlark.StringDict{
-			"request":  ConvertServerRequest(r),
+			"request":  lh.ConvertServerRequest(r),
 			"response": resp.Struct(),
 		}
 
@@ -580,6 +581,22 @@ func getScriptHandler(script string) func(w http.ResponseWriter, r *http.Request
 		}
 		return
 	}
+}
+
+func mapStrs2Dict(m map[string][]string) *starlark.Dict {
+	d := &starlark.Dict{}
+	for k, v := range m {
+		_ = d.SetKey(starlark.String(k), sliceStr2List(v))
+	}
+	return d
+}
+
+func sliceStr2List(s []string) *starlark.List {
+	l := make([]starlark.Value, len(s))
+	for i, v := range s {
+		l[i] = starlark.String(v)
+	}
+	return starlark.NewList(l)
 }
 
 // errorReader is an io.Reader that always returns an error.
