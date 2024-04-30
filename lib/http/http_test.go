@@ -611,7 +611,7 @@ func (g *DomainWhitelistGuard) Allowed(thread *starlark.Thread, req *http.Reques
 }
 
 func TestLoadModule_CustomLoad(t *testing.T) {
-	md := &lh.Module{}
+	md := lh.NewModule()
 	proxyURL, _ := url.Parse("http://127.0.0.1:9999")
 	client := &http.Client{
 		Transport: &http.Transport{
