@@ -68,17 +68,25 @@ jobs:
           CODACY_PROJECT_TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}
         run:
           bash <(curl -Ls https://coverage.codacy.com/get.sh) report --force-coverage-parser go -r coverage.txt
-      - name: Analyze
+      - name: Analyze on Linux
         if: ${{ runner.os == 'Linux' }}
         run: |
-          # tokei -- count
+          # Setup
           wget -cqL https://github.com/XAMPPRocky/tokei/releases/download/v12.1.2/tokei-i686-unknown-linux-musl.tar.gz -O tokei.tgz
           tar zxf tokei.tgz tokei && chmod +x tokei && $SUDO mv tokei /usr/local/bin && rm tokei.tgz
-          echo "=== Tokei Result ==="
-          tokei
-          # revive -- lint
-          wget -cqL https://github.com/mgechev/revive/releases/download/v1.2.4/revive_1.2.4_Linux_x86_64.tar.gz -O revive.tgz
+          wget -cqL https://github.com/mgechev/revive/releases/download/v1.3.7/revive_linux_amd64.tar.gz -O revive.tgz
           tar zxf revive.tgz revive && chmod +x revive && $SUDO mv revive /usr/local/bin && rm revive.tgz
-          wget -cqL https://bitbucket.org/ai69/common/raw/master/revive.toml -O revive.toml
-          echo "=== Revive Result ==="
-          revive -config revive.toml -formatter friendly ./...
+          wget -cqL https://raw.githubusercontent.com/1set/meta/master/revive.toml -O revive.toml
+          # Analyze
+          echo "# Analysis on Linux" > $GITHUB_STEP_SUMMARY
+          uname -a >> $GITHUB_STEP_SUMMARY
+          # --- count lines of code
+          echo "## Tokei Result" >> $GITHUB_STEP_SUMMARY
+          printf '\n```\n' >> $GITHUB_STEP_SUMMARY
+          tokei >> $GITHUB_STEP_SUMMARY
+          printf '```\n\n' >> $GITHUB_STEP_SUMMARY
+          # --- lint
+          echo "## Revive Result" >> $GITHUB_STEP_SUMMARY
+          printf '\n```\n' >> $GITHUB_STEP_SUMMARY
+          revive -config revive.toml -formatter friendly ./... >> $GITHUB_STEP_SUMMARY
+          printf '```\n\n' >> $GITHUB_STEP_SUMMARY
