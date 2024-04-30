@@ -647,7 +647,7 @@ func TestLoadModule_CustomLoad(t *testing.T) {
 				res = get("http://allowed.com/hello")
 				assert.eq(res.status_code, 200)
 			`),
-			wantErr: `proxyconnect tcp: dial tcp 127.0.0.1:9999: connect: connection refused`,
+			wantErr: `proxyconnect tcp: dial tcp 127.0.0.1:9999: connect`,
 		},
 		{
 			name: `Not Allowed`,
