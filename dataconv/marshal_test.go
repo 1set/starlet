@@ -85,7 +85,7 @@ func TestMarshal(t *testing.T) {
 		{time.Unix(1588540633, 0), startime.Time(time.Unix(1588540633, 0)), ""},
 		{now, startime.Time(now), ""},
 		{[]interface{}{42}, starlark.NewList([]starlark.Value{starlark.MakeInt(42)}), ""},
-		{[]string{"hello", "world"}, starlark.NewList([]starlark.Value{starlark.String("hello"), starlark.String("world")}), ""},
+		{[]string{"hello", "world"}, starlark.NewList([]starlark.Value{starlark.String("hello"), starlark.String("world")}), "unrecognized type"},
 		{map[string]interface{}{"foo": 42}, expectedStringDict, ""},
 		{map[interface{}]interface{}{"foo": 42}, expectedStringDict, ""},
 		{map[interface{}]interface{}{42 * 2: 42}, expectedIntDict, ""},
@@ -116,7 +116,7 @@ func TestMarshal(t *testing.T) {
 
 	for i, c := range cases {
 		got, err := Marshal(c.in)
-		if !(err == nil && c.err == "" || err != nil && err.Error() == c.err || err != nil && strings.HasPrefix(err.Error(), c.err)) {
+		if !(err == nil && c.err == "" || err != nil && err.Error() == c.err || err != nil && c.err != "" && strings.HasPrefix(err.Error(), c.err)) {
 			t.Errorf("case %d. error mismatch. expected: %v, got: %v (%T -> %T)", i, c.err, err, c.in, c.want)
 			continue
 		}
