@@ -212,3 +212,40 @@ def work(x):
 		})
 	}
 }
+
+func TestMachine_Call_Convert(t *testing.T) {
+	m := starlet.NewDefault()
+	m.SetCustomTag("json")
+	_, err := m.RunScript([]byte(`
+def work(x, y):
+	return x * y
+`), nil)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+		return
+	}
+
+	// call and check --- conversion is enabled by default
+	got, err := m.Call("work", 10, 20)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+		return
+	}
+	if got != int64(200) {
+		t.Errorf("expected 200, got %v", got)
+	}
+
+	// not convert
+	m.SetOutputConversionEnabled(false)
+	got, err = m.Call("work", 5, 6)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+		return
+	}
+	if v, ok := got.(starlark.Value); !ok {
+		t.Errorf("expected starlark Value, got %T", got)
+		return
+	} else if v != starlark.MakeInt(30) {
+		t.Errorf("got unexpected value: %v", v)
+	}
+}
