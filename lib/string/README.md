@@ -2,6 +2,18 @@
 
 `string` provides constants and functions to manipulate strings, it's intended to be a drop-in subset of Python's string module for Starlark.
 
+## Constants
+
+- `ascii_lowercase`: A string containing all the characters that are considered lowercase letters.
+- `ascii_uppercase`: A string containing all the characters that are considered uppercase letters.
+- `ascii_letters`: A string containing all the characters that are considered letters.
+- `digits`: A string containing all characters considered decimal digits: `0123456789`.
+- `hexdigits`: A string containing all characters considered hexadecimal digits: `0123456789abcdefABCDEF`.
+- `octdigits`: A string containing all characters considered octal digits: `01234567`.
+- `punctuation`: A string containing all characters which are considered punctuation characters.
+- `whitespace`: A string containing all characters that are considered whitespace.
+- `printable`: A string containing all characters that are considered printable. This is a combination of digits, ascii_letters, punctuation, and whitespace
+
 ## Functions
 
 ### `length(obj) int`

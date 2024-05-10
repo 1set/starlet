@@ -4,113 +4,149 @@
 
 ## Functions
 
-### `get(url,params={},headers={},auth=(),timeout=30,allow_redirects=True,verify=True) response`
+### `call(method,url,params=None,headers={},body=None,form_body=None,json_body=None,form_encoding="",auth=(),timeout=30,allow_redirects=True,verify=True) response`
+
+Perform an HTTP request of the specified method, returning a response.
+The `call` method allows for flexibility in making HTTP requests by specifying the HTTP method as an argument.
+It supports all common HTTP methods. This method dynamically dispatches the request based on the provided method name.
+It is a convenience wrapper that enables users to use any supported HTTP method without needing separate method calls for each type of request.
+
+#### Parameters
+
+| name              | type     | description                                                                                                                                                   |
+|-------------------|----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `method`          | `string` | The HTTP method to use for the request (e.g., GET, POST, PUT, DELETE).                                                                                        |
+| `url`             | `string` | URL to request.                                                                                                                                               |
+| `params`          | `dict`   | optional. dictionary of URL parameters to append to the request.                                                                                              |
+| `headers`         | `dict`   | optional. dictionary of headers to add to request.                                                                                                            |
+| `body`            | `string` | optional. raw string body to provide to the request.                                                                                                          |
+| `form_body`       | `dict`   | optional. dict of values that will be encoded as form data. the value can be a string or a list of two strings (filename, file content) for file attachments. |
+| `form_encoding`   | `string` | optional. `application/x-www-form-urlencoded` (default for form data) or `multipart/form-data`.                                                               |
+| `json_body`       | `any`    | optional. JSON data to supply as a request. handy for working with JSON-API's.                                                                                |
+| `auth`            | `tuple`  | optional. (username,password) tuple for HTTP Basic authorization.                                                                                             |
+| `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                  |
+| `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                        |
+| `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                     |
+
+### `get(url,params=None,headers=None,auth=(),body=None,json_body=None,form_body=None,form_encoding="",timeout=30,allow_redirects=True,verify=True) response`
 
 Perform an HTTP GET request, returning a response.
 
 #### Parameters
 
-| name              | type     | description                                                                                                  |
-|-------------------|----------|--------------------------------------------------------------------------------------------------------------|
-| `url`             | `string` | URL to request.                                                                                              |
-| `headers`         | `dict`   | optional. dictionary of headers to add to request.                                                           |
-| `auth`            | `tuple`  | optional. (username,password) tuple for HTTP Basic authorization.                                            |
-| `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout. |
-| `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                       |
-| `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                    |
+| name              | type     | description                                                                                                                                                                                                        |
+|-------------------|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `url`             | `string` | URL to request.                                                                                                                                                                                                    |
+| `params`          | `dict`   | optional. dictionary of URL parameters to append to the request.                                                                                                                                                   |
+| `headers`         | `dict`   | optional. dictionary of headers to add to request.                                                                                                                                                                 |
+| `body`            | `string` | optional. raw string body to provide to the request.                                                                                                                                                               |
+| `json_body`       | `any`    | optional. considered only if body is None. JSON data to supply as a request. handy for working with JSON-API's.                                                                                                    |
+| `form_body`       | `dict`   | optional. considered only if both body and json_body are None. dict of values that will be encoded as form data. the value can be a string or a list of two strings (filename, file content) for file attachments. |
+| `form_encoding`   | `string` | optional. `application/x-www-form-urlencoded` (default for form data) or `multipart/form-data`.                                                                                                                    |
+| `auth`            | `tuple`  | optional. (username,password) tuple for HTTP Basic authorization.                                                                                                                                                  |
+| `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                                                                       |
+| `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
+| `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
 
-### `put(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=(),timeout=30,allow_redirects=True,verify=True) response`
+### `put(url,params=None,headers=None,auth=(),body=None,json_body=None,form_body=None,form_encoding="",timeout=30,allow_redirects=True,verify=True) response`
 
 Perform an HTTP PUT request, returning a response.
 
 #### Parameters
 
-| name              | type     | description                                                                                                                                                   |
-|-------------------|----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `url`             | `string` | URL to request.                                                                                                                                               |
-| `headers`         | `dict`   | optional. dictionary of headers to add to request.                                                                                                            |
-| `body`            | `string` | optional. raw string body to provide to the request.                                                                                                          |
-| `form_body`       | `dict`   | optional. dict of values that will be encoded as form data. the value can be a string or a list of two strings (filename, file content) for file attachments. |
-| `form_encoding`   | `string` | optional. `application/x-www-form-url-encoded` (default) or `multipart/form-data`.                                                                            |
-| `json_body`       | `any`    | optional. JSON data to supply as a request. handy for working with JSON-API's.                                                                                |
-| `auth`            | `tuple`  | optional. (username,password) tuple for HTTP Basic authorization.                                                                                             |
-| `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                  |
-| `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                        |
-| `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                     |
+| name              | type     | description                                                                                                                                                                                                        |
+|-------------------|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `url`             | `string` | URL to request.                                                                                                                                                                                                    |
+| `params`          | `dict`   | optional. dictionary of URL parameters to append to the request.                                                                                                                                                   |
+| `headers`         | `dict`   | optional. dictionary of headers to add to request.                                                                                                                                                                 |
+| `body`            | `string` | optional. raw string body to provide to the request.                                                                                                                                                               |
+| `json_body`       | `any`    | optional. considered only if body is None. JSON data to supply as a request. handy for working with JSON-API's.                                                                                                    |
+| `form_body`       | `dict`   | optional. considered only if both body and json_body are None. dict of values that will be encoded as form data. the value can be a string or a list of two strings (filename, file content) for file attachments. |
+| `form_encoding`   | `string` | optional. `application/x-www-form-urlencoded` (default for form data) or `multipart/form-data`.                                                                                                                    |
+| `auth`            | `tuple`  | optional. (username,password) tuple for HTTP Basic authorization.                                                                                                                                                  |
+| `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                                                                       |
+| `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
+| `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
 
-### `post(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=(),timeout=30,allow_redirects=True,verify=True) response`
+### `post(url,params=None,headers=None,auth=(),body=None,json_body=None,form_body=None,form_encoding="",timeout=30,allow_redirects=True,verify=True) response`
 
 Perform an HTTP POST request, returning a response.
 
 #### Parameters
 
-| name              | type     | description                                                                                                                                                   |
-|-------------------|----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `url`             | `string` | URL to request.                                                                                                                                               |
-| `headers`         | `dict`   | optional. dictionary of headers to add to request.                                                                                                            |
-| `body`            | `string` | optional. raw string body to provide to the request.                                                                                                          |
-| `form_body`       | `dict`   | optional. dict of values that will be encoded as form data. the value can be a string or a list of two strings (filename, file content) for file attachments. |
-| `form_encoding`   | `string` | optional. `application/x-www-form-url-encoded` (default) or `multipart/form-data`.                                                                            |
-| `json_body`       | `any`    | optional. JSON data to supply as a request. handy for working with JSON-API's.                                                                                |
-| `auth`            | `tuple`  | optional. (username,password) tuple for HTTP Basic authorization.                                                                                             |
-| `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                  |
-| `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                        |
-| `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                     |
+| name              | type     | description                                                                                                                                                                                                        |
+|-------------------|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `url`             | `string` | URL to request.                                                                                                                                                                                                    |
+| `params`          | `dict`   | optional. dictionary of URL parameters to append to the request.                                                                                                                                                   |
+| `headers`         | `dict`   | optional. dictionary of headers to add to request.                                                                                                                                                                 |
+| `body`            | `string` | optional. raw string body to provide to the request.                                                                                                                                                               |
+| `json_body`       | `any`    | optional. considered only if body is None. JSON data to supply as a request. handy for working with JSON-API's.                                                                                                    |
+| `form_body`       | `dict`   | optional. considered only if both body and json_body are None. dict of values that will be encoded as form data. the value can be a string or a list of two strings (filename, file content) for file attachments. |
+| `form_encoding`   | `string` | optional. `application/x-www-form-urlencoded` (default for form data) or `multipart/form-data`.                                                                                                                    |
+| `auth`            | `tuple`  | optional. (username,password) tuple for HTTP Basic authorization.                                                                                                                                                  |
+| `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                                                                       |
+| `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
+| `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
 
-### `postForm(url,params={},headers={},form_body={},form_encoding="",auth=(),timeout=30,allow_redirects=True,verify=True) response`
+### `postForm(url,params=None,headers=None,auth=(),body=None,json_body=None,form_body=None,form_encoding="",timeout=30,allow_redirects=True,verify=True) response`
 
 Perform an HTTP POST request with form data, returning a response.
 
 #### Parameters
 
-| name              | type     | description                                                                                                                                                   |
-|-------------------|----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `url`             | `string` | URL to request.                                                                                                                                               |
-| `headers`         | `dict`   | optional. dictionary of headers to add to request.                                                                                                            |
-| `form_body`       | `dict`   | optional. dict of values that will be encoded as form data. the value can be a string or a list of two strings (filename, file content) for file attachments. |
-| `form_encoding`   | `string` | optional. `application/x-www-form-url-encoded` (default) or `multipart/form-data`.                                                                            |
-| `auth`            | `tuple`  | optional. (username,password) tuple for HTTP Basic authorization.                                                                                             |
-| `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                  |
-| `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                        |
-| `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                     |
+| name              | type     | description                                                                                                                                                                                                        |
+|-------------------|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `url`             | `string` | URL to request.                                                                                                                                                                                                    |
+| `params`          | `dict`   | optional. dictionary of URL parameters to append to the request.                                                                                                                                                   |
+| `headers`         | `dict`   | optional. dictionary of headers to add to request.                                                                                                                                                                 |
+| `body`            | `string` | optional. raw string body to provide to the request.                                                                                                                                                               |
+| `json_body`       | `any`    | optional. considered only if body is None. JSON data to supply as a request. handy for working with JSON-API's.                                                                                                    |
+| `form_body`       | `dict`   | optional. considered only if both body and json_body are None. dict of values that will be encoded as form data. the value can be a string or a list of two strings (filename, file content) for file attachments. |
+| `form_encoding`   | `string` | optional. `application/x-www-form-urlencoded` (default for form data) or `multipart/form-data`.                                                                                                                    |
+| `auth`            | `tuple`  | optional. (username,password) tuple for HTTP Basic authorization.                                                                                                                                                  |
+| `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                                                                       |
+| `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
+| `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
 
-### `delete(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=(),timeout=30,allow_redirects=True,verify=True) response`
+### `delete(url,params=None,headers=None,auth=(),body=None,json_body=None,form_body=None,form_encoding="",timeout=30,allow_redirects=True,verify=True) response`
 
 Perform an HTTP DELETE request, returning a response.
 
 #### Parameters
 
-| name              | type     | description                                                                                                                                                   |
-|-------------------|----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `url`             | `string` | URL to request.                                                                                                                                               |
-| `headers`         | `dict`   | optional. dictionary of headers to add to request.                                                                                                            |
-| `body`            | `string` | optional. raw string body to provide to the request.                                                                                                          |
-| `form_body`       | `dict`   | optional. dict of values that will be encoded as form data. the value can be a string or a list of two strings (filename, file content) for file attachments. |
-| `form_encoding`   | `string` | optional. `application/x-www-form-url-encoded` (default) or `multipart/form-data`                                                                             |
-| `json_body`       | `any`    | optional. JSON data to supply as a request. handy for working with JSON-API's.                                                                                |
-| `auth`            | `tuple`  | optional. (username,password) tuple for HTTP Basic authorization.                                                                                             |
-| `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                  |
-| `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                        |
-| `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                     |
+| name              | type     | description                                                                                                                                                                                                        |
+|-------------------|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `url`             | `string` | URL to request.                                                                                                                                                                                                    |
+| `params`          | `dict`   | optional. dictionary of URL parameters to append to the request.                                                                                                                                                   |
+| `headers`         | `dict`   | optional. dictionary of headers to add to request.                                                                                                                                                                 |
+| `body`            | `string` | optional. raw string body to provide to the request.                                                                                                                                                               |
+| `json_body`       | `any`    | optional. considered only if body is None. JSON data to supply as a request. handy for working with JSON-API's.                                                                                                    |
+| `form_body`       | `dict`   | optional. considered only if both body and json_body are None. dict of values that will be encoded as form data. the value can be a string or a list of two strings (filename, file content) for file attachments. |
+| `form_encoding`   | `string` | optional. `application/x-www-form-urlencoded` (default for form data) or `multipart/form-data`.                                                                                                                    |
+| `auth`            | `tuple`  | optional. (username,password) tuple for HTTP Basic authorization.                                                                                                                                                  |
+| `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                                                                       |
+| `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
+| `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
 
-### `patch(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=(),timeout=30,allow_redirects=True,verify=True) response`
+### `patch(url,params=None,headers=None,auth=(),body=None,json_body=None,form_body=None,form_encoding="",timeout=30,allow_redirects=True,verify=True) response`
 
 Perform an HTTP PATCH request, returning a response.
 
 #### Parameters
 
-| name              | type     | description                                                                                                                                                   |
-|-------------------|----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `url`             | `string` | URL to request.                                                                                                                                               |
-| `headers`         | `dict`   | optional. dictionary of headers to add to request.                                                                                                            |
-| `body`            | `string` | optional. raw string body to provide to the request.                                                                                                          |
-| `form_body`       | `dict`   | optional. dict of values that will be encoded as form data. the value can be a string or a list of two strings (filename, file content) for file attachments. |
-| `form_encoding`   | `string` | optional. `application/x-www-form-url-encoded` (default) or `multipart/form-data`.                                                                            |
-| `json_body`       | `any`    | optional. JSON data to supply as a request. handy for working with JSON-API's.                                                                                |
-| `auth`            | `tuple`  | optional. (username,password) tuple for HTTP Basic authorization.                                                                                             |
-| `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                  |
-| `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                        |
-| `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                     |
+| name              | type     | description                                                                                                                                                                                                        |
+|-------------------|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `url`             | `string` | URL to request.                                                                                                                                                                                                    |
+| `params`          | `dict`   | optional. dictionary of URL parameters to append to the request.                                                                                                                                                   |
+| `headers`         | `dict`   | optional. dictionary of headers to add to request.                                                                                                                                                                 |
+| `body`            | `string` | optional. raw string body to provide to the request.                                                                                                                                                               |
+| `json_body`       | `any`    | optional. considered only if body is None. JSON data to supply as a request. handy for working with JSON-API's.                                                                                                    |
+| `form_body`       | `dict`   | optional. considered only if both body and json_body are None. dict of values that will be encoded as form data. the value can be a string or a list of two strings (filename, file content) for file attachments. |
+| `form_encoding`   | `string` | optional. `application/x-www-form-urlencoded` (default for form data) or `multipart/form-data`.                                                                                                                    |
+| `auth`            | `tuple`  | optional. (username,password) tuple for HTTP Basic authorization.                                                                                                                                                  |
+| `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                                                                       |
+| `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
+| `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
 
 ### `options(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=(),timeout=30,allow_redirects=True,verify=True) response`
 
@@ -118,18 +154,19 @@ Perform an HTTP OPTIONS request, returning a response.
 
 #### Parameters
 
-| name              | type     | description                                                                                                                                                   |
-|-------------------|----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `url`             | `string` | URL to request.                                                                                                                                               |
-| `headers`         | `dict`   | optional. dictionary of headers to add to request.                                                                                                            |
-| `body`            | `string` | optional. raw string body to provide to the request.                                                                                                          |
-| `form_body`       | `dict`   | optional. dict of values that will be encoded as form data. the value can be a string or a list of two strings (filename, file content) for file attachments. |
-| `form_encoding`   | `string` | optional. `application/x-www-form-url-encoded` (default) or `multipart/form-data`.                                                                            |
-| `json_body`       | `any`    | optional. JSON data to supply as a request. handy for working with JSON-API's.                                                                                |
-| `auth`            | `tuple`  | optional. (username,password) tuple for HTTP Basic authorization.                                                                                             |
-| `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                  |
-| `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                        |
-| `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                     |
+| name              | type     | description                                                                                                                                                                                                        |
+|-------------------|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `url`             | `string` | URL to request.                                                                                                                                                                                                    |
+| `params`          | `dict`   | optional. dictionary of URL parameters to append to the request.                                                                                                                                                   |
+| `headers`         | `dict`   | optional. dictionary of headers to add to request.                                                                                                                                                                 |
+| `body`            | `string` | optional. raw string body to provide to the request.                                                                                                                                                               |
+| `json_body`       | `any`    | optional. considered only if body is None. JSON data to supply as a request. handy for working with JSON-API's.                                                                                                    |
+| `form_body`       | `dict`   | optional. considered only if both body and json_body are None. dict of values that will be encoded as form data. the value can be a string or a list of two strings (filename, file content) for file attachments. |
+| `form_encoding`   | `string` | optional. `application/x-www-form-urlencoded` (default for form data) or `multipart/form-data`.                                                                                                                    |
+| `auth`            | `tuple`  | optional. (username,password) tuple for HTTP Basic authorization.                                                                                                                                                  |
+| `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                                                                       |
+| `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
+| `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
 
 ### `set_timeout(timeout)`
 
@@ -197,19 +234,19 @@ Enables HTTP response manipulation within Starlark scripts, facilitating dynamic
 
 **Methods**
 
-#### `set_status(code uint16)`
+#### `set_status(code int)`
 
 Sets the HTTP status code for the response.
 
-#### `set_code(code uint16)`
+#### `set_code(code int)`
 
 Alias for set_status.
 
-#### `add_header(key, value string)`
+#### `add_header(key string, value string)`
 
 Adds a header with the given key and value to the response.
 
-#### `set_content_type(contentType string)`
+#### `set_content_type(content_type string)`
 
 Sets the Content-Type header for the response, it will overwrite any existing or implicit Content-Type header.
 
@@ -217,7 +254,7 @@ Sets the Content-Type header for the response, it will overwrite any existing or
 
 Sets the response data as binary data, and the Content-Type header to `application/octet-stream`.
 
-#### `set_json(data starlark.Value)`
+#### `set_json(data any)`
 
 Sets the response data as JSON, marshaling the given Starlark value to JSON, and the Content-Type header to `application/json`.
 

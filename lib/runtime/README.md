@@ -2,6 +2,19 @@
 
 `runtime` is a Starlark module provides Go and app runtime information.
 
+## Constants
+
+- `hostname`: A string representing the hostname of the system where the script is being executed.
+- `workdir`: A string representing the current working directory of the process.
+- `os`: A string representing the operating system of the runtime. This value comes from Go's `runtime.GOOS`.
+- `arch`: A string representing the architecture of the machine. This value is derived from Go's `runtime.GOARCH`.
+- `gover`: A string representing the Go runtime version. This is obtained using `runtime.Version()` from the Go standard library.
+- `pid`: An integer representing the process ID of the current process.
+- `ppid`: An integer representing the parent process ID of the current process.
+- `uid`: An integer representing the user ID of the process owner.
+- `gid`: An integer representing the group ID of the process owner.
+- `app_start`: A time value representing the moment when the application started. This is used to calculate uptime.
+
 ## Functions
 
 ### `uptime()`
