@@ -209,7 +209,20 @@ func TestLoadModule_HTTP(t *testing.T) {
 				assert.eq(res.status_code, 200)
 				b = res.body()
 				assert.true(b.startswith("POST "))
-				assert.true('/json' in b)
+				assert.true('application/json' in b)
+				assert.true('{"a":"b","c":"d"}' in b)
+			`),
+		},
+		{
+			name: `POST JSON Dict and Params`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				res = post(test_server_url, params={"hello": "world"}, json_body={ "a" : "b", "c" : "d"})
+				assert.eq(res.status_code, 200)
+				b = res.body()
+				assert.true(b.startswith("POST "))
+				assert.true('application/json' in b)
+				assert.true('/?hello=world' in b)
 				assert.true('{"a":"b","c":"d"}' in b)
 			`),
 		},
@@ -615,6 +628,19 @@ func TestLoadModule_HTTP(t *testing.T) {
 				b = res.body()
 				assert.eq(res.status_code, 200)
 				assert.true(b.endswith("\r\n\r\n"))
+			`),
+		},
+		{
+			name: `Call POST JSON Dict and Params`,
+			script: itn.HereDoc(`
+				load('http', 'call')
+				res = call('POST', test_server_url, params={"hello": "world"}, json_body={ "a" : "b", "c" : "d"})
+				assert.eq(res.status_code, 200)
+				b = res.body()
+				assert.true(b.startswith("POST "))
+				assert.true('application/json' in b)
+				assert.true('/?hello=world' in b)
+				assert.true('{"a":"b","c":"d"}' in b)
 			`),
 		},
 	}
