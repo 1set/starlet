@@ -146,15 +146,9 @@ func length(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 func sum(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		lst   starlark.Iterable
-		start starlark.Value
+		total = itn.NewNumericValue()
 	)
-	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "iterable", &lst, "start?", &start); err != nil {
-		return none, err
-	}
-
-	// start with the given start value
-	total := itn.NewNumericValue()
-	if err := total.Add(start); err != nil {
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "iterable", &lst, "start?", total); err != nil {
 		return none, err
 	}
 

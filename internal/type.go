@@ -184,6 +184,8 @@ func (n *NumericValue) Add(value starlark.Value) error {
 	case starlark.Float:
 		n.floatValue += value
 		n.hasFloat = true
+	case starlark.NoneType:
+		// do nothing
 	case nil:
 		// do nothing
 	default:
