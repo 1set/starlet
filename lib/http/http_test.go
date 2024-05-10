@@ -155,8 +155,10 @@ func TestLoadModule_HTTP(t *testing.T) {
 			script: itn.HereDoc(`
 				load('http', 'get')
 				res = get(test_server_url)
+				b = res.body()
 				assert.eq(res.status_code, 200)
-				print(res.body())
+				assert.true(b.endswith("\r\n\r\n"))
+				print(b)
 			`),
 		},
 		{
@@ -578,6 +580,41 @@ func TestLoadModule_HTTP(t *testing.T) {
 				assert.true('filename="better.txt"' not in rb)
 				assert.true('filename="dance.md"' not in rb)
 				assert.true('Content-Type: application/octet-stream' not in rb)
+			`),
+		},
+		{
+			name: `Call No Arg`,
+			script: itn.HereDoc(`
+				load('http', 'call')
+				call()
+			`),
+			wantErr: `http.call: missing method name`,
+		},
+		{
+			name: `Call Invalid Arg`,
+			script: itn.HereDoc(`
+				load('http', 'call')
+				call(123)
+			`),
+			wantErr: `http.call: for method name: got int, want string or bytes`,
+		},
+		{
+			name: `Call Invalid Method`,
+			script: itn.HereDoc(`
+				load('http', 'call')
+				call("LOVE")
+			`),
+			wantErr: `unsupported method: love`,
+		},
+		{
+			name: `Simple Call GET`,
+			script: itn.HereDoc(`
+				load('http', 'call')
+				res = call('get', test_server_url)
+				assert.eq(res.status_code, 200)
+				b = res.body()
+				assert.eq(res.status_code, 200)
+				assert.true(b.endswith("\r\n\r\n"))
 			`),
 		},
 	}

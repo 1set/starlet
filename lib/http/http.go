@@ -138,12 +138,16 @@ func getRequestTimeout(thread *starlark.Thread, b *starlark.Builtin, args starla
 
 // callMethod is a general function for making http requests which takes the method name and arguments.
 func (m *Module) callMethod(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var method string
-	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "method", &method); err != nil {
-		return nil, err
+	// check the arguments, the first argument is the method name
+	var fv itn.StringOrBytes
+	if len(args) < 1 {
+		return nil, fmt.Errorf("%s: missing method name", b.Name())
+	}
+	if err := fv.Unpack(args[0]); err != nil {
+		return nil, fmt.Errorf("%s: for method name: %s", b.Name(), err)
 	}
 	// call the method with the given name
-	method = strings.ToLower(method)
+	method := strings.ToLower(fv.GoString())
 	for _, name := range supportedMethods {
 		if method == name {
 			return m.reqMethod(name)(thread, b, args[1:], kwargs)
