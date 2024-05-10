@@ -143,8 +143,7 @@ func (p *NullableDict) Unpack(v starlark.Value) error {
 }
 
 // AsDict returns the *starlark.Dict representation of the NullableDict, if the underlying value is nil, it returns an new empty dict.
-func (p NullableDict) AsDict() *starlark.Dict {
-	//return p.dict
+func (p *NullableDict) AsDict() *starlark.Dict {
 	if p.dict == nil {
 		return starlark.NewDict(0)
 	}
