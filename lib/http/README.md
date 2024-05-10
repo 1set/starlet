@@ -4,7 +4,7 @@
 
 ## Functions
 
-### `call(method,url,params=None,headers={},body=None,form_body=None,json_body=None,form_encoding="",auth=(),timeout=30,allow_redirects=True,verify=True) response`
+### `call(method, url, params=None, headers=None, auth=(), body=None, json_body=None, form_body=None, form_encoding="", timeout=30, allow_redirects=True, verify=True) response`
 
 Perform an HTTP request of the specified method, returning a response.
 The `call` method allows for flexibility in making HTTP requests by specifying the HTTP method as an argument.
@@ -28,7 +28,7 @@ It is a convenience wrapper that enables users to use any supported HTTP method 
 | `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                        |
 | `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                     |
 
-### `get(url,params=None,headers=None,auth=(),body=None,json_body=None,form_body=None,form_encoding="",timeout=30,allow_redirects=True,verify=True) response`
+### `get(url, params=None, headers=None, auth=(), body=None, json_body=None, form_body=None, form_encoding="", timeout=30, allow_redirects=True, verify=True) response`
 
 Perform an HTTP GET request, returning a response.
 
@@ -48,7 +48,7 @@ Perform an HTTP GET request, returning a response.
 | `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
 | `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
 
-### `put(url,params=None,headers=None,auth=(),body=None,json_body=None,form_body=None,form_encoding="",timeout=30,allow_redirects=True,verify=True) response`
+### `put(url, params=None, headers=None, auth=(), body=None, json_body=None, form_body=None, form_encoding="", timeout=30, allow_redirects=True, verify=True) response`
 
 Perform an HTTP PUT request, returning a response.
 
@@ -68,7 +68,7 @@ Perform an HTTP PUT request, returning a response.
 | `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
 | `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
 
-### `post(url,params=None,headers=None,auth=(),body=None,json_body=None,form_body=None,form_encoding="",timeout=30,allow_redirects=True,verify=True) response`
+### `post(url, params=None, headers=None, auth=(), body=None, json_body=None, form_body=None, form_encoding="", timeout=30, allow_redirects=True, verify=True) response`
 
 Perform an HTTP POST request, returning a response.
 
@@ -88,7 +88,7 @@ Perform an HTTP POST request, returning a response.
 | `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
 | `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
 
-### `postForm(url,params=None,headers=None,auth=(),body=None,json_body=None,form_body=None,form_encoding="",timeout=30,allow_redirects=True,verify=True) response`
+### `postForm(url, params=None, headers=None, auth=(), body=None, json_body=None, form_body=None, form_encoding="", timeout=30, allow_redirects=True, verify=True) response`
 
 Perform an HTTP POST request with form data, returning a response.
 
@@ -108,7 +108,7 @@ Perform an HTTP POST request with form data, returning a response.
 | `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
 | `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
 
-### `delete(url,params=None,headers=None,auth=(),body=None,json_body=None,form_body=None,form_encoding="",timeout=30,allow_redirects=True,verify=True) response`
+### `delete(url, params=None, headers=None, auth=(), body=None, json_body=None, form_body=None, form_encoding="", timeout=30, allow_redirects=True, verify=True) response`
 
 Perform an HTTP DELETE request, returning a response.
 
@@ -128,7 +128,7 @@ Perform an HTTP DELETE request, returning a response.
 | `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
 | `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
 
-### `patch(url,params=None,headers=None,auth=(),body=None,json_body=None,form_body=None,form_encoding="",timeout=30,allow_redirects=True,verify=True) response`
+### `patch(url, params=None, headers=None, auth=(), body=None, json_body=None, form_body=None, form_encoding="", timeout=30, allow_redirects=True, verify=True) response`
 
 Perform an HTTP PATCH request, returning a response.
 
