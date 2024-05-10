@@ -88,7 +88,7 @@ func (m *Module) LoadModule() (starlark.StringDict, error) {
 	}, nil
 }
 
-// Struct returns this module's supportedMethods as a starlark Struct
+// Struct returns this module's supported methods as a starlark Struct
 func (m *Module) Struct() *starlarkstruct.Struct {
 	return starlarkstruct.FromStringDict(starlarkstruct.Default, m.StringDict())
 }
