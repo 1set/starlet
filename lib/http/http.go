@@ -137,12 +137,12 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var (
 			urlv          starlark.String
-			params        = &starlark.Dict{}
-			headers       = &starlark.Dict{}
+			params        = itn.NullableDict{} // = &starlark.Dict{}
+			headers       = itn.NullableDict{} // = &starlark.Dict{}
 			auth          starlark.Tuple
 			body          itn.StringOrBytes
-			jsonBody      starlark.Value
-			formBody      = &starlark.Dict{}
+			jsonBody      = itn.NullableDict{} // starlark.Value
+			formBody      = itn.NullableDict{} // = &starlark.Dict{}
 			formEncoding  starlark.String
 			timeout       = itn.FloatOrInt(TimeoutSecond)
 			allowRedirect = starlark.Bool(!DisableRedirect)
@@ -158,7 +158,7 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 		if err != nil {
 			return nil, err
 		}
-		if err = setQueryParams(&rawURL, params); err != nil {
+		if err = setQueryParams(&rawURL, params.AsDict()); err != nil {
 			return nil, err
 		}
 
@@ -179,13 +179,13 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 			}
 		}
 
-		if err = setHeaders(req, headers); err != nil {
+		if err = setHeaders(req, headers.AsDict()); err != nil {
 			return nil, err
 		}
 		if err = setAuth(req, auth); err != nil {
 			return nil, err
 		}
-		if err = setBody(req, body.StarlarkString(), formBody, formEncoding, jsonBody); err != nil {
+		if err = setBody(req, body.StarlarkString(), formBody.AsDict(), formEncoding, jsonBody.AsDict()); err != nil {
 			return nil, err
 		}
 

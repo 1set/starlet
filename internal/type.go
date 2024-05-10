@@ -106,3 +106,30 @@ func (n *NumericValue) Value() starlark.Value {
 	}
 	return n.intValue
 }
+
+// NullableDict is an Unpacker that converts a Starlark None or Dict to Go's *starlark.Dict.
+type NullableDict struct {
+	dict *starlark.Dict
+}
+
+// Unpack implements Unpacker.
+func (p *NullableDict) Unpack(v starlark.Value) error {
+	switch v := v.(type) {
+	case *starlark.Dict:
+		p.dict = v
+		return nil
+	case starlark.NoneType:
+		p.dict = nil
+		return nil
+	}
+	return fmt.Errorf("got %s, want dict or None", v.Type())
+}
+
+// AsDict returns the *starlark.Dict representation of the NullableDict, if the underlying value is nil, it returns an new empty dict.
+func (p NullableDict) AsDict() *starlark.Dict {
+	//return p.dict
+	if p.dict == nil {
+		return starlark.NewDict(0)
+	}
+	return p.dict
+}
