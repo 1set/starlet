@@ -64,6 +64,53 @@ func (p StringOrBytes) StarlarkString() starlark.String {
 	return starlark.String(p)
 }
 
+// NullableString is an Unpacker that converts a Starlark None or string to Go's string.
+type NullableString struct {
+	str *string
+}
+
+// NewNullableString creates and returns a new NullableString.
+func NewNullableString(s string) *NullableString {
+	return &NullableString{str: &s}
+}
+
+// Unpack implements Unpacker.
+func (p *NullableString) Unpack(v starlark.Value) error {
+	switch v := v.(type) {
+	case starlark.String:
+		s := string(v)
+		p.str = &s
+		return nil
+	case starlark.Bytes:
+		s := string(v)
+		p.str = &s
+		return nil
+	case starlark.NoneType:
+		p.str = nil
+		return nil
+	}
+	return fmt.Errorf("got %s, want string, bytes or None", v.Type())
+}
+
+// GoString returns the Go string representation of the NullableString, if the underlying value is nil, it returns an empty string.
+func (p *NullableString) GoString() string {
+	ps := p.str
+	if ps == nil {
+		return ""
+	}
+	return *ps
+}
+
+// IsNull returns true if the underlying value is nil.
+func (p *NullableString) IsNull() bool {
+	return p == nil || p.str == nil
+}
+
+// IsNullOrEmpty returns true if the underlying value is nil or an empty string.
+func (p *NullableString) IsNullOrEmpty() bool {
+	return p.IsNull() || *p.str == ""
+}
+
 // NumericValue holds a Starlark numeric value and tracks its type.
 // It can represent an integer or a float, and it prefers integers over floats.
 type NumericValue struct {

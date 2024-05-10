@@ -140,7 +140,7 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 			params        = itn.NullableDict{} // = &starlark.Dict{}
 			headers       = itn.NullableDict{} // = &starlark.Dict{}
 			auth          starlark.Tuple
-			body          itn.StringOrBytes
+			body          = itn.NullableString{}
 			jsonBody      starlark.Value
 			formBody      = itn.NullableDict{} // = &starlark.Dict{}
 			formEncoding  starlark.String
@@ -185,7 +185,7 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 		if err = setAuth(req, auth); err != nil {
 			return nil, err
 		}
-		if err = setBody(req, body.StarlarkString(), formBody.AsDict(), formEncoding, jsonBody); err != nil {
+		if err = setBody(req, &body, formBody.AsDict(), formEncoding, jsonBody); err != nil {
 			return nil, err
 		}
 
@@ -329,12 +329,9 @@ func setHeaders(req *http.Request, headers *starlark.Dict) error {
 	return nil
 }
 
-func setBody(req *http.Request, body starlark.String, formData *starlark.Dict, formEncoding starlark.String, jsonData starlark.Value) error {
-	if !dataconv.IsEmptyString(body) {
-		uq, err := strconv.Unquote(body.String())
-		if err != nil {
-			return err
-		}
+func setBody(req *http.Request, body *itn.NullableString, formData *starlark.Dict, formEncoding starlark.String, jsonData starlark.Value) error {
+	if !body.IsNullOrEmpty() {
+		uq := body.GoString()
 		req.Body = ioutil.NopCloser(strings.NewReader(uq))
 		// Specifying the Content-Length ensures that https://go.dev/src/net/http/transfer.go doesnt specify Transfer-Encoding: chunked which is not supported by some endpoints.
 		// This is required when using ioutil.NopCloser method for the request body (see ShouldSendChunkedRequestBody() in the library mentioned above).

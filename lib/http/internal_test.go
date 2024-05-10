@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	itn "github.com/1set/starlet/internal"
 	"go.starlark.net/starlark"
 )
 
@@ -16,18 +17,18 @@ func TestSetBody(t *testing.T) {
 	}
 
 	cases := []struct {
-		rawBody      starlark.String
+		rawBody      *itn.NullableString
 		formData     map[string]string
 		formEncoding starlark.String
 		jsonData     starlark.Value
 		body         string
 		err          string
 	}{
-		{starlark.String("hallo"), nil, starlark.String(""), nil, "hallo", ""},
-		{starlark.String(""), fd, starlark.String(""), nil, "foo=bar+baz", ""},
+		{itn.NewNullableString("hallo"), nil, starlark.String(""), nil, "hallo", ""},
+		{itn.NewNullableString(""), fd, starlark.String(""), nil, "foo=bar+baz", ""},
 		// TODO - this should check multipart form data is being set
-		{starlark.String(""), fd, starlark.String("multipart/form-data"), nil, "", ""},
-		{starlark.String(""), nil, starlark.String(""), starlark.Tuple{starlark.Bool(true), starlark.MakeInt(1), starlark.String("der")}, "[true,1,\"der\"]", ""},
+		{nil, fd, starlark.String("multipart/form-data"), nil, "", ""},
+		{nil, nil, starlark.String(""), starlark.Tuple{starlark.Bool(true), starlark.MakeInt(1), starlark.String("der")}, "[true,1,\"der\"]", ""},
 	}
 
 	for i, c := range cases {
