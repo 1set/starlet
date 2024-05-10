@@ -103,6 +103,7 @@ func (m *Module) StringDict() starlark.StringDict {
 	for _, name := range supportedMethods {
 		sd[name] = starlark.NewBuiltin(ModuleName+"."+name, m.reqMethod(name))
 	}
+	sd["call"] = starlark.NewBuiltin(ModuleName+".call", m.callMethod)
 	sd["set_timeout"] = starlark.NewBuiltin(ModuleName+".set_timeout", setRequestTimeout)
 	sd["get_timeout"] = starlark.NewBuiltin(ModuleName+".get_timeout", getRequestTimeout)
 	return sd
@@ -133,6 +134,22 @@ func getRequestTimeout(thread *starlark.Thread, b *starlark.Builtin, args starla
 	ConfigLock.RLock()
 	defer ConfigLock.RUnlock()
 	return starlark.Float(TimeoutSecond), nil
+}
+
+// callMethod is a general function for making http requests which takes the method name and arguments.
+func (m *Module) callMethod(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var method string
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "method", &method); err != nil {
+		return nil, err
+	}
+	// call the method with the given name
+	method = strings.ToLower(method)
+	for _, name := range supportedMethods {
+		if method == name {
+			return m.reqMethod(name)(thread, b, args[1:], kwargs)
+		}
+	}
+	return nil, fmt.Errorf("unsupported method: %s", method)
 }
 
 // reqMethod is a factory function for generating starlark builtin functions for different http request methods
