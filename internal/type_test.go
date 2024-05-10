@@ -243,9 +243,9 @@ func TestNumericValue(t *testing.T) {
 			wantVal: integer(100),
 		},
 		{
-			name:    "float and nil",
-			values:  []starlark.Value{double(4), nil},
-			wantVal: double(4),
+			name:    "float and None",
+			values:  []starlark.Value{double(6), starlark.None},
+			wantVal: double(6),
 		},
 	}
 	for _, tt := range tests {
