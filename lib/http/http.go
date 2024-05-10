@@ -343,7 +343,7 @@ func setBody(req *http.Request, body starlark.String, formData *starlark.Dict, f
 		return nil
 	}
 
-	if jsonData != nil && jsonData.String() != "" {
+	if jsonData != nil && jsonData != starlark.None && jsonData.String() != "" {
 		req.Header.Set("Content-Type", "application/json")
 		data, err := dataconv.MarshalStarlarkJSON(jsonData, 0)
 		if err != nil {
