@@ -379,6 +379,13 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 			`),
 		},
 		{
+			name: `sum([int,None])`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'sum')
+				assert.eq(3, sum([1, 2, None]))
+			`),
+		},
+		{
 			name: `sum([int,string])`,
 			script: itn.HereDoc(`
 				load('go_idiomatic', 'sum')
