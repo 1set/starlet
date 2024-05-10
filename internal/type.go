@@ -6,6 +6,19 @@ import (
 	"go.starlark.net/starlark"
 )
 
+var (
+	emptyStr string
+)
+
+// Unpacker is an interface for types that can be unpacked from Starlark values.
+var (
+	_ starlark.Unpacker = (*FloatOrInt)(nil)
+	_ starlark.Unpacker = (*StringOrBytes)(nil)
+	_ starlark.Unpacker = (*NullableString)(nil)
+	_ starlark.Unpacker = (*NullableDict)(nil)
+	//_ starlark.Unpacker = (*NumericValue)(nil)
+)
+
 // FloatOrInt is an Unpacker that converts a Starlark int or float to Go's float64.
 type FloatOrInt float64
 
@@ -96,7 +109,7 @@ func (p *NullableString) Unpack(v starlark.Value) error {
 func (p *NullableString) GoString() string {
 	ps := p.str
 	if ps == nil {
-		return ""
+		return emptyStr
 	}
 	return *ps
 }
@@ -108,7 +121,34 @@ func (p *NullableString) IsNull() bool {
 
 // IsNullOrEmpty returns true if the underlying value is nil or an empty string.
 func (p *NullableString) IsNullOrEmpty() bool {
-	return p.IsNull() || *p.str == ""
+	return p.IsNull() || p.GoString() == emptyStr
+}
+
+// NullableDict is an Unpacker that converts a Starlark None or Dict to Go's *starlark.Dict.
+type NullableDict struct {
+	dict *starlark.Dict
+}
+
+// Unpack implements Unpacker.
+func (p *NullableDict) Unpack(v starlark.Value) error {
+	switch v := v.(type) {
+	case *starlark.Dict:
+		p.dict = v
+		return nil
+	case starlark.NoneType:
+		p.dict = nil
+		return nil
+	}
+	return fmt.Errorf("got %s, want dict or None", v.Type())
+}
+
+// AsDict returns the *starlark.Dict representation of the NullableDict, if the underlying value is nil, it returns an new empty dict.
+func (p NullableDict) AsDict() *starlark.Dict {
+	//return p.dict
+	if p.dict == nil {
+		return starlark.NewDict(0)
+	}
+	return p.dict
 }
 
 // NumericValue holds a Starlark numeric value and tracks its type.
@@ -152,31 +192,4 @@ func (n *NumericValue) Value() starlark.Value {
 		return starlark.Float(n.AsFloat())
 	}
 	return n.intValue
-}
-
-// NullableDict is an Unpacker that converts a Starlark None or Dict to Go's *starlark.Dict.
-type NullableDict struct {
-	dict *starlark.Dict
-}
-
-// Unpack implements Unpacker.
-func (p *NullableDict) Unpack(v starlark.Value) error {
-	switch v := v.(type) {
-	case *starlark.Dict:
-		p.dict = v
-		return nil
-	case starlark.NoneType:
-		p.dict = nil
-		return nil
-	}
-	return fmt.Errorf("got %s, want dict or None", v.Type())
-}
-
-// AsDict returns the *starlark.Dict representation of the NullableDict, if the underlying value is nil, it returns an new empty dict.
-func (p NullableDict) AsDict() *starlark.Dict {
-	//return p.dict
-	if p.dict == nil {
-		return starlark.NewDict(0)
-	}
-	return p.dict
 }
