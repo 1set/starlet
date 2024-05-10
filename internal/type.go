@@ -107,11 +107,10 @@ func (p *NullableString) Unpack(v starlark.Value) error {
 
 // GoString returns the Go string representation of the NullableString, if the underlying value is nil, it returns an empty string.
 func (p *NullableString) GoString() string {
-	ps := p.str
-	if ps == nil {
-		return emptyStr
+	if p == nil || p.str == nil {
+		return ""
 	}
-	return *ps
+	return *p.str
 }
 
 // IsNull returns true if the underlying value is nil.
@@ -142,7 +141,7 @@ func (p *NullableDict) Unpack(v starlark.Value) error {
 	return fmt.Errorf("got %s, want dict or None", v.Type())
 }
 
-// AsDict returns the *starlark.Dict representation of the NullableDict, if the underlying value is nil, it returns an new empty dict.
+// AsDict returns the *starlark.Dict representation of the NullableDict, if the underlying dict is nil, it returns an new empty dict.
 func (p *NullableDict) AsDict() *starlark.Dict {
 	if p.dict == nil {
 		return starlark.NewDict(0)
