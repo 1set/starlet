@@ -27,12 +27,12 @@ func (p *FloatOrInt) Unpack(v starlark.Value) error {
 	switch v := v.(type) {
 	case starlark.Int:
 		*p = FloatOrInt(v.Float())
-		return nil
 	case starlark.Float:
 		*p = FloatOrInt(v)
-		return nil
+	default:
+		return fmt.Errorf("got %s, want float or int", v.Type())
 	}
-	return fmt.Errorf("got %s, want float or int", v.Type())
+	return nil
 }
 
 // GoFloat returns the Go float64 representation of the FloatOrInt.
@@ -54,12 +54,12 @@ func (p *StringOrBytes) Unpack(v starlark.Value) error {
 	switch v := v.(type) {
 	case starlark.String:
 		*p = StringOrBytes(v)
-		return nil
 	case starlark.Bytes:
 		*p = StringOrBytes(v)
-		return nil
+	default:
+		return fmt.Errorf("got %s, want string or bytes", v.Type())
 	}
-	return fmt.Errorf("got %s, want string or bytes", v.Type())
+	return nil
 }
 
 // GoBytes returns the Go byte slice representation of the StringOrBytes.
@@ -93,16 +93,15 @@ func (p *NullableString) Unpack(v starlark.Value) error {
 	case starlark.String:
 		s := string(v)
 		p.str = &s
-		return nil
 	case starlark.Bytes:
 		s := string(v)
 		p.str = &s
-		return nil
 	case starlark.NoneType:
 		p.str = nil
-		return nil
+	default:
+		return fmt.Errorf("got %s, want string, bytes or None", v.Type())
 	}
-	return fmt.Errorf("got %s, want string, bytes or None", v.Type())
+	return nil
 }
 
 // GoString returns the Go string representation of the NullableString, if the underlying value is nil, it returns an empty string.
@@ -133,12 +132,12 @@ func (p *NullableDict) Unpack(v starlark.Value) error {
 	switch v := v.(type) {
 	case *starlark.Dict:
 		p.dict = v
-		return nil
 	case starlark.NoneType:
 		p.dict = nil
-		return nil
+	default:
+		return fmt.Errorf("got %s, want dict or None", v.Type())
 	}
-	return fmt.Errorf("got %s, want dict or None", v.Type())
+	return nil
 }
 
 // AsDict returns the *starlark.Dict representation of the NullableDict, if the underlying dict is nil, it returns an new empty dict.
