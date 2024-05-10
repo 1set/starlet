@@ -88,16 +88,19 @@ func (m *Module) LoadModule() (starlark.StringDict, error) {
 	}, nil
 }
 
-// Struct returns this module's methods as a starlark Struct
+// Struct returns this module's supportedMethods as a starlark Struct
 func (m *Module) Struct() *starlarkstruct.Struct {
 	return starlarkstruct.FromStringDict(starlarkstruct.Default, m.StringDict())
 }
 
+var (
+	supportedMethods = []string{"get", "put", "post", "postForm", "delete", "head", "patch", "options"}
+)
+
 // StringDict returns all module methods in a starlark.StringDict
 func (m *Module) StringDict() starlark.StringDict {
-	methods := []string{"get", "put", "post", "postForm", "delete", "head", "patch", "options"}
-	sd := make(starlark.StringDict, len(methods))
-	for _, name := range methods {
+	sd := make(starlark.StringDict, len(supportedMethods))
+	for _, name := range supportedMethods {
 		sd[name] = starlark.NewBuiltin(ModuleName+"."+name, m.reqMethod(name))
 	}
 	sd["set_timeout"] = starlark.NewBuiltin(ModuleName+".set_timeout", setRequestTimeout)
@@ -137,13 +140,13 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var (
 			urlv          starlark.String
-			params        = itn.NullableDict{} // = &starlark.Dict{}
-			headers       = itn.NullableDict{} // = &starlark.Dict{}
-			auth          starlark.Tuple
-			body          = itn.NullableString{}
-			jsonBody      starlark.Value
-			formBody      = itn.NullableDict{} // = &starlark.Dict{}
-			formEncoding  starlark.String
+			params        = itn.NullableDict{}   // default None, expect Dict
+			headers       = itn.NullableDict{}   // default None, expect Dict
+			auth          starlark.Tuple         // default empty Tuple, expect Tuple of two strings
+			body          = itn.NullableString{} // default None, expect string
+			jsonBody      starlark.Value         // default None, expect JSON serializable object
+			formBody      = itn.NullableDict{}   // default None, expect Dict
+			formEncoding  starlark.String        // default empty string, expect string
 			timeout       = itn.FloatOrInt(TimeoutSecond)
 			allowRedirect = starlark.Bool(!DisableRedirect)
 			verifySSL     = starlark.Bool(!SkipInsecureVerify)
@@ -451,8 +454,7 @@ func setBody(req *http.Request, body *itn.NullableString, formData *starlark.Dic
 	return nil
 }
 
-// Response represents an HTTP response, wrapping a go http.Response with
-// starlark methods
+// Response represents an HTTP response, wrapping a Go http.Response with Starlark methods.
 type Response struct {
 	http.Response
 }

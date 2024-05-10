@@ -191,7 +191,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 			name: `POST JSON String`,
 			script: itn.HereDoc(`
 				load('http', 'post')
-				res = post(test_server_url, json_body="Hello")
+				res = post(test_server_url, json_body='Hello')
 				assert.eq(res.status_code, 200)
 				b = res.body()
 				assert.true(b.startswith("POST "))
