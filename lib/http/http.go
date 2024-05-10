@@ -141,7 +141,7 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 			headers       = itn.NullableDict{} // = &starlark.Dict{}
 			auth          starlark.Tuple
 			body          itn.StringOrBytes
-			jsonBody      = itn.NullableDict{} // starlark.Value
+			jsonBody      starlark.Value
 			formBody      = itn.NullableDict{} // = &starlark.Dict{}
 			formEncoding  starlark.String
 			timeout       = itn.FloatOrInt(TimeoutSecond)
@@ -185,7 +185,7 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 		if err = setAuth(req, auth); err != nil {
 			return nil, err
 		}
-		if err = setBody(req, body.StarlarkString(), formBody.AsDict(), formEncoding, jsonBody.AsDict()); err != nil {
+		if err = setBody(req, body.StarlarkString(), formBody.AsDict(), formEncoding, jsonBody); err != nil {
 			return nil, err
 		}
 
