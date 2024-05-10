@@ -139,18 +139,18 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 			urlv          starlark.String
 			params        = &starlark.Dict{}
 			headers       = &starlark.Dict{}
-			formBody      = &starlark.Dict{}
-			formEncoding  starlark.String
 			auth          starlark.Tuple
 			body          itn.StringOrBytes
 			jsonBody      starlark.Value
+			formBody      = &starlark.Dict{}
+			formEncoding  starlark.String
 			timeout       = itn.FloatOrInt(TimeoutSecond)
 			allowRedirect = starlark.Bool(!DisableRedirect)
 			verifySSL     = starlark.Bool(!SkipInsecureVerify)
 		)
 
-		if err := starlark.UnpackArgs(b.Name(), args, kwargs, "url", &urlv, "params?", &params, "headers", &headers, "body", &body, "form_body", &formBody, "form_encoding", &formEncoding, "json_body", &jsonBody,
-			"auth", &auth, "timeout?", &timeout, "allow_redirects?", &allowRedirect, "verify?", &verifySSL); err != nil {
+		if err := starlark.UnpackArgs(b.Name(), args, kwargs, "url", &urlv, "params?", &params, "headers", &headers, "body", &body, "json_body", &jsonBody, "form_body", &formBody, "form_encoding", &formEncoding,
+			"auth?", &auth, "timeout?", &timeout, "allow_redirects?", &allowRedirect, "verify?", &verifySSL); err != nil {
 			return nil, err
 		}
 

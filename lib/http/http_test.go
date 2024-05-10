@@ -177,6 +177,15 @@ func TestLoadModule_HTTP(t *testing.T) {
 				assert.true(res.body().startswith("POST "))
 			`),
 		},
+		//{
+		//	name: `POST Default None`,
+		//	script: itn.HereDoc(`
+		//		load('http', 'post')
+		//		res = post(test_server_url, params=None, headers=None, body=None, json_body=None, form_body=None)
+		//		assert.eq(res.status_code, 200)
+		//		assert.true(res.body().startswith("POST "))
+		//	`),
+		//},
 		{
 			name: `POST JSON String`,
 			script: itn.HereDoc(`
