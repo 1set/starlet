@@ -5,7 +5,7 @@ import "go.starlark.net/starlark"
 // StringAnyMap type is a map of string to interface{} and is used to store global variables like StringDict of Starlark, but not a Starlark type.
 type StringAnyMap map[string]interface{}
 
-// Clone returns a copy of the data store.
+// Clone returns a copy of the data store. It returns an empty map if the current data store is nil.
 func (d StringAnyMap) Clone() StringAnyMap {
 	clone := make(StringAnyMap)
 	for k, v := range d {

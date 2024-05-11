@@ -14,6 +14,11 @@ func TestStringAnyMap_Clone(t *testing.T) {
 		want StringAnyMap
 	}{
 		{
+			name: "test_nil_map_clone",
+			d:    nil,
+			want: make(StringAnyMap),
+		},
+		{
 			name: "test_empty_map_clone",
 			d:    make(StringAnyMap),
 			want: make(StringAnyMap),
