@@ -145,12 +145,16 @@ func TestNullableInt(t *testing.T) {
 	testNullableUnpack(t, "int val", NewNullable(starlark.MakeInt(5)), starlark.MakeInt(10), starlark.MakeInt(10), false, false)
 	testNullableUnpack(t, "int none", NewNullable(starlark.MakeInt(5)), none, starlark.MakeInt(5), true, false)
 	testNullableUnpack(t, "int err", NewNullable(starlark.MakeInt(5)), starlark.String("foo"), starlark.MakeInt(5), true, true)
+	testNullableUnpack(t, "ctor val", NewNullableInt(starlark.MakeInt(5)), starlark.String("foo"), starlark.MakeInt(5), true, true)
+	testNullableUnpack(t, "ctor none", NewNullableInt(starlark.MakeInt(5)), none, starlark.MakeInt(5), true, false)
 
 	testNullableUnpackArgs(t, "empty val", &NullableInt{}, starlark.MakeInt(5), starlark.MakeInt(5), false, false)
 	testNullableUnpackArgs(t, "empty none", &NullableInt{}, none, starlark.Int{}, true, false)
 	testNullableUnpackArgs(t, "int val", NewNullable(starlark.MakeInt(5)), starlark.MakeInt(10), starlark.MakeInt(10), false, false)
 	testNullableUnpackArgs(t, "int none", NewNullable(starlark.MakeInt(5)), none, starlark.MakeInt(5), true, false)
 	testNullableUnpackArgs(t, "int err", NewNullable(starlark.MakeInt(5)), starlark.String("foo"), starlark.MakeInt(5), true, true)
+	testNullableUnpackArgs(t, "ctor val", NewNullableInt(starlark.MakeInt(5)), starlark.String("foo"), starlark.MakeInt(5), true, true)
+	testNullableUnpackArgs(t, "ctor none", NewNullableInt(starlark.MakeInt(5)), none, starlark.MakeInt(5), true, false)
 }
 
 func TestNullableFloat(t *testing.T) {
