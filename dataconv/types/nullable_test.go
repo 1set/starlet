@@ -166,8 +166,7 @@ func TestNullableGenerics_Unpack(t *testing.T) {
 		wantErr  bool
 	}{
 		{
-			name: "int val",
-			//target: &NullableInt{},
+			name:     "int val",
 			target:   NewNullable(starlark.MakeInt(5)),
 			inV:      starlark.MakeInt(10),
 			want:     starlark.MakeInt(10),
@@ -181,12 +180,15 @@ func TestNullableGenerics_Unpack(t *testing.T) {
 			if err := p.Unpack(tt.inV); (err != nil) != tt.wantErr {
 				t.Errorf("Nullable[%s].Unpack() error = %v, wantErr %v", n, err, tt.wantErr)
 			}
+			if tt.wantErr {
+				return
+			}
 			if tt.wantNull != p.IsNull() {
 				t.Errorf("Nullable[%s].IsNull() got = %v, want %v", n, p.IsNull(), tt.wantNull)
 			}
-			//if !tt.wantErr && !reflect.DeepEqual(p.Value(), tt.want) {
-			//	t.Errorf("Nullable.Unpack() got = %v, want %v", p.Value(), tt.want)
-			//}
+			if !tt.wantErr && !reflect.DeepEqual(p.Value(), tt.want) {
+				t.Errorf("Nullable[%s].Unpack() got = %v, want %v", n, p.Value(), tt.want)
+			}
 		})
 	}
 }
