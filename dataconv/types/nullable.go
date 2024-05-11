@@ -56,29 +56,3 @@ func (p *NullableStringOrBytes) IsNull() bool {
 func (p *NullableStringOrBytes) IsNullOrEmpty() bool {
 	return p.IsNull() || p.GoString() == emptyStr
 }
-
-// NullableDict is an Unpacker that converts a Starlark None or Dict to Go's *starlark.Dict.
-type NullableDict struct {
-	dict *starlark.Dict
-}
-
-// Unpack implements Unpacker.
-func (p *NullableDict) Unpack(v starlark.Value) error {
-	switch v := v.(type) {
-	case *starlark.Dict:
-		p.dict = v
-	case starlark.NoneType:
-		p.dict = nil
-	default:
-		return fmt.Errorf("got %s, want dict or None", v.Type())
-	}
-	return nil
-}
-
-// AsDict returns the *starlark.Dict representation of the NullableDict, if the underlying dict is nil, it returns an new empty dict.
-func (p *NullableDict) AsDict() *starlark.Dict {
-	if p.dict == nil {
-		return starlark.NewDict(0)
-	}
-	return p.dict
-}

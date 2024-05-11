@@ -256,8 +256,6 @@ func TestNullableDict(t *testing.T) {
 	defaultDict := starlark.NewDict(1)
 	defaultDict.SetKey(starlark.String("got"), starlark.MakeInt(1))
 
-	type NullableDict = Nullable[*starlark.Dict]
-
 	testNullableUnpack(t, "empty val", &NullableDict{}, newDict, newDict, false, false)
 	testNullableUnpack(t, "empty none", &NullableDict{}, none, nilDict, true, false)
 	testNullableUnpack(t, "dict val", NewNullable(defaultDict), newDict, newDict, false, false)

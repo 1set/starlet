@@ -1,13 +1,12 @@
 package types
 
 import (
-	"reflect"
 	"testing"
 
 	"go.starlark.net/starlark"
 )
 
-func TestNullableString_Unpack(t *testing.T) {
+func TestNullableStringOrBytes_Unpack(t *testing.T) {
 	tests := []struct {
 		name    string
 		v       starlark.Value
@@ -48,7 +47,7 @@ func TestNullableString_Unpack(t *testing.T) {
 	}
 }
 
-func TestNullableString_Methods(t *testing.T) {
+func TestNullableStringOrBytes_Methods(t *testing.T) {
 	tests := []struct {
 		name        string
 		str         *NullableStringOrBytes
@@ -95,62 +94,6 @@ func TestNullableString_Methods(t *testing.T) {
 			}
 			if gotIsEmpty := tt.str.IsNullOrEmpty(); gotIsEmpty != tt.wantIsEmpty {
 				t.Errorf("NullableStringOrBytes.IsNullOrEmpty() = %v, want %v", gotIsEmpty, tt.wantIsEmpty)
-			}
-		})
-	}
-}
-
-func TestNullableDict_Unpack(t *testing.T) {
-	tests := []struct {
-		name    string
-		v       starlark.Value
-		wantErr bool
-	}{
-		{
-			name: "dict",
-			v:    starlark.NewDict(0),
-		},
-		{
-			name: "none",
-			v:    starlark.None,
-		},
-		{
-			name:    "string",
-			v:       starlark.String("foo"),
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var p NullableDict
-			if err := p.Unpack(tt.v); (err != nil) != tt.wantErr {
-				t.Errorf("NullableDict.Unpack() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestNullableDict_AsDict(t *testing.T) {
-	tests := []struct {
-		name string
-		dict *NullableDict
-		want *starlark.Dict
-	}{
-		{
-			name: "nil",
-			dict: &NullableDict{},
-			want: starlark.NewDict(0),
-		},
-		{
-			name: "non-nil",
-			dict: &NullableDict{dict: starlark.NewDict(1)},
-			want: starlark.NewDict(1),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.dict.AsDict(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NullableDict.AsDict() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -54,6 +54,12 @@ type NullableFloat = Nullable[starlark.Float]
 // NullableBool is an Unpacker that converts a Starlark None or Bool.
 type NullableBool = Nullable[starlark.Bool]
 
+// NullableString is an Unpacker that converts a Starlark None or String.
+type NullableString = Nullable[starlark.String]
+
+// NullableBytes is an Unpacker that converts a Starlark None or Bytes.
+type NullableBytes = Nullable[starlark.Bytes]
+
 // NullableList is an Unpacker that converts a Starlark None or List.
 type NullableList = Nullable[*starlark.List]
 
@@ -62,6 +68,9 @@ type NullableTuple = Nullable[starlark.Tuple]
 
 // NullableSet is an Unpacker that converts a Starlark None or Set.
 type NullableSet = Nullable[*starlark.Set]
+
+// NullableDict is an Unpacker that converts a Starlark None or Dict.
+type NullableDict = Nullable[*starlark.Dict]
 
 // NullableIterable is an Unpacker that converts a Starlark None or Iterable.
 type NullableIterable = Nullable[starlark.Iterable]
