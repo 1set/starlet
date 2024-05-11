@@ -82,3 +82,41 @@ func (p *NullableDict) AsDict() *starlark.Dict {
 	}
 	return p.dict
 }
+
+// Nullable is an Unpacker that converts a Starlark None or T to Go's starlark.Value.
+type Nullable[T starlark.Value] struct {
+	value *T
+}
+
+// NewNullable creates and returns a new Nullable.
+func NewNullable[T starlark.Value](v T) *Nullable[T] {
+	return &Nullable[T]{value: &v}
+}
+
+// Unpack implements Unpacker.
+func (p *Nullable[T]) Unpack(v starlark.Value) error {
+	if _, ok := v.(starlark.NoneType); ok {
+		p.value = nil
+	} else if t, ok := v.(T); ok {
+		p.value = &t
+	} else {
+		return fmt.Errorf("got %s, want %T or None", v.Type(), p.value)
+	}
+	return nil
+}
+
+// IsNull returns true if the underlying value is nil.
+func (p *Nullable[T]) IsNull() bool {
+	return p == nil || p.value == nil
+}
+
+// Value returns the underlying value or zero value if the underlying value is nil.
+func (p *Nullable[T]) Value(defaultValue T) T {
+	if p.IsNull() {
+		return defaultValue
+	}
+	return *p.value
+}
+
+// NullableInt is an Unpacker that converts a Starlark None or Int.
+type NullableInt = Nullable[starlark.Int]
