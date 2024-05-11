@@ -10,8 +10,9 @@ import (
 	"strings"
 	"sync"
 
+	itn "github.com/1set/starlet/dataconv/types"
+
 	"github.com/1set/starlet/dataconv"
-	itn "github.com/1set/starlet/internal"
 	"github.com/1set/starlet/internal/replacecr"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"

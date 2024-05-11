@@ -7,7 +7,8 @@ import (
 	"strings"
 	"sync"
 
-	itn "github.com/1set/starlet/internal"
+	itn "github.com/1set/starlet/dataconv/types"
+
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/syntax"

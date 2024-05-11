@@ -16,6 +16,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/1set/starlet/dataconv/types"
+
 	"github.com/1set/starlet/dataconv"
 	itn "github.com/1set/starlet/internal"
 	"go.starlark.net/starlark"
@@ -111,7 +113,7 @@ func (m *Module) StringDict() starlark.StringDict {
 
 // setRequestTimeout sets the timeout for http requests
 func setRequestTimeout(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var timeout itn.FloatOrInt
+	var timeout types.FloatOrInt
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "timeout", &timeout); err != nil {
 		return nil, err
 	}
@@ -139,7 +141,7 @@ func getRequestTimeout(thread *starlark.Thread, b *starlark.Builtin, args starla
 // callMethod is a general function for making http requests which takes the method name and arguments.
 func (m *Module) callMethod(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// check the arguments, the first argument is the method name
-	var fv itn.StringOrBytes
+	var fv types.StringOrBytes
 	if len(args) < 1 {
 		return nil, fmt.Errorf("%s: missing method name", b.Name())
 	}
@@ -161,14 +163,14 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var (
 			urlv          starlark.String
-			params        = itn.NullableDict{}   // default None, expect Dict
-			headers       = itn.NullableDict{}   // default None, expect Dict
-			auth          starlark.Tuple         // default empty Tuple, expect Tuple of two strings
-			body          = itn.NullableString{} // default None, expect string
-			jsonBody      starlark.Value         // default None, expect JSON serializable object
-			formBody      = itn.NullableDict{}   // default None, expect Dict
-			formEncoding  starlark.String        // default empty string, expect string
-			timeout       = itn.FloatOrInt(TimeoutSecond)
+			params        = types.NullableDict{}   // default None, expect Dict
+			headers       = types.NullableDict{}   // default None, expect Dict
+			auth          starlark.Tuple           // default empty Tuple, expect Tuple of two strings
+			body          = types.NullableString{} // default None, expect string
+			jsonBody      starlark.Value           // default None, expect JSON serializable object
+			formBody      = types.NullableDict{}   // default None, expect Dict
+			formEncoding  starlark.String          // default empty string, expect string
+			timeout       = types.FloatOrInt(TimeoutSecond)
 			allowRedirect = starlark.Bool(!DisableRedirect)
 			verifySSL     = starlark.Bool(!SkipInsecureVerify)
 		)
@@ -353,7 +355,7 @@ func setHeaders(req *http.Request, headers *starlark.Dict) error {
 	return nil
 }
 
-func setBody(req *http.Request, body *itn.NullableString, formData *starlark.Dict, formEncoding starlark.String, jsonData starlark.Value) error {
+func setBody(req *http.Request, body *types.NullableString, formData *starlark.Dict, formEncoding starlark.String, jsonData starlark.Value) error {
 	if !body.IsNullOrEmpty() {
 		uq := body.GoString()
 		req.Body = ioutil.NopCloser(strings.NewReader(uq))

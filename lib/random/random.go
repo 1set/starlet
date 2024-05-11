@@ -7,7 +7,8 @@ import (
 	"math/big"
 	"sync"
 
-	itn "github.com/1set/starlet/internal"
+	itn "github.com/1set/starlet/dataconv/types"
+
 	guuid "github.com/google/uuid"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"

@@ -10,8 +10,9 @@ import (
 	"time"
 	"unicode/utf8"
 
+	itn "github.com/1set/starlet/dataconv/types"
+
 	"github.com/1set/starlet/dataconv"
-	itn "github.com/1set/starlet/internal"
 	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"

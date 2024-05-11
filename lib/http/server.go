@@ -7,8 +7,9 @@ import (
 	"net/http"
 	"net/url"
 
+	itn "github.com/1set/starlet/dataconv/types"
+
 	"github.com/1set/starlet/dataconv"
-	itn "github.com/1set/starlet/internal"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
