@@ -94,3 +94,38 @@ var (
 	_ starlark.Unpacker = (*NullableCallable)(nil)
 	_ starlark.Unpacker = (*NullableIterable)(nil)
 )
+
+var (
+	// NewNullableInt creates and returns a new NullableInt with the given default value.
+	NewNullableInt = func(dv starlark.Int) *NullableInt { return NewNullable[starlark.Int](dv) }
+
+	// NewNullableFloat creates and returns a new NullableFloat with the given default value.
+	NewNullableFloat = func(dv starlark.Float) *NullableFloat { return NewNullable[starlark.Float](dv) }
+
+	// NewNullableBool creates and returns a new NullableBool with the given default value.
+	NewNullableBool = func(dv starlark.Bool) *NullableBool { return NewNullable[starlark.Bool](dv) }
+
+	// NewNullableString creates and returns a new NullableString with the given default value.
+	NewNullableString = func(dv starlark.String) *NullableString { return NewNullable[starlark.String](dv) }
+
+	// NewNullableBytes creates and returns a new NullableBytes with the given default value.
+	NewNullableBytes = func(dv starlark.Bytes) *NullableBytes { return NewNullable[starlark.Bytes](dv) }
+
+	// NewNullableList creates and returns a new NullableList with the given default value.
+	NewNullableList = func(dv *starlark.List) *NullableList { return NewNullable[*starlark.List](dv) }
+
+	// NewNullableTuple creates and returns a new NullableTuple with the given default value.
+	NewNullableTuple = func(dv starlark.Tuple) *NullableTuple { return NewNullable[starlark.Tuple](dv) }
+
+	// NewNullableSet creates and returns a new NullableSet with the given default value.
+	NewNullableSet = func(dv *starlark.Set) *NullableSet { return NewNullable[*starlark.Set](dv) }
+
+	// NewNullableDict creates and returns a new NullableDict with the given default value.
+	NewNullableDict = func(dv *starlark.Dict) *NullableDict { return NewNullable[*starlark.Dict](dv) }
+
+	// NewNullableIterable creates and returns a new NullableIterable with the given default value.
+	NewNullableIterable = func(dv starlark.Iterable) *NullableIterable { return NewNullable[starlark.Iterable](dv) }
+
+	// NewNullableCallable creates and returns a new NullableCallable with the given default value.
+	NewNullableCallable = func(dv starlark.Callable) *NullableCallable { return NewNullable[starlark.Callable](dv) }
+)
