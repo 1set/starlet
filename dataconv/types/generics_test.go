@@ -88,3 +88,58 @@ func TestNullableInt_Unpack(t *testing.T) {
 		})
 	}
 }
+
+func testNullableUnpack[T starlark.Value](t *testing.T, name string, target *Nullable[T], inV starlark.Value, want T, wantNull, wantErr bool) {
+	t.Run(name, func(t *testing.T) {
+		// run
+		err := target.Unpack(inV)
+		// check error
+		if (err != nil) != wantErr {
+			t.Errorf("Nullable[%s].Unpack() error = %v, wantErr %v", name, err, wantErr)
+		} else if err != nil {
+			t.Logf("Nullable[%s].Unpack() error = %v", name, err)
+		}
+		if wantErr {
+			return
+		}
+		// check methods
+		if wantNull != target.IsNull() {
+			t.Errorf("Nullable[%s].IsNull() got = %v, want %v", name, target.IsNull(), wantNull)
+		}
+		if !reflect.DeepEqual(target.Value(), want) {
+			t.Errorf("Nullable[%s].Unpack() got = %v, want %v", name, target.Value(), want)
+		}
+	})
+}
+
+func testNullableUnpackArgs[T starlark.Value](t *testing.T, name string, target *Nullable[T], inV starlark.Value, want T, wantNull, wantErr bool) {
+	t.Run(name, func(t *testing.T) {
+		// run
+		err := starlark.UnpackArgs("test", []starlark.Value{inV}, nil, "v?", target)
+		// check error
+		if (err != nil) != wantErr {
+			t.Errorf("Nullable[%s].UnpackArgs() error = %v, wantErr %v", name, err, wantErr)
+		} else if err != nil {
+			t.Logf("Nullable[%s].UnpackArgs() error = %v", name, err)
+		}
+		if wantErr {
+			return
+		}
+		// check methods
+		if wantNull != target.IsNull() {
+			t.Errorf("Nullable[%s].IsNull() got = %v, want %v", name, target.IsNull(), wantNull)
+		}
+		if !reflect.DeepEqual(target.Value(), want) {
+			t.Errorf("Nullable[%s].UnpackArgs() got = %v, want %v", name, target.Value(), want)
+		}
+	})
+}
+
+func TestNullableInt(t *testing.T) {
+	testNullableUnpack(t, "int val", NewNullable(starlark.MakeInt(5)), starlark.MakeInt(10), starlark.MakeInt(10), false, false)
+	testNullableUnpack(t, "int none", NewNullable(starlark.MakeInt(5)), starlark.None, starlark.MakeInt(5), true, false)
+	testNullableUnpack(t, "int err", NewNullable(starlark.MakeInt(5)), starlark.String("foo"), starlark.MakeInt(5), true, true)
+	testNullableUnpackArgs(t, "int val", NewNullable(starlark.MakeInt(5)), starlark.MakeInt(10), starlark.MakeInt(10), false, false)
+	testNullableUnpackArgs(t, "int none", NewNullable(starlark.MakeInt(5)), starlark.None, starlark.MakeInt(5), true, false)
+	testNullableUnpackArgs(t, "int err", NewNullable(starlark.MakeInt(5)), starlark.String("foo"), starlark.MakeInt(5), true, true)
+}
