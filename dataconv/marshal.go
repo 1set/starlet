@@ -63,6 +63,8 @@ func Marshal(data interface{}) (v starlark.Value, err error) {
 			elems[i] = starlark.String(val)
 		}
 		v = starlark.NewList(elems)
+	case []byte:
+		v = starlark.Bytes(x)
 	case map[interface{}]interface{}:
 		dict := &starlark.Dict{}
 		var elem starlark.Value
