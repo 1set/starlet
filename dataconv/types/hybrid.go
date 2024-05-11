@@ -20,6 +20,7 @@ var (
 )
 
 // FloatOrInt is an Unpacker that converts a Starlark int or float to Go's float64.
+// There is no constructor for this type because it is a simple type alias of float64.
 type FloatOrInt float64
 
 // Unpack implements Unpacker.
@@ -106,6 +107,7 @@ func (n *NumericValue) Value() starlark.Value {
 
 // StringOrBytes is an Unpacker that converts a Starlark string or bytes to Go's string.
 // It works because Go Starlark strings and bytes are both represented as Go strings.
+// There is no constructor for this type because it is a simple type alias of string.
 type StringOrBytes string
 
 // Unpack implements Unpacker.
