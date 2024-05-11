@@ -52,3 +52,24 @@ func (p *Nullable[T]) Value() T {
 
 // NullableInt is an Unpacker that converts a Starlark None or Int.
 type NullableInt = Nullable[starlark.Int]
+
+// NullableFloat is an Unpacker that converts a Starlark None or Float.
+type NullableFloat = Nullable[starlark.Float]
+
+// NullableBool is an Unpacker that converts a Starlark None or Bool.
+type NullableBool = Nullable[starlark.Bool]
+
+// NullableBytes is an Unpacker that converts a Starlark None or Bytes.
+type NullableBytes = Nullable[starlark.Bytes]
+
+// NullableList is an Unpacker that converts a Starlark None or List.
+type NullableList = Nullable[*starlark.List]
+
+// NullableTuple is an Unpacker that converts a Starlark None or Tuple.
+type NullableTuple = Nullable[starlark.Tuple]
+
+// NullableCallable is an Unpacker that converts a Starlark None or Callable.
+type NullableCallable = Nullable[starlark.Callable]
+
+// NullableIterable is an Unpacker that converts a Starlark None or Iterable.
+type NullableIterable = Nullable[starlark.Iterable]
