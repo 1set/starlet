@@ -178,6 +178,19 @@ func TestNullableInt_Unpack(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:   "no default val",
+			target: &NullableInt{},
+			inV:    starlark.MakeInt(10),
+			want:   starlark.MakeInt(10),
+		},
+		{
+			name:     "no default none",
+			target:   &NullableInt{},
+			inV:      starlark.None,
+			want:     starlark.Int{},
+			wantNull: true,
+		},
+		{
 			name:   "int val",
 			target: NewNullable(starlark.MakeInt(5)),
 			inV:    starlark.MakeInt(10),
@@ -217,7 +230,7 @@ func TestNullableInt_Unpack(t *testing.T) {
 			if tt.wantNull != p.IsNull() {
 				t.Errorf("Nullable[%s].IsNull() got = %v, want %v", n, p.IsNull(), tt.wantNull)
 			}
-			if !tt.wantErr && !reflect.DeepEqual(p.Value(), tt.want) {
+			if !reflect.DeepEqual(p.Value(), tt.want) {
 				t.Errorf("Nullable[%s].Unpack() got = %v, want %v", n, p.Value(), tt.want)
 			}
 		})
