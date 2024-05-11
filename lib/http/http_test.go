@@ -190,6 +190,30 @@ func TestLoadModule_HTTP(t *testing.T) {
 			`),
 		},
 		{
+			name: `POST Data String`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				res = post(test_server_url, body='Hello')
+				assert.eq(res.status_code, 200)
+				b = res.body()
+				assert.true(b.startswith("POST "))
+				assert.true('Content-Length: 5' in b)
+				assert.true('Hello' in b)
+			`),
+		},
+		{
+			name: `POST Data Bytes`,
+			script: itn.HereDoc(`
+				load('http', 'post')
+				res = post(test_server_url, body=b'World')
+				assert.eq(res.status_code, 200)
+				b = res.body()
+				assert.true(b.startswith("POST "))
+				assert.true('Content-Length: 5' in b)
+				assert.true('World' in b)
+			`),
+		},
+		{
 			name: `POST JSON String`,
 			script: itn.HereDoc(`
 				load('http', 'post')
