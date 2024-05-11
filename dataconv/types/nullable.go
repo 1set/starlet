@@ -96,12 +96,15 @@ func NewNullable[T starlark.Value](defaultValue T) *Nullable[T] {
 
 // Unpack implements Unpacker.
 func (p *Nullable[T]) Unpack(v starlark.Value) error {
+	if p == nil {
+		return fmt.Errorf("nil pointer")
+	}
 	if _, ok := v.(starlark.NoneType); ok {
 		p.value = nil
 	} else if t, ok := v.(T); ok {
 		p.value = &t
 	} else {
-		return fmt.Errorf("got %s, want %T or None", v.Type(), p.defaultValue)
+		return fmt.Errorf("got %s, want %T or None", v.Type(), p.defaultValue.Type())
 	}
 	return nil
 }

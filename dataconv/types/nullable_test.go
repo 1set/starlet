@@ -156,7 +156,7 @@ func TestNullableDict_AsDict(t *testing.T) {
 	}
 }
 
-func TestNullableGenerics_Unpack(t *testing.T) {
+func TestNullableInt_Unpack(t *testing.T) {
 	tests := []struct {
 		name     string
 		target   *NullableInt
@@ -166,11 +166,35 @@ func TestNullableGenerics_Unpack(t *testing.T) {
 		wantErr  bool
 	}{
 		{
-			name:     "int val",
+			name:    "nil int",
+			target:  nil,
+			inV:     starlark.MakeInt(10),
+			wantErr: true,
+		},
+		{
+			name:    "nil none",
+			target:  nil,
+			inV:     starlark.None,
+			wantErr: true,
+		},
+		{
+			name:   "int val",
+			target: NewNullable(starlark.MakeInt(5)),
+			inV:    starlark.MakeInt(10),
+			want:   starlark.MakeInt(10),
+		},
+		{
+			name:     "int none",
 			target:   NewNullable(starlark.MakeInt(5)),
-			inV:      starlark.MakeInt(10),
-			want:     starlark.MakeInt(10),
-			wantNull: false,
+			inV:      starlark.None,
+			want:     starlark.MakeInt(5),
+			wantNull: true,
+		},
+		{
+			name:    "int err",
+			target:  NewNullable(starlark.MakeInt(5)),
+			inV:     starlark.String("foo"),
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -179,6 +203,8 @@ func TestNullableGenerics_Unpack(t *testing.T) {
 			p := tt.target
 			if err := p.Unpack(tt.inV); (err != nil) != tt.wantErr {
 				t.Errorf("Nullable[%s].Unpack() error = %v, wantErr %v", n, err, tt.wantErr)
+			} else {
+				t.Logf("Nullable[%s].Unpack() error = %v", n, err)
 			}
 			if tt.wantErr {
 				return
