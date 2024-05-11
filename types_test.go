@@ -59,14 +59,16 @@ func TestStringAnyMap_Merge(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.d != nil {
-				orig := tt.d
-				tt.d.Merge(tt.other)
-				if tt.wantEffect && !reflect.DeepEqual(tt.d, tt.want) {
-					t.Errorf("Merge() got = %v, want %v", tt.d, tt.want)
-				} else if !tt.wantEffect && !reflect.DeepEqual(tt.d, orig) {
-					t.Errorf("Merge() got = %v, want original map: %v", tt.d, orig)
-				}
+			orig := tt.d.Clone()
+			if tt.d == nil {
+				orig = nil
+			}
+			// do the merge and check the result
+			tt.d.Merge(tt.other)
+			if tt.wantEffect && !reflect.DeepEqual(tt.d, tt.want) {
+				t.Errorf("Merge() got = %v, want %v", tt.d, tt.want)
+			} else if !tt.wantEffect && !reflect.DeepEqual(tt.d, orig) {
+				t.Errorf("Merge() got = %v, want original map: %v", tt.d, orig)
 			}
 		})
 	}
@@ -98,14 +100,16 @@ func TestStringAnyMap_MergeDict(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.d != nil {
-				orig := tt.d
-				tt.d.MergeDict(tt.other)
-				if tt.wantEffect && !reflect.DeepEqual(tt.d, tt.want) {
-					t.Errorf("MergeDict() got = %v, want %v", tt.d, tt.want)
-				} else if !tt.wantEffect && !reflect.DeepEqual(tt.d, orig) {
-					t.Errorf("MergeDict() got = %v, want original map: %v", tt.d, orig)
-				}
+			orig := tt.d.Clone()
+			if tt.d == nil {
+				orig = nil
+			}
+			// do the merge and check the result
+			tt.d.MergeDict(tt.other)
+			if tt.wantEffect && !reflect.DeepEqual(tt.d, tt.want) {
+				t.Errorf("MergeDict() got = %v, want %v", tt.d, tt.want)
+			} else if !tt.wantEffect && !reflect.DeepEqual(tt.d, orig) {
+				t.Errorf("MergeDict() got = %v, want original map: %v", tt.d, orig)
 			}
 		})
 	}
