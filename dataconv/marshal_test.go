@@ -232,6 +232,7 @@ func TestUnmarshal(t *testing.T) {
 		{starlark.None, nil, ""},
 		{starlark.True, true, ""},
 		{starlark.String("foo"), "foo", ""},
+		{starlark.Bytes("bar"), "bar", ""},
 		{starlark.MakeInt(0), 0, ""},
 		{starlark.MakeInt(42), 42, ""},
 		{starlark.MakeInt(42), int8(42), ""},

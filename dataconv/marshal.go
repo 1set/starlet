@@ -43,7 +43,7 @@ func Marshal(data interface{}) (v starlark.Value, err error) {
 	case uint64:
 		v = starlark.MakeUint64(x)
 	case float32:
-		v = starlark.Float(float64(x))
+		v = starlark.Float(x)
 	case float64:
 		v = starlark.Float(x)
 	case time.Time:
@@ -149,6 +149,8 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 		}
 	case starlark.String:
 		val = v.GoString()
+	case starlark.Bytes:
+		val = string(v)
 	case startime.Time:
 		val = time.Time(v)
 	case *starlark.Dict:
