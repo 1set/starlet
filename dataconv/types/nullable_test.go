@@ -161,7 +161,7 @@ func TestNullableInt_Unpack(t *testing.T) {
 		name     string
 		target   *NullableInt
 		inV      starlark.Value
-		want     starlark.Value
+		want     starlark.Int
 		wantNull bool
 		wantErr  bool
 	}{
@@ -207,7 +207,7 @@ func TestNullableInt_Unpack(t *testing.T) {
 			// check error
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Nullable[%s].Unpack() error = %v, wantErr %v", n, err, tt.wantErr)
-			} else {
+			} else if err != nil {
 				t.Logf("Nullable[%s].Unpack() error = %v", n, err)
 			}
 			if tt.wantErr {
