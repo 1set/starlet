@@ -161,7 +161,7 @@ func (m *Module) callMethod(thread *starlark.Thread, b *starlark.Builtin, args s
 func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var (
-			getDefaultDict = func() *types.NullableDict { return types.NewNullable(starlark.NewDict(0)) }
+			getDefaultDict = func() *types.NullableDict { return types.NewNullableDict(starlark.NewDict(0)) }
 			urlv           starlark.String
 			params         = getDefaultDict()                   // default None, expect Dict
 			headers        = getDefaultDict()                   // default None, expect Dict
