@@ -9,6 +9,12 @@ import (
 // Unpacker is an interface for types that can be unpacked from Starlark values.
 var (
 	_ starlark.Unpacker = (*NullableInt)(nil)
+	_ starlark.Unpacker = (*NullableFloat)(nil)
+	_ starlark.Unpacker = (*NullableBool)(nil)
+	_ starlark.Unpacker = (*NullableList)(nil)
+	_ starlark.Unpacker = (*NullableTuple)(nil)
+	_ starlark.Unpacker = (*NullableCallable)(nil)
+	_ starlark.Unpacker = (*NullableIterable)(nil)
 )
 
 // Nullable is an Unpacker that converts a Starlark None or T to Go's starlark.Value.
@@ -64,6 +70,9 @@ type NullableList = Nullable[*starlark.List]
 
 // NullableTuple is an Unpacker that converts a Starlark None or Tuple.
 type NullableTuple = Nullable[starlark.Tuple]
+
+// NullableSet is an Unpacker that converts a Starlark None or Set.
+type NullableSet = Nullable[*starlark.Set]
 
 // NullableCallable is an Unpacker that converts a Starlark None or Callable.
 type NullableCallable = Nullable[starlark.Callable]

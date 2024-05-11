@@ -192,6 +192,23 @@ func TestNullableTuple(t *testing.T) {
 	testNullableUnpackArgs(t, "tuple err", NewNullable(starlark.Tuple{starlark.MakeInt(1), starlark.MakeInt(2)}), starlark.String("foo"), starlark.Tuple{starlark.MakeInt(1), starlark.MakeInt(2)}, true, true)
 }
 
+func TestNullableSet(t *testing.T) {
+	defaultSet := starlark.NewSet(2)
+	defaultSet.Insert(starlark.MakeInt(1))
+	defaultSet.Insert(starlark.MakeInt(2))
+
+	newSet := starlark.NewSet(2)
+	newSet.Insert(starlark.MakeInt(3))
+	newSet.Insert(starlark.MakeInt(4))
+
+	testNullableUnpack(t, "set val", NewNullable(defaultSet), newSet, newSet, false, false)
+	testNullableUnpack(t, "set none", NewNullable(defaultSet), starlark.None, defaultSet, true, false)
+	testNullableUnpack(t, "set err", NewNullable(defaultSet), starlark.String("foo"), defaultSet, true, true)
+	testNullableUnpackArgs(t, "set val", NewNullable(defaultSet), newSet, newSet, false, false)
+	testNullableUnpackArgs(t, "set none", NewNullable(defaultSet), starlark.None, defaultSet, true, false)
+	testNullableUnpackArgs(t, "set err", NewNullable(defaultSet), starlark.String("foo"), defaultSet, true, true)
+}
+
 func TestNullableDict(t *testing.T) {
 	newDict := starlark.NewDict(1)
 	newDict.SetKey(starlark.String("aloha"), starlark.MakeInt(100))
