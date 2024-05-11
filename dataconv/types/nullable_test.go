@@ -199,9 +199,13 @@ func TestNullableInt_Unpack(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// setup
 			n := tt.name
 			p := tt.target
-			if err := p.Unpack(tt.inV); (err != nil) != tt.wantErr {
+			// run
+			err := p.Unpack(tt.inV)
+			// check error
+			if (err != nil) != tt.wantErr {
 				t.Errorf("Nullable[%s].Unpack() error = %v, wantErr %v", n, err, tt.wantErr)
 			} else {
 				t.Logf("Nullable[%s].Unpack() error = %v", n, err)
@@ -209,6 +213,7 @@ func TestNullableInt_Unpack(t *testing.T) {
 			if tt.wantErr {
 				return
 			}
+			// check methods
 			if tt.wantNull != p.IsNull() {
 				t.Errorf("Nullable[%s].IsNull() got = %v, want %v", n, p.IsNull(), tt.wantNull)
 			}

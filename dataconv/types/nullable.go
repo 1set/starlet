@@ -10,6 +10,7 @@ import (
 var (
 	_ starlark.Unpacker = (*NullableString)(nil)
 	_ starlark.Unpacker = (*NullableDict)(nil)
+	_ starlark.Unpacker = (*NullableInt)(nil)
 )
 
 // NullableString is an Unpacker that converts a Starlark None or string to Go's string.
