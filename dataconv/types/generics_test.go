@@ -137,10 +137,14 @@ func testNullableUnpackArgs[T starlark.Value](t *testing.T, name string, target 
 }
 
 func TestNullableInt(t *testing.T) {
+	testNullableUnpack(t, "empty val", &NullableInt{}, starlark.MakeInt(5), starlark.MakeInt(5), false, false)
+	testNullableUnpack(t, "empty none", &NullableInt{}, starlark.None, starlark.Int{}, true, false)
 	testNullableUnpack(t, "int val", NewNullable(starlark.MakeInt(5)), starlark.MakeInt(10), starlark.MakeInt(10), false, false)
 	testNullableUnpack(t, "int none", NewNullable(starlark.MakeInt(5)), starlark.None, starlark.MakeInt(5), true, false)
 	testNullableUnpack(t, "int err", NewNullable(starlark.MakeInt(5)), starlark.String("foo"), starlark.MakeInt(5), true, true)
 
+	testNullableUnpackArgs(t, "empty val", &NullableInt{}, starlark.MakeInt(5), starlark.MakeInt(5), false, false)
+	testNullableUnpackArgs(t, "empty none", &NullableInt{}, starlark.None, starlark.Int{}, true, false)
 	testNullableUnpackArgs(t, "int val", NewNullable(starlark.MakeInt(5)), starlark.MakeInt(10), starlark.MakeInt(10), false, false)
 	testNullableUnpackArgs(t, "int none", NewNullable(starlark.MakeInt(5)), starlark.None, starlark.MakeInt(5), true, false)
 	testNullableUnpackArgs(t, "int err", NewNullable(starlark.MakeInt(5)), starlark.String("foo"), starlark.MakeInt(5), true, true)
@@ -150,10 +154,14 @@ func TestNullableFloat(t *testing.T) {
 	defaultVal := starlark.Float(1.5)
 	newVal := starlark.Float(2.5)
 
+	testNullableUnpack(t, "empty val", &NullableFloat{}, newVal, newVal, false, false)
+	testNullableUnpack(t, "empty none", &NullableFloat{}, starlark.None, starlark.Float(0), true, false)
 	testNullableUnpack(t, "float val", NewNullable(defaultVal), newVal, newVal, false, false)
 	testNullableUnpack(t, "float none", NewNullable(defaultVal), starlark.None, defaultVal, true, false)
 	testNullableUnpack(t, "float err", NewNullable(defaultVal), starlark.String("not a float"), defaultVal, true, true)
 
+	testNullableUnpackArgs(t, "empty val", &NullableFloat{}, newVal, newVal, false, false)
+	testNullableUnpackArgs(t, "empty none", &NullableFloat{}, starlark.None, starlark.Float(0), true, false)
 	testNullableUnpackArgs(t, "float val", NewNullable(defaultVal), newVal, newVal, false, false)
 	testNullableUnpackArgs(t, "float none", NewNullable(defaultVal), starlark.None, defaultVal, true, false)
 	testNullableUnpackArgs(t, "float err", NewNullable(defaultVal), starlark.String("not a float"), defaultVal, true, true)
