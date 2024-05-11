@@ -7,8 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	itn "github.com/1set/starlet/dataconv/types"
-
+	tps "github.com/1set/starlet/dataconv/types"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/syntax"
@@ -120,7 +119,7 @@ type AtomicFloat struct {
 }
 
 func newFloat(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var value itn.FloatOrInt
+	var value tps.FloatOrInt
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "value?", &value); err != nil {
 		return nil, err
 	}

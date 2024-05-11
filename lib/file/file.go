@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"sync"
 
-	itn "github.com/1set/starlet/dataconv/types"
-
 	dc "github.com/1set/starlet/dataconv"
+	tps "github.com/1set/starlet/dataconv/types"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
@@ -69,7 +68,7 @@ func trimBom(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, 
 
 // countLinesInFile counts the number of lines in a file.
 func countLinesInFile(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var fp itn.StringOrBytes
+	var fp tps.StringOrBytes
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "name", &fp); err != nil {
 		return starlark.None, err
 	}
@@ -86,7 +85,7 @@ func readTopOrBottomLines(funcName string, workLoad func(name string, n int) ([]
 	return starlark.NewBuiltin(ModuleName+"."+funcName, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		// unpack arguments
 		var (
-			fp itn.StringOrBytes
+			fp tps.StringOrBytes
 			n  starlark.Int
 		)
 		if err := starlark.UnpackArgs(b.Name(), args, kwargs, "name", &fp, "n", &n); err != nil {
@@ -115,7 +114,7 @@ func readTopOrBottomLines(funcName string, workLoad func(name string, n int) ([]
 // wrapReadFile wraps the file reading functions to be used in Starlark.
 func wrapReadFile(funcName string, workLoad func(name string) (starlark.Value, error)) starlark.Callable {
 	return starlark.NewBuiltin(ModuleName+"."+funcName, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		var fp itn.StringOrBytes
+		var fp tps.StringOrBytes
 		if err := starlark.UnpackArgs(b.Name(), args, kwargs, "name", &fp); err != nil {
 			return starlark.None, err
 		}
@@ -159,7 +158,7 @@ func wrapWriteFile(funcName string, override bool, workLoad func(name, funcName 
 	fullName := ModuleName + "." + funcName
 	return starlark.NewBuiltin(fullName, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var (
-			fp   itn.StringOrBytes
+			fp   tps.StringOrBytes
 			data starlark.Value
 		)
 		if err := starlark.UnpackArgs(b.Name(), args, kwargs, "name", &fp, "data", &data); err != nil {

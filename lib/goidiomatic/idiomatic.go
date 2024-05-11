@@ -10,9 +10,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	itn "github.com/1set/starlet/dataconv/types"
-
 	"github.com/1set/starlet/dataconv"
+	tps "github.com/1set/starlet/dataconv/types"
 	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
@@ -147,7 +146,7 @@ func length(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 func sum(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		lst   starlark.Iterable
-		total = itn.NewNumericValue()
+		total = tps.NewNumericValue()
 	)
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "iterable", &lst, "start?", total); err != nil {
 		return none, err
@@ -257,7 +256,7 @@ func convertStarlarkNumber(x starlark.Int, base int, fmtPre string) (starlark.Va
 // sleep sleeps for the given number of seconds.
 func sleep(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// get the duration
-	var sec itn.FloatOrInt
+	var sec tps.FloatOrInt
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "secs", &sec); err != nil {
 		return none, err
 	}

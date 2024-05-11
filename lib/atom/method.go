@@ -1,7 +1,7 @@
 package atom
 
 import (
-	itn "github.com/1set/starlet/dataconv/types"
+	tps "github.com/1set/starlet/dataconv/types"
 	"go.starlark.net/starlark"
 )
 
@@ -101,7 +101,7 @@ func floatGet(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple,
 }
 
 func floatSet(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var value itn.FloatOrInt
+	var value tps.FloatOrInt
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "value", &value); err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func floatSet(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple,
 }
 
 func floatCAS(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var oldVal, newVal itn.FloatOrInt
+	var oldVal, newVal tps.FloatOrInt
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "old", &oldVal, "new", &newVal); err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func floatCAS(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple,
 }
 
 func floatAdd(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var delta itn.FloatOrInt
+	var delta tps.FloatOrInt
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "delta", &delta); err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func floatAdd(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple,
 }
 
 func floatSub(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var delta itn.FloatOrInt
+	var delta tps.FloatOrInt
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "delta", &delta); err != nil {
 		return nil, err
 	}

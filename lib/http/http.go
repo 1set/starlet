@@ -16,9 +16,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/1set/starlet/dataconv/types"
-
 	"github.com/1set/starlet/dataconv"
+	"github.com/1set/starlet/dataconv/types"
 	itn "github.com/1set/starlet/internal"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"

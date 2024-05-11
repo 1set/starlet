@@ -13,8 +13,7 @@ import (
 	"io"
 	"sync"
 
-	itn "github.com/1set/starlet/dataconv/types"
-
+	tps "github.com/1set/starlet/dataconv/types"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
@@ -50,7 +49,7 @@ func LoadModule() (starlark.StringDict, error) {
 func fnHash(algo func() hash.Hash) func(*starlark.Thread, *starlark.Builtin, starlark.Tuple, []starlark.Tuple) (starlark.Value, error) {
 	return func(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		// check args
-		var sb itn.StringOrBytes
+		var sb tps.StringOrBytes
 		if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "data", &sb); err != nil {
 			return starlark.None, err
 		}

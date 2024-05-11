@@ -7,8 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	itn "github.com/1set/starlet/dataconv/types"
-
+	tps "github.com/1set/starlet/dataconv/types"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
@@ -185,7 +184,7 @@ func changeCWD(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple
 // makeDir creates a directory with the given name.
 func makeDir(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
-		pathVal itn.StringOrBytes
+		pathVal tps.StringOrBytes
 		modeVal = uint32(0755)
 	)
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "path", &pathVal, "mode?", &modeVal); err != nil {

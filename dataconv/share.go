@@ -5,8 +5,7 @@ import (
 	"sort"
 	"sync"
 
-	itn "github.com/1set/starlet/dataconv/types"
-
+	tps "github.com/1set/starlet/dataconv/types"
 	stdjson "go.starlark.net/lib/json"
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
@@ -439,7 +438,7 @@ func sharedDictToJSON(thread *starlark.Thread, b *starlark.Builtin, args starlar
 // sharedDictFromJSON converts a starlark.Value to a starlark.Dict, and wraps it with a SharedDict.
 func sharedDictFromJSON(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// check the arguments
-	var s itn.StringOrBytes
+	var s tps.StringOrBytes
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "x", &s); err != nil {
 		return nil, err
 	}

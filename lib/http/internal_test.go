@@ -6,8 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	itn "github.com/1set/starlet/dataconv/types"
-
+	"github.com/1set/starlet/dataconv/types"
 	"go.starlark.net/starlark"
 )
 
@@ -18,15 +17,15 @@ func TestSetBody(t *testing.T) {
 	}
 
 	cases := []struct {
-		rawBody      *itn.NullableString
+		rawBody      *types.NullableString
 		formData     map[string]string
 		formEncoding starlark.String
 		jsonData     starlark.Value
 		body         string
 		err          string
 	}{
-		{itn.NewNullableString("hallo"), nil, starlark.String(""), nil, "hallo", ""},
-		{itn.NewNullableString(""), fd, starlark.String(""), nil, "foo=bar+baz", ""},
+		{types.NewNullableString("hallo"), nil, starlark.String(""), nil, "hallo", ""},
+		{types.NewNullableString(""), fd, starlark.String(""), nil, "foo=bar+baz", ""},
 		// TODO - this should check multipart form data is being set
 		{nil, fd, starlark.String("multipart/form-data"), nil, "", ""},
 		{nil, nil, starlark.String(""), starlark.Tuple{starlark.Bool(true), starlark.MakeInt(1), starlark.String("der")}, "[true,1,\"der\"]", ""},
