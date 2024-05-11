@@ -1,9 +1,21 @@
+// Package types provides wrappers for Starlark types that can be unpacked by the Unpack helper functions to interpret call arguments.
 package types
 
 import (
 	"fmt"
 
 	"go.starlark.net/starlark"
+)
+
+// Unpacker is an interface for types that can be unpacked from Starlark values.
+var (
+	_ starlark.Unpacker = (*FloatOrInt)(nil)
+	_ starlark.Unpacker = (*StringOrBytes)(nil)
+	_ starlark.Unpacker = (*NumericValue)(nil)
+)
+
+var (
+	emptyStr string
 )
 
 // FloatOrInt is an Unpacker that converts a Starlark int or float to Go's float64.

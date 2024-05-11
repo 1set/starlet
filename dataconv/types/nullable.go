@@ -6,17 +6,10 @@ import (
 	"go.starlark.net/starlark"
 )
 
-var (
-	emptyStr string
-)
-
 // Unpacker is an interface for types that can be unpacked from Starlark values.
 var (
-	_ starlark.Unpacker = (*FloatOrInt)(nil)
-	_ starlark.Unpacker = (*StringOrBytes)(nil)
 	_ starlark.Unpacker = (*NullableString)(nil)
 	_ starlark.Unpacker = (*NullableDict)(nil)
-	_ starlark.Unpacker = (*NumericValue)(nil)
 )
 
 // NullableString is an Unpacker that converts a Starlark None or string to Go's string.
