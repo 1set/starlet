@@ -141,8 +141,8 @@ type NullableStringOrBytes struct {
 	str *string
 }
 
-// NewNullableString creates and returns a new NullableStringOrBytes.
-func NewNullableString(s string) *NullableStringOrBytes {
+// NewNullableStringOrBytes creates and returns a new NullableStringOrBytes.
+func NewNullableStringOrBytes(s string) *NullableStringOrBytes {
 	return &NullableStringOrBytes{str: &s}
 }
 

@@ -427,14 +427,14 @@ func TestNullableStringOrBytes_Methods(t *testing.T) {
 		},
 		{
 			name:        "empty string",
-			str:         NewNullableString(""),
+			str:         NewNullableStringOrBytes(""),
 			wantStr:     "",
 			wantIsNull:  false,
 			wantIsEmpty: true,
 		},
 		{
 			name:        "non-empty string",
-			str:         NewNullableString("hello"),
+			str:         NewNullableStringOrBytes("hello"),
 			wantStr:     "hello",
 			wantIsNull:  false,
 			wantIsEmpty: false,

@@ -163,19 +163,19 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 		var (
 			getDefaultDict = func() *types.NullableDict { return types.NewNullable(starlark.NewDict(0)) }
 			urlv           starlark.String
-			params         = getDefaultDict()              // default None, expect Dict
-			headers        = getDefaultDict()              // default None, expect Dict
-			auth           starlark.Tuple                  // default empty Tuple, expect Tuple of two strings
-			body           = types.NullableStringOrBytes{} // default None, expect string
-			jsonBody       starlark.Value                  // default None, expect JSON serializable object
-			formBody       = getDefaultDict()              // default None, expect Dict
-			formEncoding   starlark.String                 // default empty string, expect string
+			params         = getDefaultDict()                   // default None, expect Dict
+			headers        = getDefaultDict()                   // default None, expect Dict
+			auth           starlark.Tuple                       // default empty Tuple, expect Tuple of two strings
+			body           = types.NewNullableStringOrBytes("") // default None, expect string
+			jsonBody       starlark.Value                       // default None, expect JSON serializable object
+			formBody       = getDefaultDict()                   // default None, expect Dict
+			formEncoding   starlark.String                      // default empty string, expect string
 			timeout        = types.FloatOrInt(TimeoutSecond)
 			allowRedirect  = starlark.Bool(!DisableRedirect)
 			verifySSL      = starlark.Bool(!SkipInsecureVerify)
 		)
 
-		if err := starlark.UnpackArgs(b.Name(), args, kwargs, "url", &urlv, "params?", params, "headers", headers, "body", &body, "json_body", &jsonBody, "form_body", formBody, "form_encoding", &formEncoding,
+		if err := starlark.UnpackArgs(b.Name(), args, kwargs, "url", &urlv, "params?", params, "headers", headers, "body", body, "json_body", &jsonBody, "form_body", formBody, "form_encoding", &formEncoding,
 			"auth?", &auth, "timeout?", &timeout, "allow_redirects?", &allowRedirect, "verify?", &verifySSL); err != nil {
 			return nil, err
 		}
@@ -211,7 +211,7 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 		if err = setAuth(req, auth); err != nil {
 			return nil, err
 		}
-		if err = setBody(req, &body, formBody.Value(), formEncoding, jsonBody); err != nil {
+		if err = setBody(req, body, formBody.Value(), formEncoding, jsonBody); err != nil {
 			return nil, err
 		}
 

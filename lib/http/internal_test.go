@@ -24,8 +24,8 @@ func TestSetBody(t *testing.T) {
 		body         string
 		err          string
 	}{
-		{types.NewNullableString("hallo"), nil, starlark.String(""), nil, "hallo", ""},
-		{types.NewNullableString(""), fd, starlark.String(""), nil, "foo=bar+baz", ""},
+		{types.NewNullableStringOrBytes("hallo"), nil, starlark.String(""), nil, "hallo", ""},
+		{types.NewNullableStringOrBytes(""), fd, starlark.String(""), nil, "foo=bar+baz", ""},
 		// TODO - this should check multipart form data is being set
 		{nil, fd, starlark.String("multipart/form-data"), nil, "", ""},
 		{nil, nil, starlark.String(""), starlark.Tuple{starlark.Bool(true), starlark.MakeInt(1), starlark.String("der")}, "[true,1,\"der\"]", ""},
