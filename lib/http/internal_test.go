@@ -17,7 +17,7 @@ func TestSetBody(t *testing.T) {
 	}
 
 	cases := []struct {
-		rawBody      *types.NullableString
+		rawBody      *types.NullableStringOrBytes
 		formData     map[string]string
 		formEncoding starlark.String
 		jsonData     starlark.Value

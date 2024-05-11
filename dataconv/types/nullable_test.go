@@ -37,12 +37,12 @@ func TestNullableString_Unpack(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var p NullableString
+			var p NullableStringOrBytes
 			if err := p.Unpack(tt.v); (err != nil) != tt.wantErr {
-				t.Errorf("NullableString.Unpack() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NullableStringOrBytes.Unpack() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if !tt.wantErr && p.GoString() != tt.wantStr {
-				t.Errorf("NullableString.Unpack() got = %v, want %v", p.GoString(), tt.wantStr)
+				t.Errorf("NullableStringOrBytes.Unpack() got = %v, want %v", p.GoString(), tt.wantStr)
 			}
 		})
 	}
@@ -51,7 +51,7 @@ func TestNullableString_Unpack(t *testing.T) {
 func TestNullableString_Methods(t *testing.T) {
 	tests := []struct {
 		name        string
-		str         *NullableString
+		str         *NullableStringOrBytes
 		wantStr     string
 		wantIsNull  bool
 		wantIsEmpty bool
@@ -65,7 +65,7 @@ func TestNullableString_Methods(t *testing.T) {
 		},
 		{
 			name:        "nil value",
-			str:         &NullableString{},
+			str:         &NullableStringOrBytes{},
 			wantStr:     "",
 			wantIsNull:  true,
 			wantIsEmpty: true,
@@ -88,13 +88,13 @@ func TestNullableString_Methods(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if gotStr := tt.str.GoString(); gotStr != tt.wantStr {
-				t.Errorf("NullableString.GoString() = %v, want %v", gotStr, tt.wantStr)
+				t.Errorf("NullableStringOrBytes.GoString() = %v, want %v", gotStr, tt.wantStr)
 			}
 			if gotIsNull := tt.str.IsNull(); gotIsNull != tt.wantIsNull {
-				t.Errorf("NullableString.IsNull() = %v, want %v", gotIsNull, tt.wantIsNull)
+				t.Errorf("NullableStringOrBytes.IsNull() = %v, want %v", gotIsNull, tt.wantIsNull)
 			}
 			if gotIsEmpty := tt.str.IsNullOrEmpty(); gotIsEmpty != tt.wantIsEmpty {
-				t.Errorf("NullableString.IsNullOrEmpty() = %v, want %v", gotIsEmpty, tt.wantIsEmpty)
+				t.Errorf("NullableStringOrBytes.IsNullOrEmpty() = %v, want %v", gotIsEmpty, tt.wantIsEmpty)
 			}
 		})
 	}

@@ -162,13 +162,13 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var (
 			urlv          starlark.String
-			params        = types.NullableDict{}   // default None, expect Dict
-			headers       = types.NullableDict{}   // default None, expect Dict
-			auth          starlark.Tuple           // default empty Tuple, expect Tuple of two strings
-			body          = types.NullableString{} // default None, expect string
-			jsonBody      starlark.Value           // default None, expect JSON serializable object
-			formBody      = types.NullableDict{}   // default None, expect Dict
-			formEncoding  starlark.String          // default empty string, expect string
+			params        = types.NullableDict{}          // default None, expect Dict
+			headers       = types.NullableDict{}          // default None, expect Dict
+			auth          starlark.Tuple                  // default empty Tuple, expect Tuple of two strings
+			body          = types.NullableStringOrBytes{} // default None, expect string
+			jsonBody      starlark.Value                  // default None, expect JSON serializable object
+			formBody      = types.NullableDict{}          // default None, expect Dict
+			formEncoding  starlark.String                 // default empty string, expect string
 			timeout       = types.FloatOrInt(TimeoutSecond)
 			allowRedirect = starlark.Bool(!DisableRedirect)
 			verifySSL     = starlark.Bool(!SkipInsecureVerify)
@@ -354,7 +354,7 @@ func setHeaders(req *http.Request, headers *starlark.Dict) error {
 	return nil
 }
 
-func setBody(req *http.Request, body *types.NullableString, formData *starlark.Dict, formEncoding starlark.String, jsonData starlark.Value) error {
+func setBody(req *http.Request, body *types.NullableStringOrBytes, formData *starlark.Dict, formEncoding starlark.String, jsonData starlark.Value) error {
 	if !body.IsNullOrEmpty() {
 		uq := body.GoString()
 		req.Body = ioutil.NopCloser(strings.NewReader(uq))
