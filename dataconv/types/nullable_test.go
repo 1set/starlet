@@ -155,3 +155,38 @@ func TestNullableDict_AsDict(t *testing.T) {
 		})
 	}
 }
+
+func TestNullableGenerics_Unpack(t *testing.T) {
+	tests := []struct {
+		name     string
+		target   *NullableInt
+		inV      starlark.Value
+		want     starlark.Value
+		wantNull bool
+		wantErr  bool
+	}{
+		{
+			name: "int val",
+			//target: &NullableInt{},
+			target:   NewNullable(starlark.MakeInt(5)),
+			inV:      starlark.MakeInt(10),
+			want:     starlark.MakeInt(10),
+			wantNull: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := tt.name
+			p := tt.target
+			if err := p.Unpack(tt.inV); (err != nil) != tt.wantErr {
+				t.Errorf("Nullable[%s].Unpack() error = %v, wantErr %v", n, err, tt.wantErr)
+			}
+			if tt.wantNull != p.IsNull() {
+				t.Errorf("Nullable[%s].IsNull() got = %v, want %v", n, p.IsNull(), tt.wantNull)
+			}
+			//if !tt.wantErr && !reflect.DeepEqual(p.Value(), tt.want) {
+			//	t.Errorf("Nullable.Unpack() got = %v, want %v", p.Value(), tt.want)
+			//}
+		})
+	}
+}
