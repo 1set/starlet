@@ -45,38 +45,40 @@ func (p *Nullable[T]) Value() T {
 	return *p.value
 }
 
-// NullableInt is an Unpacker that converts a Starlark None or Int.
-type NullableInt = Nullable[starlark.Int]
+type (
+	// NullableInt is an Unpacker that converts a Starlark None or Int.
+	NullableInt = Nullable[starlark.Int]
 
-// NullableFloat is an Unpacker that converts a Starlark None or Float.
-type NullableFloat = Nullable[starlark.Float]
+	// NullableFloat is an Unpacker that converts a Starlark None or Float.
+	NullableFloat = Nullable[starlark.Float]
 
-// NullableBool is an Unpacker that converts a Starlark None or Bool.
-type NullableBool = Nullable[starlark.Bool]
+	// NullableBool is an Unpacker that converts a Starlark None or Bool.
+	NullableBool = Nullable[starlark.Bool]
 
-// NullableString is an Unpacker that converts a Starlark None or String.
-type NullableString = Nullable[starlark.String]
+	// NullableString is an Unpacker that converts a Starlark None or String.
+	NullableString = Nullable[starlark.String]
 
-// NullableBytes is an Unpacker that converts a Starlark None or Bytes.
-type NullableBytes = Nullable[starlark.Bytes]
+	// NullableBytes is an Unpacker that converts a Starlark None or Bytes.
+	NullableBytes = Nullable[starlark.Bytes]
 
-// NullableList is an Unpacker that converts a Starlark None or List.
-type NullableList = Nullable[*starlark.List]
+	// NullableList is an Unpacker that converts a Starlark None or List.
+	NullableList = Nullable[*starlark.List]
 
-// NullableTuple is an Unpacker that converts a Starlark None or Tuple.
-type NullableTuple = Nullable[starlark.Tuple]
+	// NullableTuple is an Unpacker that converts a Starlark None or Tuple.
+	NullableTuple = Nullable[starlark.Tuple]
 
-// NullableSet is an Unpacker that converts a Starlark None or Set.
-type NullableSet = Nullable[*starlark.Set]
+	// NullableSet is an Unpacker that converts a Starlark None or Set.
+	NullableSet = Nullable[*starlark.Set]
 
-// NullableDict is an Unpacker that converts a Starlark None or Dict.
-type NullableDict = Nullable[*starlark.Dict]
+	// NullableDict is an Unpacker that converts a Starlark None or Dict.
+	NullableDict = Nullable[*starlark.Dict]
 
-// NullableIterable is an Unpacker that converts a Starlark None or Iterable.
-type NullableIterable = Nullable[starlark.Iterable]
+	// NullableIterable is an Unpacker that converts a Starlark None or Iterable.
+	NullableIterable = Nullable[starlark.Iterable]
 
-// NullableCallable is an Unpacker that converts a Starlark None or Callable.
-type NullableCallable = Nullable[starlark.Callable]
+	// NullableCallable is an Unpacker that converts a Starlark None or Callable.
+	NullableCallable = Nullable[starlark.Callable]
+)
 
 // Unpacker is an interface for types that can be unpacked from Starlark values.
 var (
