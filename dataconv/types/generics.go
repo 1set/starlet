@@ -32,7 +32,7 @@ func (p *Nullable[T]) Unpack(v starlark.Value) error {
 	} else if t, ok := v.(T); ok {
 		p.value = &t
 	} else {
-		return fmt.Errorf("got %s, want %T or None", v.Type(), p.defaultValue.Type())
+		return fmt.Errorf("got %s, want %s or None", v.Type(), p.defaultValue.Type())
 	}
 	return nil
 }
@@ -58,9 +58,6 @@ type NullableFloat = Nullable[starlark.Float]
 
 // NullableBool is an Unpacker that converts a Starlark None or Bool.
 type NullableBool = Nullable[starlark.Bool]
-
-// NullableBytes is an Unpacker that converts a Starlark None or Bytes.
-type NullableBytes = Nullable[starlark.Bytes]
 
 // NullableList is an Unpacker that converts a Starlark None or List.
 type NullableList = Nullable[*starlark.List]
