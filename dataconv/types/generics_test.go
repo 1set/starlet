@@ -71,7 +71,6 @@ func TestNullableInt_Unpack(t *testing.T) {
 			n := tt.name
 			p := tt.target
 			// run
-			//err := p.Unpack(tt.inV)
 			err := starlark.UnpackArgs("test", []starlark.Value{tt.inV}, nil, "v?", p)
 			// check error
 			if (err != nil) != tt.wantErr {
