@@ -189,6 +189,37 @@ func TestNullableBool(t *testing.T) {
 	testNullableUnpackArgs(t, "bool err", NewNullable(trueVal), starlark.String("not a bool"), trueVal, true, true)
 }
 
+func TestNullableString(t *testing.T) {
+	testNullableUnpack(t, "empty val", &NullableString{}, starlark.String("hello"), starlark.String("hello"), false, false)
+	testNullableUnpack(t, "empty none", &NullableString{}, none, starlark.String(""), true, false)
+	testNullableUnpack(t, "string val", NewNullable(starlark.String("hello")), starlark.String("world"), starlark.String("world"), false, false)
+	testNullableUnpack(t, "string none", NewNullable(starlark.String("hello")), none, starlark.String("hello"), true, false)
+	testNullableUnpack(t, "string err", NewNullable(starlark.String("hello")), starlark.MakeInt(5), starlark.String("hello"), true, true)
+
+	testNullableUnpackArgs(t, "empty val", &NullableString{}, starlark.String("hello"), starlark.String("hello"), false, false)
+	testNullableUnpackArgs(t, "empty none", &NullableString{}, none, starlark.String(""), true, false)
+	testNullableUnpackArgs(t, "string val", NewNullable(starlark.String("hello")), starlark.String("world"), starlark.String("world"), false, false)
+	testNullableUnpackArgs(t, "string none", NewNullable(starlark.String("hello")), none, starlark.String("hello"), true, false)
+	testNullableUnpackArgs(t, "string err", NewNullable(starlark.String("hello")), starlark.MakeInt(5), starlark.String("hello"), true, true)
+}
+
+func TestNullableBytes(t *testing.T) {
+	defaultBytes := starlark.Bytes([]byte{1, 2, 3})
+	newBytes := starlark.Bytes([]byte{4, 5, 6})
+
+	testNullableUnpack(t, "empty val", &NullableBytes{}, newBytes, newBytes, false, false)
+	testNullableUnpack(t, "empty none", &NullableBytes{}, none, starlark.Bytes(""), true, false)
+	testNullableUnpack(t, "bytes val", NewNullable(defaultBytes), newBytes, newBytes, false, false)
+	testNullableUnpack(t, "bytes none", NewNullable(defaultBytes), none, defaultBytes, true, false)
+	testNullableUnpack(t, "bytes err", NewNullable(defaultBytes), starlark.String("foo"), defaultBytes, true, true)
+
+	testNullableUnpackArgs(t, "empty val", &NullableBytes{}, newBytes, newBytes, false, false)
+	testNullableUnpackArgs(t, "empty none", &NullableBytes{}, none, starlark.Bytes(""), true, false)
+	testNullableUnpackArgs(t, "bytes val", NewNullable(defaultBytes), newBytes, newBytes, false, false)
+	testNullableUnpackArgs(t, "bytes none", NewNullable(defaultBytes), none, defaultBytes, true, false)
+	testNullableUnpackArgs(t, "bytes err", NewNullable(defaultBytes), starlark.String("foo"), defaultBytes, true, true)
+}
+
 func TestNullableList(t *testing.T) {
 	var nilList *starlark.List
 
