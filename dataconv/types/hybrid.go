@@ -10,8 +10,9 @@ import (
 // Unpacker is an interface for types that can be unpacked from Starlark values.
 var (
 	_ starlark.Unpacker = (*FloatOrInt)(nil)
-	_ starlark.Unpacker = (*StringOrBytes)(nil)
 	_ starlark.Unpacker = (*NumericValue)(nil)
+	_ starlark.Unpacker = (*StringOrBytes)(nil)
+	_ starlark.Unpacker = (*NullableStringOrBytes)(nil)
 )
 
 var (
@@ -42,38 +43,6 @@ func (p FloatOrInt) GoFloat() float64 {
 // GoInt returns the Go int representation of the FloatOrInt.
 func (p FloatOrInt) GoInt() int {
 	return int(p)
-}
-
-// StringOrBytes is an Unpacker that converts a Starlark string or bytes to Go's string.
-// It works because Go Starlark strings and bytes are both represented as Go strings.
-type StringOrBytes string
-
-// Unpack implements Unpacker.
-func (p *StringOrBytes) Unpack(v starlark.Value) error {
-	switch v := v.(type) {
-	case starlark.String:
-		*p = StringOrBytes(v)
-	case starlark.Bytes:
-		*p = StringOrBytes(v)
-	default:
-		return fmt.Errorf("got %s, want string or bytes", v.Type())
-	}
-	return nil
-}
-
-// GoBytes returns the Go byte slice representation of the StringOrBytes.
-func (p StringOrBytes) GoBytes() []byte {
-	return []byte(p)
-}
-
-// GoString returns the Go string representation of the StringOrBytes.
-func (p StringOrBytes) GoString() string {
-	return string(p)
-}
-
-// StarlarkString returns the Starlark string representation of the StringOrBytes.
-func (p StringOrBytes) StarlarkString() starlark.String {
-	return starlark.String(p)
 }
 
 // NumericValue holds a Starlark numeric value and tracks its type.
@@ -133,4 +102,81 @@ func (n *NumericValue) Value() starlark.Value {
 		return starlark.Float(n.AsFloat())
 	}
 	return n.intValue
+}
+
+// StringOrBytes is an Unpacker that converts a Starlark string or bytes to Go's string.
+// It works because Go Starlark strings and bytes are both represented as Go strings.
+type StringOrBytes string
+
+// Unpack implements Unpacker.
+func (p *StringOrBytes) Unpack(v starlark.Value) error {
+	switch v := v.(type) {
+	case starlark.String:
+		*p = StringOrBytes(v)
+	case starlark.Bytes:
+		*p = StringOrBytes(v)
+	default:
+		return fmt.Errorf("got %s, want string or bytes", v.Type())
+	}
+	return nil
+}
+
+// GoBytes returns the Go byte slice representation of the StringOrBytes.
+func (p StringOrBytes) GoBytes() []byte {
+	return []byte(p)
+}
+
+// GoString returns the Go string representation of the StringOrBytes.
+func (p StringOrBytes) GoString() string {
+	return string(p)
+}
+
+// StarlarkString returns the Starlark string representation of the StringOrBytes.
+func (p StringOrBytes) StarlarkString() starlark.String {
+	return starlark.String(p)
+}
+
+// NullableStringOrBytes is an Unpacker that converts a Starlark None or string to Go's string.
+type NullableStringOrBytes struct {
+	str *string
+}
+
+// NewNullableString creates and returns a new NullableStringOrBytes.
+func NewNullableString(s string) *NullableStringOrBytes {
+	return &NullableStringOrBytes{str: &s}
+}
+
+// Unpack implements Unpacker.
+func (p *NullableStringOrBytes) Unpack(v starlark.Value) error {
+	switch v := v.(type) {
+	case starlark.String:
+		s := string(v)
+		p.str = &s
+	case starlark.Bytes:
+		s := string(v)
+		p.str = &s
+	case starlark.NoneType:
+		p.str = nil
+	default:
+		return fmt.Errorf("got %s, want string, bytes or None", v.Type())
+	}
+	return nil
+}
+
+// GoString returns the Go string representation of the NullableStringOrBytes, if the underlying value is nil, it returns an empty string.
+func (p *NullableStringOrBytes) GoString() string {
+	if p == nil || p.str == nil {
+		return ""
+	}
+	return *p.str
+}
+
+// IsNull returns true if the underlying value is nil.
+func (p *NullableStringOrBytes) IsNull() bool {
+	return p == nil || p.str == nil
+}
+
+// IsNullOrEmpty returns true if the underlying value is nil or an empty string.
+func (p *NullableStringOrBytes) IsNullOrEmpty() bool {
+	return p.IsNull() || p.GoString() == emptyStr
 }

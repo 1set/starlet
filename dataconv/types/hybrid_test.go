@@ -86,83 +86,6 @@ func TestFloatOrInt_Value(t *testing.T) {
 	}
 }
 
-func TestStringOrBytes_Unpack(t *testing.T) {
-	tests := []struct {
-		name    string
-		v       starlark.Value
-		wantStr StringOrBytes
-		wantErr bool
-	}{
-		{
-			name:    "string",
-			v:       starlark.String("foo"),
-			wantStr: "foo",
-		},
-		{
-			name:    "bytes",
-			v:       starlark.Bytes("foo"),
-			wantStr: "foo",
-		},
-		{
-			name:    "int",
-			v:       starlark.MakeInt(1),
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var p StringOrBytes
-			if err := p.Unpack(tt.v); (err != nil) != tt.wantErr {
-				t.Errorf("StringOrBytes.Unpack() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if !tt.wantErr && p != tt.wantStr {
-				t.Errorf("StringOrBytes.Unpack() got = %v, want %v", p, tt.wantStr)
-			}
-		})
-	}
-}
-
-func TestStringOrBytes_Stringer(t *testing.T) {
-	tests := []struct {
-		name     string
-		v        StringOrBytes
-		wantGo   string
-		wantStar starlark.String
-	}{
-		{
-			name:     "empty",
-			v:        "",
-			wantGo:   "",
-			wantStar: starlark.String(""),
-		},
-		{
-			name:     "string",
-			v:        "foo",
-			wantGo:   "foo",
-			wantStar: starlark.String("foo"),
-		},
-		{
-			name:     "bytes",
-			v:        "bar",
-			wantGo:   "bar",
-			wantStar: starlark.String("bar"),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.v.GoString(); got != tt.wantGo {
-				t.Errorf("StringOrBytes.GoString() = %v, want %v", got, tt.wantGo)
-			}
-			if got := tt.v.GoBytes(); string(got) != tt.wantGo {
-				t.Errorf("StringOrBytes.GoBytes() = %v, want %v", got, []byte(tt.wantGo))
-			}
-			if got := tt.v.StarlarkString(); got != tt.wantStar {
-				t.Errorf("StringOrBytes.StarlarkString() = %v, want %v", got, tt.wantStar)
-			}
-		})
-	}
-}
-
 func TestNumericValue(t *testing.T) {
 	integer := func(n int) starlark.Value { return starlark.MakeInt(n) }
 	double := func(n float64) starlark.Value { return starlark.Float(n) }
@@ -357,6 +280,176 @@ func TestNumericValue_Value(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if gotVal := tt.n.Value(); gotVal != tt.wantVal {
 				t.Errorf("NumericValue.Value() = %v, want %v", gotVal, tt.wantVal)
+			}
+		})
+	}
+}
+
+func TestStringOrBytes_Unpack(t *testing.T) {
+	tests := []struct {
+		name    string
+		v       starlark.Value
+		wantStr StringOrBytes
+		wantErr bool
+	}{
+		{
+			name:    "string",
+			v:       starlark.String("foo"),
+			wantStr: "foo",
+		},
+		{
+			name:    "bytes",
+			v:       starlark.Bytes("foo"),
+			wantStr: "foo",
+		},
+		{
+			name:    "int",
+			v:       starlark.MakeInt(1),
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var p StringOrBytes
+			if err := p.Unpack(tt.v); (err != nil) != tt.wantErr {
+				t.Errorf("StringOrBytes.Unpack() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !tt.wantErr && p != tt.wantStr {
+				t.Errorf("StringOrBytes.Unpack() got = %v, want %v", p, tt.wantStr)
+			}
+		})
+	}
+}
+
+func TestStringOrBytes_Stringer(t *testing.T) {
+	tests := []struct {
+		name     string
+		v        StringOrBytes
+		wantGo   string
+		wantStar starlark.String
+	}{
+		{
+			name:     "empty",
+			v:        "",
+			wantGo:   "",
+			wantStar: starlark.String(""),
+		},
+		{
+			name:     "string",
+			v:        "foo",
+			wantGo:   "foo",
+			wantStar: starlark.String("foo"),
+		},
+		{
+			name:     "bytes",
+			v:        "bar",
+			wantGo:   "bar",
+			wantStar: starlark.String("bar"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.v.GoString(); got != tt.wantGo {
+				t.Errorf("StringOrBytes.GoString() = %v, want %v", got, tt.wantGo)
+			}
+			if got := tt.v.GoBytes(); string(got) != tt.wantGo {
+				t.Errorf("StringOrBytes.GoBytes() = %v, want %v", got, []byte(tt.wantGo))
+			}
+			if got := tt.v.StarlarkString(); got != tt.wantStar {
+				t.Errorf("StringOrBytes.StarlarkString() = %v, want %v", got, tt.wantStar)
+			}
+		})
+	}
+}
+
+func TestNullableStringOrBytes_Unpack(t *testing.T) {
+	tests := []struct {
+		name    string
+		v       starlark.Value
+		wantStr string
+		wantErr bool
+	}{
+		{
+			name:    "string",
+			v:       starlark.String("foo"),
+			wantStr: "foo",
+		},
+		{
+			name:    "bytes",
+			v:       starlark.Bytes("bar"),
+			wantStr: "bar",
+		},
+		{
+			name:    "none",
+			v:       starlark.None,
+			wantStr: "",
+		},
+		{
+			name:    "int",
+			v:       starlark.MakeInt(1),
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var p NullableStringOrBytes
+			if err := p.Unpack(tt.v); (err != nil) != tt.wantErr {
+				t.Errorf("NullableStringOrBytes.Unpack() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !tt.wantErr && p.GoString() != tt.wantStr {
+				t.Errorf("NullableStringOrBytes.Unpack() got = %v, want %v", p.GoString(), tt.wantStr)
+			}
+		})
+	}
+}
+
+func TestNullableStringOrBytes_Methods(t *testing.T) {
+	tests := []struct {
+		name        string
+		str         *NullableStringOrBytes
+		wantStr     string
+		wantIsNull  bool
+		wantIsEmpty bool
+	}{
+		{
+			name:        "nil",
+			str:         nil,
+			wantStr:     "",
+			wantIsNull:  true,
+			wantIsEmpty: true,
+		},
+		{
+			name:        "nil value",
+			str:         &NullableStringOrBytes{},
+			wantStr:     "",
+			wantIsNull:  true,
+			wantIsEmpty: true,
+		},
+		{
+			name:        "empty string",
+			str:         NewNullableString(""),
+			wantStr:     "",
+			wantIsNull:  false,
+			wantIsEmpty: true,
+		},
+		{
+			name:        "non-empty string",
+			str:         NewNullableString("hello"),
+			wantStr:     "hello",
+			wantIsNull:  false,
+			wantIsEmpty: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if gotStr := tt.str.GoString(); gotStr != tt.wantStr {
+				t.Errorf("NullableStringOrBytes.GoString() = %v, want %v", gotStr, tt.wantStr)
+			}
+			if gotIsNull := tt.str.IsNull(); gotIsNull != tt.wantIsNull {
+				t.Errorf("NullableStringOrBytes.IsNull() = %v, want %v", gotIsNull, tt.wantIsNull)
+			}
+			if gotIsEmpty := tt.str.IsNullOrEmpty(); gotIsEmpty != tt.wantIsEmpty {
+				t.Errorf("NullableStringOrBytes.IsNullOrEmpty() = %v, want %v", gotIsEmpty, tt.wantIsEmpty)
 			}
 		})
 	}
