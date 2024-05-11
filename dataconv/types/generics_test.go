@@ -175,11 +175,15 @@ func TestNullableBool(t *testing.T) {
 	trueVal := starlark.Bool(true)
 	falseVal := starlark.Bool(false)
 
+	testNullableUnpack(t, "empty val", &NullableBool{}, trueVal, trueVal, false, false)
+	testNullableUnpack(t, "empty none", &NullableBool{}, none, false, true, false)
 	testNullableUnpack(t, "bool true", NewNullable(trueVal), trueVal, trueVal, false, false)
 	testNullableUnpack(t, "bool false", NewNullable(trueVal), falseVal, falseVal, false, false)
 	testNullableUnpack(t, "bool none", NewNullable(trueVal), none, trueVal, true, false)
 	testNullableUnpack(t, "bool err", NewNullable(trueVal), starlark.String("not a bool"), trueVal, true, true)
 
+	testNullableUnpackArgs(t, "empty val", &NullableBool{}, trueVal, trueVal, false, false)
+	testNullableUnpackArgs(t, "empty none", &NullableBool{}, none, false, true, false)
 	testNullableUnpackArgs(t, "bool true", NewNullable(trueVal), trueVal, trueVal, false, false)
 	testNullableUnpackArgs(t, "bool false", NewNullable(trueVal), falseVal, falseVal, false, false)
 	testNullableUnpackArgs(t, "bool none", NewNullable(trueVal), none, trueVal, true, false)
@@ -187,49 +191,76 @@ func TestNullableBool(t *testing.T) {
 }
 
 func TestNullableList(t *testing.T) {
+	var nilList *starlark.List
+
+	testNullableUnpack(t, "empty val", &NullableList{}, starlark.NewList([]starlark.Value{starlark.MakeInt(1), starlark.MakeInt(2)}), starlark.NewList([]starlark.Value{starlark.MakeInt(1), starlark.MakeInt(2)}), false, false)
+	testNullableUnpack(t, "empty none", &NullableList{}, none, nilList, true, false)
 	testNullableUnpack(t, "list val", NewNullable(starlark.NewList([]starlark.Value{starlark.MakeInt(1), starlark.MakeInt(2)})), starlark.NewList([]starlark.Value{starlark.MakeInt(3), starlark.MakeInt(4)}), starlark.NewList([]starlark.Value{starlark.MakeInt(3), starlark.MakeInt(4)}), false, false)
 	testNullableUnpack(t, "list none", NewNullable(starlark.NewList([]starlark.Value{starlark.MakeInt(1), starlark.MakeInt(2)})), none, starlark.NewList([]starlark.Value{starlark.MakeInt(1), starlark.MakeInt(2)}), true, false)
 	testNullableUnpack(t, "list err", NewNullable(starlark.NewList([]starlark.Value{starlark.MakeInt(1), starlark.MakeInt(2)})), starlark.String("foo"), starlark.NewList([]starlark.Value{starlark.MakeInt(1), starlark.MakeInt(2)}), true, true)
+
+	testNullableUnpackArgs(t, "empty val", &NullableList{}, starlark.NewList([]starlark.Value{starlark.MakeInt(1), starlark.MakeInt(2)}), starlark.NewList([]starlark.Value{starlark.MakeInt(1), starlark.MakeInt(2)}), false, false)
+	testNullableUnpackArgs(t, "empty none", &NullableList{}, none, nilList, true, false)
 	testNullableUnpackArgs(t, "list val", NewNullable(starlark.NewList([]starlark.Value{starlark.MakeInt(1), starlark.MakeInt(2)})), starlark.NewList([]starlark.Value{starlark.MakeInt(3), starlark.MakeInt(4)}), starlark.NewList([]starlark.Value{starlark.MakeInt(3), starlark.MakeInt(4)}), false, false)
 	testNullableUnpackArgs(t, "list none", NewNullable(starlark.NewList([]starlark.Value{starlark.MakeInt(1), starlark.MakeInt(2)})), none, starlark.NewList([]starlark.Value{starlark.MakeInt(1), starlark.MakeInt(2)}), true, false)
 	testNullableUnpackArgs(t, "list err", NewNullable(starlark.NewList([]starlark.Value{starlark.MakeInt(1), starlark.MakeInt(2)})), starlark.String("foo"), starlark.NewList([]starlark.Value{starlark.MakeInt(1), starlark.MakeInt(2)}), true, true)
 }
 
 func TestNullableTuple(t *testing.T) {
+	var nilTuple starlark.Tuple
+
+	testNullableUnpack(t, "empty val", &NullableTuple{}, starlark.Tuple{starlark.MakeInt(1), starlark.MakeInt(2)}, starlark.Tuple{starlark.MakeInt(1), starlark.MakeInt(2)}, false, false)
+	testNullableUnpack(t, "empty none", &NullableTuple{}, none, nilTuple, true, false)
 	testNullableUnpack(t, "tuple val", NewNullable(starlark.Tuple{starlark.MakeInt(1), starlark.MakeInt(2)}), starlark.Tuple{starlark.MakeInt(3), starlark.MakeInt(4)}, starlark.Tuple{starlark.MakeInt(3), starlark.MakeInt(4)}, false, false)
 	testNullableUnpack(t, "tuple none", NewNullable(starlark.Tuple{starlark.MakeInt(1), starlark.MakeInt(2)}), none, starlark.Tuple{starlark.MakeInt(1), starlark.MakeInt(2)}, true, false)
 	testNullableUnpack(t, "tuple err", NewNullable(starlark.Tuple{starlark.MakeInt(1), starlark.MakeInt(2)}), starlark.String("foo"), starlark.Tuple{starlark.MakeInt(1), starlark.MakeInt(2)}, true, true)
+
+	testNullableUnpackArgs(t, "empty val", &NullableTuple{}, starlark.Tuple{starlark.MakeInt(1), starlark.MakeInt(2)}, starlark.Tuple{starlark.MakeInt(1), starlark.MakeInt(2)}, false, false)
+	testNullableUnpackArgs(t, "empty none", &NullableTuple{}, none, nilTuple, true, false)
 	testNullableUnpackArgs(t, "tuple val", NewNullable(starlark.Tuple{starlark.MakeInt(1), starlark.MakeInt(2)}), starlark.Tuple{starlark.MakeInt(3), starlark.MakeInt(4)}, starlark.Tuple{starlark.MakeInt(3), starlark.MakeInt(4)}, false, false)
 	testNullableUnpackArgs(t, "tuple none", NewNullable(starlark.Tuple{starlark.MakeInt(1), starlark.MakeInt(2)}), none, starlark.Tuple{starlark.MakeInt(1), starlark.MakeInt(2)}, true, false)
 	testNullableUnpackArgs(t, "tuple err", NewNullable(starlark.Tuple{starlark.MakeInt(1), starlark.MakeInt(2)}), starlark.String("foo"), starlark.Tuple{starlark.MakeInt(1), starlark.MakeInt(2)}, true, true)
 }
 
 func TestNullableSet(t *testing.T) {
+	var nilSet *starlark.Set
 	defaultSet := starlark.NewSet(2)
 	defaultSet.Insert(starlark.MakeInt(1))
 	defaultSet.Insert(starlark.MakeInt(2))
-
 	newSet := starlark.NewSet(2)
 	newSet.Insert(starlark.MakeInt(3))
 	newSet.Insert(starlark.MakeInt(4))
 
+	testNullableUnpack(t, "empty val", &NullableSet{}, newSet, newSet, false, false)
+	testNullableUnpack(t, "empty none", &NullableSet{}, none, nilSet, true, false)
 	testNullableUnpack(t, "set val", NewNullable(defaultSet), newSet, newSet, false, false)
 	testNullableUnpack(t, "set none", NewNullable(defaultSet), none, defaultSet, true, false)
 	testNullableUnpack(t, "set err", NewNullable(defaultSet), starlark.String("foo"), defaultSet, true, true)
+
+	testNullableUnpackArgs(t, "empty val", &NullableSet{}, newSet, newSet, false, false)
+	testNullableUnpackArgs(t, "empty none", &NullableSet{}, none, nilSet, true, false)
 	testNullableUnpackArgs(t, "set val", NewNullable(defaultSet), newSet, newSet, false, false)
 	testNullableUnpackArgs(t, "set none", NewNullable(defaultSet), none, defaultSet, true, false)
 	testNullableUnpackArgs(t, "set err", NewNullable(defaultSet), starlark.String("foo"), defaultSet, true, true)
 }
 
 func TestNullableDict(t *testing.T) {
+	var nilDict *starlark.Dict
 	newDict := starlark.NewDict(1)
 	newDict.SetKey(starlark.String("aloha"), starlark.MakeInt(100))
 	defaultDict := starlark.NewDict(1)
 	defaultDict.SetKey(starlark.String("got"), starlark.MakeInt(1))
 
+	type NullableDict = Nullable[*starlark.Dict]
+
+	testNullableUnpack(t, "empty val", &NullableDict{}, newDict, newDict, false, false)
+	testNullableUnpack(t, "empty none", &NullableDict{}, none, nilDict, true, false)
 	testNullableUnpack(t, "dict val", NewNullable(defaultDict), newDict, newDict, false, false)
 	testNullableUnpack(t, "dict none", NewNullable(defaultDict), none, defaultDict, true, false)
 	testNullableUnpack(t, "dict err", NewNullable(defaultDict), starlark.String("foo"), defaultDict, true, true)
+
+	testNullableUnpackArgs(t, "empty val", &NullableDict{}, newDict, newDict, false, false)
+	testNullableUnpackArgs(t, "empty none", &NullableDict{}, none, nilDict, true, false)
 	testNullableUnpackArgs(t, "dict val", NewNullable(defaultDict), newDict, newDict, false, false)
 	testNullableUnpackArgs(t, "dict none", NewNullable(defaultDict), none, defaultDict, true, false)
 	testNullableUnpackArgs(t, "dict err", NewNullable(defaultDict), starlark.String("foo"), defaultDict, true, true)
@@ -249,6 +280,10 @@ func TestNullableIterable(t *testing.T) {
 	set.Insert(starlark.MakeInt(40))
 	dict := starlark.NewDict(1)
 	dict.SetKey(starlark.String("flower"), starlark.MakeInt(200))
+
+	var nilItr starlark.Iterable
+	testNullableUnpack(t, "empty none", &NullableIterable{}, none, nilItr, true, false)
+	testNullableUnpackArgs(t, "empty none", &NullableIterable{}, none, nilItr, true, false)
 
 	testNullableUnpack(t, "list val", NewNullable(defaultList), list, list, false, false)
 	testNullableUnpack(t, "list none", NewNullable(defaultList), none, defaultList, true, false)
@@ -280,9 +315,12 @@ func TestNullableCallable(t *testing.T) {
 		return starlark.MakeInt(42), nil
 	})
 
+	testNullableUnpack(t, "empty none", &NullableCallable{}, none, nil, true, false)
 	testNullableUnpack(t, "callable val", NewNullable(defaultCallable), callable, callable, false, false)
 	testNullableUnpack(t, "callable none", NewNullable(defaultCallable), none, defaultCallable, true, false)
 	testNullableUnpack(t, "callable err", NewNullable(defaultCallable), starlark.String("foo"), defaultCallable, true, true)
+
+	testNullableUnpackArgs(t, "empty none", &NullableCallable{}, none, nil, true, false)
 	testNullableUnpackArgs(t, "callable val", NewNullable(defaultCallable), callable, callable, false, false)
 	testNullableUnpackArgs(t, "callable none", NewNullable(defaultCallable), none, defaultCallable, true, false)
 	testNullableUnpackArgs(t, "callable err", NewNullable(defaultCallable), starlark.String("foo"), defaultCallable, true, true)

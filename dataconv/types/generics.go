@@ -74,8 +74,8 @@ type NullableTuple = Nullable[starlark.Tuple]
 // NullableSet is an Unpacker that converts a Starlark None or Set.
 type NullableSet = Nullable[*starlark.Set]
 
-// NullableCallable is an Unpacker that converts a Starlark None or Callable.
-type NullableCallable = Nullable[starlark.Callable]
-
 // NullableIterable is an Unpacker that converts a Starlark None or Iterable.
 type NullableIterable = Nullable[starlark.Iterable]
+
+// NullableCallable is an Unpacker that converts a Starlark None or Callable.
+type NullableCallable = Nullable[starlark.Callable]
