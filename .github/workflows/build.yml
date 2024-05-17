@@ -68,17 +68,22 @@ jobs:
           CODACY_PROJECT_TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}
         run:
           bash <(curl -Ls https://coverage.codacy.com/get.sh) report --force-coverage-parser go -r coverage.txt
-      - name: Analyze on Linux
-        if: ${{ runner.os == 'Linux' }}
+      - name: Analyze
+        if: ${{ runner.os == 'macOS' || runner.os == 'Linux' }}
         run: |
           # Setup
-          wget -cqL https://github.com/XAMPPRocky/tokei/releases/download/v12.1.2/tokei-i686-unknown-linux-musl.tar.gz -O tokei.tgz
+          if [[ ${{ runner.os }} == 'Linux' ]]; then
+            wget -cqL https://github.com/XAMPPRocky/tokei/releases/download/v12.1.2/tokei-i686-unknown-linux-musl.tar.gz -O tokei.tgz
+            wget -cqL https://github.com/mgechev/revive/releases/download/v1.3.7/revive_linux_amd64.tar.gz -O revive.tgz
+          elif [[ ${{ runner.os }} == 'macOS' ]]; then
+            wget -cqL https://github.com/XAMPPRocky/tokei/releases/download/v12.1.2/tokei-x86_64-apple-darwin.tar.gz -O tokei.tgz
+            wget -cqL https://github.com/mgechev/revive/releases/download/v1.3.7/revive_darwin_amd64.tar.gz -O revive.tgz
+          fi
           tar zxf tokei.tgz tokei && chmod +x tokei && $SUDO mv tokei /usr/local/bin && rm tokei.tgz
-          wget -cqL https://github.com/mgechev/revive/releases/download/v1.3.7/revive_linux_amd64.tar.gz -O revive.tgz
           tar zxf revive.tgz revive && chmod +x revive && $SUDO mv revive /usr/local/bin && rm revive.tgz
           wget -cqL https://raw.githubusercontent.com/1set/meta/master/revive.toml -O revive.toml
           # Analyze
-          echo "# Analysis on Linux" > $GITHUB_STEP_SUMMARY
+          echo "# Analysis on ${{ runner.os }}" > $GITHUB_STEP_SUMMARY
           uname -a >> $GITHUB_STEP_SUMMARY
           # --- count lines of code
           echo "## Tokei Result" >> $GITHUB_STEP_SUMMARY
@@ -89,4 +94,16 @@ jobs:
           echo "## Revive Result" >> $GITHUB_STEP_SUMMARY
           printf '\n```\n' >> $GITHUB_STEP_SUMMARY
           revive -config revive.toml -formatter friendly ./... >> $GITHUB_STEP_SUMMARY
+          printf '```\n\n' >> $GITHUB_STEP_SUMMARY
+          # --- file size
+          echo "## File Size" >> $GITHUB_STEP_SUMMARY
+          printf '\n```bash\n' >> $GITHUB_STEP_SUMMARY
+          export CMDDIR=cmd/starlet
+          ls -laSh "$CMDDIR" >> $GITHUB_STEP_SUMMARY
+          printf '```\n\n```bash\n' >> $GITHUB_STEP_SUMMARY
+          if [[ ${{ runner.os }} == 'Linux' ]]; then
+            find "$CMDDIR" -maxdepth 1 -type f -size +524288c | xargs -I {} stat --format="%n %s" {} | awk '{printf "%s\t\t%sB\n", $1, $2}' >> $GITHUB_STEP_SUMMARY
+          elif [[ ${{ runner.os }} == 'macOS' ]]; then
+            find "$CMDDIR" -maxdepth 1 -type f -size +524288c | xargs -I {} stat -f "%N %z" {} | awk '{printf "%s\t\t%sB\n", $1, $2}' >> $GITHUB_STEP_SUMMARY
+          fi
           printf '```\n\n' >> $GITHUB_STEP_SUMMARY
