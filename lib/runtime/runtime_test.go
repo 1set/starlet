@@ -16,8 +16,8 @@ func TestLoadModule_Runtime(t *testing.T) {
 		{
 			name: `host`,
 			script: itn.HereDoc(`
-				load('runtime', 'hostname', 'workdir', 'os', 'arch', 'gover')
-				ss = [hostname, workdir, os, arch, gover]
+				load('runtime', 'hostname', 'workdir', 'homedir', 'os', 'arch', 'gover')
+				ss = [hostname, workdir, homedir, os, arch, gover]
 				print(ss)
 				_ = [assert.eq(type(s), "string") for s in ss]
 			`),
