@@ -37,7 +37,7 @@ func init() {
 	flag.StringSliceVarP(&lazyLoadModules, "lazyload", "l", defaultPreloadModules, "lazy load modules when executing Starlark code")
 	flag.StringVarP(&includePath, "include", "i", ".", "include path for Starlark code to load modules from")
 	flag.StringVarP(&codeContent, "code", "c", "", "Starlark code to execute")
-	flag.Uint16VarP(&webPort, "web", "w", 0, "run web server on specified port, it provides reader,writer,fprintf functions for Starlark code to use")
+	flag.Uint16VarP(&webPort, "web", "w", 0, "run web server on specified port, it provides request&response structs for Starlark code to handle HTTP requests")
 	flag.Parse()
 
 	// fix for Windows terminal output

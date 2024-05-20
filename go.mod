@@ -3,7 +3,7 @@ module github.com/1set/starlet
 go 1.18
 
 require (
-	github.com/1set/starlight v0.1.0
+	github.com/1set/starlight v0.1.1
 	github.com/google/uuid v1.6.0
 	github.com/h2so5/here v0.0.0-20200815043652-5e14eb691fae
 	go.starlark.net v0.0.0-20240123142251-f86470692795
