@@ -6,6 +6,7 @@
 
 - `hostname`: A string representing the hostname of the system where the script is being executed.
 - `workdir`: A string representing the current working directory of the process.
+- `homedir`: A string representing the home directory of the user running the process, it's `$HOME` on Unix/Linux, `%USERPROFILE%` on Windows.
 - `os`: A string representing the operating system of the runtime. This value comes from Go's `runtime.GOOS`.
 - `arch`: A string representing the architecture of the machine. This value is derived from Go's `runtime.GOARCH`.
 - `gover`: A string representing the Go runtime version. This is obtained using `runtime.Version()` from the Go standard library.
