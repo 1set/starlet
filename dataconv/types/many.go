@@ -6,7 +6,7 @@ import (
 	"go.starlark.net/starlark"
 )
 
-// OneOrMany is a struct that can hold either a single value or multiple values of a specific type.
+// OneOrMany is a struct that can hold either a single value or multiple values of a specific type, and can be unpacked from a Starlark value.
 type OneOrMany[T starlark.Value] struct {
 	values       []T
 	defaultValue T

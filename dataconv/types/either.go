@@ -40,7 +40,9 @@ func (e *EitherOrNone[A, B]) Unpack(v starlark.Value) error {
 		e.isTypeA = false
 		e.isTypeB = true
 	} else {
-		return fmt.Errorf("got %s, want %s, %s, or None", v.Type(), A(nil).Type(), B(nil).Type())
+		var zeroA A
+		var zeroB B
+		return fmt.Errorf("expected %T or %T or None, got %s", zeroA, zeroB, v.Type())
 	}
 	return nil
 }
