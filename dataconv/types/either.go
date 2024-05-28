@@ -47,37 +47,19 @@ func (e *EitherOrNone[A, B]) Unpack(v starlark.Value) error {
 	return nil
 }
 
-// Type returns the type of the underlying value.
-func (e *EitherOrNone[A, B]) Type() string {
-	if e != nil {
-		if e.isNone {
-			return starlark.None.Type()
-		}
-		if e.isTypeA {
-			var a A
-			return a.Type()
-		}
-		if e.isTypeB {
-			var b B
-			return b.Type()
-		}
-	}
-	return "Unknown"
-}
-
 // IsNone returns true if the value is None.
 func (e *EitherOrNone[A, B]) IsNone() bool {
-	return e.isNone
+	return e != nil && e.isNone
 }
 
 // IsTypeA returns true if the value is of type A.
 func (e *EitherOrNone[A, B]) IsTypeA() bool {
-	return e.isTypeA
+	return e != nil && e.isTypeA
 }
 
 // IsTypeB returns true if the value is of type B.
 func (e *EitherOrNone[A, B]) IsTypeB() bool {
-	return e.isTypeB
+	return e != nil && e.isTypeB
 }
 
 // Value returns the underlying value. You can use IsTypeA and IsTypeB to check which type it is.
@@ -87,7 +69,7 @@ func (e *EitherOrNone[A, B]) Value() starlark.Value {
 
 // ValueA returns the value of type A, if available, and a boolean indicating its presence.
 func (e *EitherOrNone[A, B]) ValueA() (A, bool) {
-	if e.isTypeA {
+	if e != nil && e.isTypeA {
 		return e.value.(A), true
 	}
 	var zero A
@@ -96,11 +78,30 @@ func (e *EitherOrNone[A, B]) ValueA() (A, bool) {
 
 // ValueB returns the value of type B, if available, and a boolean indicating its presence.
 func (e *EitherOrNone[A, B]) ValueB() (B, bool) {
-	if e.isTypeB {
+	if e != nil && e.isTypeB {
 		return e.value.(B), true
 	}
 	var zero B
 	return zero, false
+}
+
+// Type returns the type of the underlying value.
+func (e *EitherOrNone[A, B]) Type() string {
+	if e == nil {
+		return "NilReceiver"
+	}
+	if e.isNone {
+		return starlark.None.Type()
+	}
+	if e.isTypeA {
+		var a A
+		return a.Type()
+	}
+	if e.isTypeB {
+		var b B
+		return b.Type()
+	}
+	return "Unknown"
 }
 
 // Unpacker interface implementation check

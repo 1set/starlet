@@ -113,10 +113,18 @@ func TestEitherOrNone_ValueA(t *testing.T) {
 			inV:    starlark.None,
 			wantOk: false,
 		},
+		{
+			name:   "nil receiver",
+			target: nil,
+			inV:    starlark.String("hello"),
+			wantOk: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.target.Unpack(tt.inV)
+			if tt.target != nil {
+				tt.target.Unpack(tt.inV)
+			}
 			got, ok := tt.target.ValueA()
 			if ok != tt.wantOk {
 				t.Errorf("EitherOrNone[%s].ValueA() ok = %v, want %v", tt.name, ok, tt.wantOk)
@@ -155,10 +163,18 @@ func TestEitherOrNone_ValueB(t *testing.T) {
 			inV:    starlark.None,
 			wantOk: false,
 		},
+		{
+			name:   "nil receiver",
+			target: nil,
+			inV:    starlark.String("hello"),
+			wantOk: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.target.Unpack(tt.inV)
+			if tt.target != nil {
+				tt.target.Unpack(tt.inV)
+			}
 			got, ok := tt.target.ValueB()
 			if ok != tt.wantOk {
 				t.Errorf("EitherOrNone[%s].ValueB() ok = %v, want %v", tt.name, ok, tt.wantOk)
@@ -203,12 +219,12 @@ func TestEitherOrNone_Type(t *testing.T) {
 		{
 			name:   "nil receiver",
 			target: nil,
-			want:   "Unknown",
+			want:   "NilReceiver",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.inV != nil {
+			if tt.inV != nil && tt.target != nil {
 				tt.target.Unpack(tt.inV)
 			}
 			if got := tt.target.Type(); got != tt.want {
