@@ -7,10 +7,6 @@ import (
 	"go.starlark.net/starlark"
 )
 
-var (
-	none = starlark.None
-)
-
 func TestOneOrMany_Unpack(t *testing.T) {
 	tests := []struct {
 		name     string
