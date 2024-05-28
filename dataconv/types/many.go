@@ -101,3 +101,10 @@ func (o *OneOrMany[T]) First() T {
 	}
 	return o.values[0]
 }
+
+// Unpacker is an interface for types that can be unpacked from Starlark values.
+var (
+	_ starlark.Unpacker = (*OneOrMany[starlark.Int])(nil)
+	_ starlark.Unpacker = (*OneOrMany[starlark.String])(nil)
+	_ starlark.Unpacker = (*OneOrMany[*starlark.Dict])(nil)
+)
