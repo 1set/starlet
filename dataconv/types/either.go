@@ -47,6 +47,20 @@ func (e *EitherOrNone[A, B]) Unpack(v starlark.Value) error {
 	return nil
 }
 
+// Type returns the type of the underlying value.
+func (e *EitherOrNone[A, B]) Type() string {
+	if e.isNone {
+		return starlark.None.Type()
+	} else if e.isTypeA {
+		var a A
+		return a.Type()
+	} else if e.isTypeB {
+		var b B
+		return b.Type()
+	}
+	return "Unknown"
+}
+
 // IsNone returns true if the value is None.
 func (e *EitherOrNone[A, B]) IsNone() bool {
 	return e.isNone
@@ -86,13 +100,7 @@ func (e *EitherOrNone[A, B]) ValueB() (B, bool) {
 }
 
 // Unpacker interface implementation check
-var _ starlark.Unpacker = (*EitherOrNone[*starlark.List, *starlark.Dict])(nil)
-
-// Type specific constructors for convenience
-func NewEitherOrNoneListDict() *EitherOrNone[*starlark.List, *starlark.Dict] {
-	return NewEitherOrNone[*starlark.List, *starlark.Dict]()
-}
-
-func NewEitherOrNoneStringInt() *EitherOrNone[starlark.String, starlark.Int] {
-	return NewEitherOrNone[starlark.String, starlark.Int]()
-}
+var (
+	_ starlark.Unpacker = (*EitherOrNone[*starlark.List, *starlark.Dict])(nil)
+	_ starlark.Unpacker = (*EitherOrNone[starlark.String, starlark.Int])(nil)
+)
