@@ -86,6 +86,61 @@ func TestEitherOrNone_Unpack(t *testing.T) {
 	}
 }
 
+func TestEitherOrNone_Value(t *testing.T) {
+	tests := []struct {
+		name    string
+		target  *EitherOrNone[starlark.String, starlark.Int]
+		inV     starlark.Value
+		want    starlark.Value
+		wantErr bool
+	}{
+		{
+			name:    "string value",
+			target:  NewEitherOrNone[starlark.String, starlark.Int](),
+			inV:     starlark.String("hello"),
+			want:    starlark.String("hello"),
+			wantErr: false,
+		},
+		{
+			name:    "int value",
+			target:  NewEitherOrNone[starlark.String, starlark.Int](),
+			inV:     starlark.MakeInt(42),
+			want:    starlark.MakeInt(42),
+			wantErr: false,
+		},
+		{
+			name:    "none value",
+			target:  NewEitherOrNone[starlark.String, starlark.Int](),
+			inV:     starlark.None,
+			want:    nil,
+			wantErr: false,
+		},
+		{
+			name:    "unknown type",
+			target:  new(EitherOrNone[starlark.String, starlark.Int]),
+			want:    nil,
+			wantErr: false,
+		},
+		{
+			name:    "nil receiver",
+			target:  nil,
+			want:    nil,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.inV != nil && tt.target != nil {
+				tt.target.Unpack(tt.inV)
+			}
+			got := tt.target.Value()
+			if (got != nil) != (tt.want != nil) || (got != nil && !reflect.DeepEqual(got, tt.want)) {
+				t.Errorf("EitherOrNone[%s].Value() = %v, want %v", tt.name, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestEitherOrNone_ValueA(t *testing.T) {
 	tests := []struct {
 		name   string

@@ -64,6 +64,10 @@ func (e *EitherOrNone[A, B]) IsTypeB() bool {
 
 // Value returns the underlying value. You can use IsTypeA and IsTypeB to check which type it is.
 func (e *EitherOrNone[A, B]) Value() starlark.Value {
+	if e == nil {
+		var zero starlark.Value
+		return zero
+	}
 	return e.value
 }
 
