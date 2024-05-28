@@ -7,33 +7,6 @@ import (
 	"go.starlark.net/starlark"
 )
 
-func TestEitherOrNone_Type(t *testing.T) {
-	x := NewEitherOrNone[starlark.Int, starlark.String]()
-	x.Unpack(starlark.None)
-	t.Logf("Type: %s", x.Type())
-
-	x.Unpack(starlark.MakeInt(42))
-	t.Logf("Type: %s", x.Type())
-
-	x.Unpack(starlark.String("hello"))
-	t.Logf("Type: %s", x.Type())
-
-	x.Unpack(starlark.NewDict(1))
-	t.Logf("Type: %s", x.Type())
-
-	y := NewEitherOrNone[*starlark.List, *starlark.Dict]()
-	t.Logf("Type: %s", y.Type())
-
-	y.Unpack(starlark.None)
-	t.Logf("Type: %s", y.Type())
-
-	y.Unpack(starlark.NewList([]starlark.Value{starlark.None}))
-	t.Logf("Type: %s", y.Type())
-
-	y.Unpack(starlark.NewDict(1))
-	t.Logf("Type: %s", y.Type())
-}
-
 func TestEitherOrNone_Unpack(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -192,6 +165,54 @@ func TestEitherOrNone_ValueB(t *testing.T) {
 			}
 			if ok && !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("EitherOrNone[%s].ValueB() = %v, want %v", tt.name, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestEitherOrNone_Type(t *testing.T) {
+	tests := []struct {
+		name   string
+		target *EitherOrNone[starlark.String, starlark.Int]
+		inV    starlark.Value
+		want   string
+	}{
+		{
+			name:   "string value",
+			target: NewEitherOrNone[starlark.String, starlark.Int](),
+			inV:    starlark.String("hello"),
+			want:   starlark.String("hello").Type(),
+		},
+		{
+			name:   "int value",
+			target: NewEitherOrNone[starlark.String, starlark.Int](),
+			inV:    starlark.MakeInt(42),
+			want:   starlark.MakeInt(42).Type(),
+		},
+		{
+			name:   "none value",
+			target: NewEitherOrNone[starlark.String, starlark.Int](),
+			inV:    starlark.None,
+			want:   starlark.None.Type(),
+		},
+		{
+			name:   "unknown type",
+			target: new(EitherOrNone[starlark.String, starlark.Int]),
+			want:   "Unknown",
+		},
+		{
+			name:   "nil receiver",
+			target: nil,
+			want:   "Unknown",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.inV != nil {
+				tt.target.Unpack(tt.inV)
+			}
+			if got := tt.target.Type(); got != tt.want {
+				t.Errorf("EitherOrNone[%s].Type() = %v, want %v", tt.name, got, tt.want)
 			}
 		})
 	}

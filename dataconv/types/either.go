@@ -49,14 +49,18 @@ func (e *EitherOrNone[A, B]) Unpack(v starlark.Value) error {
 
 // Type returns the type of the underlying value.
 func (e *EitherOrNone[A, B]) Type() string {
-	if e.isNone {
-		return starlark.None.Type()
-	} else if e.isTypeA {
-		var a A
-		return a.Type()
-	} else if e.isTypeB {
-		var b B
-		return b.Type()
+	if e != nil {
+		if e.isNone {
+			return starlark.None.Type()
+		}
+		if e.isTypeA {
+			var a A
+			return a.Type()
+		}
+		if e.isTypeB {
+			var b B
+			return b.Type()
+		}
 	}
 	return "Unknown"
 }
