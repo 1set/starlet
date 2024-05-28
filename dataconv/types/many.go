@@ -55,7 +55,7 @@ func (o *OneOrMany[T]) Unpack(v starlark.Value) error {
 	return nil
 }
 
-// IsNull checks if the struct is nil or has no underlying slice.
+// IsNull checks if the struct is nil or has no underlying slice. It returns true if the struct is nil or has no underlying slice, no matter if a default value is set.
 func (o *OneOrMany[T]) IsNull() bool {
 	return o == nil || o.values == nil
 }
@@ -75,6 +75,7 @@ func (o *OneOrMany[T]) Len() int {
 }
 
 // Slice returns the underlying slice, or a slice containing the default value if the slice is nil and a default is set.
+// It returns an empty slice if the underlying slice is nil and has no default value.
 func (o *OneOrMany[T]) Slice() []T {
 	if o == nil {
 		return []T{}
@@ -89,6 +90,7 @@ func (o *OneOrMany[T]) Slice() []T {
 }
 
 // First returns the first element in the slice, or the default value if the slice is nil or empty and a default is set.
+// It returns the zero value of the type if the underlying slice is nil and has no default value.
 func (o *OneOrMany[T]) First() T {
 	if o == nil || o.values == nil || len(o.values) == 0 {
 		if o != nil && o.hasDefault {
