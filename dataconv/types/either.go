@@ -1,0 +1,96 @@
+package types
+
+import (
+	"fmt"
+
+	"go.starlark.net/starlark"
+)
+
+// EitherOrNone is an Unpacker that converts a Starlark None, A, or B to Go's starlark.Value.
+type EitherOrNone[A starlark.Value, B starlark.Value] struct {
+	value   starlark.Value
+	isNone  bool
+	isTypeA bool
+	isTypeB bool
+}
+
+// NewEitherOrNone creates and returns a new EitherOrNone.
+func NewEitherOrNone[A starlark.Value, B starlark.Value]() *EitherOrNone[A, B] {
+	return &EitherOrNone[A, B]{isNone: true}
+}
+
+// Unpack implements the starlark.Unpacker interface.
+func (e *EitherOrNone[A, B]) Unpack(v starlark.Value) error {
+	if e == nil {
+		return fmt.Errorf("nil pointer")
+	}
+	if _, ok := v.(starlark.NoneType); ok {
+		e.value = nil
+		e.isNone = true
+		e.isTypeA = false
+		e.isTypeB = false
+	} else if a, ok := v.(A); ok {
+		e.value = a
+		e.isNone = false
+		e.isTypeA = true
+		e.isTypeB = false
+	} else if b, ok := v.(B); ok {
+		e.value = b
+		e.isNone = false
+		e.isTypeA = false
+		e.isTypeB = true
+	} else {
+		return fmt.Errorf("got %s, want %s, %s, or None", v.Type(), A(nil).Type(), B(nil).Type())
+	}
+	return nil
+}
+
+// IsNone returns true if the value is None.
+func (e *EitherOrNone[A, B]) IsNone() bool {
+	return e.isNone
+}
+
+// IsTypeA returns true if the value is of type A.
+func (e *EitherOrNone[A, B]) IsTypeA() bool {
+	return e.isTypeA
+}
+
+// IsTypeB returns true if the value is of type B.
+func (e *EitherOrNone[A, B]) IsTypeB() bool {
+	return e.isTypeB
+}
+
+// Value returns the underlying value. You can use IsTypeA and IsTypeB to check which type it is.
+func (e *EitherOrNone[A, B]) Value() starlark.Value {
+	return e.value
+}
+
+// ValueA returns the value of type A, if available, and a boolean indicating its presence.
+func (e *EitherOrNone[A, B]) ValueA() (A, bool) {
+	if e.isTypeA {
+		return e.value.(A), true
+	}
+	var zero A
+	return zero, false
+}
+
+// ValueB returns the value of type B, if available, and a boolean indicating its presence.
+func (e *EitherOrNone[A, B]) ValueB() (B, bool) {
+	if e.isTypeB {
+		return e.value.(B), true
+	}
+	var zero B
+	return zero, false
+}
+
+// Unpacker interface implementation check
+var _ starlark.Unpacker = (*EitherOrNone[*starlark.List, *starlark.Dict])(nil)
+
+// Type specific constructors for convenience
+func NewEitherOrNoneListDict() *EitherOrNone[*starlark.List, *starlark.Dict] {
+	return NewEitherOrNone[*starlark.List, *starlark.Dict]()
+}
+
+func NewEitherOrNoneStringInt() *EitherOrNone[starlark.String, starlark.Int] {
+	return NewEitherOrNone[starlark.String, starlark.Int]()
+}
