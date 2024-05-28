@@ -26,19 +26,13 @@ func (e *EitherOrNone[A, B]) Unpack(v starlark.Value) error {
 	}
 	if _, ok := v.(starlark.NoneType); ok {
 		e.value = nil
-		e.isNone = true
-		e.isTypeA = false
-		e.isTypeB = false
+		e.isNone, e.isTypeA, e.isTypeB = true, false, false
 	} else if a, ok := v.(A); ok {
 		e.value = a
-		e.isNone = false
-		e.isTypeA = true
-		e.isTypeB = false
+		e.isNone, e.isTypeA, e.isTypeB = false, true, false
 	} else if b, ok := v.(B); ok {
 		e.value = b
-		e.isNone = false
-		e.isTypeA = false
-		e.isTypeB = true
+		e.isNone, e.isTypeA, e.isTypeB = false, false, true
 	} else {
 		var zeroA A
 		var zeroB B
