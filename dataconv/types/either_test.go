@@ -88,44 +88,38 @@ func TestEitherOrNone_Unpack(t *testing.T) {
 
 func TestEitherOrNone_Value(t *testing.T) {
 	tests := []struct {
-		name    string
-		target  *EitherOrNone[starlark.String, starlark.Int]
-		inV     starlark.Value
-		want    starlark.Value
-		wantErr bool
+		name   string
+		target *EitherOrNone[starlark.String, starlark.Int]
+		inV    starlark.Value
+		want   starlark.Value
 	}{
 		{
-			name:    "string value",
-			target:  NewEitherOrNone[starlark.String, starlark.Int](),
-			inV:     starlark.String("hello"),
-			want:    starlark.String("hello"),
-			wantErr: false,
+			name:   "string value",
+			target: NewEitherOrNone[starlark.String, starlark.Int](),
+			inV:    starlark.String("hello"),
+			want:   starlark.String("hello"),
 		},
 		{
-			name:    "int value",
-			target:  NewEitherOrNone[starlark.String, starlark.Int](),
-			inV:     starlark.MakeInt(42),
-			want:    starlark.MakeInt(42),
-			wantErr: false,
+			name:   "int value",
+			target: NewEitherOrNone[starlark.String, starlark.Int](),
+			inV:    starlark.MakeInt(42),
+			want:   starlark.MakeInt(42),
 		},
 		{
-			name:    "none value",
-			target:  NewEitherOrNone[starlark.String, starlark.Int](),
-			inV:     starlark.None,
-			want:    nil,
-			wantErr: false,
+			name:   "none value",
+			target: NewEitherOrNone[starlark.String, starlark.Int](),
+			inV:    starlark.None,
+			want:   nil,
 		},
 		{
-			name:    "unknown type",
-			target:  new(EitherOrNone[starlark.String, starlark.Int]),
-			want:    nil,
-			wantErr: false,
+			name:   "unknown type",
+			target: new(EitherOrNone[starlark.String, starlark.Int]),
+			want:   nil,
 		},
 		{
-			name:    "nil receiver",
-			target:  nil,
-			want:    nil,
-			wantErr: false,
+			name:   "nil receiver",
+			target: nil,
+			want:   nil,
 		},
 	}
 	for _, tt := range tests {
@@ -134,7 +128,7 @@ func TestEitherOrNone_Value(t *testing.T) {
 				tt.target.Unpack(tt.inV)
 			}
 			got := tt.target.Value()
-			if (got != nil) != (tt.want != nil) || (got != nil && !reflect.DeepEqual(got, tt.want)) {
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("EitherOrNone[%s].Value() = %v, want %v", tt.name, got, tt.want)
 			}
 		})
@@ -242,9 +236,13 @@ func TestEitherOrNone_ValueB(t *testing.T) {
 }
 
 func TestEitherOrNone_Type(t *testing.T) {
+	type MyType interface {
+		starlark.Unpacker
+		Type() string
+	}
 	tests := []struct {
 		name   string
-		target *EitherOrNone[starlark.String, starlark.Int]
+		target MyType
 		inV    starlark.Value
 		want   string
 	}{
@@ -252,29 +250,62 @@ func TestEitherOrNone_Type(t *testing.T) {
 			name:   "string value",
 			target: NewEitherOrNone[starlark.String, starlark.Int](),
 			inV:    starlark.String("hello"),
-			want:   starlark.String("hello").Type(),
+			want:   "string",
 		},
 		{
 			name:   "int value",
 			target: NewEitherOrNone[starlark.String, starlark.Int](),
 			inV:    starlark.MakeInt(42),
-			want:   starlark.MakeInt(42).Type(),
+			want:   "int",
 		},
 		{
 			name:   "none value",
 			target: NewEitherOrNone[starlark.String, starlark.Int](),
 			inV:    starlark.None,
-			want:   starlark.None.Type(),
+			want:   "NoneType",
+		},
+		{
+			name:   "dict type",
+			target: NewEitherOrNone[*starlark.List, *starlark.Dict](),
+			inV:    starlark.NewDict(1),
+			want:   "dict",
+		},
+		{
+			name:   "list type",
+			target: NewEitherOrNone[*starlark.List, *starlark.Dict](),
+			inV:    starlark.NewList([]starlark.Value{}),
+			want:   "list",
+		},
+		{
+			name:   "bool type",
+			target: NewEitherOrNone[starlark.Bool, starlark.Float](),
+			inV:    starlark.True,
+			want:   "bool",
+		},
+		{
+			name:   "float type",
+			target: NewEitherOrNone[starlark.Bool, starlark.Float](),
+			inV:    starlark.Float(3.14),
+			want:   "float",
+		},
+		{
+			name:   "builtin type",
+			target: NewEitherOrNone[*starlark.Builtin, *starlark.Function](),
+			inV: starlark.NewBuiltin("test", func(*starlark.Thread, *starlark.Builtin, starlark.Tuple, []starlark.Tuple) (starlark.Value, error) {
+				return starlark.None, nil
+			}),
+			want: "builtin_function_or_method",
+		},
+		{
+			name:   "function type",
+			target: NewEitherOrNone[*starlark.Builtin, *starlark.Function](),
+			inV:    &starlark.Function{},
+			want:   "function",
 		},
 		{
 			name:   "unknown type",
 			target: new(EitherOrNone[starlark.String, starlark.Int]),
 			want:   "Unknown",
-		},
-		{
-			name:   "nil receiver",
-			target: nil,
-			want:   "NilReceiver",
 		},
 	}
 	for _, tt := range tests {
@@ -286,5 +317,10 @@ func TestEitherOrNone_Type(t *testing.T) {
 				t.Errorf("EitherOrNone[%s].Type() = %v, want %v", tt.name, got, tt.want)
 			}
 		})
+	}
+
+	var target *EitherOrNone[starlark.String, starlark.Int]
+	if got := target.Type(); got != "NilReceiver" {
+		t.Errorf("EitherOrNone.Type() = %v, want %v", got, "NilReceiver")
 	}
 }
