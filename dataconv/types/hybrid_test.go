@@ -125,6 +125,14 @@ func TestFloatOrInt_Value(t *testing.T) {
 			wantFlt:   float64(math.MinInt32) - 1,
 		},
 		{
+			name:      "int64_max",
+			v:         FloatOrInt(math.MaxInt64),
+			wantInt:   math.MaxInt,
+			wantInt32: math.MaxInt32,
+			wantInt64: math.MaxInt64,
+			wantFlt:   float64(math.MaxInt64),
+		},
+		{
 			name:      "int64_overflow",
 			v:         FloatOrInt(math.MaxInt64) + 1,
 			wantInt:   math.MaxInt,
@@ -133,7 +141,7 @@ func TestFloatOrInt_Value(t *testing.T) {
 			wantFlt:   float64(math.MaxInt64) + 1,
 		},
 		{
-			name:      "negative_int64_overflow",
+			name:      "negative_int64_underflow",
 			v:         FloatOrInt(math.MinInt64) - 1,
 			wantInt:   math.MinInt,
 			wantInt32: math.MinInt32,
