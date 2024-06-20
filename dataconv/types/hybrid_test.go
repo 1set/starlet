@@ -44,34 +44,39 @@ func TestFloatOrInt_Unpack(t *testing.T) {
 
 func TestFloatOrInt_Value(t *testing.T) {
 	tests := []struct {
-		name    string
-		v       FloatOrInt
-		wantInt int
-		wantFlt float64
+		name      string
+		v         FloatOrInt
+		wantInt   int
+		wantInt32 int32
+		wantFlt   float64
 	}{
 		{
-			name:    "zero",
-			v:       0,
-			wantInt: 0,
-			wantFlt: 0,
+			name:      "zero",
+			v:         0,
+			wantInt:   0,
+			wantInt32: 0,
+			wantFlt:   0,
 		},
 		{
-			name:    "int",
-			v:       1,
-			wantInt: 1,
-			wantFlt: 1,
+			name:      "int",
+			v:         1,
+			wantInt:   1,
+			wantInt32: 1,
+			wantFlt:   1,
 		},
 		{
-			name:    "float",
-			v:       1.2,
-			wantInt: 1,
-			wantFlt: 1.2,
+			name:      "float",
+			v:         1.2,
+			wantInt:   1,
+			wantInt32: 1,
+			wantFlt:   1.2,
 		},
 		{
-			name:    "large",
-			v:       1e12 + 1,
-			wantInt: 1000000000001,
-			wantFlt: 1e12 + 1,
+			name:      "large",
+			v:         1e12 + 1,
+			wantInt:   1000000000001,
+			wantInt32: 2147483647,
+			wantFlt:   1e12 + 1,
 		},
 	}
 	for _, tt := range tests {
@@ -79,8 +84,21 @@ func TestFloatOrInt_Value(t *testing.T) {
 			if got := tt.v.GoInt(); got != tt.wantInt {
 				t.Errorf("FloatOrInt.GoInt() = %v, want %v", got, tt.wantInt)
 			}
+			if got := tt.v.GoInt32(); got != tt.wantInt32 {
+				t.Errorf("FloatOrInt.GoInt32() = %v, want %v", got, tt.wantInt32)
+			}
+			if got := tt.v.GoInt64(); got != int64(tt.wantInt) {
+				t.Errorf("FloatOrInt.GoInt64() = %v, want %v", got, int64(tt.wantInt))
+			}
+
 			if got := tt.v.GoFloat(); got != tt.wantFlt {
 				t.Errorf("FloatOrInt.GoFloat() = %v, want %v", got, tt.wantFlt)
+			}
+			if got := tt.v.GoFloat32(); got != float32(tt.wantFlt) {
+				t.Errorf("FloatOrInt.GoFloat32() = %v, want %v", got, float32(tt.wantFlt))
+			}
+			if got := tt.v.GoFloat64(); got != tt.wantFlt {
+				t.Errorf("FloatOrInt.GoFloat64() = %v, want %v", got, tt.wantFlt)
 			}
 		})
 	}
