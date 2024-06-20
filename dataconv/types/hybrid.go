@@ -168,6 +168,11 @@ func NewNullableStringOrBytes(s string) *NullableStringOrBytes {
 	return &NullableStringOrBytes{str: &s}
 }
 
+// NewNullableStringOrBytesNoDefault creates and returns a new NullableStringOrBytes without a default value.
+func NewNullableStringOrBytesNoDefault() *NullableStringOrBytes {
+	return &NullableStringOrBytes{str: nil}
+}
+
 // Unpack implements Unpacker.
 func (p *NullableStringOrBytes) Unpack(v starlark.Value) error {
 	switch v := v.(type) {
