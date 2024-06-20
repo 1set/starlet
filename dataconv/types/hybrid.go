@@ -41,9 +41,29 @@ func (p FloatOrInt) GoFloat() float64 {
 	return float64(p)
 }
 
+// GoFloat32 returns the Go float32 representation of the FloatOrInt.
+func (p FloatOrInt) GoFloat32() float32 {
+	return float32(p)
+}
+
+// GoFloat64 returns the Go float64 representation of the FloatOrInt.
+func (p FloatOrInt) GoFloat64() float64 {
+	return float64(p)
+}
+
 // GoInt returns the Go int representation of the FloatOrInt.
 func (p FloatOrInt) GoInt() int {
 	return int(p)
+}
+
+// GoInt32 returns the Go int32 representation of the FloatOrInt.
+func (p FloatOrInt) GoInt32() int32 {
+	return int32(p)
+}
+
+// GoInt64 returns the Go int64 representation of the FloatOrInt.
+func (p FloatOrInt) GoInt64() int64 {
+	return int64(p)
 }
 
 // NumericValue holds a Starlark numeric value and tracks its type.
