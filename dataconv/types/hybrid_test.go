@@ -1,6 +1,7 @@
 package types
 
 import (
+	"math"
 	"testing"
 
 	"go.starlark.net/starlark"
@@ -90,6 +91,54 @@ func TestFloatOrInt_Value(t *testing.T) {
 			wantInt32: -2147483648,
 			wantInt64: -1000000000001,
 			wantFlt:   -1e12 - 1,
+		},
+		{
+			name:      "int32_max",
+			v:         FloatOrInt(math.MaxInt32),
+			wantInt:   math.MaxInt32,
+			wantInt32: math.MaxInt32,
+			wantInt64: math.MaxInt32,
+			wantFlt:   float64(math.MaxInt32),
+		},
+		{
+			name:      "int32_overflow",
+			v:         FloatOrInt(math.MaxInt32) + 1,
+			wantInt:   int(math.MaxInt32) + 1,
+			wantInt32: math.MaxInt32,
+			wantInt64: int64(math.MaxInt32) + 1,
+			wantFlt:   float64(math.MaxInt32) + 1,
+		},
+		{
+			name:      "negative_int32_min",
+			v:         FloatOrInt(math.MinInt32),
+			wantInt:   math.MinInt32,
+			wantInt32: math.MinInt32,
+			wantInt64: int64(math.MinInt32),
+			wantFlt:   float64(math.MinInt32),
+		},
+		{
+			name:      "negative_int32_underflow",
+			v:         FloatOrInt(math.MinInt32) - 1,
+			wantInt:   int(math.MinInt32) - 1,
+			wantInt32: math.MinInt32,
+			wantInt64: int64(math.MinInt32) - 1,
+			wantFlt:   float64(math.MinInt32) - 1,
+		},
+		{
+			name:      "int64_overflow",
+			v:         FloatOrInt(math.MaxInt64) + 1,
+			wantInt:   math.MaxInt,
+			wantInt32: math.MaxInt32,
+			wantInt64: math.MaxInt64,
+			wantFlt:   float64(math.MaxInt64) + 1,
+		},
+		{
+			name:      "negative_int64_overflow",
+			v:         FloatOrInt(math.MinInt64) - 1,
+			wantInt:   math.MinInt,
+			wantInt32: math.MinInt32,
+			wantInt64: math.MinInt64,
+			wantFlt:   float64(math.MinInt64) - 1,
 		},
 	}
 	for _, tt := range tests {
