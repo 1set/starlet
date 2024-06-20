@@ -2,6 +2,7 @@ package types
 
 import (
 	"math"
+	"runtime"
 	"testing"
 
 	"go.starlark.net/starlark"
@@ -44,6 +45,13 @@ func TestFloatOrInt_Unpack(t *testing.T) {
 }
 
 func TestFloatOrInt_Value(t *testing.T) {
+	t.Logf("Testing on %s", runtime.GOARCH)
+	t.Logf("MinInt: %d, MaxInt: %d", math.MinInt, math.MaxInt)
+	t.Logf("MinInt32: %d, MaxInt32: %d", math.MinInt32, math.MaxInt32)
+	t.Logf("MinInt64: %d, MaxInt64: %d", math.MinInt64, math.MaxInt64)
+	t.Logf("MinFloat32: %f, MaxFloat32: %f", math.SmallestNonzeroFloat32, math.MaxFloat32)
+	t.Logf("MinFloat64: %f, MaxFloat64: %f", math.SmallestNonzeroFloat64, math.MaxFloat64)
+
 	tests := []struct {
 		name      string
 		v         FloatOrInt
