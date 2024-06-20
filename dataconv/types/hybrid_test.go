@@ -44,6 +44,20 @@ func TestFloatOrInt_Unpack(t *testing.T) {
 	}
 }
 
+func TestOverflow(t *testing.T) {
+	i := math.MaxInt64
+	t.Logf("Int: %d", i)
+	f := FloatOrInt(i)
+	t.Logf("Float: %f", f)
+	f2 := FloatOrInt(i) + 1
+	t.Logf("Float+1: %f", f2)
+	t.Logf("Float <=>: %t %t %t", f2 < f, f2 == f, f2 > f)
+
+	t.Logf("GoInt: %d", f2.GoInt())
+	t.Logf("GoInt32: %d", f2.GoInt32())
+	t.Logf("GoInt64: %d", f2.GoInt64())
+}
+
 func TestFloatOrInt_Value(t *testing.T) {
 	t.Logf("Testing on %s", runtime.GOARCH)
 	t.Logf("MinInt: %d, MaxInt: %d", math.MinInt, math.MaxInt)
@@ -142,19 +156,19 @@ func TestFloatOrInt_Value(t *testing.T) {
 		},
 		{
 			name:      "int64_overflow",
-			v:         FloatOrInt(math.MaxInt64) + 1,
+			v:         FloatOrInt(math.MaxInt64) + 1000,
 			wantInt:   math.MaxInt,
 			wantInt32: math.MaxInt32,
 			wantInt64: math.MaxInt64,
-			wantFlt:   float64(math.MaxInt64) + 1,
+			wantFlt:   float64(math.MaxInt64) + 1000,
 		},
 		{
 			name:      "negative_int64_underflow",
-			v:         FloatOrInt(math.MinInt64) - 1,
+			v:         FloatOrInt(math.MinInt64) - 1000,
 			wantInt:   math.MinInt,
 			wantInt32: math.MinInt32,
 			wantInt64: math.MinInt64,
-			wantFlt:   float64(math.MinInt64) - 1,
+			wantFlt:   float64(math.MinInt64) - 1000,
 		},
 	}
 	for _, tt := range tests {
