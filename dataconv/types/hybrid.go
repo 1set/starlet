@@ -3,6 +3,7 @@ package types
 
 import (
 	"fmt"
+	"math"
 
 	"go.starlark.net/starlark"
 )
@@ -53,17 +54,38 @@ func (p FloatOrInt) GoFloat64() float64 {
 
 // GoInt returns the Go int representation of the FloatOrInt.
 func (p FloatOrInt) GoInt() int {
-	return int(p)
+	f := float64(p)
+	if f < float64(math.MinInt) || f > float64(math.MaxInt) {
+		if f < 0 {
+			return math.MinInt
+		}
+		return math.MaxInt
+	}
+	return int(f)
 }
 
 // GoInt32 returns the Go int32 representation of the FloatOrInt.
 func (p FloatOrInt) GoInt32() int32 {
-	return int32(p)
+	f := float64(p)
+	if f < float64(math.MinInt32) || f > float64(math.MaxInt32) {
+		if f < 0 {
+			return math.MinInt32
+		}
+		return math.MaxInt32
+	}
+	return int32(f)
 }
 
 // GoInt64 returns the Go int64 representation of the FloatOrInt.
 func (p FloatOrInt) GoInt64() int64 {
-	return int64(p)
+	f := float64(p)
+	if f < float64(math.MinInt64) || f > float64(math.MaxInt64) {
+		if f < 0 {
+			return math.MinInt64
+		}
+		return math.MaxInt64
+	}
+	return int64(f)
 }
 
 // NumericValue holds a Starlark numeric value and tracks its type.

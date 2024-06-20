@@ -48,6 +48,7 @@ func TestFloatOrInt_Value(t *testing.T) {
 		v         FloatOrInt
 		wantInt   int
 		wantInt32 int32
+		wantInt64 int64
 		wantFlt   float64
 	}{
 		{
@@ -55,6 +56,7 @@ func TestFloatOrInt_Value(t *testing.T) {
 			v:         0,
 			wantInt:   0,
 			wantInt32: 0,
+			wantInt64: 0,
 			wantFlt:   0,
 		},
 		{
@@ -62,6 +64,7 @@ func TestFloatOrInt_Value(t *testing.T) {
 			v:         1,
 			wantInt:   1,
 			wantInt32: 1,
+			wantInt64: 1,
 			wantFlt:   1,
 		},
 		{
@@ -69,6 +72,7 @@ func TestFloatOrInt_Value(t *testing.T) {
 			v:         1.2,
 			wantInt:   1,
 			wantInt32: 1,
+			wantInt64: 1,
 			wantFlt:   1.2,
 		},
 		{
@@ -76,7 +80,16 @@ func TestFloatOrInt_Value(t *testing.T) {
 			v:         1e12 + 1,
 			wantInt:   1000000000001,
 			wantInt32: 2147483647,
+			wantInt64: 1000000000001,
 			wantFlt:   1e12 + 1,
+		},
+		{
+			name:      "underflow",
+			v:         -1e12 - 1,
+			wantInt:   -1000000000001,
+			wantInt32: -2147483648,
+			wantInt64: -1000000000001,
+			wantFlt:   -1e12 - 1,
 		},
 	}
 	for _, tt := range tests {
@@ -87,8 +100,8 @@ func TestFloatOrInt_Value(t *testing.T) {
 			if got := tt.v.GoInt32(); got != tt.wantInt32 {
 				t.Errorf("FloatOrInt.GoInt32() = %v, want %v", got, tt.wantInt32)
 			}
-			if got := tt.v.GoInt64(); got != int64(tt.wantInt) {
-				t.Errorf("FloatOrInt.GoInt64() = %v, want %v", got, int64(tt.wantInt))
+			if got := tt.v.GoInt64(); got != tt.wantInt64 {
+				t.Errorf("FloatOrInt.GoInt64() = %v, want %v", got, tt.wantInt64)
 			}
 
 			if got := tt.v.GoFloat(); got != tt.wantFlt {
