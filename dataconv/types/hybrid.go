@@ -155,19 +155,24 @@ func (p *StringOrBytes) Unpack(v starlark.Value) error {
 	return nil
 }
 
-// GoBytes returns the Go byte slice representation of the StringOrBytes.
-func (p StringOrBytes) GoBytes() []byte {
-	return []byte(p)
-}
-
 // GoString returns the Go string representation of the StringOrBytes.
 func (p StringOrBytes) GoString() string {
 	return string(p)
 }
 
+// GoBytes returns the Go byte slice representation of the StringOrBytes.
+func (p StringOrBytes) GoBytes() []byte {
+	return []byte(p)
+}
+
 // StarlarkString returns the Starlark string representation of the StringOrBytes.
 func (p StringOrBytes) StarlarkString() starlark.String {
 	return starlark.String(p)
+}
+
+// StarlarkBytes returns the Starlark bytes representation of the StringOrBytes.
+func (p StringOrBytes) StarlarkBytes() starlark.Bytes {
+	return starlark.Bytes(p)
 }
 
 // NullableStringOrBytes is an Unpacker that converts a Starlark None or string to Go's string.
@@ -208,6 +213,30 @@ func (p *NullableStringOrBytes) GoString() string {
 		return ""
 	}
 	return *p.str
+}
+
+// GoBytes returns the Go byte slice representation of the NullableStringOrBytes, if the underlying value is nil, it returns nil.
+func (p *NullableStringOrBytes) GoBytes() []byte {
+	if p == nil || p.str == nil {
+		return nil
+	}
+	return []byte(*p.str)
+}
+
+// StarlarkString returns the Starlark string representation of the NullableStringOrBytes, if the underlying value is nil, it returns a Starlark string with an empty string.
+func (p *NullableStringOrBytes) StarlarkString() starlark.String {
+	if p == nil || p.str == nil {
+		return starlark.String("")
+	}
+	return starlark.String(*p.str)
+}
+
+// StarlarkBytes returns the Starlark bytes representation of the NullableStringOrBytes, if the underlying value is nil, it returns a Starlark bytes with an empty string.
+func (p *NullableStringOrBytes) StarlarkBytes() starlark.Bytes {
+	if p == nil || p.str == nil {
+		return starlark.Bytes("")
+	}
+	return starlark.Bytes(*p.str)
 }
 
 // IsNull returns true if the underlying value is nil.
