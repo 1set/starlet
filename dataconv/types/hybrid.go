@@ -231,7 +231,7 @@ func (p *NullableStringOrBytes) GoBytes() []byte {
 // StarlarkString returns the Starlark string representation of the NullableStringOrBytes, if the underlying value is nil, it returns a Starlark string with an empty string.
 func (p *NullableStringOrBytes) StarlarkString() starlark.String {
 	if p == nil || p.str == nil {
-		return starlark.String("")
+		return ""
 	}
 	return starlark.String(*p.str)
 }
@@ -239,7 +239,7 @@ func (p *NullableStringOrBytes) StarlarkString() starlark.String {
 // StarlarkBytes returns the Starlark bytes representation of the NullableStringOrBytes, if the underlying value is nil, it returns a Starlark bytes with an empty string.
 func (p *NullableStringOrBytes) StarlarkBytes() starlark.Bytes {
 	if p == nil || p.str == nil {
-		return starlark.Bytes("")
+		return ""
 	}
 	return starlark.Bytes(*p.str)
 }
