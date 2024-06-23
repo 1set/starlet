@@ -4,7 +4,9 @@ package random
 import (
 	"crypto/rand"
 	"errors"
+	"math"
 	"math/big"
+	"sort"
 	"sync"
 
 	tps "github.com/1set/starlet/dataconv/types"
@@ -179,6 +181,100 @@ func choice(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, 
 	return seq.Index(i), nil
 }
 
+// choices returns a k sized list of elements chosen from the population with replacement.
+func choices(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var (
+		population starlark.Indexable
+		weights    *starlark.List
+		cumWeights *starlark.List
+		k          starlark.Int
+	)
+
+	if err := starlark.UnpackArgs(bn.Name(), args, kwargs,
+		"population", &population,
+		"weights?", &weights,
+		"cum_weights?", &cumWeights,
+		"k?", &k); err != nil {
+		return nil, err
+	}
+
+	n := population.Len()
+	if n == 0 {
+		return nil, errors.New("population is empty")
+	}
+
+	kInt, ok := k.Int64()
+	if !ok {
+		return nil, errors.New("k is too large")
+	}
+	if kInt <= 0 {
+		kInt = 1
+	}
+
+	var cumulativeWeights []float64
+
+	if cumWeights != nil {
+		if weights != nil {
+			return nil, errors.New("cannot specify both weights and cumulative weights")
+		}
+		cumulativeWeights, err := listToFloat64Slice(cumWeights)
+		if err != nil {
+			return nil, err
+		}
+		if len(cumulativeWeights) != n {
+			return nil, errors.New("the number of weights does not match the population")
+		}
+	} else if weights != nil {
+		relativeWeights, err := listToFloat64Slice(weights)
+		if err != nil {
+			return nil, err
+		}
+		if len(relativeWeights) != n {
+			return nil, errors.New("the number of weights does not match the population")
+		}
+		cumulativeWeights = make([]float64, n)
+		sum := 0.0
+		for i, w := range relativeWeights {
+			sum += w
+			cumulativeWeights[i] = sum
+		}
+	}
+
+	result := make([]starlark.Value, kInt)
+
+	if cumulativeWeights == nil {
+		// Equal probability selection
+		for i := int64(0); i < kInt; i++ {
+			index, err := getRandomInt(n)
+			if err != nil {
+				return nil, err
+			}
+			result[i] = population.Index(index)
+		}
+	} else {
+		// Weighted selection
+		total := cumulativeWeights[n-1]
+		if total <= 0 {
+			return nil, errors.New("total of weights must be greater than zero")
+		}
+		if math.IsInf(total, 0) || math.IsNaN(total) {
+			return nil, errors.New("total of weights must be finite")
+		}
+
+		for i := int64(0); i < kInt; i++ {
+			r, err := getRandomFloat(1 << 53)
+			if err != nil {
+				return nil, err
+			}
+			target := r * total
+			index := sort.SearchFloat64s(cumulativeWeights, target)
+			result[i] = population.Index(index)
+		}
+	}
+
+	return starlark.NewList(result), nil
+}
+
 // shuffle(x) shuffles the sequence x in place.
 func shuffle(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// precondition checks
@@ -324,4 +420,26 @@ func getRandStr(chars string, length int64) (string, error) {
 
 	// convert to string
 	return string(buf), nil
+}
+
+// Helper function to convert a Starlark list to a []float64
+func listToFloat64Slice(list *starlark.List) ([]float64, error) {
+	result := make([]float64, list.Len())
+	iter := list.Iterate()
+	defer iter.Done()
+	var x starlark.Value
+	for i := 0; iter.Next(&x); i++ {
+		if num, ok := x.(starlark.Float); ok {
+			result[i] = float64(num)
+		} else if num, ok := x.(starlark.Int); ok {
+			val, ok := num.Float64()
+			if !ok {
+				return nil, errors.New("integer weight is too large to convert to float64")
+			}
+			result[i] = val
+		} else {
+			return nil, errors.New("weights must be numeric")
+		}
+	}
+	return result, nil
 }
