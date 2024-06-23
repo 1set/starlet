@@ -175,6 +175,11 @@ func (p StringOrBytes) StarlarkBytes() starlark.Bytes {
 	return starlark.Bytes(p)
 }
 
+// IsEmpty returns true if the underlying value is an empty string.
+func (p StringOrBytes) IsEmpty() bool {
+	return p.GoString() == emptyStr
+}
+
 // NullableStringOrBytes is an Unpacker that converts a Starlark None or string to Go's string.
 type NullableStringOrBytes struct {
 	str *string
