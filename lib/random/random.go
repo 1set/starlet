@@ -35,6 +35,7 @@ func LoadModule() (starlark.StringDict, error) {
 					"randb32":   starlark.NewBuiltin("random.randb32", randb32),
 					"randint":   starlark.NewBuiltin("random.randint", randint),
 					"choice":    starlark.NewBuiltin("random.choice", choice),
+					"choices":   starlark.NewBuiltin("random.choices", choices),
 					"shuffle":   starlark.NewBuiltin("random.shuffle", shuffle),
 					"random":    starlark.NewBuiltin("random.random", random),
 					"uniform":   starlark.NewBuiltin("random.uniform", uniform),
@@ -187,7 +188,7 @@ func choices(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 		population starlark.Indexable
 		weights    *starlark.List
 		cumWeights *starlark.List
-		k          starlark.Int
+		k          = 1
 	)
 
 	if err := starlark.UnpackArgs(bn.Name(), args, kwargs,
@@ -198,26 +199,27 @@ func choices(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 		return nil, err
 	}
 
+	// population must be non-empty
 	n := population.Len()
 	if n == 0 {
 		return nil, errors.New("population is empty")
 	}
-
-	kInt, ok := k.Int64()
-	if !ok {
-		return nil, errors.New("k is too large")
-	}
-	if kInt <= 0 {
-		kInt = 1
+	// k should be positive, otherwise return an empty list
+	if k <= 0 {
+		l := starlark.NewList([]starlark.Value{})
+		return l, nil
 	}
 
-	var cumulativeWeights []float64
-
+	// get or calculate cumulative weights
+	var (
+		cumulativeWeights []float64
+		err               error
+	)
 	if cumWeights != nil {
 		if weights != nil {
 			return nil, errors.New("cannot specify both weights and cumulative weights")
 		}
-		cumulativeWeights, err := listToFloat64Slice(cumWeights)
+		cumulativeWeights, err = listToFloat64Slice(cumWeights)
 		if err != nil {
 			return nil, err
 		}
@@ -240,11 +242,11 @@ func choices(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 		}
 	}
 
-	result := make([]starlark.Value, kInt)
-
+	// create the result list
+	result := make([]starlark.Value, n)
 	if cumulativeWeights == nil {
 		// Equal probability selection
-		for i := int64(0); i < kInt; i++ {
+		for i := 0; i < k; i++ {
 			index, err := getRandomInt(n)
 			if err != nil {
 				return nil, err
@@ -261,7 +263,7 @@ func choices(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 			return nil, errors.New("total of weights must be finite")
 		}
 
-		for i := int64(0); i < kInt; i++ {
+		for i := 0; i < k; i++ {
 			r, err := getRandomFloat(1 << 53)
 			if err != nil {
 				return nil, err
@@ -272,6 +274,7 @@ func choices(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 		}
 	}
 
+	// return the result list
 	return starlark.NewList(result), nil
 }
 
@@ -432,11 +435,8 @@ func listToFloat64Slice(list *starlark.List) ([]float64, error) {
 		if num, ok := x.(starlark.Float); ok {
 			result[i] = float64(num)
 		} else if num, ok := x.(starlark.Int); ok {
-			val, ok := num.Float64()
-			if !ok {
-				return nil, errors.New("integer weight is too large to convert to float64")
-			}
-			result[i] = val
+			val := num.Float()
+			result[i] = float64(val)
 		} else {
 			return nil, errors.New("weights must be numeric")
 		}
