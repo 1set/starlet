@@ -437,12 +437,14 @@ func TestStringOrBytes_Stringer(t *testing.T) {
 		v        StringOrBytes
 		wantGo   string
 		wantStar starlark.String
+		empty    bool
 	}{
 		{
 			name:     "empty",
 			v:        "",
 			wantGo:   "",
 			wantStar: starlark.String(""),
+			empty:    true,
 		},
 		{
 			name:     "string",
@@ -467,6 +469,12 @@ func TestStringOrBytes_Stringer(t *testing.T) {
 			}
 			if got := tt.v.StarlarkString(); got != tt.wantStar {
 				t.Errorf("StringOrBytes.StarlarkString() = %v, want %v", got, tt.wantStar)
+			}
+			if got := tt.v.StarlarkBytes(); got != starlark.Bytes(tt.wantStar) {
+				t.Errorf("StringOrBytes.StarlarkBytes() = %v, want %v", got, starlark.Bytes(tt.wantStar))
+			}
+			if got := tt.v.IsEmpty(); got != tt.empty {
+				t.Errorf("StringOrBytes.IsEmpty() = %v, want %v", got, tt.empty)
 			}
 		})
 	}
