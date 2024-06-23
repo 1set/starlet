@@ -48,7 +48,7 @@ var (
 )
 
 func newInt(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var value int64 = 0
+	var value int64
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "value?", &value); err != nil {
 		return nil, err
 	}
@@ -184,7 +184,7 @@ type AtomicString struct {
 }
 
 func newString(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var value string = ""
+	var value string
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "value?", &value); err != nil {
 		return nil, err
 	}
