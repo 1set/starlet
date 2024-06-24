@@ -288,6 +288,59 @@ func TestLoadModule_File(t *testing.T) {
 			fileContent: "Hello\nworld\n123\n[True, False]\n",
 		},
 		{
+			name: `write json no args`,
+			script: itn.HereDoc(`
+				load('file', 'write_json')
+				write_json()
+			`),
+			wantErr: `file.write_json: missing argument for name`,
+		},
+		{
+			name: `write json no data`,
+			script: itn.HereDoc(`
+				load('file', 'write_json')
+				fp = %q
+				write_json(fp)
+			`),
+			wantErr: `file.write_json: missing argument for data`,
+		},
+		{
+			name: `write json invalid data`,
+			script: itn.HereDoc(`
+				load('file', 'write_json')
+				fp = %q
+				write_json(fp, lambda x: x*2)
+			`),
+			wantErr: `json.encode: cannot encode function as JSON`,
+		},
+		{
+			name: `write json string`,
+			script: itn.HereDoc(`
+				load('file', 'write_json')
+				fp = %q
+				write_json(fp, "abc")
+			`),
+			fileContent: `abc`,
+		},
+		{
+			name: `write json bytes`,
+			script: itn.HereDoc(`
+				load('file', 'write_json')
+				fp = %q
+				write_json(fp, b"123")
+			`),
+			fileContent: `123`,
+		},
+		{
+			name: `write json dict`,
+			script: itn.HereDoc(`
+				load('file', 'write_json')
+				fp = %q
+				write_json(fp, {"a": 520})
+			`),
+			fileContent: `{"a":520}`,
+		},
+		{
 			name: `append bytes`,
 			script: itn.HereDoc(`
 				load('file', 'append_bytes')
