@@ -25,6 +25,12 @@ func TestEitherOrNone_Unpack(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:    "empty struct",
+			target:  &EitherOrNone[starlark.String, starlark.Int]{},
+			inV:     nil,
+			wantErr: true,
+		},
+		{
 			name:    "string value",
 			target:  NewEitherOrNone[starlark.String, starlark.Int](),
 			inV:     starlark.String("hello"),
