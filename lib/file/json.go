@@ -65,6 +65,63 @@ func writeJSON(name, funcName string, override bool, data starlark.Value) error 
 	}
 }
 
+// writeJSONL writes the given JSON lines into a file.
+func writeJSONL(name, funcName string, override bool, data starlark.Value) error {
+	wf := AppendFileLines
+	if override {
+		wf = WriteFileLines
+	}
+
+	// handle all types of iterable, and allow string or bytes, for other types, encode to lines of JSON
+	var (
+		ls  []string
+		err error
+	)
+	switch v := data.(type) {
+	case starlark.String:
+		return wf(name, []string{v.GoString()})
+	case starlark.Bytes:
+		return wf(name, []string{string(v)})
+	case *starlark.List:
+		ls, err = convIterJSONL(v)
+	case starlark.Tuple:
+		ls, err = convIterJSONL(v)
+	case *starlark.Set:
+		ls, err = convIterJSONL(v)
+	default:
+		// convert to JSON
+		s, err := starlarkJSONEncode(v)
+		if err != nil {
+			return err
+		}
+		return wf(name, []string{s})
+	}
+	if err != nil {
+		return err
+	}
+
+	// write lines
+	return wf(name, ls)
+}
+
+func convIterJSONL(lst starlark.Iterable) (lines []string, err error) {
+	iter := lst.Iterate()
+	defer iter.Done()
+
+	var (
+		s string
+		x starlark.Value
+	)
+	for iter.Next(&x) {
+		s, err = starlarkJSONEncode(x)
+		if err != nil {
+			return
+		}
+		lines = append(lines, s)
+	}
+	return
+}
+
 // starlarkJSONDecode decodes the JSON bytes into a Starlark value via standard JSON module from Starlark.
 func starlarkJSONDecode(data []byte) (starlark.Value, error) {
 	// get the JSON decoder

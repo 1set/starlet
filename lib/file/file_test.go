@@ -383,6 +383,89 @@ func TestLoadModule_File(t *testing.T) {
 			fileContent: `{"a":520}`,
 		},
 		{
+			name: `write jsonl no args`,
+			script: itn.HereDoc(`
+				load('file', 'write_jsonl')
+				write_jsonl()
+			`),
+			wantErr: `file.write_jsonl: missing argument for name`,
+		},
+		{
+			name: `write jsonl no data`,
+			script: itn.HereDoc(`
+				load('file', 'write_jsonl')
+				fp = %q
+				write_jsonl(fp)
+			`),
+			wantErr: `file.write_jsonl: missing argument for data`,
+		},
+		{
+			name: `write jsonl invalid data`,
+			script: itn.HereDoc(`
+				load('file', 'write_jsonl')
+				fp = %q
+				write_jsonl(fp, lambda x: x*2)
+			`),
+			wantErr: `json.encode: cannot encode function as JSON`,
+		},
+		{
+			name: `write jsonl string`,
+			script: itn.HereDoc(`
+				load('file', 'write_jsonl')
+				fp = %q
+				write_jsonl(fp, "abc")
+			`),
+			fileContent: "abc\n",
+		},
+		{
+			name: `write jsonl bytes`,
+			script: itn.HereDoc(`
+				load('file', 'write_jsonl')
+				fp = %q
+				write_jsonl(fp, b"123")
+			`),
+			fileContent: "123\n",
+		},
+		{
+			name: `write jsonl dict`,
+			script: itn.HereDoc(`
+				load('file', 'write_jsonl')
+				fp = %q
+				write_jsonl(fp, {"b": True})
+				write_jsonl(fp, {"a": 520})
+			`),
+			fileContent: "{\"a\":520}\n",
+		},
+		{
+			name: `write jsonl list`,
+			script: itn.HereDoc(`
+				load('file', 'write_jsonl')
+				fp = %q
+				l = [{"a": 520}, {"b": True}]
+				write_jsonl(fp, l)
+			`),
+			fileContent: "{\"a\":520}\n{\"b\":true}\n",
+		},
+		{
+			name: `write jsonl tuple`,
+			script: itn.HereDoc(`
+				load('file', 'write_jsonl')
+				fp = %q
+				l = ({"a": 520}, {"b": True}, {"c": "hello"})
+				write_jsonl(fp, l)
+			`),
+			fileContent: "{\"a\":520}\n{\"b\":true}\n{\"c\":\"hello\"}\n",
+		},
+		{
+			name: `write jsonl set`,
+			script: itn.HereDoc(`
+				load('file', 'write_jsonl')
+				fp = %q
+				write_jsonl(fp, set({"a": 520}))
+			`),
+			fileContent: "\"a\"\n",
+		},
+		{
 			name: `append json no args`,
 			script: itn.HereDoc(`
 				load('file', 'append_json')

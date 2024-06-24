@@ -43,10 +43,12 @@ func LoadModule() (starlark.StringDict, error) {
 					"write_string":  wrapWriteFile("write_string", true, writeString),
 					"write_lines":   wrapWriteFile("write_lines", true, writeLines),
 					"write_json":    wrapWriteFile("write_json", true, writeJSON),
+					"write_jsonl":   wrapWriteFile("write_jsonl", true, writeJSONL),
 					"append_bytes":  wrapWriteFile("append_bytes", false, writeBytes),
 					"append_string": wrapWriteFile("append_string", false, writeString),
 					"append_lines":  wrapWriteFile("append_lines", false, writeLines),
 					"append_json":   wrapWriteFile("append_json", false, writeJSON),
+					"append_jsonl":  wrapWriteFile("append_jsonl", false, writeJSONL),
 				},
 			},
 		}
