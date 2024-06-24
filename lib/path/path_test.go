@@ -297,6 +297,23 @@ func TestLoadModule_Path(t *testing.T) {
 			`),
 		},
 		{
+			name: `listdir: invalid filter`,
+			script: itn.HereDoc(`
+				load('path', 'listdir')
+				p = listdir('.', filter=lambda x: len(x))
+			`),
+			wantErr: `got int, want bool`,
+		},
+		{
+			name: `listdir: filter file`,
+			script: itn.HereDoc(`
+				load('path', 'listdir')
+				p = listdir('.', filter=lambda x: not x.endswith('.go'))
+				print("listdir:", p)
+				assert.true('path_test.go' not in p)
+			`),
+		},
+		{
 			name: `listdir: list dev`,
 			script: itn.HereDoc(`
 				load('path', 'listdir')
