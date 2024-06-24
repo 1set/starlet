@@ -300,6 +300,14 @@ func TestLoadModule_Path(t *testing.T) {
 			name: `listdir: invalid filter`,
 			script: itn.HereDoc(`
 				load('path', 'listdir')
+				p = listdir('.', filter=123)
+			`),
+			wantErr: `got int, want <nil> or None`,
+		},
+		{
+			name: `listdir: mistyped filter`,
+			script: itn.HereDoc(`
+				load('path', 'listdir')
 				p = listdir('.', filter=lambda x: len(x))
 			`),
 			wantErr: `got int, want bool`,
