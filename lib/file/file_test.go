@@ -574,7 +574,7 @@ func TestLoadModule_File(t *testing.T) {
 			script: itn.HereDoc(`
 				load('file', 'append_jsonl')
 				fp = %q
-				append_jsonl(fp, lambda x: x*2)
+				append_jsonl(fp, [lambda x: x*2])
 			`),
 			wantErr: `json.encode: cannot encode function as JSON`,
 		},
