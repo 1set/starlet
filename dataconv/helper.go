@@ -2,6 +2,7 @@ package dataconv
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -196,4 +197,16 @@ func StarString(x starlark.Value) string {
 	default:
 		return v.String()
 	}
+}
+
+// GetThreadContext returns the context of the given thread, or new context if not found.
+func GetThreadContext(thread *starlark.Thread) context.Context {
+	if thread != nil {
+		if c := thread.Local("context"); c != nil {
+			if co, ok := c.(context.Context); ok {
+				return co
+			}
+		}
+	}
+	return context.Background()
 }

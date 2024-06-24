@@ -2,7 +2,6 @@
 package goidiomatic
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -265,12 +264,7 @@ func sleep(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kw
 	}
 	dur := time.Duration(float64(sec) * float64(time.Second))
 	// get the context
-	ctx := context.TODO()
-	if c := thread.Local("context"); c != nil {
-		if co, ok := c.(context.Context); ok {
-			ctx = co
-		}
-	}
+	ctx := dataconv.GetThreadContext(thread)
 	// sleep
 	t := time.NewTimer(dur)
 	defer t.Stop()
