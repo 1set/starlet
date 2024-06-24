@@ -2,6 +2,7 @@ package file
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/1set/starlet/dataconv"
 	stdjson "go.starlark.net/lib/json"
@@ -15,6 +16,31 @@ func readJSON(name string) (starlark.Value, error) {
 		return nil, err
 	}
 	return starlarkJSONDecode(data)
+}
+
+// readJSONL reads the whole named file and decodes the contents as JSON lines for Starlark.
+func readJSONL(name string) (starlark.Value, error) {
+	var (
+		cnt    int
+		values []starlark.Value
+	)
+	if err := readFileByLine(name, func(line string) error {
+		cnt++
+		// skip empty lines
+		if strings.TrimSpace(line) == emptyStr {
+			return nil
+		}
+		// convert to Starlark value
+		v, err := starlarkJSONDecode([]byte(line))
+		if err != nil {
+			return fmt.Errorf("line %d: %w", cnt, err)
+		}
+		values = append(values, v)
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return starlark.NewList(values), nil
 }
 
 // writeJSON writes the given JSON as string into a file.

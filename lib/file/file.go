@@ -38,6 +38,7 @@ func LoadModule() (starlark.StringDict, error) {
 					"read_string":   wrapReadFile("read_string", readString),
 					"read_lines":    wrapReadFile("read_lines", readLines),
 					"read_json":     wrapReadFile("read_json", readJSON),
+					"read_jsonl":    wrapReadFile("read_jsonl", readJSONL),
 					"write_bytes":   wrapWriteFile("write_bytes", true, writeBytes),
 					"write_string":  wrapWriteFile("write_string", true, writeString),
 					"write_lines":   wrapWriteFile("write_lines", true, writeLines),
