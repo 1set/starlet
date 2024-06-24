@@ -2,7 +2,6 @@ package types
 
 import (
 	"fmt"
-	"reflect"
 
 	"go.starlark.net/starlark"
 )
@@ -48,18 +47,6 @@ func (p *Nullable[T]) Value() T {
 		return p.defaultValue
 	}
 	return *p.value
-}
-
-func isInterfaceNil(i interface{}) bool {
-	if i == nil {
-		return true
-	}
-	defer func() { recover() }()
-	switch reflect.TypeOf(i).Kind() {
-	case reflect.Ptr, reflect.UnsafePointer, reflect.Interface, reflect.Struct, reflect.Slice, reflect.Map, reflect.Chan, reflect.Func:
-		return reflect.ValueOf(i).IsNil()
-	}
-	return false
 }
 
 type (
