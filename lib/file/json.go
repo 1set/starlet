@@ -2,6 +2,7 @@ package file
 
 import (
 	"fmt"
+
 	"github.com/1set/starlet/dataconv"
 	stdjson "go.starlark.net/lib/json"
 	"go.starlark.net/starlark"
@@ -14,6 +15,28 @@ func readJSON(name string) (starlark.Value, error) {
 		return nil, err
 	}
 	return starlarkJSONDecode(data)
+}
+
+// writeJSON writes the given JSON as string into a file.
+func writeJSON(name, funcName string, override bool, data starlark.Value) error {
+	wf := AppendFileString
+	if override {
+		wf = WriteFileString
+	}
+	// treat starlark.Bytes and starlark.String as the same type, just convert to string, for other types, encode to JSON
+	switch v := data.(type) {
+	case starlark.Bytes:
+		return wf(name, string(v))
+	case starlark.String:
+		return wf(name, string(v))
+	default:
+		// convert to JSON
+		s, err := starlarkJSONEncode(v)
+		if err != nil {
+			return err
+		}
+		return wf(name, s)
+	}
 }
 
 // starlarkJSONDecode decodes the JSON bytes into a Starlark value via standard JSON module from Starlark.
