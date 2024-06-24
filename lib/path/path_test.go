@@ -305,6 +305,14 @@ func TestLoadModule_Path(t *testing.T) {
 			wantErr: `got int, want bool`,
 		},
 		{
+			name: `listdir: filter fail`,
+			script: itn.HereDoc(`
+				load('path', 'listdir')
+				p = listdir('.', filter=lambda x: fail("inner"))
+			`),
+			wantErr: `fail: inner`,
+		},
+		{
 			name: `listdir: filter file`,
 			script: itn.HereDoc(`
 				load('path', 'listdir')
