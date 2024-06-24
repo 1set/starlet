@@ -45,7 +45,11 @@ func (o *OneOrMany[T]) Unpack(v starlark.Value) error {
 			if t, ok := x.(T); ok {
 				sl = append(sl, t)
 			} else {
-				return fmt.Errorf("expected %T, got %s", o.defaultValue, x.Type())
+				gt := "nil"
+				if x != nil {
+					gt = x.Type()
+				}
+				return fmt.Errorf("expected %T, got %s", o.defaultValue, gt)
 			}
 		}
 		o.values = sl

@@ -224,6 +224,11 @@ func TestOneOrMany_IsNull(t *testing.T) {
 			want:   true,
 		},
 		{
+			name:   "empty struct",
+			target: &OneOrMany[starlark.Int]{},
+			want:   true,
+		},
+		{
 			name:   "empty no default",
 			target: NewOneOrManyNoDefault[starlark.Int](),
 			want:   true,
@@ -341,6 +346,18 @@ func TestOneOrMany_UnpackArgs(t *testing.T) {
 			name:    "nil receiver",
 			target:  nil,
 			inV:     starlark.MakeInt(10),
+			wantErr: true,
+		},
+		{
+			name:    "empty struct with list of mistype",
+			target:  &OneOrMany[starlark.Int]{},
+			inV:     starlark.NewList([]starlark.Value{starlark.String("s")}),
+			wantErr: true,
+		},
+		{
+			name:    "empty struct with list of nil",
+			target:  &OneOrMany[starlark.Int]{},
+			inV:     starlark.NewList([]starlark.Value{nil}),
 			wantErr: true,
 		},
 		{
