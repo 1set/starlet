@@ -136,6 +136,22 @@ func TestLoadModule_File(t *testing.T) {
 			`),
 		},
 		{
+			name: `read json no args`,
+			script: itn.HereDoc(`
+				load('file', 'read_json')
+				j1 = read_json()
+			`),
+			wantErr: `file.read_json: missing argument for name`,
+		},
+		{
+			name: `read broken json`,
+			script: itn.HereDoc(`
+				load('file', 'read_json')
+				j1 = read_json('testdata/1line.txt')
+			`),
+			wantErr: `json.decode: at offset`,
+		},
+		{
 			name: `read json`,
 			script: itn.HereDoc(`
 				load('file', 'read_json')
