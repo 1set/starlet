@@ -144,6 +144,14 @@ func TestLoadModule_File(t *testing.T) {
 			wantErr: `file.read_json: missing argument for name`,
 		},
 		{
+			name: `read json not found`,
+			script: itn.HereDoc(`
+				load('file', 'read_json')
+				j1 = read_json("no-such-file")
+			`),
+			wantErr: `open no-such-file`,
+		},
+		{
 			name: `read broken json`,
 			script: itn.HereDoc(`
 				load('file', 'read_json')
