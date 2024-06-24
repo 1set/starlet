@@ -116,22 +116,31 @@ func checkSymlinkExist(path string) bool {
 // listDirContents returns a list of directory contents.
 func listDirContents(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
-		path      string
-		recursive bool
+		path       string
+		recursive  bool
+		filterFunc = tps.NullableCallable{}
 	)
-	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "path", &path, "recursive?", &recursive); err != nil {
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "path", &path, "recursive?", &recursive, "filter?", &filterFunc); err != nil {
 		return nil, err
 	}
+	// get filter func
+	var ff starlark.Callable
+	if !filterFunc.IsNull() {
+		ff = filterFunc.Value()
+	}
+
 	// check root stat
 	rootInfo, err := os.Lstat(path)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", b.Name(), err)
 	}
+
 	// check if path is a directory, if not return empty list
 	var sl []starlark.Value
 	if !rootInfo.IsDir() {
 		return starlark.NewList(sl), nil
 	}
+
 	// scan directory contents
 	if err := filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -141,8 +150,23 @@ func listDirContents(thread *starlark.Thread, b *starlark.Builtin, args starlark
 		if os.SameFile(rootInfo, info) {
 			return nil
 		}
+		// filter path
+		sp := starlark.String(p)
+		if ff != nil {
+			filtered, err := starlark.Call(thread, ff, starlark.Tuple{sp}, nil)
+			if err != nil {
+				return fmt.Errorf("filter %q: %w", p, err)
+			}
+			if fb, ok := filtered.(starlark.Bool); !ok {
+				return fmt.Errorf("filter %q: got %s, want bool", p, filtered.Type())
+			} else if fb == false {
+				return nil // skip path
+			}
+		}
+
 		// add path to list
-		sl = append(sl, starlark.String(p))
+		sl = append(sl, sp)
+
 		// check if we should list recursively
 		if !recursive && p != path && info.IsDir() {
 			return filepath.SkipDir
