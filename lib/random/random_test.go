@@ -87,6 +87,167 @@ func TestLoadModule_Random(t *testing.T) {
 				return res.(starlark.Int) == three
 			},
 		},
+		// choices
+		{
+			name: "choices with no args",
+			script: itn.HereDoc(`
+				load('random', 'choices')
+				choices()
+			`),
+			wantErr: `random.choices: missing argument for population`,
+		},
+		{
+			name: "choices with invalid type",
+			script: itn.HereDoc(`
+				load('random', 'choices')
+				choices(123)
+			`),
+			wantErr: `random.choices: for parameter population: got int, want starlark.Indexable`,
+		},
+		{
+			name: "choices with empty population",
+			script: itn.HereDoc(`
+				load('random', 'choices')
+				choices([])
+			`),
+			wantErr: `population is empty`,
+		},
+		{
+			name: "choices with mismatch weights",
+			script: itn.HereDoc(`
+				load('random', 'choices')
+				choices([1, 2, 3], weights=[1, 2])
+			`),
+			wantErr: `the number of weights does not match the population`,
+		},
+		{
+			name: "choices with mismatch cum_weights",
+			script: itn.HereDoc(`
+				load('random', 'choices')
+				choices([1, 2, 3], cum_weights=[1, 2])
+			`),
+			wantErr: `the number of weights does not match the population`,
+		},
+		{
+			name: "choices with both weights and cum_weights",
+			script: itn.HereDoc(`
+				load('random', 'choices')
+				choices([1, 2, 3], weights=[1, 1, 1], cum_weights=[1, 2, 3])
+			`),
+			wantErr: `cannot specify both weights and cumulative weights`,
+		},
+		{
+			name: "choices with negative weights",
+			script: itn.HereDoc(`
+				load('random', 'choices')
+				choices([1, 2, 3], weights=[1, -10, 1])
+			`),
+			wantErr: `total of weights must be greater than zero`,
+		},
+		{
+			name: "choices with decreasing cum_weights",
+			script: itn.HereDoc(`
+				load('random', 'choices')
+				choices([1, 2, 3], cum_weights=[3, 2, 2])
+			`),
+			wantErr: `cumulative weights must be non-decreasing`,
+		},
+		{
+			name: "choices with non-number weights",
+			script: itn.HereDoc(`
+				load('random', 'choices')
+				choices([1, 2, 3], weights=["A", "B", "C"])
+			`),
+			wantErr: `weights must be numeric`,
+		},
+		{
+			name: "choices with zero weights",
+			script: itn.HereDoc(`
+				load('random', 'choices')
+				choices([1, 2, 3], weights=[0, 0, 0])
+			`),
+			wantErr: `total of weights must be greater than zero`,
+		},
+		{
+			name: "choices with nan weights",
+			script: itn.HereDoc(`
+				load('random', 'choices')
+				choices([1, 2, 3], weights=[1, 2, float('nan')])
+			`),
+			wantErr: `total of weights must be finite`,
+		},
+		{
+			name: "choices with inf weights",
+			script: itn.HereDoc(`
+				load('random', 'choices')
+				choices([1, 2, 3], weights=[1, 2, float('inf')])
+			`),
+			wantErr: `total of weights must be finite`,
+		},
+		{
+			name: "choices without weights",
+			script: itn.HereDoc(`
+				load('random', 'choices')
+				print(choices([1, 2, 3]))
+			`),
+		},
+		{
+			name: "choices weights",
+			script: itn.HereDoc(`
+				load('random', 'choices')
+				print(choices((1, 2, 3), weights=[1, 1, 5]))
+			`),
+		},
+		{
+			name: "choices cum_weights",
+			script: itn.HereDoc(`
+				load('random', 'choices')
+				print(choices([1, 2, 3], cum_weights=[1, 2, 8]))
+			`),
+		},
+		{
+			name: "choices indexable",
+			script: itn.HereDoc(`
+				load('random', 'choices')
+				choices(range(3), cum_weights=[0, 0, 8])
+			`),
+		},
+		{
+			name: "choices with k<=0",
+			script: itn.HereDoc(`
+				load('random', 'choices')
+				a = choices([1, 2, 3], k=0)
+				assert.eq(a, [])
+				b = choices([1, 2, 3], k=-7)
+				assert.eq(b, [])
+			`),
+		},
+		{
+			name: "choices with k = 2",
+			script: itn.HereDoc(`
+				load('random', 'choices')
+				a = choices([1, 2, 3], k=2)
+				assert.eq(len(a), 2)
+			`),
+		},
+		{
+			name: "choices weights has 0",
+			script: itn.HereDoc(`
+				load('random', 'choices')
+				a = choices([1, 2, 3], weights=[0, 1, 0])
+				assert.eq(a, [2])
+			`),
+		},
+		{
+			name: "choices cum_weights has 0",
+			script: itn.HereDoc(`
+				load('random', 'choices')
+				a = choices([1, 2, 3, 4, 5], cum_weights=[0, 0, 1, 1, 1])
+				assert.eq(a, [3])
+			`),
+		},
+
+		// shuffle
 		{
 			name: "shuffle with invalid type",
 			script: itn.HereDoc(`

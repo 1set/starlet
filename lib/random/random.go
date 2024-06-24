@@ -185,17 +185,17 @@ func choice(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, 
 // choices returns a k sized list of elements chosen from the population with replacement.
 func choices(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
-		population starlark.Indexable
-		weights    *starlark.List
-		cumWeights *starlark.List
-		k          = 1
+		population  starlark.Indexable
+		weights     *starlark.List
+		cumWeights  *starlark.List
+		numOfResult = 1
 	)
 
 	if err := starlark.UnpackArgs(bn.Name(), args, kwargs,
 		"population", &population,
 		"weights?", &weights,
 		"cum_weights?", &cumWeights,
-		"k?", &k); err != nil {
+		"k?", &numOfResult); err != nil {
 		return nil, err
 	}
 
@@ -205,7 +205,7 @@ func choices(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 		return nil, errors.New("population is empty")
 	}
 	// k should be positive, otherwise return an empty list
-	if k <= 0 {
+	if numOfResult <= 0 {
 		l := starlark.NewList([]starlark.Value{})
 		return l, nil
 	}
@@ -226,6 +226,13 @@ func choices(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 		if len(cumulativeWeights) != n {
 			return nil, errors.New("the number of weights does not match the population")
 		}
+		lastWeight := cumulativeWeights[0]
+		for i := 1; i < n; i++ {
+			if cumulativeWeights[i] < lastWeight {
+				return nil, errors.New("cumulative weights must be non-decreasing")
+			}
+			lastWeight = cumulativeWeights[i]
+		}
 	} else if weights != nil {
 		relativeWeights, err := listToFloat64Slice(weights)
 		if err != nil {
@@ -243,10 +250,10 @@ func choices(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 	}
 
 	// create the result list
-	result := make([]starlark.Value, n)
+	result := make([]starlark.Value, numOfResult)
 	if cumulativeWeights == nil {
 		// Equal probability selection
-		for i := 0; i < k; i++ {
+		for i := 0; i < numOfResult; i++ {
 			index, err := getRandomInt(n)
 			if err != nil {
 				return nil, err
@@ -263,7 +270,7 @@ func choices(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 			return nil, errors.New("total of weights must be finite")
 		}
 
-		for i := 0; i < k; i++ {
+		for i := 0; i < numOfResult; i++ {
 			r, err := getRandomFloat(1 << 53)
 			if err != nil {
 				return nil, err
@@ -425,7 +432,7 @@ func getRandStr(chars string, length int64) (string, error) {
 	return string(buf), nil
 }
 
-// Helper function to convert a Starlark list to a []float64
+// listToFloat64Slice is a helper function to convert a Starlark list of weights to a []float64.
 func listToFloat64Slice(list *starlark.List) ([]float64, error) {
 	result := make([]float64, list.Len())
 	iter := list.Iterate()
