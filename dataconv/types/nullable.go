@@ -25,26 +25,22 @@ func (p *Nullable[T]) Unpack(v starlark.Value) error {
 	}
 	if _, ok := v.(starlark.NoneType); ok {
 		p.value = nil
-		return nil
-	}
-	if t, ok := v.(T); ok {
+	} else if t, ok := v.(T); ok {
 		p.value = &t
-		return nil
-	}
-
-	var gotType string
-	if v != nil {
-		gotType = v.Type()
 	} else {
-		gotType = "nil"
+		var (
+			gt = "nil"
+			wt = "<unknown>"
+		)
+		if v != nil {
+			gt = v.Type()
+		}
+		if !isInterfaceNil(p.defaultValue) {
+			wt = p.defaultValue.Type()
+		}
+		return fmt.Errorf("got %s, want %s or None", gt, wt)
 	}
-	var wantType string
-	if isInterfaceNil(p.defaultValue) {
-		wantType = fmt.Sprintf("%T", *new(T))
-	} else {
-		wantType = p.defaultValue.Type()
-	}
-	return fmt.Errorf("got %s, want %s or None", gotType, wantType)
+	return nil
 }
 
 // IsNull returns true if the underlying value is nil.

@@ -302,7 +302,7 @@ func TestLoadModule_Path(t *testing.T) {
 				load('path', 'listdir')
 				p = listdir('.', filter=123)
 			`),
-			wantErr: `got int, want <nil> or None`,
+			wantErr: `got int, want <unknown> or None`,
 		},
 		{
 			name: `listdir: mistyped filter`,

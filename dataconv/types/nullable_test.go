@@ -391,6 +391,8 @@ func TestNullableCallable(t *testing.T) {
 		return starlark.MakeInt(42), nil
 	})
 
+	testNullableUnpack(t, "empty nil", &NullableCallable{}, nil, nil, true, true)
+	testNullableUnpack(t, "nil default", &NullableCallable{}, starlark.MakeInt(123), nil, true, true)
 	testNullableUnpack(t, "empty val", &NullableCallable{}, callable, starlark.Callable(callable), false, false)
 	testNullableUnpack(t, "empty none", &NullableCallable{}, none, nil, true, false)
 	testNullableUnpack(t, "ctor val", NewNullableCallable(defaultCallable), callable, starlark.Callable(callable), false, false)
