@@ -173,6 +173,39 @@ func TestLoadModule_File(t *testing.T) {
 			`),
 		},
 		{
+			name: `read jsonl no args`,
+			script: itn.HereDoc(`
+				load('file', 'read_jsonl')
+				j1 = read_jsonl()
+			`),
+			wantErr: `file.read_jsonl: missing argument for name`,
+		},
+		{
+			name: `read jsonl not found`,
+			script: itn.HereDoc(`
+				load('file', 'read_jsonl')
+				j1 = read_jsonl("no-such-file")
+			`),
+			wantErr: `open no-such-file`,
+		},
+		{
+			name: `read broken jsonl`,
+			script: itn.HereDoc(`
+				load('file', 'read_jsonl')
+				j1 = read_jsonl('testdata/1line.txt')
+			`),
+			wantErr: `line 1: json.decode: at offset`,
+		},
+		{
+			name: `read jsonl`,
+			script: itn.HereDoc(`
+				load('file', 'read_jsonl')
+				js = read_jsonl('testdata/json2.json')
+				assert.eq(len(js), 3)
+				assert.eq(js[-1], {"name": "Mike", "age": 32, "city": "Chicago", "opt": True})
+			`),
+		},
+		{
 			name: `write no args`,
 			script: itn.HereDoc(`
 				load('file', 'write_bytes')
