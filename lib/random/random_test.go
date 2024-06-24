@@ -161,6 +161,14 @@ func TestLoadModule_Random(t *testing.T) {
 			wantErr: `weights must be numeric`,
 		},
 		{
+			name: "choices with non-number cum_weights",
+			script: itn.HereDoc(`
+				load('random', 'choices')
+				choices([1, 2, 3], cum_weights=[1, 2, "three"])
+			`),
+			wantErr: `weights must be numeric`,
+		},
+		{
 			name: "choices with zero weights",
 			script: itn.HereDoc(`
 				load('random', 'choices')
@@ -195,7 +203,7 @@ func TestLoadModule_Random(t *testing.T) {
 			name: "choices weights",
 			script: itn.HereDoc(`
 				load('random', 'choices')
-				print(choices((1, 2, 3), weights=[1, 1, 5]))
+				print(choices((1, 2, 3), weights=[1, 1.5, 5]))
 			`),
 		},
 		{
