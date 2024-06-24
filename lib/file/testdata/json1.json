@@ -1,0 +1,11 @@
+{
+  "num": 42,
+    "str": "hello",
+    "bool": true,
+    "arr": [1, 2, 3],
+    "obj": {
+    "foo": "bar",
+        "baz": "qux"
+    },
+  "undef": null
+}

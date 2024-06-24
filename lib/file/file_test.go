@@ -136,6 +136,19 @@ func TestLoadModule_File(t *testing.T) {
 			`),
 		},
 		{
+			name: `read json`,
+			script: itn.HereDoc(`
+				load('file', 'read_json')
+				j1 = read_json('testdata/json1.json')
+				assert.true(type(j1) == "dict")
+				assert.eq(j1["num"], 42)
+				assert.eq(j1["undef"], None)
+				assert.eq(j1["bool"], True)
+				assert.eq(j1["arr"], [1,2,3])
+				assert.eq(j1["obj"], {"foo": "bar", "baz": "qux"})
+			`),
+		},
+		{
 			name: `write no args`,
 			script: itn.HereDoc(`
 				load('file', 'write_bytes')
