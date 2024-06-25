@@ -142,16 +142,17 @@ print(p)
 # Output: False
 ```
 
-### `listdir(path, recursive=False) []string`
+### `listdir(path, recursive=False, filter=None) []string`
 
-Returns a list of directory contents.
+Returns a list of directory contents. Optionally applies a filter function to each path to decide inclusion in the final list.
 
 #### Parameters
 
-| name        | type     | description                        |
-|-------------|----------|------------------------------------|
-| `path`      | `string` | The directory path                 |
-| `recursive` | `bool`   | If true, list contents recursively |
+| name        | type       | description                                                                                                                                                                                            |
+|-------------|------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `path`      | `string`   | The directory path to be listed                                                                                                                                                                        |
+| `recursive` | `bool`     | If true, list contents recursively                                                                                                                                                                     |
+| `filter`    | `callable` | A callable object (e.g., lambda or function) that takes a single argument (a path) and returns a boolean value. Paths for which the filter function returns `False` are excluded from the result list. |
 
 #### Examples
 
@@ -164,6 +165,41 @@ load("path", "listdir")
 p = listdir('.')
 print(p)
 # Output: ['file1', 'file2', ...]
+```
+
+**recursive**
+
+List directory contents recursively.
+
+```python
+load("path", "listdir")
+p = listdir('.', True)
+print(p)
+# Output: ['file1', 'file2', 'subdir/file3', ...]
+```
+
+**filtered**
+
+List directory contents with a filter function.
+
+```python
+load("path", "listdir")
+is_not_go_file = lambda p: not p.endswith('.go')
+p = listdir('.', filter=is_not_go_file)
+print(p)
+# Output: ['file1.py', 'file2.txt', ...]
+```
+
+**filtered_recursive**
+
+List directory contents recursively with a filter function.
+
+```python
+load("path", "listdir")
+is_not_go_file = lambda p: not p.endswith('.go')
+p = listdir('.', True, filter=is_not_go_file)
+print(p)
+# Output: ['file1.py', 'file2.txt', 'subdir/file3']
 ```
 
 ### `getcwd() string`
