@@ -162,6 +162,52 @@ print(read_lines('path/to/file.txt'))
 # Output: ['line1', 'line2', 'line3', ....]
 ```
 
+### `read_json(name) dict`
+
+Reads a file and decodes its contents as JSON, returning the corresponding Starlark object (dict or any types).
+
+#### Parameters
+
+| name   | type     | description                          |
+|--------|----------|--------------------------------------|
+| `name` | `string` | The path of the JSON file to be read |
+
+#### Examples
+
+**basic**
+
+Read a JSON file.
+
+```python
+load('file', 'read_json')
+data = read_json('path/to/file.json')
+print(data)
+# Output: {'key': 'value', 'array': [1, 2, 3]}
+```
+
+### `read_jsonl(name) list`
+
+Reads a file with each line containing a JSON object and returns a list of Starlark objects.
+
+#### Parameters
+
+| name   | type     | description                           |
+|--------|----------|---------------------------------------|
+| `name` | `string` | The path of the JSONL file to be read |
+
+#### Examples
+
+**basic**
+
+Read a JSONL file.
+
+```python
+load('file', 'read_jsonl')
+data = read_jsonl('path/to/file.jsonl')
+print(data)
+# Output: [{'key1': 'value1'}, {'key2': 'value2'}]
+```
+
 ### `write_bytes(name, data)`
 
 Writes/overwrites bytes or a byte literal string to a file. If the file isn't present, a new file would be created.
@@ -231,6 +277,52 @@ lines = ['This is line1', 'This is line2', 'This is line3']
 write_lines('new_file.txt', lines)
 ```
 
+### `write_json(name, data)`
+
+Writes the given Starlark object as JSON to a file. If the file exists, it will be overwritten.
+
+#### Parameters
+
+| name   | type     | description                           |
+|--------|----------|---------------------------------------|
+| `name` | `string` | The path of the file to be written to |
+| `data` | `dict    | list                                  |
+
+#### Examples
+
+**basic**
+
+Write a dictionary as JSON to a file.
+
+```python
+load('file', 'write_json')
+data = {"key": "value", "array": [1, 2, 3]}
+write_json('new_file.json', data)
+```
+
+### `write_jsonl(name, data)`
+
+Writes the given data as JSON lines to a file. If the file exists, it will be overwritten.
+
+#### Parameters
+
+| name   | type     | description                           |
+|--------|----------|---------------------------------------|
+| `name` | `string` | The path of the file to be written to |
+| `data` | `list    | set                                   |
+
+#### Examples
+
+**basic**
+
+Write a list of JSON objects to a file as JSONL.
+
+```python
+load('file', 'write_jsonl')
+data = [{"key1": "value1"}, {"key2": "value2"}]
+write_jsonl('new_file.jsonl', data)
+```
+
 ### `append_bytes(name, data)`
 
 Appends bytes or a byte literal string to a file. If the file isn't present, a new file would be created.
@@ -295,6 +387,52 @@ Append a list of lines to a file.
 ```python
 load('file', 'append_lines')
 append_lines('existing_file.txt', ['This is line1', 'This is line2', 'This is line3'])
+```
+
+### `append_json(name, data)`
+
+Appends the given Starlark object as JSON to a file. If the file does not exist, it will be created.
+
+#### Parameters
+
+| name   | type     | description                            |
+|--------|----------|----------------------------------------|
+| `name` | `string` | The path of the file to be appended to |
+| `data` | `dict    | list                                   |
+
+#### Examples
+
+**basic**
+
+Append a dictionary as JSON to a file.
+
+```python
+load('file', 'append_json')
+data = {"key": "value"}
+append_json('existing_file.json', data)
+```
+
+### `append_jsonl(name, data)`
+
+Appends the given data as JSON lines to a file. If the file does not exist, it will be created.
+
+#### Parameters
+
+| name   | type     | description                            |
+|--------|----------|----------------------------------------|
+| `name` | `string` | The path of the file to be appended to |
+| `data` | `list    | set                                    |
+
+#### Examples
+
+**basic**
+
+Append a list of JSON objects to a file as JSONL.
+
+```python
+load('file', 'append_jsonl')
+data = [{"key1": "value1"}, {"key2": "value2"}]
+append_jsonl('existing_file.jsonl', data)
 ```
 
 ### `stat(name, follow=False) FileStat`
