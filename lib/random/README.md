@@ -181,6 +181,54 @@ print(n)
 # Output: 3
 ```
 
+### `choices(population, weights=None, cum_weights=None, k=1)`
+
+Return a k-sized list of elements chosen from the population with replacement. If the population is empty, raises a ValueError.
+
+#### Parameters
+
+| name                          | type   | description                                                                                                                                                |
+|-------------------------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `population`                  | `list` | A non-empty sequence to choose from.                                                                                                                       |
+| `weights list (optional)`     | ``     | A sequence of weights corresponding to the population, where weights[i] is the weight of population[i]. If not provided, all weights are considered equal. |
+| `cum_weights list (optional)` | ``     | A sequence of cumulative weights corresponding to the population. If provided, weights should not be provided.                                             |
+| `k int (optional)`            | ``     | The size of the result list. If not provided, defaults to 1. If k is non-positive, an empty list is returned.                                              |
+
+#### Examples
+
+**basic**
+
+Return a list of 2 random elements chosen from the population [1, 2, 3].
+
+```python
+load("random", "choices")
+result = choices([1, 2, 3], k=2)
+print(result)
+# Output: [2, 3]
+```
+
+**with_weights**
+
+Return a list of 3 random elements chosen from the population [1, 2, 3] with given weights.
+
+```python
+load("random", "choices")
+result = choices([1, 2, 3], weights=[1, 2, 1], k=3)
+print(result)
+# Output: [2, 3, 1]
+```
+
+**with_cumulative_weights**
+
+Return a list of 2 random elements chosen from the population [1, 2, 3] with given cumulative weights.
+
+```python
+load("random", "choices")
+result = choices([1, 2, 3], cum_weights=[1, 3, 4], k=2)
+print(result)
+# Output: [3, 2]
+```
+
 ### `shuffle(x)`
 
 Shuffle the sequence x in place.
