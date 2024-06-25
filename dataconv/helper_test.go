@@ -1,6 +1,7 @@
 package dataconv
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"testing"
@@ -931,4 +932,50 @@ func TestStarString(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetThreadContext(t *testing.T) {
+	bkg := context.Background()
+	t.Run("nil thread", func(t *testing.T) {
+		ctx := GetThreadContext(nil)
+		if ctx == nil {
+			t.Error("Expected non-nil context for nil thread, got nil")
+		}
+		if ctx != bkg {
+			t.Error("Expected background context for nil thread")
+		}
+	})
+
+	t.Run("thread without context", func(t *testing.T) {
+		thread := &starlark.Thread{Name: "test"}
+		ctx := GetThreadContext(thread)
+		if ctx == nil {
+			t.Error("Expected non-nil context for thread without context, got nil")
+		}
+		if ctx != bkg {
+			t.Error("Expected background context for thread without context")
+		}
+	})
+
+	t.Run("thread with non-context local", func(t *testing.T) {
+		thread := &starlark.Thread{Name: "test"}
+		thread.SetLocal("context", "not a context")
+		ctx := GetThreadContext(thread)
+		if ctx == nil {
+			t.Error("Expected non-nil context for thread with non-context local, got nil")
+		}
+		if ctx != bkg {
+			t.Error("Expected background context for thread with non-context local")
+		}
+	})
+
+	t.Run("thread with valid context", func(t *testing.T) {
+		thread := &starlark.Thread{Name: "test"}
+		expectedCtx := context.WithValue(context.Background(), "key", "value")
+		thread.SetLocal("context", expectedCtx)
+		ctx := GetThreadContext(thread)
+		if ctx != expectedCtx {
+			t.Error("Expected context from thread, got different context")
+		}
+	})
 }
