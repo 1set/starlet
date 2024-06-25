@@ -187,12 +187,12 @@ Return a k-sized list of elements chosen from the population with replacement. I
 
 #### Parameters
 
-| name                          | type   | description                                                                                                                                                |
-|-------------------------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `population`                  | `list` | A non-empty sequence to choose from.                                                                                                                       |
-| `weights list (optional)`     | ``     | A sequence of weights corresponding to the population, where weights[i] is the weight of population[i]. If not provided, all weights are considered equal. |
-| `cum_weights list (optional)` | ``     | A sequence of cumulative weights corresponding to the population. If provided, weights should not be provided.                                             |
-| `k int (optional)`            | ``     | The size of the result list. If not provided, defaults to 1. If k is non-positive, an empty list is returned.                                              |
+| name          | type   | description                                                                                                                                                |
+|---------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `population`  | `list` | A non-empty sequence to choose from.                                                                                                                       |
+| `weights`     | `list` | A sequence of weights corresponding to the population, where weights[i] is the weight of population[i]. If not provided, all weights are considered equal. |
+| `cum_weights` | `list` | A sequence of cumulative weights corresponding to the population. If provided, weights should not be provided.                                             |
+| `k`           | `int`  | The size of the result list. If not provided, defaults to 1. If k is non-positive, an empty list is returned.                                              |
 
 #### Examples
 
