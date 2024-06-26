@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"sync"
 
+	itn "github.com/1set/starlet/internal"
 	"go.starlark.net/starlark"
 )
 
@@ -31,6 +32,7 @@ import (
 //
 // The environment can be reset, allowing the script to be run again with a fresh set of variables and modules.
 type Machine struct {
+	_  itn.DoNotCompare
 	mu sync.RWMutex
 	// set variables
 	globals             StringAnyMap

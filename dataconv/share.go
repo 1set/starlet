@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	tps "github.com/1set/starlet/dataconv/types"
+	itn "github.com/1set/starlet/internal"
 	stdjson "go.starlark.net/lib/json"
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
@@ -28,6 +29,7 @@ import (
 // SharedDict integrates tightly with Starlark's concurrency model, offering a robust solution for managing shared state across threads.
 // By encapsulating thread safety mechanisms and providing a familiar dictionary interface, SharedDict facilitates the development of concurrent Starlark scripts with shared mutable state.
 type SharedDict struct {
+	_ itn.DoNotCompare
 	sync.RWMutex
 	dict   *starlark.Dict
 	frozen bool
