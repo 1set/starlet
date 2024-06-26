@@ -15,5 +15,5 @@ var (
 	HereDocf = here.Docf
 )
 
-// DoNotCompare can be embedded in a struct to prevent comparability, i.e. disallowing == and != operators.
+// DoNotCompare prevents struct comparisons when embedded. It disallows the use of == and != operators.
 type DoNotCompare [0]func()
