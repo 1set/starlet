@@ -86,6 +86,7 @@ type ByteCache interface {
 
 // MemoryCache is a simple in-memory map-based ByteCache, serves as a default cache for Starlark programs.
 type MemoryCache struct {
+	_ itn.DoNotCompare
 	sync.RWMutex
 	data map[string][]byte
 }
