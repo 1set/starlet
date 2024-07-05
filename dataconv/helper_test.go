@@ -428,9 +428,14 @@ func TestEncodeStarlarkJSON(t *testing.T) {
 			want: `"Aloha!"`,
 		},
 		{
-			name: "time",
-			data: startime.Time(now),
-			want: fmt.Sprintf("%q", now.Format(time.RFC3339Nano)),
+			name: "string 2",
+			data: starlark.String(`"HI"`),
+			want: `"\"HI\""`,
+		},
+		{
+			name:    "time",
+			data:    startime.Time(now),
+			wantErr: true,
 		},
 		{
 			name: "dict",
@@ -438,14 +443,14 @@ func TestEncodeStarlarkJSON(t *testing.T) {
 			want: `{"foo":42}`,
 		},
 		{
-			name: "dict2",
-			data: sd2,
-			want: `{"42":"foo"}`,
+			name:    "dict2",
+			data:    sd2,
+			wantErr: true,
 		},
 		{
-			name: "dict3",
-			data: sd3,
-			want: `{"true":42}`,
+			name:    "dict3",
+			data:    sd3,
+			wantErr: true,
 		},
 		{
 			name: "list",
@@ -540,6 +545,11 @@ func TestDecodeStarlarkJSON(t *testing.T) {
 			name:  "dict",
 			input: []byte(`{"foo":42}`),
 			want:  d42,
+		},
+		{
+			name:    "dict num",
+			input:   []byte(`{42: "bar"}`),
+			wantErr: true,
 		},
 		{
 			name:  "list",
