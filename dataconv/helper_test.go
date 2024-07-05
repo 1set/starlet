@@ -374,6 +374,209 @@ func TestUnmarshalStarlarkJSON(t *testing.T) {
 	}
 }
 
+// TestEncodeStarlarkJSON tests the EncodeStarlarkJSON function
+func TestEncodeStarlarkJSON(t *testing.T) {
+	now := time.Now()
+	sd := starlark.NewDict(1)
+	sd.SetKey(starlark.String("foo"), starlark.MakeInt(42))
+	sd2 := starlark.NewDict(1)
+	sd2.SetKey(starlark.MakeUint(42), starlark.String("foo"))
+	sd3 := starlark.NewDict(1)
+	sd3.SetKey(starlark.Bool(true), starlark.MakeInt(42))
+
+	ss := starlark.NewSet(1)
+	ss.Insert(starlark.String("foo"))
+	ss.Insert(starlark.String("bar"))
+
+	stime := time.Unix(1689384600, 0)
+	stime = stime.In(time.FixedZone("CST", 8*60*60))
+
+	tests := []struct {
+		name    string
+		data    starlark.Value
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "none",
+			data: starlark.None,
+			want: "null",
+		},
+		{
+			name: "true",
+			data: starlark.Bool(true),
+			want: "true",
+		},
+		{
+			name: "false",
+			data: starlark.Bool(false),
+			want: "false",
+		},
+		{
+			name: "int",
+			data: starlark.MakeInt(42),
+			want: "42",
+		},
+		{
+			name: "float",
+			data: starlark.Float(1.23),
+			want: "1.23",
+		},
+		{
+			name: "string",
+			data: starlark.String("Aloha!"),
+			want: `"Aloha!"`,
+		},
+		{
+			name: "time",
+			data: startime.Time(now),
+			want: fmt.Sprintf("%q", now.Format(time.RFC3339Nano)),
+		},
+		{
+			name: "dict",
+			data: sd,
+			want: `{"foo":42}`,
+		},
+		{
+			name: "dict2",
+			data: sd2,
+			want: `{"42":"foo"}`,
+		},
+		{
+			name: "dict3",
+			data: sd3,
+			want: `{"true":42}`,
+		},
+		{
+			name: "list",
+			data: starlark.NewList([]starlark.Value{starlark.MakeInt(43), starlark.String("foo")}),
+			want: `[43,"foo"]`,
+		},
+		{
+			name: "tuple",
+			data: starlark.Tuple{starlark.MakeInt(60), starlark.String("bar")},
+			want: `[60,"bar"]`,
+		},
+		{
+			name: "set",
+			data: ss,
+			want: `["foo","bar"]`,
+		},
+		{
+			name: "starlark struct nil",
+			data: &starlarkstruct.Struct{},
+			want: `{}`,
+		},
+		{
+			name: "starlark struct",
+			data: starlarkstruct.FromStringDict(starlarkstruct.Default, starlark.StringDict{
+				"foo": starlark.String("Hello, World!"),
+				"bar": starlark.MakeInt(42),
+			}),
+			want: `{"bar":42,"foo":"Hello, World!"}`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := EncodeStarlarkJSON(tt.data)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("EncodeStarlarkJSON() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("EncodeStarlarkJSON() got = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestDecodeStarlarkJSON tests the DecodeStarlarkJSON function
+func TestDecodeStarlarkJSON(t *testing.T) {
+	d42 := starlark.NewDict(1)
+	_ = d42.SetKey(starlark.String("foo"), starlark.MakeInt(42))
+
+	tests := []struct {
+		name    string
+		input   []byte
+		want    starlark.Value
+		wantErr bool
+	}{
+		{
+			name:  "null",
+			input: []byte("null"),
+			want:  starlark.None,
+		},
+		{
+			name:  "true",
+			input: []byte("true"),
+			want:  starlark.True,
+		},
+		{
+			name:  "false",
+			input: []byte("false"),
+			want:  starlark.False,
+		},
+		{
+			name:  "int",
+			input: []byte("42"),
+			want:  starlark.MakeInt(42),
+		},
+		{
+			name:  "float",
+			input: []byte("1.23"),
+			want:  starlark.Float(1.23),
+		},
+		{
+			name:  "string",
+			input: []byte(`"Aloha!"`),
+			want:  starlark.String("Aloha!"),
+		},
+		{
+			name:  "time",
+			input: []byte(`"2024-03-07T00:00:00Z"`),
+			want:  starlark.String("2024-03-07T00:00:00Z"),
+		},
+		{
+			name:  "dict",
+			input: []byte(`{"foo":42}`),
+			want:  d42,
+		},
+		{
+			name:  "list",
+			input: []byte(`[43,"foo"]`),
+			want: starlark.NewList([]starlark.Value{
+				starlark.MakeInt(43),
+				starlark.String("foo"),
+			}),
+		},
+		{
+			name:    "invalid json",
+			input:   []byte(`{"foo":4`),
+			wantErr: true,
+		},
+		{
+			name:    "deviant json",
+			input:   []byte(`{123:456}`),
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := DecodeStarlarkJSON(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("DecodeStarlarkJSON() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err != nil {
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("DecodeStarlarkJSON() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestConvertStruct(t *testing.T) {
 	type record1 struct {
 		Name  string `sl:"name"`
