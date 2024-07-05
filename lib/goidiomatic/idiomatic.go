@@ -41,6 +41,7 @@ func LoadModule() (starlark.StringDict, error) {
 		"make_struct":      starlark.NewBuiltin("make_struct", makeCustomStruct),
 		"shared_dict":      starlark.NewBuiltin("shared_dict", makeSharedDict),
 		"make_shared_dict": starlark.NewBuiltin("make_shared_dict", makeCustomSharedDict),
+		"to_dict":          starlark.NewBuiltin("to_dict", convertToDict),
 		"distinct":         starlark.NewBuiltin("distinct", distinct),
 		"eprint":           starlark.NewBuiltin("eprint", stderrPrint),
 		"pprint":           starlark.NewBuiltin("pprint", prettyPrint),
@@ -409,6 +410,8 @@ func convertToDict(thread *starlark.Thread, b *starlark.Builtin, args starlark.T
 			_ = dt.SetKey(starlark.String(k), v)
 		}
 		return dt, nil
+	case *dataconv.SharedDict:
+		return t.CloneDict()
 	case *convert.GoStruct:
 		rv := t.Value().Interface()
 		bs, err := json.Marshal(rv)
