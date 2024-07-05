@@ -757,6 +757,76 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 			`),
 		},
 		{
+			name: `to_dict: empty struct`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'to_dict', 'struct')
+				s = struct()
+				d = to_dict(s)
+				assert.eq(d, {})
+			`),
+		},
+		{
+			name: `to_dict: struct with members`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'to_dict', 'struct')
+				s = struct(name="Alice", age=30)
+				d = to_dict(s)
+				assert.eq(d, {"name": "Alice", "age": 30})
+			`),
+		},
+		{
+			name: `to_dict: empty module`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'to_dict', 'module')
+				m = module("mod")
+				d = to_dict(m)
+				assert.eq(d, {})
+			`),
+		},
+		{
+			name: `to_dict: module with members`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'to_dict', 'module')
+				m = module("mod", foo="bar", num=42)
+				d = to_dict(m)
+				assert.eq(d, {"foo": "bar", "num": 42})
+			`),
+		},
+		{
+			name: `to_dict: GoStruct to dict`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'to_dict')
+				gs = test_custom_struct
+				d = to_dict(gs)
+				assert.eq(type(d), 'dict')
+				assert.eq(d, {
+					'Slice': [],
+					'Map': {},
+					'Struct': None,
+					'NestedStruct': None,
+					'Pointer': None,
+				})
+			`),
+		},
+		{
+			name: `to_dict: SharedDict to dict`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'to_dict', 'make_shared_dict')
+				sd = make_shared_dict("mydict", {"a": 1, "b": 2})
+				d = to_dict(sd)
+				assert.eq(type(d), 'dict')
+				assert.eq(d, {"a": 1, "b": 2})
+			`),
+		},
+		{
+			name: `to_dict: unsupported type`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'to_dict')
+				to_dict([1, 2, 3])
+			`),
+			wantErr: `to_dict: unsupported type: starlark.List`,
+		},
+		{
 			name: `distinct with list`,
 			script: itn.HereDoc(`
         load('go_idiomatic', 'distinct')
