@@ -17,8 +17,10 @@ import (
 )
 
 var (
-	emptyStr      string
-	noopPrintFunc = func(thread *starlark.Thread, msg string) {}
+	emptyStr       string
+	noopPrintFunc  = func(thread *starlark.Thread, msg string) {}
+	starJSONEncode = stdjson.Module.Members["encode"].(*starlark.Builtin)
+	starJSONDecode = stdjson.Module.Members["decode"].(*starlark.Builtin)
 )
 
 // IsEmptyString checks is a starlark string is empty ("" for a go string)
@@ -101,15 +103,8 @@ func UnmarshalStarlarkJSON(data []byte) (starlark.Value, error) {
 // It's less flexible but more straightforward for pure Starlark values.
 // Compared to the Marshal/Unmarshal* pair, which is more feature-rich and flexible, the Encode/Decode* pair is more focused on core Starlark types.
 func EncodeStarlarkJSON(v starlark.Value) (string, error) {
-	// get the JSON encoder
-	jm, ok := stdjson.Module.Members["encode"]
-	if !ok {
-		return emptyStr, fmt.Errorf("json.encode not found")
-	}
-	enc := jm.(*starlark.Builtin)
-
 	// convert to JSON
-	v, err := starlark.Call(&starlark.Thread{Name: "dataconv"}, enc, starlark.Tuple{v}, nil)
+	v, err := starlark.Call(&starlark.Thread{Name: "dataconv"}, starJSONEncode, starlark.Tuple{v}, nil)
 	if err != nil {
 		return emptyStr, err
 	}
@@ -123,15 +118,7 @@ func EncodeStarlarkJSON(v starlark.Value) (string, error) {
 // It handles certain Starlark-specific structures better but less control over Go-specific types.
 // Compared to the Marshal/Unmarshal* pair, which is more feature-rich and flexible, the Encode/Decode* pair is more focused on core Starlark types.
 func DecodeStarlarkJSON(data []byte) (starlark.Value, error) {
-	// get the JSON decoder
-	jm, ok := stdjson.Module.Members["decode"]
-	if !ok {
-		return nil, fmt.Errorf("json.decode not found")
-	}
-	dec := jm.(*starlark.Builtin)
-
-	// convert from JSON
-	return starlark.Call(&starlark.Thread{Name: "dataconv"}, dec, starlark.Tuple{starlark.String(data)}, nil)
+	return starlark.Call(&starlark.Thread{Name: "dataconv"}, starJSONDecode, starlark.Tuple{starlark.String(data)}, nil)
 }
 
 // ConvertStruct converts a struct to a Starlark wrapper.
