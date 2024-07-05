@@ -2,6 +2,7 @@
 package goidiomatic
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -383,4 +384,39 @@ func prettyPrint(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tup
 		fmt.Fprintln(os.Stderr, s)
 	}
 	return starlark.None, nil
+}
+
+// convertToDict creates a Starlark dict from a module, struct, or a GoStruct.
+// It works as a complement to the builtin dict() function of Starlark, not a replacement or alternative.
+func convertToDict(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var v starlark.Value
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "v", &v); err != nil {
+		return nil, err
+	}
+	// convert to dict
+	switch t := v.(type) {
+	case *starlarkstruct.Module:
+		dt := starlark.NewDict(len(t.Members))
+		for k, v := range t.Members {
+			_ = dt.SetKey(starlark.String(k), v)
+		}
+		return dt, nil
+	case *starlarkstruct.Struct:
+		sd := starlark.StringDict{}
+		t.ToStringDict(sd)
+		dt := starlark.NewDict(len(sd))
+		for k, v := range sd {
+			_ = dt.SetKey(starlark.String(k), v)
+		}
+		return dt, nil
+	case *convert.GoStruct:
+		rv := t.Value().Interface()
+		bs, err := json.Marshal(rv)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", b.Name(), err)
+		}
+		return dataconv.DecodeStarlarkJSON(bs)
+	default:
+		return nil, fmt.Errorf("%s: unsupported type: %T", b.Name(), t)
+	}
 }
