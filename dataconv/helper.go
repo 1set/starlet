@@ -43,7 +43,9 @@ func IsInterfaceNil(i interface{}) bool {
 }
 
 // MarshalStarlarkJSON marshals a starlark.Value into a JSON string.
-// It first converts the starlark.Value into a Golang value, then marshals it into JSON.
+// It first converts the starlark.Value into a Go value using the Unmarshal function,
+// then marshals the Go value into a JSON string.
+// It handles Go-specific types better than EncodeStarlarkJSON but may be slower due to intermediate conversion.
 func MarshalStarlarkJSON(data starlark.Value, indent int) (string, error) {
 	// convert starlark value to a go value
 	v, err := Unmarshal(data)
@@ -75,8 +77,10 @@ func MarshalStarlarkJSON(data starlark.Value, indent int) (string, error) {
 	return strings.TrimSpace(bf.String()), nil
 }
 
-// UnmarshalStarlarkJSON unmarshals a JSON bytes into a starlark.Value.
-// It first unmarshals the JSON string into a Go value, then converts it into a starlark.Value.
+// UnmarshalStarlarkJSON unmarshals JSON bytes into a starlark.Value.
+// It first unmarshals the JSON bytes into a Go value using the standard JSON Unmarshal function,
+// then converts the Go value into a starlark.Value using the Marshal function.
+// In comparison with DecodeStarlarkJSON, it gives you more control over type conversion but may be less efficient due to intermediate steps.
 func UnmarshalStarlarkJSON(data []byte) (starlark.Value, error) {
 	var m interface{}
 	err := json.Unmarshal(data, &m)
@@ -91,7 +95,9 @@ func UnmarshalStarlarkJSON(data []byte) (starlark.Value, error) {
 	return Marshal(f)
 }
 
-// EncodeStarlarkJSON encodes the Starlark value into a JSON string via official JSON module of Starlark Go.
+// EncodeStarlarkJSON encodes a starlark.Value into a JSON string using the official JSON module of Starlark Go.
+// It retrieves the "json.encode" function from the Starlark standard library and calls it to perform the encoding.
+// It's less flexible but more straightforward for pure Starlark values.
 func EncodeStarlarkJSON(v starlark.Value) (string, error) {
 	// get the JSON encoder
 	jm, ok := stdjson.Module.Members["encode"]
@@ -110,7 +116,9 @@ func EncodeStarlarkJSON(v starlark.Value) (string, error) {
 	return StarString(v), nil
 }
 
-// DecodeStarlarkJSON decodes the JSON bytes into a Starlark value via official JSON module of Starlark Go.
+// DecodeStarlarkJSON decodes JSON bytes into a starlark.Value using the official JSON module of Starlark Go.
+// It retrieves the "json.decode" function from the Starlark standard library and calls it to perform the decoding.
+// It handles certain Starlark-specific structures better but less control over Go-specific types.
 func DecodeStarlarkJSON(data []byte) (starlark.Value, error) {
 	// get the JSON decoder
 	jm, ok := stdjson.Module.Members["decode"]
