@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/1set/starlight/convert"
+	stdjson "go.starlark.net/lib/json"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
@@ -75,7 +76,7 @@ func MarshalStarlarkJSON(data starlark.Value, indent int) (string, error) {
 }
 
 // UnmarshalStarlarkJSON unmarshals a JSON bytes into a starlark.Value.
-// It first unmarshals the JSON string into a Gol value, then converts it into a starlark.Value.
+// It first unmarshals the JSON string into a Go value, then converts it into a starlark.Value.
 func UnmarshalStarlarkJSON(data []byte) (starlark.Value, error) {
 	var m interface{}
 	err := json.Unmarshal(data, &m)
@@ -88,6 +89,38 @@ func UnmarshalStarlarkJSON(data []byte) (starlark.Value, error) {
 
 	// convert go value to a starlark value
 	return Marshal(f)
+}
+
+// EncodeStarlarkJSON encodes the Starlark value into a JSON string via official JSON module of Starlark Go.
+func EncodeStarlarkJSON(v starlark.Value) (string, error) {
+	// get the JSON encoder
+	jm, ok := stdjson.Module.Members["encode"]
+	if !ok {
+		return emptyStr, fmt.Errorf("json.encode not found")
+	}
+	enc := jm.(*starlark.Builtin)
+
+	// convert to JSON
+	v, err := starlark.Call(&starlark.Thread{Name: "dataconv"}, enc, starlark.Tuple{v}, nil)
+	if err != nil {
+		return emptyStr, err
+	}
+
+	// convert to string
+	return StarString(v), nil
+}
+
+// DecodeStarlarkJSON decodes the JSON bytes into a Starlark value via official JSON module of Starlark Go.
+func DecodeStarlarkJSON(data []byte) (starlark.Value, error) {
+	// get the JSON decoder
+	jm, ok := stdjson.Module.Members["decode"]
+	if !ok {
+		return nil, fmt.Errorf("json.decode not found")
+	}
+	dec := jm.(*starlark.Builtin)
+
+	// convert from JSON
+	return starlark.Call(&starlark.Thread{Name: "dataconv"}, dec, starlark.Tuple{starlark.String(data)}, nil)
 }
 
 // ConvertStruct converts a struct to a Starlark wrapper.
