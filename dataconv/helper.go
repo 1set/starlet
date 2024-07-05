@@ -45,7 +45,7 @@ func IsInterfaceNil(i interface{}) bool {
 // MarshalStarlarkJSON marshals a starlark.Value into a JSON string.
 // It first converts the starlark.Value into a Go value using the Unmarshal function,
 // then marshals the Go value into a JSON string.
-// It handles Go-specific types better than EncodeStarlarkJSON but may be slower due to intermediate conversion.
+// It handles Go-specific types (supports more types like Go slices, maps, structs, interfaces, time) better than EncodeStarlarkJSON but may be slower due to intermediate conversion.
 func MarshalStarlarkJSON(data starlark.Value, indent int) (string, error) {
 	// convert starlark value to a go value
 	v, err := Unmarshal(data)
@@ -80,6 +80,7 @@ func MarshalStarlarkJSON(data starlark.Value, indent int) (string, error) {
 // UnmarshalStarlarkJSON unmarshals JSON bytes into a starlark.Value.
 // It first unmarshals the JSON bytes into a Go value using the standard JSON Unmarshal function,
 // then converts the Go value into a starlark.Value using the Marshal function.
+// Time strings are parsed as starlark Time objects.
 // In comparison with DecodeStarlarkJSON, it gives you more control over type conversion but may be less efficient due to intermediate steps.
 func UnmarshalStarlarkJSON(data []byte) (starlark.Value, error) {
 	var m interface{}
