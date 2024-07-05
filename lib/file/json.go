@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/1set/starlet/dataconv"
-	stdjson "go.starlark.net/lib/json"
 	"go.starlark.net/starlark"
 )
 
@@ -15,7 +14,7 @@ func readJSON(name string) (starlark.Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	return starlarkJSONDecode(data)
+	return dataconv.DecodeStarlarkJSON(data)
 }
 
 // readJSONL reads the whole named file and decodes the contents as JSON lines for Starlark.
@@ -31,7 +30,7 @@ func readJSONL(name string) (starlark.Value, error) {
 			return nil
 		}
 		// convert to Starlark value
-		v, err := starlarkJSONDecode([]byte(line))
+		v, err := dataconv.DecodeStarlarkJSON([]byte(line))
 		if err != nil {
 			return fmt.Errorf("line %d: %w", cnt, err)
 		}
@@ -57,7 +56,7 @@ func writeJSON(name, funcName string, override bool, data starlark.Value) error 
 		return wf(name, string(v))
 	default:
 		// convert to JSON
-		s, err := starlarkJSONEncode(v)
+		s, err := dataconv.EncodeStarlarkJSON(v)
 		if err != nil {
 			return err
 		}
@@ -90,7 +89,7 @@ func writeJSONL(name, funcName string, override bool, data starlark.Value) error
 		ls, err = convIterJSONL(v)
 	default:
 		// convert to JSON
-		s, err := starlarkJSONEncode(v)
+		s, err := dataconv.EncodeStarlarkJSON(v)
 		if err != nil {
 			return err
 		}
@@ -113,43 +112,11 @@ func convIterJSONL(lst starlark.Iterable) (lines []string, err error) {
 		x starlark.Value
 	)
 	for iter.Next(&x) {
-		s, err = starlarkJSONEncode(x)
+		s, err = dataconv.EncodeStarlarkJSON(x)
 		if err != nil {
 			return
 		}
 		lines = append(lines, s)
 	}
 	return
-}
-
-// starlarkJSONDecode decodes the JSON bytes into a Starlark value via standard JSON module from Starlark.
-func starlarkJSONDecode(data []byte) (starlark.Value, error) {
-	// get the JSON decoder
-	jm, ok := stdjson.Module.Members["decode"]
-	if !ok {
-		return nil, fmt.Errorf("json.decode not found")
-	}
-	dec := jm.(*starlark.Builtin)
-
-	// convert from JSON
-	return starlark.Call(&starlark.Thread{Name: "file_module"}, dec, starlark.Tuple{starlark.String(data)}, nil)
-}
-
-// starlarkJSONEncode encodes the Starlark value into a JSON string via standard JSON module from Starlark.
-func starlarkJSONEncode(v starlark.Value) (string, error) {
-	// get the JSON encoder
-	jm, ok := stdjson.Module.Members["encode"]
-	if !ok {
-		return emptyStr, fmt.Errorf("json.encode not found")
-	}
-	enc := jm.(*starlark.Builtin)
-
-	// convert to JSON
-	v, err := starlark.Call(&starlark.Thread{Name: "file_module"}, enc, starlark.Tuple{v}, nil)
-	if err != nil {
-		return emptyStr, err
-	}
-
-	// convert to string
-	return dataconv.StarString(v), nil
 }
