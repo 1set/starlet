@@ -287,28 +287,7 @@ func (s *SharedDict) CloneDict() (*starlark.Dict, error) {
 // It is important to note that the serialization process adheres to JSON's limitations, such as not supporting circular references. If the SharedDict contains
 // circular references or types not supported by JSON (e.g., functions), `ToJSON` will return an error.
 func (s *SharedDict) ToJSON() (string, error) {
-	// prepare thread
-	thread := &starlark.Thread{Name: "inline", Print: noopPrintFunc}
-
-	// get the JSON encoder
-	jm, ok := stdjson.Module.Members["encode"]
-	if !ok {
-		return emptyStr, fmt.Errorf("json.encode not found")
-	}
-	enc := jm.(*starlark.Builtin)
-
-	// call the builtin
-	val, err := starlark.Call(thread, enc, starlark.Tuple{s.dict}, nil)
-	if err != nil {
-		return emptyStr, err
-	}
-
-	// convert to string
-	ss, ok := val.(starlark.String)
-	if !ok {
-		return "", fmt.Errorf("got %s as result, want string", val.Type())
-	}
-	return string(ss), nil
+	return EncodeStarlarkJSON(s.dict)
 }
 
 // LoadJSON updates the SharedDict instance with key-value pairs decoded from a given JSON string.
@@ -326,18 +305,8 @@ func (s *SharedDict) LoadJSON(jsonStr string) error {
 		return fmt.Errorf("nil shared dict")
 	}
 
-	// prepare thread
-	thread := &starlark.Thread{Name: "inline", Print: noopPrintFunc}
-
-	// get the JSON decoder
-	jm, ok := stdjson.Module.Members["decode"]
-	if !ok {
-		return fmt.Errorf("json.decode not found")
-	}
-	dec := jm.(*starlark.Builtin)
-
-	// call the builtin
-	val, err := starlark.Call(thread, dec, starlark.Tuple{starlark.String(jsonStr)}, nil)
+	// json decode
+	val, err := DecodeStarlarkJSON([]byte(jsonStr))
 	if err != nil {
 		return err
 	}
@@ -445,15 +414,8 @@ func sharedDictFromJSON(thread *starlark.Thread, b *starlark.Builtin, args starl
 		return nil, err
 	}
 
-	// get the JSON decoder
-	jm, ok := stdjson.Module.Members["decode"]
-	if !ok {
-		return nil, fmt.Errorf("json.decode not found")
-	}
-	dec := jm.(*starlark.Builtin)
-
-	// convert from JSON
-	v, err := starlark.Call(thread, dec, starlark.Tuple{s.StarlarkString()}, nil)
+	// json decode
+	v, err := DecodeStarlarkJSON(s.GoBytes())
 	if err != nil {
 		return nil, err
 	}
