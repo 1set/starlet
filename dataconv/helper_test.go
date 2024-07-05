@@ -1192,3 +1192,69 @@ func TestGetThreadContext(t *testing.T) {
 		}
 	})
 }
+
+func BenchmarkMarshalStarlarkJSON(b *testing.B) {
+	// Prepare a complex Starlark value for benchmarking
+	sd := starlark.NewDict(3)
+	sd.SetKey(starlark.String("int"), starlark.MakeInt(42))
+	sd.SetKey(starlark.String("float"), starlark.Float(3.14))
+	sd.SetKey(starlark.String("list"), starlark.NewList([]starlark.Value{
+		starlark.String("a"),
+		starlark.String("b"),
+		starlark.String("c"),
+	}))
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := MarshalStarlarkJSON(sd, 0)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkUnmarshalStarlarkJSON(b *testing.B) {
+	// Prepare a JSON string for benchmarking
+	jsonData := []byte(`{"int":42,"float":3.14,"list":["a","b","c"]}`)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := UnmarshalStarlarkJSON(jsonData)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkEncodeStarlarkJSON(b *testing.B) {
+	// Prepare a complex Starlark value for benchmarking
+	sd := starlark.NewDict(3)
+	sd.SetKey(starlark.String("int"), starlark.MakeInt(42))
+	sd.SetKey(starlark.String("float"), starlark.Float(3.14))
+	sd.SetKey(starlark.String("list"), starlark.NewList([]starlark.Value{
+		starlark.String("a"),
+		starlark.String("b"),
+		starlark.String("c"),
+	}))
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := EncodeStarlarkJSON(sd)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkDecodeStarlarkJSON(b *testing.B) {
+	// Prepare a JSON string for benchmarking
+	jsonData := []byte(`{"int":42,"float":3.14,"list":["a","b","c"]}`)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := DecodeStarlarkJSON(jsonData)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
