@@ -757,6 +757,14 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 			`),
 		},
 		{
+			name: `to_dict: no args`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'to_dict')
+				to_dict()
+			`),
+			wantErr: `to_dict: missing argument for v`,
+		},
+		{
 			name: `to_dict: empty struct`,
 			script: itn.HereDoc(`
 				load('go_idiomatic', 'to_dict', 'struct')
@@ -800,8 +808,24 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				d = to_dict(gs)
 				assert.eq(type(d), 'dict')
 				assert.eq(d, {
-					'Slice': [],
-					'Map': {},
+					'Slice': None,
+					'Map': None,
+					'Struct': None,
+					'NestedStruct': None,
+					'Pointer': None,
+				})
+			`),
+		},
+		{
+			name: `to_dict: GoStruct 2 to dict`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'to_dict')
+				gs = test_custom_struct_pointer
+				d = to_dict(gs)
+				assert.eq(type(d), 'dict')
+				assert.eq(d, {
+					'Slice': None,
+					'Map': None,
 					'Struct': None,
 					'NestedStruct': None,
 					'Pointer': None,
@@ -824,7 +848,15 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'to_dict')
 				to_dict([1, 2, 3])
 			`),
-			wantErr: `to_dict: unsupported type: starlark.List`,
+			wantErr: `to_dict: unsupported type: *starlark.List`,
+		},
+		{
+			name: `to_dict: unsupported type 2`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'to_dict')
+				to_dict(None)
+			`),
+			wantErr: `to_dict: unsupported type: starlark.NoneType`,
 		},
 		{
 			name: `distinct with list`,
