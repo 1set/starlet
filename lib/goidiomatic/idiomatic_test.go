@@ -830,7 +830,33 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 					'NestedStruct': None,
 					'Pointer': None,
 				})
+				print(test_custom_struct_data)
 			`),
+		},
+		{
+			name: `to_dict: GoStruct 3 to dict`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'to_dict')
+				gs = test_custom_struct_data
+				d = to_dict(gs)
+				assert.eq(type(d), 'dict')
+				assert.eq(d, {
+					'Slice': None,
+					'Map': {"foo": "bar"},
+					'Struct': None,
+					'NestedStruct': None,
+					'Pointer': None,
+				})
+			`),
+		},
+		{
+			name: `to_dict: invalid GoStruct`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'to_dict')
+				gs = test_invalid_struct
+				d = to_dict(gs)
+			`),
+			wantErr: `to_dict: json: unsupported type: chan int`,
 		},
 		{
 			name: `to_dict: SharedDict to dict`,
@@ -840,6 +866,16 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				d = to_dict(sd)
 				assert.eq(type(d), 'dict')
 				assert.eq(d, {"a": 1, "b": 2})
+			`),
+		},
+		{
+			name: `to_dict: dict to dict`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'to_dict')
+				od = {"a": 1, "b": 2}
+				nd = to_dict(od)
+				assert.eq(type(nd), 'dict')
+				assert.eq(nd, od)
 			`),
 		},
 		{
@@ -1071,6 +1107,8 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				"make_range":                 convert.MakeStarFn("make_range", newCustomIntRange),
 				"test_custom_struct":         convert.NewStruct(testStruct{}),
 				"test_custom_struct_pointer": convert.NewStruct(&testStruct{}),
+				"test_custom_struct_data":    convert.NewStruct(&testStruct{Map: map[string]string{"foo": "bar"}}),
+				"test_invalid_struct":        convert.NewStruct(&testStruct{Pointer: make(chan int, 1)}),
 			}
 
 			res, err := itn.ExecModuleWithErrorTest(t, goidiomatic.ModuleName, goidiomatic.LoadModule, tt.script, tt.wantErr, globals)

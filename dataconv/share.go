@@ -67,7 +67,7 @@ func NewNamedSharedDict(name string) *SharedDict {
 // NewSharedDictFromDict creates a new SharedDict instance from the given starlark.Dict.
 // It attempts to clone the dictionary, and returns the original dictionary if failed.
 func NewSharedDictFromDict(d *starlark.Dict) *SharedDict {
-	nd, err := cloneDict(d)
+	nd, err := CloneDict(d)
 	if err != nil {
 		nd = d
 	}
@@ -277,7 +277,7 @@ func (s *SharedDict) CloneDict() (*starlark.Dict, error) {
 	s.RLock()
 	defer s.RUnlock()
 
-	return cloneDict(s.dict)
+	return CloneDict(s.dict)
 }
 
 // ToJSON serializes the SharedDict instance into a JSON string representation.
@@ -382,7 +382,7 @@ func sharedDictToDict(thread *starlark.Thread, b *starlark.Builtin, args starlar
 	od := b.Receiver().(*starlark.Dict)
 
 	// clone the dictionary
-	return cloneDict(od)
+	return CloneDict(od)
 }
 
 // sharedDictToJSON converts the underlying dictionary to a JSON string.
@@ -441,8 +441,8 @@ func sharedDictFromJSON(thread *starlark.Thread, b *starlark.Builtin, args starl
 	return nd, nil
 }
 
-// cloneDict returns a shadow-clone of the given dictionary. It's safe to call it with a nil dictionary, it will return a new empty dictionary.
-func cloneDict(od *starlark.Dict) (*starlark.Dict, error) {
+// CloneDict returns a shadow-clone of the given dictionary. It's safe to call it with a nil dictionary, it will return a new empty dictionary.
+func CloneDict(od *starlark.Dict) (*starlark.Dict, error) {
 	if od == nil {
 		return starlark.NewDict(defaultSharedDictSize), nil
 	}

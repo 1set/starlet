@@ -387,7 +387,7 @@ func prettyPrint(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tup
 	return starlark.None, nil
 }
 
-// convertToDict creates a Starlark dict from a module, struct, or a GoStruct.
+// convertToDict creates a Starlark dict from a Starlark dict, module, struct, GoStruct, or SharedDict.
 // It works as a complement to the builtin dict() function of Starlark, not a replacement or alternative.
 func convertToDict(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var v starlark.Value
@@ -410,8 +410,6 @@ func convertToDict(thread *starlark.Thread, b *starlark.Builtin, args starlark.T
 			_ = dt.SetKey(starlark.String(k), v)
 		}
 		return dt, nil
-	case *dataconv.SharedDict:
-		return t.CloneDict()
 	case *convert.GoStruct:
 		rv := t.Value().Interface()
 		bs, err := json.Marshal(rv)
@@ -419,6 +417,10 @@ func convertToDict(thread *starlark.Thread, b *starlark.Builtin, args starlark.T
 			return nil, fmt.Errorf("%s: %w", b.Name(), err)
 		}
 		return dataconv.DecodeStarlarkJSON(bs)
+	case *dataconv.SharedDict:
+		return t.CloneDict()
+	case *starlark.Dict:
+		return dataconv.CloneDict(t)
 	default:
 		return nil, fmt.Errorf("%s: unsupported type: %T", b.Name(), t)
 	}
