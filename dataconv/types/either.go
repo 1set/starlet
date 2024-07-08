@@ -36,11 +36,7 @@ func (e *EitherOrNone[A, B]) Unpack(v starlark.Value) error {
 	} else {
 		var zeroA A
 		var zeroB B
-		gt := "nil"
-		if v != nil {
-			gt = v.Type()
-		}
-		return fmt.Errorf("expected %T or %T or None, got %T (%s)", zeroA, zeroB, v, gt)
+		return fmt.Errorf("expected %T or %T or None, got %T (%s)", zeroA, zeroB, v, gotStarType(v))
 	}
 	return nil
 }
