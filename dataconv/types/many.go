@@ -54,7 +54,11 @@ func (o *OneOrMany[T]) Unpack(v starlark.Value) error {
 		}
 		o.values = sl
 	} else {
-		return fmt.Errorf("expected %T or Iterable or None, got %s", o.defaultValue, v.Type())
+		vt := "nil"
+		if v != nil {
+			vt = v.Type()
+		}
+		return fmt.Errorf("expected %T or Iterable or None, got %s", o.defaultValue, vt)
 	}
 	return nil
 }

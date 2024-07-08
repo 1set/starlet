@@ -36,6 +36,10 @@ func (p *FloatOrInt) Unpack(v starlark.Value) error {
 		*p = FloatOrInt(v.Float())
 	case starlark.Float:
 		*p = FloatOrInt(v)
+	case starlark.NoneType:
+		// do nothing
+	case nil:
+		// do nothing
 	default:
 		return fmt.Errorf("got %s, want float or int", v.Type())
 	}
@@ -107,6 +111,10 @@ func (n *NumericValue) Unpack(v starlark.Value) error {
 	case starlark.Float:
 		n.floatValue = v
 		n.hasFloat = true
+	case starlark.NoneType:
+		// do nothing
+	case nil:
+		// do nothing
 	default:
 		return fmt.Errorf("got %s, want float or int", v.Type())
 	}
@@ -219,6 +227,8 @@ func (p *NullableStringOrBytes) Unpack(v starlark.Value) error {
 		s := string(v)
 		p.str = &s
 	case starlark.NoneType:
+		p.str = nil
+	case nil:
 		p.str = nil
 	default:
 		return fmt.Errorf("got %s, want string, bytes or None", v.Type())

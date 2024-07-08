@@ -330,13 +330,14 @@ func TestNumericValue_Unpack(t *testing.T) {
 			hasFlt:  true,
 		},
 		{
-			name:    "string error",
-			v:       starlark.String("not a number"),
-			wantErr: true,
+			name:    "none 0",
+			v:       starlark.None,
+			wantInt: starlark.MakeInt(0),
+			hasFlt:  false,
 		},
 		{
-			name:    "none error",
-			v:       starlark.None,
+			name:    "string error",
+			v:       starlark.String("not a number"),
 			wantErr: true,
 		},
 	}
