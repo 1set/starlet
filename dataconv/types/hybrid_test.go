@@ -10,6 +10,11 @@ import (
 )
 
 func TestFloatOrInt_Unpack(t *testing.T) {
+	var p *FloatOrInt
+	if err := p.Unpack(nil); err == nil {
+		t.Error("expected error on nil receiver")
+	}
+
 	tests := []struct {
 		name    string
 		v       starlark.Value
@@ -29,6 +34,11 @@ func TestFloatOrInt_Unpack(t *testing.T) {
 		{
 			name:    "string",
 			v:       starlark.String("1"),
+			wantErr: true,
+		},
+		{
+			name:    "none",
+			v:       starlark.None,
 			wantErr: true,
 		},
 	}
@@ -309,6 +319,11 @@ func TestNumericValue(t *testing.T) {
 }
 
 func TestNumericValue_Unpack(t *testing.T) {
+	var p *NumericValue
+	if err := p.Unpack(nil); err == nil {
+		t.Error("expected error on nil receiver")
+	}
+
 	tests := []struct {
 		name    string
 		v       starlark.Value
@@ -397,6 +412,11 @@ func TestNumericValue_Value(t *testing.T) {
 }
 
 func TestStringOrBytes_Unpack(t *testing.T) {
+	var p *StringOrBytes
+	if err := p.Unpack(nil); err == nil {
+		t.Error("expected error on nil receiver")
+	}
+
 	tests := []struct {
 		name    string
 		v       starlark.Value
@@ -482,6 +502,11 @@ func TestStringOrBytes_Stringer(t *testing.T) {
 }
 
 func TestNullableStringOrBytes_Unpack(t *testing.T) {
+	var p *NullableStringOrBytes
+	if err := p.Unpack(nil); err == nil {
+		t.Error("expected error on nil receiver")
+	}
+
 	tests := []struct {
 		name    string
 		v       starlark.Value
