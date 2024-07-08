@@ -20,6 +20,12 @@ var (
 var (
 	emptyStr       string
 	errNilReceiver = errors.New("nil pointer")
+	gotStarType    = func(v starlark.Value) string {
+		if v == nil {
+			return "nil"
+		}
+		return v.Type()
+	}
 )
 
 // FloatOrInt is an Unpacker that converts a Starlark int or float to Go's float64.
@@ -36,12 +42,8 @@ func (p *FloatOrInt) Unpack(v starlark.Value) error {
 		*p = FloatOrInt(v.Float())
 	case starlark.Float:
 		*p = FloatOrInt(v)
-	case starlark.NoneType:
-		// do nothing
-	case nil:
-		// do nothing
 	default:
-		return fmt.Errorf("got %s, want float or int", v.Type())
+		return fmt.Errorf("got %s, want float or int", gotStarType(v))
 	}
 	return nil
 }
@@ -111,31 +113,27 @@ func (n *NumericValue) Unpack(v starlark.Value) error {
 	case starlark.Float:
 		n.floatValue = v
 		n.hasFloat = true
-	case starlark.NoneType:
-		// do nothing
-	case nil:
-		// do nothing
 	default:
-		return fmt.Errorf("got %s, want float or int", v.Type())
+		return fmt.Errorf("got %s, want float or int", gotStarType(v))
 	}
 	return nil
 }
 
 // Add takes a Starlark Value and adds it to the NumericValue.
 // It returns an error if the given value is neither an int nor a float.
-func (n *NumericValue) Add(value starlark.Value) error {
-	switch value := value.(type) {
+func (n *NumericValue) Add(v starlark.Value) error {
+	switch v := v.(type) {
 	case starlark.Int:
-		n.intValue = n.intValue.Add(value)
+		n.intValue = n.intValue.Add(v)
 	case starlark.Float:
-		n.floatValue += value
+		n.floatValue += v
 		n.hasFloat = true
 	case starlark.NoneType:
 		// do nothing
 	case nil:
 		// do nothing
 	default:
-		return fmt.Errorf("unsupported type: %s, expected float or int", value.Type())
+		return fmt.Errorf("unsupported type: %s, expected float or int", gotStarType(v))
 	}
 	return nil
 }
@@ -169,7 +167,7 @@ func (p *StringOrBytes) Unpack(v starlark.Value) error {
 	case starlark.Bytes:
 		*p = StringOrBytes(v)
 	default:
-		return fmt.Errorf("got %s, want string or bytes", v.Type())
+		return fmt.Errorf("got %s, want string or bytes", gotStarType(v))
 	}
 	return nil
 }
@@ -228,10 +226,8 @@ func (p *NullableStringOrBytes) Unpack(v starlark.Value) error {
 		p.str = &s
 	case starlark.NoneType:
 		p.str = nil
-	case nil:
-		p.str = nil
 	default:
-		return fmt.Errorf("got %s, want string, bytes or None", v.Type())
+		return fmt.Errorf("got %s, want string, bytes or None", gotStarType(v))
 	}
 	return nil
 }
