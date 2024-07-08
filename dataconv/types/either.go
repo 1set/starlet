@@ -22,7 +22,7 @@ func NewEitherOrNone[A starlark.Value, B starlark.Value]() *EitherOrNone[A, B] {
 // Unpack implements the starlark.Unpacker interface.
 func (e *EitherOrNone[A, B]) Unpack(v starlark.Value) error {
 	if e == nil {
-		return fmt.Errorf("nil pointer")
+		return errNilReceiver
 	}
 	if _, ok := v.(starlark.NoneType); ok {
 		e.value = nil

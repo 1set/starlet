@@ -17,7 +17,8 @@ var (
 )
 
 var (
-	emptyStr string
+	emptyStr       string
+	errNilReceiver = fmt.Errorf("nil pointer")
 )
 
 // FloatOrInt is an Unpacker that converts a Starlark int or float to Go's float64.
@@ -26,6 +27,9 @@ type FloatOrInt float64
 
 // Unpack implements Unpacker.
 func (p *FloatOrInt) Unpack(v starlark.Value) error {
+	if p == nil {
+		return errNilReceiver
+	}
 	switch v := v.(type) {
 	case starlark.Int:
 		*p = FloatOrInt(v.Float())
@@ -93,6 +97,9 @@ func NewNumericValue() *NumericValue {
 
 // Unpack implements Unpacker.
 func (n *NumericValue) Unpack(v starlark.Value) error {
+	if n == nil {
+		return errNilReceiver
+	}
 	switch v := v.(type) {
 	case starlark.Int:
 		n.intValue = v
@@ -144,6 +151,9 @@ type StringOrBytes string
 
 // Unpack implements Unpacker.
 func (p *StringOrBytes) Unpack(v starlark.Value) error {
+	if p == nil {
+		return errNilReceiver
+	}
 	switch v := v.(type) {
 	case starlark.String:
 		*p = StringOrBytes(v)
@@ -197,6 +207,9 @@ func NewNullableStringOrBytesNoDefault() *NullableStringOrBytes {
 
 // Unpack implements Unpacker.
 func (p *NullableStringOrBytes) Unpack(v starlark.Value) error {
+	if p == nil {
+		return errNilReceiver
+	}
 	switch v := v.(type) {
 	case starlark.String:
 		s := string(v)
