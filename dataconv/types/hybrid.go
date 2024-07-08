@@ -2,6 +2,7 @@
 package types
 
 import (
+	"errors"
 	"fmt"
 	"math"
 
@@ -18,7 +19,7 @@ var (
 
 var (
 	emptyStr       string
-	errNilReceiver = fmt.Errorf("nil pointer")
+	errNilReceiver = errors.New("nil pointer")
 )
 
 // FloatOrInt is an Unpacker that converts a Starlark int or float to Go's float64.
