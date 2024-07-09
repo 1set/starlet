@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html"
 	"strconv"
+	"strings"
 	"sync"
 	"unicode/utf8"
 
@@ -53,12 +54,16 @@ func LoadModule() (starlark.StringDict, error) {
 					"printable":       starlark.String(printable),
 
 					// functions
-					"length":   starlark.NewBuiltin(ModuleName+".length", length),
-					"reverse":  starlark.NewBuiltin(ModuleName+".reverse", reverse),
-					"escape":   genStarStrBuiltin("escape", html.EscapeString),
-					"unescape": genStarStrBuiltin("unescape", html.UnescapeString),
-					"quote":    genStarStrBuiltin("quote", strconv.Quote),
-					"unquote":  genStarStrBuiltin("unquote", robustUnquote),
+					"length":    starlark.NewBuiltin(ModuleName+".length", length),
+					"reverse":   starlark.NewBuiltin(ModuleName+".reverse", reverse),
+					"escape":    genStarStrBuiltin("escape", html.EscapeString),
+					"unescape":  genStarStrBuiltin("unescape", html.UnescapeString),
+					"quote":     genStarStrBuiltin("quote", strconv.Quote),
+					"unquote":   genStarStrBuiltin("unquote", robustUnquote),
+					"index":     starlark.NewBuiltin(ModuleName+".index", index),
+					"find":      starlark.NewBuiltin(ModuleName+".find", find),
+					"substring": starlark.NewBuiltin(ModuleName+".substring", substring),
+					"codepoint": starlark.NewBuiltin(ModuleName+".codepoint", codepoint),
 				},
 			},
 		}
@@ -158,4 +163,107 @@ func robustUnquote(s string) string {
 	}
 	// return unmodified string
 	return ns
+}
+
+// index returns the first index where the substring is found or an error if not found.
+func index(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var s, sub string
+	if err := starlark.UnpackArgs("index", args, kwargs, "s", &s, "sub", &sub); err != nil {
+		return none, err
+	}
+
+	// find the index of the substring
+	pos := strings.Index(s, sub)
+
+	// return error if not found
+	if pos < 0 {
+		return none, fmt.Errorf(`index: substring not found`)
+	}
+
+	// convert to rune count
+	pos = utf8.RuneCountInString(s[:pos])
+	return starlark.MakeInt(pos), nil
+}
+
+// find returns the first index where the substring is found or -1 if not found.
+func find(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var s, sub string
+	if err := starlark.UnpackArgs("find", args, kwargs, "s", &s, "sub", &sub); err != nil {
+		return none, err
+	}
+
+	// find the index of the substring
+	pos := strings.Index(s, sub)
+
+	if pos < 0 {
+		// return -1 if not found
+		pos = -1
+	} else {
+		// convert to rune count
+		pos = utf8.RuneCountInString(s[:pos])
+	}
+
+	// return the result
+	return starlark.MakeInt(pos), nil
+}
+
+// substring returns a substring from start to end (exclusive) indices.
+func substring(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var (
+		s          string
+		start, end int
+	)
+	if err := starlark.UnpackArgs("substring", args, kwargs, "s", &s, "start", &start, "end?", &end); err != nil {
+		return none, err
+	}
+
+	// convert to rune count
+	rs := []rune(s)
+	n := len(rs)
+
+	// Handle negative indices
+	if start < 0 {
+		start += n
+	}
+	if end < 0 {
+		end += n
+	}
+	if end == 0 { // if end is not provided, use the length of the string
+		end = n
+	}
+
+	// Check for out of range indices
+	if start < 0 || end < 0 || start > n || end > n || start > end {
+		return starlark.None, fmt.Errorf(`substring: indices are out of range`)
+	}
+
+	return starlark.String(rs[start:end]), nil
+}
+
+// codepoint returns the Unicode codepoint of the character at the given index.
+func codepoint(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var (
+		s   string
+		idx int
+	)
+	if err := starlark.UnpackArgs("codepoint", args, kwargs, "s", &s, "index", &idx); err != nil {
+		return none, err
+	}
+
+	// convert to rune count
+	rs := []rune(s)
+	n := len(rs)
+
+	// Handle negative index
+	if idx < 0 {
+		idx += n
+	}
+
+	// Check for out of range index
+	if idx < 0 || idx >= n {
+		return starlark.None, fmt.Errorf(`codepoint: index out of range`)
+	}
+
+	// return the codepoint
+	return starlark.String(rs[idx]), nil
 }
