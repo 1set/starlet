@@ -1,6 +1,7 @@
 package types
 
 import (
+	"errors"
 	"math"
 	"reflect"
 	"runtime"
@@ -215,6 +216,16 @@ func TestFloatOrIntList_Unpack(t *testing.T) {
 		wantErr bool
 	}{
 		{
+			name:    "nil",
+			input:   nil,
+			wantErr: true,
+		},
+		{
+			name:  "empty list",
+			input: starlark.NewList(nil),
+			want:  FloatOrIntList{},
+		},
+		{
 			name:  "valid list of ints",
 			input: starlark.NewList([]starlark.Value{starlark.MakeInt(1), starlark.MakeInt(2), starlark.MakeInt(3)}),
 			want:  FloatOrIntList{1, 2, 3},
@@ -239,6 +250,14 @@ func TestFloatOrIntList_Unpack(t *testing.T) {
 			input:   starlark.NewList([]starlark.Value{starlark.MakeInt(1), starlark.String("invalid"), starlark.MakeInt(3)}),
 			wantErr: true,
 		},
+		{
+			name: "invalid nested list",
+			input: starlark.NewList([]starlark.Value{
+				starlark.NewList([]starlark.Value{starlark.MakeInt(1), starlark.MakeInt(2)}),
+				starlark.NewList([]starlark.Value{starlark.Float(3.3), starlark.Float(4.4)}),
+			}),
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -261,7 +280,7 @@ func TestFloatOrIntList_Unpack(t *testing.T) {
 	t.Run("nil receiver", func(t *testing.T) {
 		var l *FloatOrIntList
 		err := l.Unpack(starlark.NewList(nil))
-		if err != errNilReceiver {
+		if !errors.Is(err, errNilReceiver) {
 			t.Errorf("FloatOrIntList.Unpack() error = %v, want %v", err, errNilReceiver)
 		}
 	})
