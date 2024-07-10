@@ -69,11 +69,30 @@ func newUnaryFloatBuiltin(name string, fn func([]float64) (float64, error)) *sta
 		if err := starlark.UnpackPositionalArgs(name, args, kwargs, 1, &data); err != nil {
 			return nil, err
 		}
-		result, err := fn([]float64(data.GoSlice()))
+		result, err := fn(data.GoSlice())
 		if err != nil {
 			return nil, err
 		}
 		return starlark.Float(result), nil
+	})
+}
+
+// newUnaryFloatListBuiltin wraps a unary function accepting []float64 and returning ([]float64, error) as a Starlark built-in.
+func newUnaryFloatListBuiltin(name string, fn func([]float64) ([]float64, error)) *starlark.Builtin {
+	return starlark.NewBuiltin(name, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var data tps.FloatOrIntList
+		if err := starlark.UnpackPositionalArgs(name, args, kwargs, 1, &data); err != nil {
+			return nil, err
+		}
+		result, err := fn(data.GoSlice())
+		if err != nil {
+			return nil, err
+		}
+		fls := make([]starlark.Value, len(result))
+		for i, v := range result {
+			fls[i] = starlark.Float(v)
+		}
+		return starlark.NewList(fls), nil
 	})
 }
 
@@ -84,7 +103,7 @@ func newBinaryFloatBuiltin(name string, fn func([]float64, []float64) (float64, 
 		if err := starlark.UnpackPositionalArgs(name, args, kwargs, 2, &data1, &data2); err != nil {
 			return nil, err
 		}
-		result, err := fn([]float64(data1.GoSlice()), []float64(data2.GoSlice()))
+		result, err := fn(data1.GoSlice(), data2.GoSlice())
 		if err != nil {
 			return nil, err
 		}
@@ -95,11 +114,23 @@ func newBinaryFloatBuiltin(name string, fn func([]float64, []float64) (float64, 
 // newBinaryFloatToFloatBuiltin wraps a binary function accepting two float64 arguments and returning float64 as a Starlark built-in.
 func newBinaryFloatToFloatBuiltin(name string, fn func(float64, float64) float64) *starlark.Builtin {
 	return starlark.NewBuiltin(name, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		var x, y starlark.Float
+		var x, y tps.FloatOrInt
 		if err := starlark.UnpackPositionalArgs(name, args, kwargs, 2, &x, &y); err != nil {
 			return nil, err
 		}
 		result := fn(float64(x), float64(y))
+		return starlark.Float(result), nil
+	})
+}
+
+// newTernaryFloatToFloatBuiltin wraps a ternary function accepting three float64 arguments and returning float64 as a Starlark built-in.
+func newTernaryFloatToFloatBuiltin(name string, fn func(float64, float64, float64) float64) *starlark.Builtin {
+	return starlark.NewBuiltin(name, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var x, y, z tps.FloatOrInt
+		if err := starlark.UnpackPositionalArgs(name, args, kwargs, 3, &x, &y, &z); err != nil {
+			return nil, err
+		}
+		result := fn(float64(x), float64(y), float64(z))
 		return starlark.Float(result), nil
 	})
 }
