@@ -14,6 +14,7 @@ import (
 	librand "github.com/1set/starlet/lib/random"
 	libre "github.com/1set/starlet/lib/re"
 	librt "github.com/1set/starlet/lib/runtime"
+	libstat "github.com/1set/starlet/lib/stats"
 	libstr "github.com/1set/starlet/lib/string"
 	stdmath "go.starlark.net/lib/math"
 	stdtime "go.starlark.net/lib/time"
@@ -55,6 +56,7 @@ var allBuiltinModules = ModuleLoaderMap{
 	libre.ModuleName:   libre.LoadModule,
 	librt.ModuleName:   librt.LoadModule,
 	libstr.ModuleName:  libstr.LoadModule,
+	libstat.ModuleName: libstat.LoadModule,
 }
 
 // GetAllBuiltinModuleNames returns a list of all builtin module names.

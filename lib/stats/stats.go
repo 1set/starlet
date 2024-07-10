@@ -26,41 +26,48 @@ func LoadModule() (starlark.StringDict, error) {
 			ModuleName: &starlarkstruct.Module{
 				Name: ModuleName,
 				Members: starlark.StringDict{
-					"euclidean_distance": newBinaryFloatBuiltin("euclidean_distance", gms.EuclideanDistance),
-					"manhattan_distance": newBinaryFloatBuiltin("manhattan_distance", gms.ManhattanDistance),
-					"softmax":            newUnaryFloatListBuiltin("softmax", gms.SoftMax),
-					"sigmoid":            newUnaryFloatListBuiltin("sigmoid", gms.Sigmoid),
+					// Distance Metrics
+					"euclidean_distance": newBinaryFloatBuiltin("euclidean_distance", gms.EuclideanDistance), // Calculates the straight line distance between two points in Euclidean space.
+					"manhattan_distance": newBinaryFloatBuiltin("manhattan_distance", gms.ManhattanDistance), // Computes the sum of the absolute differences of their coordinates.
 
-					"mode": newUnaryFloatListBuiltin("mode", gms.Mode),
-					"sum":  newUnaryFloatBuiltin("sum", gms.Sum),
-					"max":  newUnaryFloatBuiltin("max", gms.Max),
-					"min":  newUnaryFloatBuiltin("min", gms.Min),
+					// Probability Distributions and Transformations
+					"softmax": newUnaryFloatListBuiltin("softmax", gms.SoftMax), // Applies the SoftMax function, useful for converting scores to probabilities.
+					"sigmoid": newUnaryFloatListBuiltin("sigmoid", gms.Sigmoid), // Applies the Sigmoid function, often used for binary classification.
 
-					"mean":           newUnaryFloatBuiltin("mean", gms.Mean),
-					"norm_mean":      newBinaryFloatToFloatBuiltin("norm_mean", gms.NormMean),
-					"geometric_mean": newUnaryFloatBuiltin("geometric_mean", gms.GeometricMean),
-					"harmonic_mean":  newUnaryFloatBuiltin("harmonic_mean", gms.HarmonicMean),
-					"trimean":        newUnaryFloatBuiltin("trimean", gms.Trimean),
-					"median":         newUnaryFloatBuiltin("median", gms.Median),
-					"norm_median":    newBinaryFloatToFloatBuiltin("norm_median", gms.NormMedian),
+					// Basic Statistical Measures
+					"mode": newUnaryFloatListBuiltin("mode", gms.Mode), // Determines the most frequently occurring data points in a dataset.
+					"sum":  newUnaryFloatBuiltin("sum", gms.Sum),       // Computes the sum of a series of numbers.
+					"max":  newUnaryFloatBuiltin("max", gms.Max),       // Finds the maximum value in a dataset.
+					"min":  newUnaryFloatBuiltin("min", gms.Min),       // Finds the minimum value in a dataset.
 
-					"percentile":              newBinaryFloatSingleBuiltin("percentile", gms.Percentile),
-					"percentile_nearest_rank": newBinaryFloatSingleBuiltin("percentile_nearest_rank", gms.PercentileNearestRank),
+					// Measures of Central Tendency
+					"mean":           newUnaryFloatBuiltin("mean", gms.Mean),                      // Calculates the arithmetic mean of a dataset.
+					"norm_mean":      newBinaryFloatToFloatBuiltin("norm_mean", gms.NormMean),     // Computes the mean of a normal distribution.
+					"geometric_mean": newUnaryFloatBuiltin("geometric_mean", gms.GeometricMean),   // Computes the geometric mean, useful for datasets with exponential growth.
+					"harmonic_mean":  newUnaryFloatBuiltin("harmonic_mean", gms.HarmonicMean),     // Computes the harmonic mean, effective for rates and ratios.
+					"trimean":        newUnaryFloatBuiltin("trimean", gms.Trimean),                // Calculates the trimean, a measure of a dataset's tendency.
+					"median":         newUnaryFloatBuiltin("median", gms.Median),                  // Finds the middle value of a dataset.
+					"norm_median":    newBinaryFloatToFloatBuiltin("norm_median", gms.NormMedian), // Computes the median of a normal distribution.
 
-					"variance":              newUnaryFloatBuiltin("variance", gms.Variance),
-					"covariance":            newBinaryFloatBuiltin("covariance", gms.Covariance),
-					"covariance_population": newBinaryFloatBuiltin("covariance_population", gms.CovariancePopulation),
-					"population_variance":   newUnaryFloatBuiltin("population_variance", gms.PopulationVariance),
-					"sample_variance":       newUnaryFloatBuiltin("sample_variance", gms.SampleVariance),
-					"sample":                starlark.NewBuiltin("sample", sample),
+					// Measures of Variability
+					"percentile":              newBinaryFloatSingleBuiltin("percentile", gms.Percentile),                         // Determines the value below which a given percentage of observations in a group of observations falls.
+					"percentile_nearest_rank": newBinaryFloatSingleBuiltin("percentile_nearest_rank", gms.PercentileNearestRank), // Similar to percentile but uses the nearest rank method.
+					"variance":                newUnaryFloatBuiltin("variance", gms.Variance),                                    // Calculates the variance of a dataset, a measure of dispersion.
+					"covariance":              newBinaryFloatBuiltin("covariance", gms.Covariance),                               // Measures how changes in one variable are associated with changes in another variable.
+					"covariance_population":   newBinaryFloatBuiltin("covariance_population", gms.CovariancePopulation),          // Calculates the covariance for an entire population.
+					"population_variance":     newUnaryFloatBuiltin("population_variance", gms.PopulationVariance),               // Computes the variance of an entire population.
+					"sample_variance":         newUnaryFloatBuiltin("sample_variance", gms.SampleVariance),                       // Computes the variance of a sample from the population.
+					"sample":                  starlark.NewBuiltin("sample", sample),                                             // Randomly samples elements from the dataset.
 
-					"correlation": newBinaryFloatBuiltin("correlation", gms.Correlation),
-					"pearson":     newBinaryFloatBuiltin("pearson", gms.Pearson),
+					// Correlation and Regression
+					"correlation": newBinaryFloatBuiltin("correlation", gms.Correlation), // Computes the correlation coefficient between two datasets.
+					"pearson":     newBinaryFloatBuiltin("pearson", gms.Pearson),         // Computes Pearson's correlation coefficient specifically.
 
-					"standard_deviation": newUnaryFloatBuiltin("standard_deviation", gms.StandardDeviation),
-					"stddev":             newUnaryFloatBuiltin("stddev", gms.StandardDeviation),
-					"norm_stddev":        newBinaryFloatToFloatBuiltin("norm_stddev", gms.NormStd),
-					"stddev_sample":      newUnaryFloatBuiltin("stddev_sample", gms.StandardDeviationSample),
+					// Standard Deviation
+					"standard_deviation": newUnaryFloatBuiltin("standard_deviation", gms.StandardDeviation),  // Calculates the standard deviation of a dataset.
+					"stddev":             newUnaryFloatBuiltin("stddev", gms.StandardDeviation),              // Alias for standard_deviation.
+					"norm_stddev":        newBinaryFloatToFloatBuiltin("norm_stddev", gms.NormStd),           // Computes the standard deviation of a normal distribution.
+					"stddev_sample":      newUnaryFloatBuiltin("stddev_sample", gms.StandardDeviationSample), // Calculates the standard deviation of a sample.
 				},
 			},
 		}
