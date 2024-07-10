@@ -221,6 +221,8 @@ func TestLoadModule_Stats(t *testing.T) {
 				assert.eq(len(r1), 3)
 				r2 = sample(data=[1, 2, 3, 4], take=5, replace=True)
 				assert.eq(len(r2), 5)
+				print(r1)
+				print(r2)
 			`),
 		},
 		{
@@ -235,9 +237,9 @@ func TestLoadModule_Stats(t *testing.T) {
 			name: "Wrong Sample",
 			script: itn.HereDoc(`
 				load('stats', 'sample')
-				sample([], 5, True)
+				sample([1,2,3,4], 5, False)
 			`),
-			wantErr: `Input must not be empty.`,
+			wantErr: `Input is outside of range.`,
 		},
 		{
 			name: "Correlation",
