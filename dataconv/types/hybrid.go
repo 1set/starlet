@@ -89,6 +89,71 @@ func clampToRange(value, min, max float64) float64 {
 	return value
 }
 
+// FloatOrIntList is an Unpacker that converts a Starlark list of floats or ints to a Go slice of float64.
+type FloatOrIntList []float64
+
+// Unpack implements Unpacker.
+func (l *FloatOrIntList) Unpack(v starlark.Value) error {
+	// ensure the input is iterable
+	if l == nil {
+		return errNilReceiver
+	}
+	list, ok := v.(starlark.Iterable)
+	if !ok {
+		return fmt.Errorf("got %s, want iterable", gotStarType(v))
+	}
+
+	// create a new slice to hold the unpacked values
+	result := make([]float64, 0)
+
+	// iterate through the Starlark list
+	iter := list.Iterate()
+	defer iter.Done()
+	var item starlark.Value
+	for i := 0; iter.Next(&item); i++ {
+		//for iter.Next(&item) {
+		switch v := item.(type) {
+		case starlark.Int:
+			// Convert Starlark int to float64
+			result = append(result, float64(v.Float()))
+		case starlark.Float:
+			// Append Starlark float directly
+			result = append(result, float64(v))
+		default:
+			// Return an error for unsupported types
+			return fmt.Errorf("at index %d, got unsupported type %s, want float or int", i, gotStarType(v))
+		}
+	}
+
+	// assign the result to the receiver
+	*l = result
+	return nil
+}
+
+// GoSlice returns the underlying Go []float64 slice.
+func (l FloatOrIntList) GoSlice() []float64 {
+	return []float64(l)
+}
+
+// StarlarkList returns a new Starlark list containing the values as Starlark floats.
+func (l FloatOrIntList) StarlarkList() *starlark.List {
+	items := make([]starlark.Value, len(l))
+	for i, v := range l {
+		items[i] = starlark.Float(v)
+	}
+	return starlark.NewList(items)
+}
+
+// Len returns the length of the FloatOrIntList.
+func (l FloatOrIntList) Len() int {
+	return len(l)
+}
+
+// IsEmpty returns true if the FloatOrIntList is empty.
+func (l FloatOrIntList) IsEmpty() bool {
+	return len(l) == 0
+}
+
 // NumericValue holds a Starlark numeric value and tracks its type.
 // It can represent an integer or a float, and it prefers integers over floats.
 type NumericValue struct {
