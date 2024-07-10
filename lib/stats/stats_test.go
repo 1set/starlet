@@ -41,6 +41,14 @@ func TestLoadModule_Stats(t *testing.T) {
 			name: "Invalid Softmax",
 			script: itn.HereDoc(`
 				load('stats', 'softmax')
+				softmax(True)
+			`),
+			wantErr: `softmax: for parameter 1: got bool, want iterable`,
+		},
+		{
+			name: "Wrong Softmax",
+			script: itn.HereDoc(`
+				load('stats', 'softmax')
 				softmax([])
 			`),
 			wantErr: `Input must not be empty.`,

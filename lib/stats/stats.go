@@ -41,13 +41,11 @@ func LoadModule() (starlark.StringDict, error) {
 					"min":  newUnaryFloatBuiltin("min", gms.Min),       // Finds the minimum value in a dataset.
 
 					// Measures of Central Tendency
-					"mean":           newUnaryFloatBuiltin("mean", gms.Mean),                      // Calculates the arithmetic mean of a dataset.
-					"norm_mean":      newBinaryFloatToFloatBuiltin("norm_mean", gms.NormMean),     // Computes the mean of a normal distribution.
-					"geometric_mean": newUnaryFloatBuiltin("geometric_mean", gms.GeometricMean),   // Computes the geometric mean, useful for datasets with exponential growth.
-					"harmonic_mean":  newUnaryFloatBuiltin("harmonic_mean", gms.HarmonicMean),     // Computes the harmonic mean, effective for rates and ratios.
-					"trimean":        newUnaryFloatBuiltin("trimean", gms.Trimean),                // Calculates the trimean, a measure of a dataset's tendency.
-					"median":         newUnaryFloatBuiltin("median", gms.Median),                  // Finds the middle value of a dataset.
-					"norm_median":    newBinaryFloatToFloatBuiltin("norm_median", gms.NormMedian), // Computes the median of a normal distribution.
+					"mean":           newUnaryFloatBuiltin("mean", gms.Mean),                    // Calculates the arithmetic mean of a dataset.
+					"geometric_mean": newUnaryFloatBuiltin("geometric_mean", gms.GeometricMean), // Computes the geometric mean, useful for datasets with exponential growth.
+					"harmonic_mean":  newUnaryFloatBuiltin("harmonic_mean", gms.HarmonicMean),   // Computes the harmonic mean, effective for rates and ratios.
+					"trimean":        newUnaryFloatBuiltin("trimean", gms.Trimean),              // Calculates the trimean, a measure of a dataset's tendency.
+					"median":         newUnaryFloatBuiltin("median", gms.Median),                // Finds the middle value of a dataset.
 
 					// Measures of Variability
 					"percentile":              newBinaryFloatSingleBuiltin("percentile", gms.Percentile),                         // Determines the value below which a given percentage of observations in a group of observations falls.
@@ -66,7 +64,6 @@ func LoadModule() (starlark.StringDict, error) {
 					// Standard Deviation
 					"standard_deviation": newUnaryFloatBuiltin("standard_deviation", gms.StandardDeviation),  // Calculates the standard deviation of a dataset.
 					"stddev":             newUnaryFloatBuiltin("stddev", gms.StandardDeviation),              // Alias for standard_deviation.
-					"norm_stddev":        newBinaryFloatToFloatBuiltin("norm_stddev", gms.NormStd),           // Computes the standard deviation of a normal distribution.
 					"stddev_sample":      newUnaryFloatBuiltin("stddev_sample", gms.StandardDeviationSample), // Calculates the standard deviation of a sample.
 				},
 			},
@@ -134,18 +131,6 @@ func newBinaryFloatSingleBuiltin(name string, fn func(gms.Float64Data, float64) 
 		if err != nil {
 			return nil, err
 		}
-		return starlark.Float(result), nil
-	})
-}
-
-// newBinaryFloatToFloatBuiltin wraps a binary function accepting two float64 arguments and returning float64 as a Starlark built-in.
-func newBinaryFloatToFloatBuiltin(name string, fn func(float64, float64) float64) *starlark.Builtin {
-	return starlark.NewBuiltin(name, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		var x, y tps.FloatOrInt
-		if err := starlark.UnpackPositionalArgs(name, args, kwargs, 2, &x, &y); err != nil {
-			return nil, err
-		}
-		result := fn(float64(x), float64(y))
 		return starlark.Float(result), nil
 	})
 }
