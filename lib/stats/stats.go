@@ -2,11 +2,12 @@
 package stats
 
 import (
+	"go.starlark.net/starlarkstruct"
 	"sync"
 
 	tps "github.com/1set/starlet/dataconv/types"
+	gms "github.com/montanaflynn/stats"
 	"go.starlark.net/starlark"
-	"go.starlark.net/starlarkstruct"
 )
 
 // ModuleName defines the expected name for this Module when used
@@ -23,8 +24,10 @@ func LoadModule() (starlark.StringDict, error) {
 	once.Do(func() {
 		statModule = starlark.StringDict{
 			ModuleName: &starlarkstruct.Module{
-				Name:    ModuleName,
-				Members: starlark.StringDict{},
+				Name: ModuleName,
+				Members: starlark.StringDict{
+					"mean": newUnaryFloatBuiltin("mean", gms.Mean),
+				},
 			},
 		}
 	})
