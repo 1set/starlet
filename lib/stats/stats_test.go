@@ -128,15 +128,16 @@ func TestLoadModule_Stats(t *testing.T) {
 			name: "Percentile",
 			script: itn.HereDoc(`
 				load('stats', 'percentile')
-				assert.eq(percentile([1, 2, 3, 4, 5], 0.4), 2.6000000000000005)
-				assert.eq(percentile([1, 2, 3, 4, 5], 0.8), 4.2)
+				assert.eq(percentile([1, 2, 3, 4, 5], 40), 2)
+				assert.eq(percentile([1, 2, 3, 4, 5], 50), 2.5)
+				assert.eq(percentile([1, 2, 3, 4, 5], 90), 4.5)
 			`),
 		},
 		{
 			name: "Variance",
 			script: itn.HereDoc(`
 				load('stats', 'variance')
-				assert.eq(variance([1, 2, 3, 4, 5]), 2.5)
+				assert.eq(variance([1, 2, 3, 4, 5]), 2.0)
 				assert.eq(variance([1, 1, 1, 1]), 0.0)
 			`),
 		},
@@ -152,7 +153,7 @@ func TestLoadModule_Stats(t *testing.T) {
 			name: "Sample Variance",
 			script: itn.HereDoc(`
 				load('stats', 'sample_variance')
-				assert.eq(sample_variance([1, 2, 3, 4, 5]), 3.0)
+				assert.eq(sample_variance([1, 2, 3, 4, 5]), 2.5)
 				assert.eq(sample_variance([1, 1, 1, 1]), 0.0)
 			`),
 		},
@@ -160,7 +161,7 @@ func TestLoadModule_Stats(t *testing.T) {
 			name: "Standard Deviation",
 			script: itn.HereDoc(`
 				load('stats', 'standard_deviation')
-				assert.eq(standard_deviation([1, 2, 3, 4, 5]), 1.5811388300841898)
+				assert.eq(standard_deviation([1, 2, 3, 4, 5]), 1.4142135623730951)
 				assert.eq(standard_deviation([1, 1, 1, 1]), 0.0)
 			`),
 		},
@@ -168,10 +169,10 @@ func TestLoadModule_Stats(t *testing.T) {
 			name: "Sample",
 			script: itn.HereDoc(`
 				load('stats', 'sample')
-				result = sample(data=[1, 2, 3, 4], take=3, replace=False)
-				assert.eq(len(result), 3)
-				result = sample(data=[1, 2, 3, 4], take=5, replace=True)
-				assert.eq(len(result), 5)
+				r1 = sample(data=[1, 2, 3, 4], take=3, replace=False)
+				assert.eq(len(r1), 3)
+				r2 = sample(data=[1, 2, 3, 4], take=5, replace=True)
+				assert.eq(len(r2), 5)
 			`),
 		},
 		{
@@ -180,7 +181,7 @@ func TestLoadModule_Stats(t *testing.T) {
 				load('stats', 'mean')
 				mean([1, 2, 3], [4])
 			`),
-			wantErr: "stats.mean: got 2 arguments, want at most 1",
+			wantErr: "mean: got 2 arguments, want 1",
 		},
 		{
 			name: "Invalid Input Type",
@@ -189,7 +190,7 @@ func TestLoadModule_Stats(t *testing.T) {
 				mean("1, 2, 3")
 				assert.fail("should not reach here")
 			`),
-			wantErr: "stats.mean: for parameter data: got string, want list",
+			wantErr: "mean: for parameter 1: got string, want iterable",
 		},
 	}
 	for _, tt := range tests {

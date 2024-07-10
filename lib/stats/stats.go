@@ -125,12 +125,12 @@ func newBinaryFloatSingleBuiltin(name string, fn func(gms.Float64Data, float64) 
 	return starlark.NewBuiltin(name, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var (
 			data1 tps.FloatOrIntList
-			data2 float64
+			data2 tps.FloatOrInt
 		)
 		if err := starlark.UnpackPositionalArgs(name, args, kwargs, 2, &data1, &data2); err != nil {
 			return nil, err
 		}
-		result, err := fn(data1.GoSlice(), data2)
+		result, err := fn(data1.GoSlice(), data2.GoFloat())
 		if err != nil {
 			return nil, err
 		}
