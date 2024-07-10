@@ -42,17 +42,20 @@ func LoadModule() (starlark.StringDict, error) {
 					"harmonic_mean":  newUnaryFloatBuiltin("harmonic_mean", gms.HarmonicMean),
 					"trimean":        newUnaryFloatBuiltin("trimean", gms.Trimean),
 					"median":         newUnaryFloatBuiltin("median", gms.Median),
-					"norm_median":    newBinaryFloatToFloatBuiltin("normalized_median", gms.NormMedian),
+					"norm_median":    newBinaryFloatToFloatBuiltin("norm_median", gms.NormMedian),
 
-					"percentile":            newBinaryFloatSingleBuiltin("percentile", gms.Percentile),
+					"percentile":              newBinaryFloatSingleBuiltin("percentile", gms.Percentile),
+					"percentile_nearest_rank": newBinaryFloatSingleBuiltin("percentile_nearest_rank", gms.PercentileNearestRank),
+
 					"variance":              newUnaryFloatBuiltin("variance", gms.Variance),
 					"covariance":            newBinaryFloatBuiltin("covariance", gms.Covariance),
 					"covariance_population": newBinaryFloatBuiltin("covariance_population", gms.CovariancePopulation),
-					"sample_variance":       newUnaryFloatBuiltin("sample_variance", gms.SampleVariance),
 					"population_variance":   newUnaryFloatBuiltin("population_variance", gms.PopulationVariance),
+					"sample_variance":       newUnaryFloatBuiltin("sample_variance", gms.SampleVariance),
+					"sample":                starlark.NewBuiltin("sample", sample),
 
-					"correlation":         newBinaryFloatBuiltin("correlation", gms.Correlation),
-					"pearson_correlation": newBinaryFloatBuiltin("pearson_correlation", gms.Pearson),
+					"correlation": newBinaryFloatBuiltin("correlation", gms.Correlation),
+					"pearson":     newBinaryFloatBuiltin("pearson", gms.Pearson),
 
 					"standard_deviation": newUnaryFloatBuiltin("standard_deviation", gms.StandardDeviation),
 					"stddev":             newUnaryFloatBuiltin("stddev", gms.StandardDeviation),
@@ -91,11 +94,7 @@ func newUnaryFloatListBuiltin(name string, fn func(gms.Float64Data) ([]float64, 
 		if err != nil {
 			return nil, err
 		}
-		fls := make([]starlark.Value, len(result))
-		for i, v := range result {
-			fls[i] = starlark.Float(v)
-		}
-		return starlark.NewList(fls), nil
+		return float64List(result), nil
 	})
 }
 
@@ -144,14 +143,27 @@ func newBinaryFloatToFloatBuiltin(name string, fn func(float64, float64) float64
 	})
 }
 
-// newTernaryFloatToFloatBuiltin wraps a ternary function accepting three float64 arguments and returning float64 as a Starlark built-in.
-func newTernaryFloatToFloatBuiltin(name string, fn func(float64, float64, float64) float64) *starlark.Builtin {
-	return starlark.NewBuiltin(name, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		var x, y, z tps.FloatOrInt
-		if err := starlark.UnpackPositionalArgs(name, args, kwargs, 3, &x, &y, &z); err != nil {
-			return nil, err
-		}
-		result := fn(float64(x), float64(y), float64(z))
-		return starlark.Float(result), nil
-	})
+// sample returns sample from input with replacement or without.
+func sample(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var (
+		data tps.FloatOrIntList
+		take int
+		repl bool
+	)
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "data", &data, "take", &take, "replace", &repl); err != nil {
+		return nil, err
+	}
+	result, err := gms.Sample(data.GoSlice(), take, repl)
+	if err != nil {
+		return nil, err
+	}
+	return float64List(result), nil
+}
+
+func float64List(data []float64) starlark.Value {
+	fls := make([]starlark.Value, len(data))
+	for i, v := range data {
+		fls[i] = starlark.Float(v)
+	}
+	return starlark.NewList(fls)
 }
