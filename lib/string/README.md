@@ -72,6 +72,166 @@ print(reverse(s))
 # Output: 你爱我321
 ```
 
+### `index(s, sub) int`
+
+Returns the index of the first occurrence of the substring `sub` in `s`. If the substring is not found, an error is raised.
+
+#### Parameters
+
+| name  | type     | description                 |
+|-------|----------|-----------------------------|
+| `s`   | `string` | The string to be searched   |
+| `sub` | `string` | The substring to search for |
+
+#### Examples
+
+**Basic**
+
+Find the first occurrence of a substring in a string.
+
+```python
+load("string", "index")
+s = "hello world"
+print(index(s, "o"))
+# Output: 4
+```
+
+### `rindex(s, sub) int`
+
+Returns the index of the last occurrence of the substring `sub` in `s`. If the substring is not found, an error is raised.
+
+#### Parameters
+
+| name  | type     | description                 |
+|-------|----------|-----------------------------|
+| `s`   | `string` | The string to be searched   |
+| `sub` | `string` | The substring to search for |
+
+#### Examples
+
+**Basic**
+
+Find the last occurrence of a substring in a string.
+
+```python
+load("string", "rindex")
+s = "hello world"
+print(rindex(s, "o"))
+# Output: 7
+```
+
+### `find(s, sub) int`
+
+Returns the index of the first occurrence of the substring `sub` in `s`. If the substring is not found, returns -1.
+
+#### Parameters
+
+| name  | type     | description                 |
+|-------|----------|-----------------------------|
+| `s`   | `string` | The string to be searched   |
+| `sub` | `string` | The substring to search for |
+
+#### Examples
+
+**Basic**
+
+Find the first occurrence of a substring in a string, returning -1 if not found.
+
+```python
+load("string", "find")
+s = "hello world"
+print(find(s, "o"))
+print(find(s, "x"))
+# Output: 4
+# Output: -1
+```
+
+### `rfind(s, sub) int`
+
+Returns the index of the last occurrence of the substring `sub` in `s`. If the substring is not found, returns -1.
+
+#### Parameters
+
+| name  | type     | description                 |
+|-------|----------|-----------------------------|
+| `s`   | `string` | The string to be searched   |
+| `sub` | `string` | The substring to search for |
+
+#### Examples
+
+**Basic**
+
+Find the last occurrence of a substring in a string, returning -1 if not found.
+
+```python
+load("string", "rfind")
+s = "hello world"
+print(rfind(s, "o"))
+print(rfind(s, "x"))
+# Output: 7
+# Output: -1
+```
+
+### `substring(s, start, end) string`
+
+Returns a substring of `s` from index `start` to `end` (exclusive).
+
+#### Parameters
+
+| name    | type     | description                          |
+|---------|----------|--------------------------------------|
+| `s`     | `string` | The string to be sliced              |
+| `start` | `int`    | The starting index for the substring |
+| `end`   | `int`    | The ending index for the substring   |
+
+#### Examples
+
+**Basic**
+
+Get a substring of a string.
+
+```python
+load("string", "substring")
+s = "hello world"
+print(substring(s, 1, 5))
+# Output: "ello"
+```
+
+**Negative Indices**
+
+Get a substring of a string using negative indices.
+
+```python
+load("string", "substring")
+s = "hello world"
+print(substring(s, -5, -1))
+# Output: "worl"
+```
+
+### `codepoint(s, index) string`
+
+Returns the Unicode codepoint of the character at the given `index` in `s`.
+
+#### Parameters
+
+| name    | type     | description                                |
+|---------|----------|--------------------------------------------|
+| `s`     | `string` | The string from which to get the codepoint |
+| `index` | `int`    | The index of the character                 |
+
+#### Examples
+
+**Basic**
+
+Get the Unicode codepoint of a character at a specific index.
+
+```python
+load("string", "codepoint")
+s = "hello world"
+print(codepoint(s, 4))
+# Output: "o"
+```
+
 ### `escape(str) string`
 
 Converts the characters "&", "<", ">", '"' and "'" in string to their corresponding HTML entities.
