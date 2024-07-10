@@ -60,8 +60,10 @@ func LoadModule() (starlark.StringDict, error) {
 					"unescape":  genStarStrBuiltin("unescape", html.UnescapeString),
 					"quote":     genStarStrBuiltin("quote", strconv.Quote),
 					"unquote":   genStarStrBuiltin("unquote", robustUnquote),
-					"index":     starlark.NewBuiltin(ModuleName+".index", index),
-					"find":      starlark.NewBuiltin(ModuleName+".find", find),
+					"index":     starlark.NewBuiltin(ModuleName+".index", createIndexFunc("index", false, false)),
+					"find":      starlark.NewBuiltin(ModuleName+".find", createIndexFunc("find", false, true)),
+					"rindex":    starlark.NewBuiltin(ModuleName+".rindex", createIndexFunc("rindex", true, false)),
+					"rfind":     starlark.NewBuiltin(ModuleName+".rfind", createIndexFunc("rfind", true, true)),
 					"substring": starlark.NewBuiltin(ModuleName+".substring", substring),
 					"codepoint": starlark.NewBuiltin(ModuleName+".codepoint", codepoint),
 				},
@@ -165,46 +167,35 @@ func robustUnquote(s string) string {
 	return ns
 }
 
-// index returns the first index where the substring is found or an error if not found.
-func index(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var s, sub string
-	if err := starlark.UnpackArgs("index", args, kwargs, "s", &s, "sub", &sub); err != nil {
-		return none, err
-	}
+// createIndexFunc generates a Starlark function for finding the index of a substring.
+// If reverse is true, it searches from the end of the string.
+func createIndexFunc(name string, reverse, returnNegative bool) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var s, sub string
+		if err := starlark.UnpackArgs(name, args, kwargs, "s", &s, "sub", &sub); err != nil {
+			return none, err
+		}
 
-	// find the index of the substring
-	pos := strings.Index(s, sub)
+		// find the substring
+		var pos int
+		if reverse {
+			pos = strings.LastIndex(s, sub)
+		} else {
+			pos = strings.Index(s, sub)
+		}
 
-	// return error if not found
-	if pos < 0 {
-		return none, fmt.Errorf(`index: substring not found`)
-	}
+		// failed to find the substring
+		if pos < 0 {
+			if returnNegative {
+				return starlark.MakeInt(-1), nil
+			}
+			return none, fmt.Errorf(`%s: substring not found`, name)
+		}
 
-	// convert to rune count
-	pos = utf8.RuneCountInString(s[:pos])
-	return starlark.MakeInt(pos), nil
-}
-
-// find returns the first index where the substring is found or -1 if not found.
-func find(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var s, sub string
-	if err := starlark.UnpackArgs("find", args, kwargs, "s", &s, "sub", &sub); err != nil {
-		return none, err
-	}
-
-	// find the index of the substring
-	pos := strings.Index(s, sub)
-
-	if pos < 0 {
-		// return -1 if not found
-		pos = -1
-	} else {
-		// convert to rune count
+		// convert to rune count index
 		pos = utf8.RuneCountInString(s[:pos])
+		return starlark.MakeInt(pos), nil
 	}
-
-	// return the result
-	return starlark.MakeInt(pos), nil
 }
 
 // substring returns a substring from start to end (exclusive) indices.
