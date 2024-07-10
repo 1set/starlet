@@ -12,6 +12,7 @@ import (
 // Unpacker is an interface for types that can be unpacked from Starlark values.
 var (
 	_ starlark.Unpacker = (*FloatOrInt)(nil)
+	_ starlark.Unpacker = (*FloatOrIntList)(nil)
 	_ starlark.Unpacker = (*NumericValue)(nil)
 	_ starlark.Unpacker = (*StringOrBytes)(nil)
 	_ starlark.Unpacker = (*NullableStringOrBytes)(nil)

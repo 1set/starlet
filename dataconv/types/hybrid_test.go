@@ -207,6 +207,182 @@ func TestFloatOrInt_Value(t *testing.T) {
 	}
 }
 
+func TestFloatOrIntList_Unpack(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   starlark.Value
+		want    FloatOrIntList
+		wantErr bool
+	}{
+		{
+			name:  "valid list of ints",
+			input: starlark.NewList([]starlark.Value{starlark.MakeInt(1), starlark.MakeInt(2), starlark.MakeInt(3)}),
+			want:  FloatOrIntList{1, 2, 3},
+		},
+		{
+			name:  "valid list of floats",
+			input: starlark.NewList([]starlark.Value{starlark.Float(1.1), starlark.Float(2.2), starlark.Float(3.3)}),
+			want:  FloatOrIntList{1.1, 2.2, 3.3},
+		},
+		{
+			name:  "mixed list of ints and floats",
+			input: starlark.NewList([]starlark.Value{starlark.MakeInt(1), starlark.Float(2.2), starlark.MakeInt(3)}),
+			want:  FloatOrIntList{1, 2.2, 3},
+		},
+		{
+			name:    "invalid input type",
+			input:   starlark.String("not a list"),
+			wantErr: true,
+		},
+		{
+			name:    "list with invalid type",
+			input:   starlark.NewList([]starlark.Value{starlark.MakeInt(1), starlark.String("invalid"), starlark.MakeInt(3)}),
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got FloatOrIntList
+			err := got.Unpack(tt.input)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("FloatOrIntList.Unpack() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if !tt.wantErr && !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("FloatOrIntList.Unpack() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+
+	// Test for nil receiver
+	t.Run("nil receiver", func(t *testing.T) {
+		var l *FloatOrIntList
+		err := l.Unpack(starlark.NewList(nil))
+		if err != errNilReceiver {
+			t.Errorf("FloatOrIntList.Unpack() error = %v, want %v", err, errNilReceiver)
+		}
+	})
+}
+
+func TestFloatOrIntList_GoSlice(t *testing.T) {
+	tests := []struct {
+		name string
+		l    FloatOrIntList
+		want []float64
+	}{
+		{
+			name: "non-empty list",
+			l:    FloatOrIntList{1.1, 2.2, 3.3},
+			want: []float64{1.1, 2.2, 3.3},
+		},
+		{
+			name: "empty list",
+			l:    FloatOrIntList{},
+			want: []float64{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.l.GoSlice(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("FloatOrIntList.GoSlice() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFloatOrIntList_StarlarkList(t *testing.T) {
+	tests := []struct {
+		name string
+		l    FloatOrIntList
+		want *starlark.List
+	}{
+		{
+			name: "non-empty list",
+			l:    FloatOrIntList{1.1, 2.2, 3.3},
+			want: starlark.NewList([]starlark.Value{starlark.Float(1.1), starlark.Float(2.2), starlark.Float(3.3)}),
+		},
+		{
+			name: "empty list",
+			l:    FloatOrIntList{},
+			want: starlark.NewList(nil),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.l.StarlarkList()
+			if got.Len() != tt.want.Len() {
+				t.Errorf("FloatOrIntList.StarlarkList() length = %v, want %v", got.Len(), tt.want.Len())
+			}
+			for i := 0; i < got.Len(); i++ {
+				gotItem, _ := got.Index(i).(starlark.Float)
+				wantItem, _ := tt.want.Index(i).(starlark.Float)
+				if gotItem != wantItem {
+					t.Errorf("FloatOrIntList.StarlarkList() item at index %d = %v, want %v", i, gotItem, wantItem)
+				}
+			}
+		})
+	}
+}
+
+func TestFloatOrIntList_Len(t *testing.T) {
+	tests := []struct {
+		name string
+		l    FloatOrIntList
+		want int
+	}{
+		{
+			name: "non-empty list",
+			l:    FloatOrIntList{1.1, 2.2, 3.3},
+			want: 3,
+		},
+		{
+			name: "empty list",
+			l:    FloatOrIntList{},
+			want: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.l.Len(); got != tt.want {
+				t.Errorf("FloatOrIntList.Len() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFloatOrIntList_IsEmpty(t *testing.T) {
+	tests := []struct {
+		name string
+		l    FloatOrIntList
+		want bool
+	}{
+		{
+			name: "non-empty list",
+			l:    FloatOrIntList{1.1, 2.2, 3.3},
+			want: false,
+		},
+		{
+			name: "empty list",
+			l:    FloatOrIntList{},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.l.IsEmpty(); got != tt.want {
+				t.Errorf("FloatOrIntList.IsEmpty() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestNumericValue(t *testing.T) {
 	integer := func(n int) starlark.Value { return starlark.MakeInt(n) }
 	double := func(n float64) starlark.Value { return starlark.Float(n) }
