@@ -2,12 +2,12 @@
 package stats
 
 import (
-	"go.starlark.net/starlarkstruct"
 	"sync"
 
 	tps "github.com/1set/starlet/dataconv/types"
 	gms "github.com/montanaflynn/stats"
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 )
 
 // ModuleName defines the expected name for this Module when used
@@ -35,7 +35,7 @@ func LoadModule() (starlark.StringDict, error) {
 }
 
 // newUnaryFloatBuiltin wraps a unary function accepting []float64 and returning (float64, error) as a Starlark built-in.
-func newUnaryFloatBuiltin(name string, fn func([]float64) (float64, error)) *starlark.Builtin {
+func newUnaryFloatBuiltin(name string, fn func(data gms.Float64Data) (float64, error)) *starlark.Builtin {
 	return starlark.NewBuiltin(name, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var data tps.FloatOrIntList
 		if err := starlark.UnpackPositionalArgs(name, args, kwargs, 1, &data); err != nil {
@@ -50,7 +50,7 @@ func newUnaryFloatBuiltin(name string, fn func([]float64) (float64, error)) *sta
 }
 
 // newUnaryFloatListBuiltin wraps a unary function accepting []float64 and returning ([]float64, error) as a Starlark built-in.
-func newUnaryFloatListBuiltin(name string, fn func([]float64) ([]float64, error)) *starlark.Builtin {
+func newUnaryFloatListBuiltin(name string, fn func(gms.Float64Data) ([]float64, error)) *starlark.Builtin {
 	return starlark.NewBuiltin(name, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var data tps.FloatOrIntList
 		if err := starlark.UnpackPositionalArgs(name, args, kwargs, 1, &data); err != nil {
@@ -69,7 +69,7 @@ func newUnaryFloatListBuiltin(name string, fn func([]float64) ([]float64, error)
 }
 
 // newBinaryFloatBuiltin wraps a binary function accepting two []float64 arguments and returning (float64, error) as a Starlark built-in.
-func newBinaryFloatBuiltin(name string, fn func([]float64, []float64) (float64, error)) *starlark.Builtin {
+func newBinaryFloatBuiltin(name string, fn func(gms.Float64Data, gms.Float64Data) (float64, error)) *starlark.Builtin {
 	return starlark.NewBuiltin(name, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var data1, data2 tps.FloatOrIntList
 		if err := starlark.UnpackPositionalArgs(name, args, kwargs, 2, &data1, &data2); err != nil {
