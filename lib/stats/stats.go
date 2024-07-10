@@ -26,7 +26,38 @@ func LoadModule() (starlark.StringDict, error) {
 			ModuleName: &starlarkstruct.Module{
 				Name: ModuleName,
 				Members: starlark.StringDict{
-					"mean": newUnaryFloatBuiltin("mean", gms.Mean),
+					"euclidean_distance": newBinaryFloatBuiltin("euclidean_distance", gms.EuclideanDistance),
+					"manhattan_distance": newBinaryFloatBuiltin("manhattan_distance", gms.ManhattanDistance),
+					"softmax":            newUnaryFloatListBuiltin("softmax", gms.SoftMax),
+					"sigmoid":            newUnaryFloatListBuiltin("sigmoid", gms.Sigmoid),
+
+					"mode": newUnaryFloatListBuiltin("mode", gms.Mode),
+					"sum":  newUnaryFloatBuiltin("sum", gms.Sum),
+					"max":  newUnaryFloatBuiltin("max", gms.Max),
+					"min":  newUnaryFloatBuiltin("min", gms.Min),
+
+					"mean":           newUnaryFloatBuiltin("mean", gms.Mean),
+					"norm_mean":      newBinaryFloatToFloatBuiltin("norm_mean", gms.NormMean),
+					"geometric_mean": newUnaryFloatBuiltin("geometric_mean", gms.GeometricMean),
+					"harmonic_mean":  newUnaryFloatBuiltin("harmonic_mean", gms.HarmonicMean),
+					"trimean":        newUnaryFloatBuiltin("trimean", gms.Trimean),
+					"median":         newUnaryFloatBuiltin("median", gms.Median),
+					"norm_median":    newBinaryFloatToFloatBuiltin("normalized_median", gms.NormMedian),
+
+					"percentile":            newBinaryFloatSingleBuiltin("percentile", gms.Percentile),
+					"variance":              newUnaryFloatBuiltin("variance", gms.Variance),
+					"covariance":            newBinaryFloatBuiltin("covariance", gms.Covariance),
+					"covariance_population": newBinaryFloatBuiltin("covariance_population", gms.CovariancePopulation),
+					"sample_variance":       newUnaryFloatBuiltin("sample_variance", gms.SampleVariance),
+					"population_variance":   newUnaryFloatBuiltin("population_variance", gms.PopulationVariance),
+
+					"correlation":         newBinaryFloatBuiltin("correlation", gms.Correlation),
+					"pearson_correlation": newBinaryFloatBuiltin("pearson_correlation", gms.Pearson),
+
+					"standard_deviation": newUnaryFloatBuiltin("standard_deviation", gms.StandardDeviation),
+					"stddev":             newUnaryFloatBuiltin("stddev", gms.StandardDeviation),
+					"norm_stddev":        newBinaryFloatToFloatBuiltin("norm_stddev", gms.NormStd),
+					"stddev_sample":      newUnaryFloatBuiltin("stddev_sample", gms.StandardDeviationSample),
 				},
 			},
 		}
@@ -76,6 +107,24 @@ func newBinaryFloatBuiltin(name string, fn func(gms.Float64Data, gms.Float64Data
 			return nil, err
 		}
 		result, err := fn(data1.GoSlice(), data2.GoSlice())
+		if err != nil {
+			return nil, err
+		}
+		return starlark.Float(result), nil
+	})
+}
+
+// newBinaryFloatSingleBuiltin wraps a binary function accepting a []float64 and a float64 arguments and returning (float64, error) as a Starlark built-in.
+func newBinaryFloatSingleBuiltin(name string, fn func(gms.Float64Data, float64) (float64, error)) *starlark.Builtin {
+	return starlark.NewBuiltin(name, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var (
+			data1 tps.FloatOrIntList
+			data2 float64
+		)
+		if err := starlark.UnpackPositionalArgs(name, args, kwargs, 2, &data1, &data2); err != nil {
+			return nil, err
+		}
+		result, err := fn(data1.GoSlice(), data2)
 		if err != nil {
 			return nil, err
 		}
