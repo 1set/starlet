@@ -38,6 +38,14 @@ func TestLoadModule_Stats(t *testing.T) {
 			`),
 		},
 		{
+			name: "Invalid Softmax",
+			script: itn.HereDoc(`
+				load('stats', 'softmax')
+				softmax([])
+			`),
+			wantErr: `Input must not be empty.`,
+		},
+		{
 			name: "Sigmoid",
 			script: itn.HereDoc(`
 				load('stats', 'sigmoid')
@@ -52,6 +60,14 @@ func TestLoadModule_Stats(t *testing.T) {
 				assert.eq(mode([1, 2, 2, 3, 4]), [2.0])
 				assert.eq(mode([1, 1, 2, 3, 3]), [1.0, 3.0])
 			`),
+		},
+		{
+			name: "Empty Mode",
+			script: itn.HereDoc(`
+				load('stats', 'mode')
+				mode([])
+			`),
+			wantErr: `Input must not be empty.`,
 		},
 		{
 			name: "Sum",
@@ -134,6 +150,22 @@ func TestLoadModule_Stats(t *testing.T) {
 			`),
 		},
 		{
+			name: "Invalid Percentile",
+			script: itn.HereDoc(`
+				load('stats', 'percentile')
+				percentile([1, 2, 3, 4, 5])
+			`),
+			wantErr: `percentile: got 1 arguments, want 2`,
+		},
+		{
+			name: "Wrong Percentile",
+			script: itn.HereDoc(`
+				load('stats', 'percentile')
+				percentile([1, 2, 3, 4, 5], -10)
+			`),
+			wantErr: `Input is outside of range.`,
+		},
+		{
 			name: "Variance",
 			script: itn.HereDoc(`
 				load('stats', 'variance')
@@ -148,6 +180,14 @@ func TestLoadModule_Stats(t *testing.T) {
 				assert.eq(covariance([1, 2, 3], [4, 5, 6]), 1.0)
 				assert.eq(covariance([1, 1, 1], [1, 1, 1]), 0.0)
 			`),
+		},
+		{
+			name: "Wrong Covariance",
+			script: itn.HereDoc(`
+				load('stats', 'covariance')
+				covariance([1, 2, 3], [4, 5])
+			`),
+			wantErr: `Must be the same length.`,
 		},
 		{
 			name: "Sample Variance",
@@ -173,6 +213,46 @@ func TestLoadModule_Stats(t *testing.T) {
 				assert.eq(len(r1), 3)
 				r2 = sample(data=[1, 2, 3, 4], take=5, replace=True)
 				assert.eq(len(r2), 5)
+			`),
+		},
+		{
+			name: "Invalid Sample",
+			script: itn.HereDoc(`
+				load('stats', 'sample')
+				sample([1,2,3])
+			`),
+			wantErr: `sample: missing argument for take`,
+		},
+		{
+			name: "Wrong Sample",
+			script: itn.HereDoc(`
+				load('stats', 'sample')
+				sample([], 5, True)
+			`),
+			wantErr: `Input must not be empty.`,
+		},
+		{
+			name: "Correlation",
+			script: itn.HereDoc(`
+				load('stats', 'correlation')
+				assert.eq(correlation([1, 2, 3], [1, 2, 3]), 1.0)
+				assert.eq(correlation([1, 2, 3], [6, 5, 4]), -1.0)
+			`),
+		},
+		{
+			name: "Invalid Correlation",
+			script: itn.HereDoc(`
+				load('stats', 'correlation')
+				correlation([1,2,3])
+			`),
+			wantErr: `correlation: got 1 arguments, want 2`,
+		},
+		{
+			name: "Pearson Correlation",
+			script: itn.HereDoc(`
+				load('stats', 'pearson')
+				assert.eq(pearson([1, 2, 3], [1, 2, 3]), 1.0)
+				assert.eq(pearson([1, 2, 3], [6, 5, 4]), -1.0)
 			`),
 		},
 		{
