@@ -248,6 +248,41 @@ func TestLoadModule_String(t *testing.T) {
 			wantErr: `index: for parameter s: got int, want string`,
 		},
 		{
+			name: `rindex`,
+			script: itn.HereDoc(`
+				load('string', 'rindex')
+				assert.eq(rindex('hello hello', 'e'), 7)
+				assert.eq(rindex('hello hello', 'o'), 10)
+				assert.eq(rindex('你好世界你好', '好'), 5)
+				assert.eq(rindex('你好世界你好', '界'), 3)
+				assert.eq(rindex('a☕c☕a', '☕'), 3)
+			`),
+		},
+		{
+			name: `rindex not found`,
+			script: itn.HereDoc(`
+				load('string', 'rindex')
+				rindex('hello', 'x')
+			`),
+			wantErr: `substring not found`,
+		},
+		{
+			name: `rindex with missing args`,
+			script: itn.HereDoc(`
+				load('string', 'rindex')
+				rindex('hello')
+			`),
+			wantErr: `rindex: missing argument for sub`,
+		},
+		{
+			name: `rindex with invalid args`,
+			script: itn.HereDoc(`
+				load('string', 'rindex')
+				rindex(123, 'hello')
+			`),
+			wantErr: `rindex: for parameter s: got int, want string`,
+		},
+		{
 			name: `find`,
 			script: itn.HereDoc(`
 				load('string', 'find')
@@ -275,6 +310,35 @@ func TestLoadModule_String(t *testing.T) {
 				find(123, 'hello')
 			`),
 			wantErr: `find: for parameter s: got int, want string`,
+		},
+		{
+			name: `rfind`,
+			script: itn.HereDoc(`
+				load('string', 'rfind')
+				assert.eq(rfind('hello hello', 'e'), 7)
+				assert.eq(rfind('hello hello', 'o'), 10)
+				assert.eq(rfind('hello', 'x'), -1)
+				assert.eq(rfind('你好世界你好', '好'), 5)
+				assert.eq(rfind('你好世界你好', '界'), 3)
+				assert.eq(rfind('你好世界', 'b'), -1)
+				assert.eq(rfind('a☕c☕a', '☕'), 3)
+			`),
+		},
+		{
+			name: `rfind with missing args`,
+			script: itn.HereDoc(`
+				load('string', 'rfind')
+				rfind('hello')
+			`),
+			wantErr: `rfind: missing argument for sub`,
+		},
+		{
+			name: `rfind with invalid args`,
+			script: itn.HereDoc(`
+				load('string', 'rfind')
+				rfind(123, 'hello')
+			`),
+			wantErr: `rfind: for parameter s: got int, want string`,
 		},
 		{
 			name: `substring`,
