@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	itn "github.com/1set/starlet/internal"
+	"github.com/1set/starlet/lib/stats"
 )
 
 func TestLoadModule_Stats(t *testing.T) {
