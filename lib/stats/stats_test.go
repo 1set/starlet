@@ -269,7 +269,7 @@ func TestLoadModule_Stats(t *testing.T) {
 			name: "Wrong Sample",
 			script: itn.HereDoc(`
 				load('stats', 'sample')
-				sample([1,2,3,4], 5, False)
+				sample([1,2,3,4], 5)
 			`),
 			wantErr: `Input is outside of range.`,
 		},

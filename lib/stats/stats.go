@@ -145,7 +145,7 @@ func sample(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		take int
 		repl bool
 	)
-	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "data", &data, "take", &take, "replace", &repl); err != nil {
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "data", &data, "take", &take, "replace?", &repl); err != nil {
 		return nil, err
 	}
 	// call and convert result
