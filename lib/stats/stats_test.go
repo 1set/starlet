@@ -109,6 +109,38 @@ func TestLoadModule_Stats(t *testing.T) {
 			`),
 		},
 		{
+			name: "Midrange",
+			script: itn.HereDoc(`
+				load('stats', 'midrange')
+				assert.eq(midrange([1, 2, 3, 4]), 2.5)
+				assert.eq(midrange([-1, -2, -3, -4, -4, -5]), -3)
+			`),
+		},
+		{
+			name: "Invalid Midrange",
+			script: itn.HereDoc(`
+				load('stats', 'midrange')
+				midrange(123)
+			`),
+			wantErr: "midrange: for parameter 1: got int, want iterable",
+		},
+		{
+			name: "Wrong Midrange",
+			script: itn.HereDoc(`
+				load('stats', 'midrange')
+				midrange([])
+			`),
+			wantErr: "Input must not be empty.",
+		},
+		{
+			name: "Average",
+			script: itn.HereDoc(`
+				load('stats', 'average')
+				assert.eq(average([1, 2, 2, 3]), 2)
+				assert.eq(average([0, 0, 0, 0]), 0)
+			`),
+		},
+		{
 			name: "Mean",
 			script: itn.HereDoc(`
 				load('stats', 'mean')

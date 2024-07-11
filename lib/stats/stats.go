@@ -35,12 +35,14 @@ func LoadModule() (starlark.StringDict, error) {
 					"sigmoid": newUnaryFloatListBuiltin("sigmoid", gms.Sigmoid), // Applies the Sigmoid function, often used for binary classification.
 
 					// Basic Statistical Measures
-					"mode": newUnaryFloatListBuiltin("mode", gms.Mode), // Determines the most frequently occurring data points in a dataset.
-					"sum":  newUnaryFloatBuiltin("sum", gms.Sum),       // Computes the sum of a series of numbers.
-					"max":  newUnaryFloatBuiltin("max", gms.Max),       // Finds the maximum value in a dataset.
-					"min":  newUnaryFloatBuiltin("min", gms.Min),       // Finds the minimum value in a dataset.
+					"mode":     newUnaryFloatListBuiltin("mode", gms.Mode), // Determines the most frequently occurring data points in a dataset.
+					"sum":      newUnaryFloatBuiltin("sum", gms.Sum),       // Computes the sum of a series of numbers.
+					"max":      newUnaryFloatBuiltin("max", gms.Max),       // Finds the maximum value in a dataset.
+					"min":      newUnaryFloatBuiltin("min", gms.Min),       // Finds the minimum value in a dataset.
+					"midrange": starlark.NewBuiltin("midrange", midrange),  // Calculates the midrange, the average of the maximum and minimum values.
 
 					// Measures of Central Tendency
+					"average":        newUnaryFloatBuiltin("average", gms.Mean),                 // Alias for mean.
 					"mean":           newUnaryFloatBuiltin("mean", gms.Mean),                    // Calculates the arithmetic mean of a dataset.
 					"geometric_mean": newUnaryFloatBuiltin("geometric_mean", gms.GeometricMean), // Computes the geometric mean, useful for datasets with exponential growth.
 					"harmonic_mean":  newUnaryFloatBuiltin("harmonic_mean", gms.HarmonicMean),   // Computes the harmonic mean, effective for rates and ratios.
@@ -137,6 +139,7 @@ func newBinaryFloatSingleBuiltin(name string, fn func(gms.Float64Data, float64) 
 
 // sample returns sample from input with replacement or without.
 func sample(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// check input
 	var (
 		data tps.FloatOrIntList
 		take int
@@ -145,6 +148,7 @@ func sample(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "data", &data, "take", &take, "replace", &repl); err != nil {
 		return nil, err
 	}
+	// call and convert result
 	result, err := gms.Sample(data.GoSlice(), take, repl)
 	if err != nil {
 		return nil, err
@@ -158,4 +162,37 @@ func float64List(data []float64) starlark.Value {
 		fls[i] = starlark.Float(v)
 	}
 	return starlark.NewList(fls)
+}
+
+// midrange calculates the midrange, the average of the maximum and minimum values.
+func midrange(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// check input
+	var data tps.FloatOrIntList
+	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 1, &data); err != nil {
+		return nil, err
+	}
+	ds := data.GoSlice()
+
+	// check if data is empty
+	if len(ds) == 0 {
+		return nil, gms.EmptyInputErr
+	}
+
+	// calculate midrange
+	var (
+		min float64 = ds[0]
+		max float64 = ds[0]
+	)
+	for _, v := range ds {
+		if v < min {
+			min = v
+		}
+		if v > max {
+			max = v
+		}
+	}
+	mr := (min + max) / 2
+
+	// return result
+	return starlark.Float(mr), nil
 }
