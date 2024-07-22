@@ -74,6 +74,12 @@ func httpPingFunc(ctx context.Context, url string, timeout time.Duration) (time.
 	// create a http client with timeout and tracing
 	client := &http.Client{
 		Timeout: timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse // do not follow redirects
+		},
+		Transport: &http.Transport{
+			DisableKeepAlives: true,
+		},
 	}
 	req, err := http.NewRequestWithContext(httptrace.WithClientTrace(ctx, trace), "GET", url, nil)
 	if err != nil {
@@ -86,7 +92,7 @@ func httpPingFunc(ctx context.Context, url string, timeout time.Duration) (time.
 		return 0, err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 		return 0, fmt.Errorf("unacceptable status: %d", resp.StatusCode)
 	}
 	return connDur, nil

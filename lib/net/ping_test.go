@@ -90,6 +90,7 @@ func TestLoadModule_Ping(t *testing.T) {
 				print(s)
 				assert.eq(s.total, 4)
 				assert.true(s.success > 0)
+				assert.true(s.min > 0)
 			`),
 		},
 		{
@@ -111,6 +112,7 @@ func TestLoadModule_Ping(t *testing.T) {
 				print(s)
 				assert.eq(s.total, 10)
 				assert.true(s.success > 0)
+				assert.true(s.min > 0)
 			`),
 		},
 		{
