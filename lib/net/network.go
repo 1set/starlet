@@ -120,11 +120,11 @@ func goTCPPing(ctx context.Context, hostname string, port int, count int, timeou
 	addr := net.JoinHostPort(ips[0], strconv.Itoa(port))
 
 	// slice to hold the RTTs of successful pings
-	var rttDurations []time.Duration
+	rttDurations := make([]time.Duration, 0, count)
 	for i := 1; i <= count; i++ {
 		start := time.Now()
-		conn, err := net.DialTimeout("tcp", addr, timeout)
-		if err != nil {
+		conn, e := net.DialTimeout("tcp", addr, timeout)
+		if e != nil {
 			// if the connection fails, continue to the next attempt without adding RTT
 			continue
 		}
@@ -152,8 +152,8 @@ func goTCPPing(ctx context.Context, hostname string, port int, count int, timeou
 func starTCPPing(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		hostname tps.StringOrBytes
-		port     int            = 80
-		count    int            = 4
+		port                    = 80
+		count                   = 4
 		timeout  tps.FloatOrInt = 10
 		interval tps.FloatOrInt = 1
 	)
