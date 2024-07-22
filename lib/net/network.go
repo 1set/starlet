@@ -10,10 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/montanaflynn/stats"
-
 	"github.com/1set/starlet/dataconv"
 	tps "github.com/1set/starlet/dataconv/types"
+	"github.com/montanaflynn/stats"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )

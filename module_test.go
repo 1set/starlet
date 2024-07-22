@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	builtinModules = []string{"atom", "base64", "csv", "file", "go_idiomatic", "hashlib", "http", "json", "log", "math", "path", "random", "re", "runtime", "stats", "string", "struct", "time"}
+	builtinModules = []string{"atom", "base64", "csv", "file", "go_idiomatic", "hashlib", "http", "json", "log", "math", "net", "path", "random", "re", "runtime", "stats", "string", "struct", "time"}
 )
 
 func TestListBuiltinModules(t *testing.T) {

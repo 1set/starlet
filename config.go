@@ -10,6 +10,7 @@ import (
 	libhttp "github.com/1set/starlet/lib/http"
 	libjson "github.com/1set/starlet/lib/json"
 	liblog "github.com/1set/starlet/lib/log"
+	libnet "github.com/1set/starlet/lib/net"
 	libpath "github.com/1set/starlet/lib/path"
 	librand "github.com/1set/starlet/lib/random"
 	libre "github.com/1set/starlet/lib/re"
@@ -49,6 +50,7 @@ var allBuiltinModules = ModuleLoaderMap{
 	libfile.ModuleName: libfile.LoadModule,
 	libhash.ModuleName: libhash.LoadModule,
 	libhttp.ModuleName: libhttp.LoadModule,
+	libnet.ModuleName:  libnet.LoadModule,
 	libjson.ModuleName: libjson.LoadModule,
 	liblog.ModuleName:  liblog.LoadModule,
 	libpath.ModuleName: libpath.LoadModule,
