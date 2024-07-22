@@ -60,8 +60,12 @@ func goLookup(ctx context.Context, domain, dnsServer string, timeout time.Durati
 		r = net.DefaultResolver
 	}
 
+	// Create a new context with timeout
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
 	// perform the DNS lookup
-	return r.LookupHost(ctx, domain)
+	return r.LookupHost(ctxWithTimeout, domain)
 }
 
 func starLookup(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

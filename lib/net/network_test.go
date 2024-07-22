@@ -23,6 +23,15 @@ func TestLoadModule_Network(t *testing.T) {
 			`),
 		},
 		{
+			name: `nslookup: normal with timeout`,
+			script: itn.HereDoc(`
+				load('net', 'nslookup')
+				ips = nslookup('bing.com', timeout=5)
+				print(ips)
+				assert.true(len(ips) > 0)
+			`),
+		},
+		{
 			name: `nslookup: normal with dns`,
 			script: itn.HereDoc(`
 				load('net', 'nslookup')
@@ -70,9 +79,9 @@ func TestLoadModule_Network(t *testing.T) {
 			name: `nslookup: wrong dns`,
 			script: itn.HereDoc(`
 				load('net', 'nslookup')
-				ips = nslookup('bing.com', '127.0.0.1', timeout=1)
+				ips = nslookup('bing.com', 'microsoft.com', timeout=1)
 			`),
-			//wantErr: `i/o timeout`,
+			wantErr: `i/o timeout`,
 		},
 	}
 	for _, tt := range tests {
