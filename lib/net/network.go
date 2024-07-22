@@ -3,6 +3,7 @@ package net
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"strings"
 	"sync"
@@ -86,7 +87,7 @@ func starLookup(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tupl
 
 	// return the result
 	if err != nil {
-		return none, err
+		return none, fmt.Errorf("%s: %w", b.Name(), err)
 	}
 	var list []starlark.Value
 	for _, ip := range ips {
