@@ -23,6 +23,24 @@ func TestLoadModule_Network(t *testing.T) {
 			`),
 		},
 		{
+			name: `nslookup: normal with dns`,
+			script: itn.HereDoc(`
+				load('net', 'nslookup')
+				ips = nslookup('bing.com', '8.8.8.8')
+				print(ips)
+				assert.true(len(ips) > 0)
+			`),
+		},
+		{
+			name: `nslookup: normal with dns:port`,
+			script: itn.HereDoc(`
+				load('net', 'nslookup')
+				ips = nslookup('bing.com', '1.1.1.1:53')
+				print(ips)
+				assert.true(len(ips) > 0)
+			`),
+		},
+		{
 			name: `nslookup: ip`,
 			script: itn.HereDoc(`
 				load('net', 'nslookup')
@@ -47,6 +65,14 @@ func TestLoadModule_Network(t *testing.T) {
 				ips = nslookup('missing.invalid')
 			`),
 			wantErr: `no such host`,
+		},
+		{
+			name: `nslookup: wrong dns`,
+			script: itn.HereDoc(`
+				load('net', 'nslookup')
+				ips = nslookup('bing.com', '127.0.0.1', timeout=1)
+			`),
+			//wantErr: `i/o timeout`,
 		},
 	}
 	for _, tt := range tests {
