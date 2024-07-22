@@ -33,6 +33,7 @@ func LoadModule() (starlark.StringDict, error) {
 				Members: starlark.StringDict{
 					"nslookup": starlark.NewBuiltin(ModuleName+".nslookup", starLookup),
 					"tcping":   starlark.NewBuiltin(ModuleName+".tcping", starTCPPing),
+					"httping":  starlark.NewBuiltin(ModuleName+".httping", starHTTPing),
 				},
 			},
 		}

@@ -52,23 +52,6 @@ func tcpPingFunc(ctx context.Context, address string, timeout time.Duration) (ti
 	return rtt, nil
 }
 
-func httpPingFunc2(ctx context.Context, url string, timeout time.Duration) (time.Duration, error) {
-	client := &http.Client{
-		Timeout: timeout,
-	}
-	start := time.Now()
-	resp, err := client.Get(url)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return 0, fmt.Errorf("unacceptable status code: %d", resp.StatusCode)
-	}
-	rtt := time.Since(start)
-	return rtt, nil
-}
-
 func httpPingFunc(ctx context.Context, url string, timeout time.Duration) (time.Duration, error) {
 	// create a custom http client tracing
 	var (
