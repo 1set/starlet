@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/httptrace"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/1set/starlet/dataconv"
@@ -50,7 +52,7 @@ func tcpPingFunc(ctx context.Context, address string, timeout time.Duration) (ti
 	return rtt, nil
 }
 
-func httpPingFunc(ctx context.Context, url string, timeout time.Duration) (time.Duration, error) {
+func httpPingFunc2(ctx context.Context, url string, timeout time.Duration) (time.Duration, error) {
 	client := &http.Client{
 		Timeout: timeout,
 	}
@@ -65,6 +67,47 @@ func httpPingFunc(ctx context.Context, url string, timeout time.Duration) (time.
 	}
 	rtt := time.Since(start)
 	return rtt, nil
+}
+
+func httpPingFunc(ctx context.Context, url string, timeout time.Duration) (time.Duration, error) {
+	// create a custom http client tracing
+	var (
+		onceStart, onceDone sync.Once
+		connStart           time.Time
+		connDur             time.Duration
+	)
+	trace := &httptrace.ClientTrace{
+		ConnectStart: func(network, addr string) {
+			onceStart.Do(func() {
+				connStart = time.Now()
+			})
+		},
+		ConnectDone: func(network, addr string, err error) {
+			onceDone.Do(func() {
+				connDur = time.Since(connStart)
+			})
+		},
+	}
+
+	// create a http client with timeout and tracing
+	client := &http.Client{
+		Timeout: timeout,
+	}
+	req, err := http.NewRequestWithContext(httptrace.WithClientTrace(ctx, trace), "GET", url, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	// perform the HTTP request
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return 0, fmt.Errorf("unacceptable status: %d", resp.StatusCode)
+	}
+	return connDur, nil
 }
 
 func createPingStats(address string, count int, rtts []time.Duration) starlark.Value {
