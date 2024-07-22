@@ -83,6 +83,22 @@ func TestLoadModule_Network(t *testing.T) {
 			`),
 			wantErr: `i/o timeout`,
 		},
+		{
+			name: `nslookup: no args`,
+			script: itn.HereDoc(`
+				load('net', 'nslookup')
+				nslookup()
+			`),
+			wantErr: `net.nslookup: missing argument for domain`,
+		},
+		{
+			name: `nslookup: invalid args`,
+			script: itn.HereDoc(`
+				load('net', 'nslookup')
+				nslookup(1, 2, 3)
+			`),
+			wantErr: `net.nslookup: for parameter domain: got int, want string or bytes`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
