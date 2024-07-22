@@ -111,7 +111,7 @@ func starTCPPing(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tup
 		interval = 1
 	}
 
-	// get the context
+	// get the context for the DNS lookup and TCP ping
 	ctx := dataconv.GetThreadContext(thread)
 
 	// resolve the hostname to an IP address
@@ -124,15 +124,11 @@ func starTCPPing(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tup
 	}
 	address := net.JoinHostPort(ips[0], strconv.Itoa(port))
 
-	// perform the TCP ping
+	// perform the TCP ping, and get the statistics
 	rtts, err := goPingWrap(ctx, address, count, time.Duration(timeout)*time.Second, time.Duration(interval)*time.Second, tcpPingFunc)
-
-	// return the result
 	if err != nil {
 		return none, fmt.Errorf("%s: %w", b.Name(), err)
 	}
-
-	// statistics
 	return createPingStats(address, count, rtts), nil
 }
 
@@ -155,17 +151,11 @@ func starHTTPing(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tup
 		interval = 1
 	}
 
-	// get the context
+	// perform the HTTP ping, and get the statistics
 	ctx := dataconv.GetThreadContext(thread)
-
-	// perform the HTTP ping
 	rtts, err := goPingWrap(ctx, url.GoString(), count, time.Duration(timeout)*time.Second, time.Duration(interval)*time.Second, httpPingFunc)
-
-	// return the result
 	if err != nil {
 		return none, fmt.Errorf("%s: %w", b.Name(), err)
 	}
-
-	// statistics
 	return createPingStats(url.GoString(), count, rtts), nil
 }
