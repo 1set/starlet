@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/1set/starlet/dataconv"
+	tps "github.com/1set/starlet/dataconv/types"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
@@ -16,6 +18,7 @@ import (
 const ModuleName = "net"
 
 var (
+	none    = starlark.None
 	once    sync.Once
 	modFunc starlark.StringDict
 )
@@ -25,10 +28,9 @@ func LoadModule() (starlark.StringDict, error) {
 	once.Do(func() {
 		modFunc = starlark.StringDict{
 			ModuleName: &starlarkstruct.Module{
-				Name:    ModuleName,
+				Name: ModuleName,
 				Members: starlark.StringDict{
-					//"tcping": starlark.NewBuiltin("net.tcping", tcping),
-					//"nslookup": starlark.NewBuiltin("net.nslookup", nslookup),
+					"nslookup": starlark.NewBuiltin(ModuleName+".nslookup", starLookup),
 				},
 			},
 		}
@@ -36,7 +38,7 @@ func LoadModule() (starlark.StringDict, error) {
 	return modFunc, nil
 }
 
-func nsLookup(ctx context.Context, domain, dnsServer string, timeout time.Duration) ([]string, error) {
+func goLookup(ctx context.Context, domain, dnsServer string, timeout time.Duration) ([]string, error) {
 	// create a custom resolver if a DNS server is specified
 	var r *net.Resolver
 	if dnsServer != "" {
@@ -59,4 +61,36 @@ func nsLookup(ctx context.Context, domain, dnsServer string, timeout time.Durati
 
 	// perform the DNS lookup
 	return r.LookupHost(ctx, domain)
+}
+
+func starLookup(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var (
+		domain    tps.StringOrBytes
+		dnsServer tps.NullableStringOrBytes
+		timeout   tps.FloatOrInt = 10
+	)
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "domain", &domain, "dns_server?", &dnsServer, "timeout?", &timeout); err != nil {
+		return nil, err
+	}
+
+	// correct timeout value
+	if timeout <= 0 {
+		timeout = 10
+	}
+
+	// get the context
+	ctx := dataconv.GetThreadContext(thread)
+
+	// perform the DNS lookup
+	ips, err := goLookup(ctx, domain.GoString(), dnsServer.GoString(), time.Duration(timeout)*time.Second)
+
+	// return the result
+	if err != nil {
+		return none, err
+	}
+	var list []starlark.Value
+	for _, ip := range ips {
+		list = append(list, starlark.String(ip))
+	}
+	return starlark.NewList(list), nil
 }
