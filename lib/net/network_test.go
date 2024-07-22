@@ -1,6 +1,7 @@
 package net_test
 
 import (
+	"runtime"
 	"testing"
 
 	itn "github.com/1set/starlet/internal"
@@ -8,10 +9,12 @@ import (
 )
 
 func TestLoadModule_Network(t *testing.T) {
+	isOnWindows := runtime.GOOS == "windows"
 	tests := []struct {
-		name    string
-		script  string
-		wantErr string
+		name        string
+		script      string
+		wantErr     string
+		skipWindows bool
 	}{
 		{
 			name: `nslookup: normal`,
@@ -79,9 +82,10 @@ func TestLoadModule_Network(t *testing.T) {
 			name: `nslookup: wrong dns`,
 			script: itn.HereDoc(`
 				load('net', 'nslookup')
-				ips = nslookup('bing.com', 'apple.com', timeout=1)
+				ips = nslookup('bing.com', 'microsoft.com', timeout=1)
 			`),
-			wantErr: `i/o timeout`,
+			wantErr:     `i/o timeout`,
+			skipWindows: true,
 		},
 		{
 			name: `nslookup: no args`,
@@ -113,7 +117,7 @@ func TestLoadModule_Network(t *testing.T) {
 			name: `tcping: abnormal`,
 			script: itn.HereDoc(`
 				load('net', 'tcping')
-				s = tcping('apple.com', count=1, timeout=-5, interval=-2)
+				s = tcping('bing.com', count=1, timeout=-5, interval=-2)
 				print(s)
 				assert.eq(s.total, 1)
 				assert.true(s.success > 0)
@@ -165,6 +169,10 @@ func TestLoadModule_Network(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if isOnWindows && tt.skipWindows {
+				t.Skipf("Skip test on Windows")
+				return
+			}
 			res, err := itn.ExecModuleWithErrorTest(t, net.ModuleName, net.LoadModule, tt.script, tt.wantErr, nil)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("net(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
