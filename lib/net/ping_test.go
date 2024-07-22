@@ -1,14 +1,42 @@
 package net_test
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"runtime"
 	"testing"
 
 	itn "github.com/1set/starlet/internal"
 	"github.com/1set/starlet/lib/net"
+	"go.starlark.net/starlark"
 )
 
+// A helper function to create a mock server that returns the specified status code
+func createMockServer(statusCode int) *httptest.Server {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(statusCode)
+	})
+	return httptest.NewServer(handler)
+}
+
+// Create a mock server that returns a 301 status code with a Location header
+func createRedirectMockServer(location string) *httptest.Server {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Location", location)
+		w.WriteHeader(http.StatusMovedPermanently)
+	})
+	return httptest.NewServer(handler)
+}
+
 func TestLoadModule_Ping(t *testing.T) {
+	// create mock servers for testing
+	server301 := createRedirectMockServer("https://notgoingthere.invalid")
+	defer server301.Close()
+	server404 := createMockServer(http.StatusNotFound)
+	defer server404.Close()
+	server500 := createMockServer(http.StatusInternalServerError)
+	defer server500.Close()
+
 	isOnWindows := runtime.GOOS == "windows"
 	tests := []struct {
 		name        string
@@ -116,6 +144,31 @@ func TestLoadModule_Ping(t *testing.T) {
 			`),
 		},
 		{
+			name: `httping: ignore redirect`,
+			script: itn.HereDoc(`
+				load('net', 'httping')
+				s = httping(server_301, interval=0.1)
+				assert.eq(s.total, 4)
+				assert.eq(s.success, 4)
+			`),
+		},
+		{
+			name: `httping: status 404`,
+			script: itn.HereDoc(`
+				load('net', 'httping')
+				s = httping(server_404, interval=0.1)
+			`),
+			wantErr: `net.httping: no successful connections`,
+		},
+		{
+			name: `httping: status 500`,
+			script: itn.HereDoc(`
+				load('net', 'httping')
+				s = httping(server_500, interval=0.1)
+			`),
+			wantErr: `net.httping: no successful connections`,
+		},
+		{
 			name: `httping: not exists`,
 			script: itn.HereDoc(`
 				load('net', 'httping')
@@ -154,7 +207,12 @@ func TestLoadModule_Ping(t *testing.T) {
 				t.Skipf("Skip test on Windows")
 				return
 			}
-			res, err := itn.ExecModuleWithErrorTest(t, net.ModuleName, net.LoadModule, tt.script, tt.wantErr, nil)
+			extra := starlark.StringDict{
+				"server_301": starlark.String(server301.URL),
+				"server_404": starlark.String(server404.URL),
+				"server_500": starlark.String(server500.URL),
+			}
+			res, err := itn.ExecModuleWithErrorTest(t, net.ModuleName, net.LoadModule, tt.script, tt.wantErr, extra)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("net(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
 				return
