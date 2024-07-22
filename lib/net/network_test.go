@@ -109,6 +109,16 @@ func TestLoadModule_Network(t *testing.T) {
 				assert.true(s.success > 0)
 			`),
 		},
+		{
+			name: `tcping: faster`,
+			script: itn.HereDoc(`
+				load('net', 'tcping')
+				s = tcping('bing.com', count=10, timeout=5, interval=0.01)
+				print(s)
+				assert.eq(s.total, 10)
+				assert.true(s.success > 0)
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
