@@ -73,13 +73,13 @@ func TestLoadModule_Network(t *testing.T) {
 				load('net', 'nslookup')
 				ips = nslookup('missing.invalid')
 			`),
-			wantErr: `no such host`,
+			wantErr: `missing.invalid`, // mac/win: no such host, linux: server misbehaving
 		},
 		{
 			name: `nslookup: wrong dns`,
 			script: itn.HereDoc(`
 				load('net', 'nslookup')
-				ips = nslookup('bing.com', 'microsoft.com', timeout=1)
+				ips = nslookup('bing.com', 'apple.com', timeout=1)
 			`),
 			wantErr: `i/o timeout`,
 		},
