@@ -35,6 +35,7 @@ func LoadModule() (starlark.StringDict, error) {
 				Name: ModuleName,
 				Members: starlark.StringDict{
 					"nslookup": starlark.NewBuiltin(ModuleName+".nslookup", starLookup),
+					"tcping":   starlark.NewBuiltin(ModuleName+".tcping", starTCPPing),
 				},
 			},
 		}
@@ -101,67 +102,6 @@ func starLookup(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tupl
 		list = append(list, starlark.String(ip))
 	}
 	return starlark.NewList(list), nil
-}
-
-// goTCPPing performs a TCP ping to the given address and port. It returns the average round-trip time (RTT) and the packet loss percentage.
-func goTCPPing2(ctx context.Context, hostname string, port int, count int, timeout, interval time.Duration) (avgRTT time.Duration, lossPercentage float64, err error) {
-	// set default
-	avgRTT = 0
-	lossPercentage = 100
-
-	// get the target count
-	if count <= 0 {
-		err = fmt.Errorf("count must be greater than 0")
-		return
-	}
-
-	// resolve the hostname to an IP address
-	ips, e := goLookup(ctx, hostname, "", timeout)
-	if e != nil {
-		err = e
-		return
-	}
-	if len(ips) == 0 {
-		err = fmt.Errorf("unable to resolve hostname")
-		return
-	}
-	addr := net.JoinHostPort(ips[0], strconv.Itoa(port))
-
-	// perform the TCP ping
-	var (
-		totalRTT     time.Duration
-		successCount int
-	)
-	for i := 1; i <= count; i++ {
-		// dial with timeout
-		start := time.Now()
-		conn, e := net.DialTimeout("tcp", addr, timeout)
-		if e != nil {
-			continue
-		}
-		rtt := time.Since(start)
-		_ = conn.Close()
-
-		// measure the RTT
-		totalRTT += rtt
-		successCount++
-
-		// apply interval
-		if i < count {
-			time.Sleep(interval)
-		}
-	}
-
-	// calculate the result
-	if successCount == 0 {
-		err = fmt.Errorf("no successful connections")
-		return
-	}
-
-	// calculate the average RTT and loss percentage
-	avgRTT = totalRTT / time.Duration(successCount)
-	lossPercentage = 100.0 * float64(count-successCount) / float64(count)
-	return
 }
 
 // goTCPPing performs a TCP ping to the given address and port. It returns a slice of round-trip times (RTTs) for each successful connection attempt and an error if any.

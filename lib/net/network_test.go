@@ -99,6 +99,16 @@ func TestLoadModule_Network(t *testing.T) {
 			`),
 			wantErr: `net.nslookup: for parameter domain: got int, want string or bytes`,
 		},
+		{
+			name: `tcping: normal`,
+			script: itn.HereDoc(`
+				load('net', 'tcping')
+				s = tcping('bing.com')
+				print(s)
+				assert.eq(s.total, 4)
+				assert.true(s.success > 0)
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
