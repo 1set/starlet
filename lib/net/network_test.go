@@ -53,7 +53,7 @@ func TestLoadModule_Network(t *testing.T) {
 			name: `nslookup: ip`,
 			script: itn.HereDoc(`
 				load('net', 'nslookup')
-				ips = nslookup('8.8.8.8')
+				ips = nslookup('8.8.8.8', timeout=-1)
 				print(ips)
 				assert.true(len(ips) > 0)
 			`),
@@ -110,6 +110,17 @@ func TestLoadModule_Network(t *testing.T) {
 			`),
 		},
 		{
+			name: `tcping: abnormal`,
+			script: itn.HereDoc(`
+				load('net', 'tcping')
+				s = tcping('apple.com', count=1, timeout=-5, interval=-2)
+				print(s)
+				assert.eq(s.total, 1)
+				assert.true(s.success > 0)
+				assert.eq(s.stddev, 0)
+			`),
+		},
+		{
 			name: `tcping: faster`,
 			script: itn.HereDoc(`
 				load('net', 'tcping')
@@ -118,6 +129,38 @@ func TestLoadModule_Network(t *testing.T) {
 				assert.eq(s.total, 10)
 				assert.true(s.success > 0)
 			`),
+		},
+		{
+			name: `tcping: not exists`,
+			script: itn.HereDoc(`
+				load('net', 'tcping')
+				s = tcping('missing.invalid')
+			`),
+			wantErr: `missing.invalid`, // mac/win: no such host, linux: server misbehaving
+		},
+		{
+			name: `tcping: wrong count`,
+			script: itn.HereDoc(`
+				load('net', 'tcping')
+				s = tcping('bing.com', count=0)
+			`),
+			wantErr: `net.tcping: count must be greater than 0`,
+		},
+		{
+			name: `tcping: no args`,
+			script: itn.HereDoc(`
+				load('net', 'tcping')
+				tcping()
+			`),
+			wantErr: `net.tcping: missing argument for hostname`,
+		},
+		{
+			name: `tcping: invalid args`,
+			script: itn.HereDoc(`
+				load('net', 'tcping')
+				tcping(123)
+			`),
+			wantErr: `net.tcping: for parameter hostname: got int, want string or bytes`,
 		},
 	}
 	for _, tt := range tests {
