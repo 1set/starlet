@@ -85,7 +85,7 @@ func TestLoadModule_Network(t *testing.T) {
 				ips = nslookup('bing.com', 'microsoft.com', timeout=1)
 			`),
 			wantErr:     `i/o timeout`,
-			skipWindows: true,
+			skipWindows: true, // on Windows 2022 with Go 1.18.10, it returns results from the default DNS server
 		},
 		{
 			name: `nslookup: no args`,
