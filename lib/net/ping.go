@@ -37,7 +37,6 @@ func goPingWrap(ctx context.Context, address string, count int, timeout, interva
 	if len(rttDurations) == 0 {
 		return nil, fmt.Errorf("no successful connections")
 	}
-
 	return rttDurations, nil
 }
 
@@ -178,10 +177,11 @@ func starHTTPing(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tup
 	}
 
 	// perform the HTTP ping, and get the statistics
+	address := url.GoString()
 	ctx := dataconv.GetThreadContext(thread)
-	rtts, err := goPingWrap(ctx, url.GoString(), count, time.Duration(timeout)*time.Second, time.Duration(interval)*time.Second, httpPingFunc)
+	rtts, err := goPingWrap(ctx, address, count, time.Duration(timeout)*time.Second, time.Duration(interval)*time.Second, httpPingFunc)
 	if err != nil {
 		return none, fmt.Errorf("%s: %w", b.Name(), err)
 	}
-	return createPingStats(url.GoString(), count, rtts), nil
+	return createPingStats(address, count, rtts), nil
 }
