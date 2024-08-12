@@ -3,6 +3,7 @@ package dataconv
 // Based on https://github.com/qri-io/starlib/tree/master/util with some modifications and additions
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -129,6 +130,14 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 			}
 		}
 		return jo, nil
+	}
+
+	// for typed nil or nil
+	if IsInterfaceNil(x) {
+		if x == nil {
+			return nil, errors.New("nil value")
+		}
+		return nil, fmt.Errorf("typed nil value: %T", x)
 	}
 
 	// switch on the type of the value (common types)
@@ -290,32 +299,14 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 		}
 		val = am
 	case *convert.GoSlice:
-		if IsInterfaceNil(v) {
-			err = fmt.Errorf("nil GoSlice")
-			return
-		}
 		val = v.Value().Interface()
 	case *convert.GoMap:
-		if IsInterfaceNil(v) {
-			err = fmt.Errorf("nil GoMap")
-			return
-		}
 		val = v.Value().Interface()
 	case *convert.GoStruct:
-		if IsInterfaceNil(v) {
-			err = fmt.Errorf("nil GoStruct")
-			return
-		}
 		val = v.Value().Interface()
 	case *convert.GoInterface:
-		if IsInterfaceNil(v) {
-			err = fmt.Errorf("nil GoInterface")
-			return
-		}
 		val = v.Value().Interface()
 	default:
-		//fmt.Println("errbadtype:", x.Type())
-		//err = fmt.Errorf("unrecognized starlark type: %s", x.Type())
 		err = fmt.Errorf("unrecognized starlark type: %T", x)
 	}
 	return

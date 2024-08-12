@@ -147,10 +147,6 @@ func TestUnmarshal(t *testing.T) {
 	if err := intDict.SetKey(starlark.MakeInt(42*2), starlark.MakeInt(42)); err != nil {
 		t.Fatal(err)
 	}
-	nilDict := starlark.NewDict(1)
-	if err := nilDict.SetKey(starlark.String("foo"), nil); err != nil {
-		t.Fatal(err)
-	}
 	cycDict := starlark.NewDict(2)
 	if err := cycDict.SetKey(starlark.String("foo"), starlark.MakeInt(42)); err != nil {
 		t.Fatal(err)
@@ -214,21 +210,24 @@ func TestUnmarshal(t *testing.T) {
 	}{"Aloha", 100}
 
 	var (
-		nilGs  *convert.GoSlice
-		nilGm  *convert.GoMap
-		nilGst *convert.GoStruct
-		nilGif *convert.GoInterface
+		nilList *starlark.List
+		nilDict *starlark.Dict
+		nilGs   *convert.GoSlice
+		nilGm   *convert.GoMap
+		nilGst  *convert.GoStruct
+		nilGif  *convert.GoInterface
 	)
 	cases := []struct {
 		in   starlark.Value
 		want interface{}
 		err  string
 	}{
-		{nil, nil, "unrecognized starlark type: <nil>"},
-		{nilDict, nil, "unmarshaling starlark value: unrecognized starlark type: <nil>"},
-		{srtNil, nil, "unrecognized starlark type: <nil>"},
-		{starlark.NewList([]starlark.Value{starlark.MakeInt(42), nil}), nil, "unrecognized starlark type: <nil>"},
-		{starlark.Tuple([]starlark.Value{starlark.MakeInt(42), nil}), nil, "unrecognized starlark type: <nil>"},
+		{nil, nil, "nil value"},
+		{nilList, nil, "typed nil value: *starlark.List"},
+		{nilDict, nil, "typed nil value: *starlark.Dict"},
+		{srtNil, nil, "nil value"},
+		{starlark.NewList([]starlark.Value{starlark.MakeInt(42), nil}), nil, "nil value"},
+		{starlark.Tuple([]starlark.Value{starlark.MakeInt(42), nil}), nil, "nil value"},
 		{starlark.None, nil, ""},
 		{starlark.True, true, ""},
 		{starlark.String("foo"), "foo", ""},
@@ -271,14 +270,14 @@ func TestUnmarshal(t *testing.T) {
 		{convert.NewGoMap(map[string]int{"foo": 42}), map[string]int{"foo": 42}, ""},
 		{convert.NewStruct(gs), gs, ""},
 		{convert.MakeGoInterface("Hello, World!"), "Hello, World!", ""},
-		{(*convert.GoSlice)(nil), nil, "nil GoSlice"},
-		{nilGs, nil, "nil GoSlice"},
-		{(*convert.GoMap)(nil), nil, "nil GoMap"},
-		{nilGm, nil, "nil GoMap"},
-		{(*convert.GoStruct)(nil), nil, "nil GoStruct"},
-		{nilGst, nil, "nil GoStruct"},
-		{(*convert.GoInterface)(nil), nil, "nil GoInterface"},
-		{nilGif, nil, "nil GoInterface"},
+		{(*convert.GoSlice)(nil), nil, "typed nil value: *convert.GoSlice"},
+		{nilGs, nil, "typed nil value: *convert.GoSlice"},
+		{(*convert.GoMap)(nil), nil, "typed nil value: *convert.GoMap"},
+		{nilGm, nil, "typed nil value: *convert.GoMap"},
+		{(*convert.GoStruct)(nil), nil, "typed nil value: *convert.GoStruct"},
+		{nilGst, nil, "typed nil value: *convert.GoStruct"},
+		{(*convert.GoInterface)(nil), nil, "typed nil value: *convert.GoInterface"},
+		{nilGif, nil, "typed nil value: *convert.GoInterface"},
 		{msb, nil, "unrecognized starlark type: *starlark.Builtin"},
 		{sf, nil, "unrecognized starlark type: *starlark.Function"},
 		{sse, nil, "unrecognized starlark type: *starlark.Builtin"},
