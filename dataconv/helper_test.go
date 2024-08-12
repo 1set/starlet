@@ -1157,6 +1157,129 @@ func TestStarString(t *testing.T) {
 	}
 }
 
+func TestGoToStarlarkViaJSON(t *testing.T) {
+	now := time.Now()
+	stime := starlark.String(now.Format(time.RFC3339Nano))
+
+	tests := []struct {
+		name    string
+		input   interface{}
+		want    starlark.Value
+		wantErr bool
+	}{
+		{
+			name:  "nil",
+			input: nil,
+			want:  starlark.None,
+		},
+		{
+			name:  "typed nil",
+			input: (*int)(nil),
+			want:  starlark.None,
+		},
+		{
+			name:  "bool true",
+			input: true,
+			want:  starlark.Bool(true),
+		},
+		{
+			name:  "bool false",
+			input: false,
+			want:  starlark.Bool(false),
+		},
+		{
+			name:  "int",
+			input: 42,
+			want:  starlark.MakeInt(42),
+		},
+		{
+			name:  "negative int",
+			input: -42,
+			want:  starlark.MakeInt(-42),
+		},
+		{
+			name:  "float",
+			input: 3.14,
+			want:  starlark.Float(3.14),
+		},
+		{
+			name:  "string",
+			input: "hello",
+			want:  starlark.String("hello"),
+		},
+		{
+			name:  "time",
+			input: now,
+			want:  stime,
+		},
+		{
+			name:  "map",
+			input: map[string]interface{}{"foo": 42},
+			want: func() *starlark.Dict {
+				d := starlark.NewDict(2)
+				d.SetKey(starlark.String("foo"), starlark.MakeInt(42))
+				return d
+			}(),
+		},
+		{
+			name:  "slice",
+			input: []interface{}{1, 2, "three"},
+			want: starlark.NewList([]starlark.Value{
+				starlark.MakeInt(1),
+				starlark.MakeInt(2),
+				starlark.String("three"),
+			}),
+		},
+		{
+			name: "struct",
+			input: struct {
+				Name  string `json:"name"`
+				Value int    `json:"value"`
+			}{"test", 123},
+			want: func() *starlark.Dict {
+				d := starlark.NewDict(2)
+				d.SetKey(starlark.String("name"), starlark.String("test"))
+				d.SetKey(starlark.String("value"), starlark.MakeInt(123))
+				return d
+			}(),
+		},
+		{
+			name:  "complex nested structure",
+			input: map[string]interface{}{"nested": map[string]interface{}{"key": "value", "list": []interface{}{1, 2, 3}}},
+			want: func() *starlark.Dict {
+				innerDict := starlark.NewDict(2)
+				innerDict.SetKey(starlark.String("key"), starlark.String("value"))
+				innerDict.SetKey(starlark.String("list"), starlark.NewList([]starlark.Value{
+					starlark.MakeInt(1),
+					starlark.MakeInt(2),
+					starlark.MakeInt(3),
+				}))
+				d := starlark.NewDict(1)
+				d.SetKey(starlark.String("nested"), innerDict)
+				return d
+			}(),
+		},
+		{
+			name:    "invalid type",
+			input:   make(chan int),
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GoToStarlarkViaJSON(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GoToStarlarkViaJSON() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GoToStarlarkViaJSON() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestGetThreadContext(t *testing.T) {
 	bkg := context.Background()
 	t.Run("nil thread", func(t *testing.T) {
