@@ -1103,6 +1103,16 @@ func TestStarString(t *testing.T) {
 		want string
 	}{
 		{
+			name: "nil",
+			val:  nil,
+			want: "",
+		},
+		{
+			name: "typed nil",
+			val:  (*starlark.List)(nil),
+			want: "",
+		},
+		{
 			name: "string",
 			val:  starlark.String("hello"),
 			want: "hello",

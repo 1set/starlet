@@ -220,7 +220,7 @@ func TypeConvert(data interface{}) interface{} {
 
 // StarString returns the string representation of a starlark.Value, i.e. converts Starlark values to Go strings.
 func StarString(x starlark.Value) string {
-	if x == nil {
+	if IsInterfaceNil(x) {
 		return emptyStr
 	}
 	switch v := x.(type) {
