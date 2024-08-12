@@ -218,7 +218,7 @@ func TypeConvert(data interface{}) interface{} {
 	}
 }
 
-// StarString returns the string representation of a starlark.Value.
+// StarString returns the string representation of a starlark.Value, i.e. converts Starlark values to Go strings.
 func StarString(x starlark.Value) string {
 	if x == nil {
 		return emptyStr
@@ -233,8 +233,10 @@ func StarString(x starlark.Value) string {
 	}
 }
 
-// StructToStarlark converts a Go struct to a Starlark value.
-func StructToStarlark(v interface{}) (starlark.Value, error) {
+// GoToStarlarkViaJSON converts any Go value that can be marshaled into JSON into a corresponding Starlark value.
+// It first marshals the Go value into a JSON string with the standard Go JSON package,
+// then decodes this JSON string into a Starlark value with the official Starlark JSON module.
+func GoToStarlarkViaJSON(v interface{}) (starlark.Value, error) {
 	if v == nil {
 		return starlark.None, nil
 	}
