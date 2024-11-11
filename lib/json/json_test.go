@@ -243,6 +243,15 @@ func TestLoadModule_JSON(t *testing.T) {
 			`),
 		},
 		{
+			name: `try_encode invalid`,
+			script: itn.HereDoc(`
+				load('json', 'try_encode')
+				r, e = try_encode(lambda x: x+1)
+				assert.eq(r, None)
+				assert.true("cannot encode function as JSON" in e)
+			`),
+		},
+		{
 			name: `try_encode struct`,
 			script: itn.HereDoc(`
 				load('json', 'try_encode')
