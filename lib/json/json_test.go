@@ -234,6 +234,15 @@ func TestLoadModule_JSON(t *testing.T) {
 			`),
 		},
 		{
+			name: `try_encode no args`,
+			script: itn.HereDoc(`
+				load('json', 'try_encode')
+				r, e = try_encode()
+				assert.eq(r, None)
+				assert.true("got 0 arguments, want 1" in e)
+			`),
+		},
+		{
 			name: `try_encode struct`,
 			script: itn.HereDoc(`
 				load('json', 'try_encode')
@@ -278,6 +287,15 @@ func TestLoadModule_JSON(t *testing.T) {
 			`),
 		},
 		{
+			name: `try_decode no args`,
+			script: itn.HereDoc(`
+				load('json', 'try_decode')
+				r, e = try_decode()
+				assert.eq(r, None)
+				assert.true("missing argument for x" in e)
+			`),
+		},
+		{
 			name: `try_decode invalid`,
 			script: itn.HereDoc(`
 				load('json', 'try_decode')
@@ -285,6 +303,15 @@ func TestLoadModule_JSON(t *testing.T) {
 				r, e = try_decode(d)
 				assert.eq(r, None)
 				assert.true("unexpected character" in e)
+			`),
+		},
+		{
+			name: `try_indent no args`,
+			script: itn.HereDoc(`
+				load('json', 'try_indent')
+				r, e = try_indent()
+				assert.eq(r, None)
+				assert.true("missing argument for str" in e)
 			`),
 		},
 		{
