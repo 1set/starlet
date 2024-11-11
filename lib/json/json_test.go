@@ -25,9 +25,9 @@ func TestLoadModule_JSON(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name: `stdlib can be loaded`,
+			name: `func can be loaded`,
 			script: itn.HereDoc(`
-				load('json', 'dumps', 'encode', 'decode', 'indent')
+				load('json', 'dumps', 'encode', 'decode', 'indent', 'try_dumps', 'try_encode', 'try_decode', 'try_indent')
 			`),
 		},
 		{
@@ -192,6 +192,107 @@ func TestLoadModule_JSON(t *testing.T) {
 				load('json', 'encode')
 				d = '{"Message":"Bravo","Times":200}'
 				assert.eq(encode(vs), d)
+			`),
+		},
+		{
+			name: `try_dumps(1)`,
+			script: itn.HereDoc(`
+				load('json', 'try_dumps')
+				assert.eq(try_dumps(1), ('1', None))
+			`),
+		},
+		{
+			name: `try_dumps(1, indent=2)`,
+			script: itn.HereDoc(`
+				load('json', 'try_dumps')
+				assert.eq(try_dumps(1, indent=2), ('1', None))
+			`),
+		},
+		{
+			name: `try_dumps(def)`,
+			script: itn.HereDoc(`
+				load('json', 'try_dumps')
+				def f(): pass
+				d = { "a" : "b", "f" : f}
+				assert.eq(try_dumps(d), (None, 'unmarshaling starlark value: unrecognized starlark type: *starlark.Function'))
+			`),
+		},
+		{
+			name: `try_encode struct`,
+			script: itn.HereDoc(`
+				load('json', 'try_encode')
+				load("struct.star", "struct")
+				s = struct(a="Aloha", b=0x10, c=True, d=[1,2,3])
+				d = '{"a":"Aloha","b":16,"c":true,"d":[1,2,3]}'
+				assert.eq(try_encode(s), (d, None))
+			`),
+		},
+		{
+			name: `try_encode module`,
+			script: itn.HereDoc(`
+				load('json', 'try_encode')
+				load("module.star", "module")
+				m = module("hello", a="Bravo", b=0b10, c=False, d=[7,8,9])
+				d = '{"a":"Bravo","b":2,"c":false,"d":[7,8,9]}'
+				assert.eq(try_encode(m), (d, None))
+			`),
+		},
+		{
+			name: `try_encode struct with json tag`,
+			script: itn.HereDoc(`
+				load('json', 'try_encode')
+				d = '{"msg":"Bravo","t":200}'
+				assert.eq(try_encode(vj), (d, None))
+			`),
+		},
+		{
+			name: `try_encode struct with star tag`,
+			script: itn.HereDoc(`
+				load('json', 'try_encode')
+				d = '{"Message":"Bravo","Times":200}'
+				assert.eq(try_encode(vs), (d, None))
+			`),
+		},
+		{
+			name: `try_decode valid`,
+			script: itn.HereDoc(`
+				load('json', 'try_decode')
+				d = '{"a": "b"}'
+				assert.eq(try_decode(d), ({'a': 'b'}, None))
+			`),
+		},
+		{
+			name: `try_decode invalid`,
+			script: itn.HereDoc(`
+				load('json', 'try_decode')
+				d = '{"a": b"}'
+				r, e = try_decode(d)
+				assert.eq(r, None)
+				assert.true("unexpected character" in e)
+			`),
+		},
+		{
+			name: `try_indent valid`,
+			script: itn.HereDoc(`
+				load('json', 'try_indent')
+				d = '{"a":"b","c":"d"}'
+				expected = '''
+				{
+				  "a": "b",
+				  "c": "d"
+				}
+				'''.strip()
+				assert.eq(try_indent(d, indent='  '), (expected, None))
+			`),
+		},
+		{
+			name: `try_indent invalid`,
+			script: itn.HereDoc(`
+				load('json', 'try_indent')
+				d = '{"a": b"}'
+				r, e = try_indent(d, indent='  ')
+				assert.eq(r, None)
+				assert.true("invalid character" in e)
 			`),
 		},
 	}
