@@ -2,6 +2,8 @@
 package json
 
 import (
+	"bytes"
+	"encoding/json"
 	"sync"
 
 	itn "github.com/1set/starlet/dataconv"
@@ -27,8 +29,10 @@ func LoadModule() (starlark.StringDict, error) {
 			Name: ModuleName,
 			Members: starlark.StringDict{
 				"dumps":      starlark.NewBuiltin(ModuleName+".dumps", dumps),
+				"try_dumps":  starlark.NewBuiltin(ModuleName+".try_dumps", tryDumps),
 				"try_encode": starlark.NewBuiltin(ModuleName+".try_encode", tryEncode),
 				"try_decode": starlark.NewBuiltin(ModuleName+".try_decode", tryDecode),
+				"try_indent": starlark.NewBuiltin(ModuleName+".try_indent", tryIndent),
 			},
 		}
 		for k, v := range stdjson.Module.Members {
@@ -109,4 +113,21 @@ func tryDecode(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tupl
 		return starlark.Tuple{none, starlark.String(err.Error())}, nil
 	}
 	return starlark.Tuple{decoded, none}, nil
+}
+
+func tryIndent(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var (
+		str    string
+		prefix string
+		indent string
+	)
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "str", &str, "prefix?", &prefix, "indent?", &indent); err != nil {
+		return starlark.Tuple{none, starlark.String(err.Error())}, nil
+	}
+
+	buf := new(bytes.Buffer)
+	if err := json.Indent(buf, []byte(str), prefix, indent); err != nil {
+		return starlark.Tuple{none, starlark.String(err.Error())}, nil
+	}
+	return starlark.Tuple{starlark.String(buf.String()), none}, nil
 }
