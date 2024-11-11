@@ -15,6 +15,7 @@ import (
 const ModuleName = "json"
 
 var (
+	none       = starlark.None
 	once       sync.Once
 	jsonModule starlark.StringDict
 )
@@ -25,9 +26,9 @@ func LoadModule() (starlark.StringDict, error) {
 		mod := starlarkstruct.Module{
 			Name: ModuleName,
 			Members: starlark.StringDict{
-				"dumps":      starlark.NewBuiltin("json.dumps", dumps),
-				"try_encode": starlark.NewBuiltin("json.try_encode", tryEncode),
-				"try_decode": starlark.NewBuiltin("json.try_decode", tryDecode),
+				"dumps":      starlark.NewBuiltin(ModuleName+".dumps", dumps),
+				"try_encode": starlark.NewBuiltin(ModuleName+".try_encode", tryEncode),
+				"try_decode": starlark.NewBuiltin(ModuleName+".try_decode", tryDecode),
 			},
 		}
 		for k, v := range stdjson.Module.Members {
@@ -46,7 +47,7 @@ func dumps(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, k
 		indent = starlark.MakeInt(0)
 	)
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "obj", &obj, "indent?", &indent); err != nil {
-		return starlark.None, err
+		return none, err
 	}
 
 	// use 0 as default indent if failed to unpack indent
@@ -58,7 +59,7 @@ func dumps(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, k
 	// use internal marshaler to support starlark types
 	data, err := itn.MarshalStarlarkJSON(obj, int(it))
 	if err != nil {
-		return starlark.None, err
+		return none, err
 	}
 	return starlark.String(data), nil
 }
@@ -69,7 +70,7 @@ func tryDumps(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple
 		indent = starlark.MakeInt(0)
 	)
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "obj", &obj, "indent?", &indent); err != nil {
-		return starlark.Tuple{starlark.None, starlark.String(err.Error())}, nil
+		return starlark.Tuple{none, starlark.String(err.Error())}, nil
 	}
 
 	it, ok := indent.Int64()
@@ -79,33 +80,33 @@ func tryDumps(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple
 
 	data, err := itn.MarshalStarlarkJSON(obj, int(it))
 	if err != nil {
-		return starlark.Tuple{starlark.None, starlark.String(err.Error())}, nil
+		return starlark.Tuple{none, starlark.String(err.Error())}, nil
 	}
-	return starlark.Tuple{starlark.String(data), starlark.None}, nil
+	return starlark.Tuple{starlark.String(data), none}, nil
 }
 
 func tryEncode(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var x starlark.Value
 	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 1, &x); err != nil {
-		return starlark.Tuple{starlark.None, starlark.String(err.Error())}, nil
+		return starlark.Tuple{none, starlark.String(err.Error())}, nil
 	}
 
 	encoded, err := itn.EncodeStarlarkJSON(x)
 	if err != nil {
-		return starlark.Tuple{starlark.None, starlark.String(err.Error())}, nil
+		return starlark.Tuple{none, starlark.String(err.Error())}, nil
 	}
-	return starlark.Tuple{starlark.String(encoded), starlark.None}, nil
+	return starlark.Tuple{starlark.String(encoded), none}, nil
 }
 
 func tryDecode(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var s string
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "x", &s); err != nil {
-		return starlark.Tuple{starlark.None, starlark.String(err.Error())}, nil
+		return starlark.Tuple{none, starlark.String(err.Error())}, nil
 	}
 
 	decoded, err := itn.DecodeStarlarkJSON([]byte(s))
 	if err != nil {
-		return starlark.Tuple{starlark.None, starlark.String(err.Error())}, nil
+		return starlark.Tuple{none, starlark.String(err.Error())}, nil
 	}
-	return starlark.Tuple{decoded, starlark.None}, nil
+	return starlark.Tuple{decoded, none}, nil
 }
