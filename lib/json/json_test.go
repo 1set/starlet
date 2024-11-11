@@ -202,6 +202,13 @@ func TestLoadModule_JSON(t *testing.T) {
 			`),
 		},
 		{
+			name: `try_dumps(1, indent=-7)`,
+			script: itn.HereDoc(`
+				load('json', 'try_dumps')
+				assert.eq(try_dumps(1, indent=-7), ('1', None))
+			`),
+		},
+		{
 			name: `try_dumps(1, indent=2)`,
 			script: itn.HereDoc(`
 				load('json', 'try_dumps')
@@ -215,6 +222,15 @@ func TestLoadModule_JSON(t *testing.T) {
 				def f(): pass
 				d = { "a" : "b", "f" : f}
 				assert.eq(try_dumps(d), (None, 'unmarshaling starlark value: unrecognized starlark type: *starlark.Function'))
+			`),
+		},
+		{
+			name: `try_dumps(1, indent="abc")`,
+			script: itn.HereDoc(`
+				load('json', 'try_dumps')
+				r, e = try_dumps(1, indent="abc")
+				assert.eq(r, None)
+				assert.true("got string, want int" in e)
 			`),
 		},
 		{
