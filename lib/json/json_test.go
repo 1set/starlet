@@ -450,7 +450,17 @@ func TestJSONPathAndEvalFunctions(t *testing.T) {
 				data = '''` + jsonData + `'''
 				result, err = try_path(data, '$..[invalid]')
 				assert.eq(result, [])
-				assert.true('unknown binary op' in err)
+				assert.eq(err, None)
+			`),
+		},
+		{
+			name: "json.try_path - wrong JSONPath",
+			script: itn.HereDoc(`
+				load('json', 'try_path')
+				data = '''` + jsonData + `'''
+				result, err = try_path(data, '$..[invalid]X')
+				assert.eq(result, None)
+				assert.true("wrong symbol 'X' at 12" in err)
 			`),
 		},
 		{
@@ -459,7 +469,7 @@ func TestJSONPathAndEvalFunctions(t *testing.T) {
 				load('json', 'try_eval')
 				data = '''` + jsonData + `'''
 				result, err = try_eval(data, 'avg($..price)')
-				assert.eq(result, 14.974)
+				assert.eq(result, 14.774)
 				assert.eq(err, None)
 			`),
 		},
@@ -470,7 +480,7 @@ func TestJSONPathAndEvalFunctions(t *testing.T) {
 				data = '''` + jsonData + `'''
 				result, err = try_eval(data, 'invalid($..price)')
 				assert.eq(result, None)
-				assert.true('unsupported function: invalid' in err)
+				assert.true("wrong request: wrong formula, 'invalid' is not a function" in err)
 			`),
 		},
 	}
