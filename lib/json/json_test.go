@@ -381,8 +381,8 @@ func TestJSONPathAndEvalFunctions(t *testing.T) {
 	}{
 		{
 			name: `stdlib can be loaded`,
-			script: itn.HereDoc(`  
-				load('json', 'path', 'try_path', 'eval', 'try_eval')  
+			script: itn.HereDoc(`
+				load('json', 'path', 'try_path', 'eval', 'try_eval')
 			`),
 		},
 		{
@@ -491,242 +491,242 @@ func TestJSONPathAndEvalFunctions(t *testing.T) {
 		},
 		{
 			name: "json.path - invalid JSON data",
-			script: itn.HereDoc(`  
-				load('json', 'path')  
-				data = 'invalid json data'  
-				path(data, '$..price')  
+			script: itn.HereDoc(`
+				load('json', 'path')
+				data = 'invalid json data'
+				path(data, '$..price')
 			`),
 			wantErr: "json.path: wrong symbol 'i' at 0",
 		},
 		{
 			name: "json.path - data as starlark dict",
-			script: itn.HereDoc(`  
-				load('json', 'path')  
-				data = {  
-					"a": [1, 2, {"b": 3}],  
-					"c": {"d": 4}  
-				}  
-				result = path(data, '$..b')  
-				assert.eq(result, [3])  
+			script: itn.HereDoc(`
+				load('json', 'path')
+				data = {
+					"a": [1, 2, {"b": 3}],
+					"c": {"d": 4}
+				}
+				result = path(data, '$..b')
+				assert.eq(result, [3])
 			`),
 		},
 		{
 			name: "json.path - data as starlark list",
-			script: itn.HereDoc(`  
-				load('json', 'path')  
-				data = [1, 2, {"a": 3, "b": [4, 5]}]  
-				result = path(data, '$..b')  
-				assert.eq(result, [[4, 5]])  
+			script: itn.HereDoc(`
+				load('json', 'path')
+				data = [1, 2, {"a": 3, "b": [4, 5]}]
+				result = path(data, '$..b')
+				assert.eq(result, [[4, 5]])
 			`),
 		},
 		{
 			name: "json.path - invalid JSONPath expression",
-			script: itn.HereDoc(`  
-				load('json', 'path')  
-				data = '''` + jsonData + `'''  
-				path(data, '$..[?(@.price > 10)]X')  
+			script: itn.HereDoc(`
+				load('json', 'path')
+				data = '''` + jsonData + `'''
+				path(data, '$..[?(@.price > 10)]X')
 			`),
 			wantErr: "json.path: wrong symbol 'X' at 20",
 		},
 		{
 			name: "json.eval - division by zero",
-			script: itn.HereDoc(`  
-				load('json', 'eval')  
-				data = '''` + jsonData + `'''  
-				eval(data, '10 / 0')  
+			script: itn.HereDoc(`
+				load('json', 'eval')
+				data = '''` + jsonData + `'''
+				eval(data, '10 / 0')
 			`),
 			wantErr: "json.eval: wrong request: division by zero",
 		},
 		{
 			name: "json.eval - data as starlark dict",
-			script: itn.HereDoc(`  
-				load('json', 'eval')  
-				data = {  
-					"numbers": [1, 2, 3, 4, 5]  
-				}  
-				result = eval(data, 'sum($.numbers)')  
-				assert.eq(result, 15)  
+			script: itn.HereDoc(`
+				load('json', 'eval')
+				data = {
+					"numbers": [1, 2, 3, 4, 5]
+				}
+				result = eval(data, 'sum($.numbers)')
+				assert.eq(result, 15)
 			`),
 		},
 		{
 			name: "json.eval - division with floating point result",
-			script: itn.HereDoc(`  
-				load('json', 'eval')  
-				data = '''` + jsonData + `'''  
-				result = eval(data, 'sum($..price) / size($..price)')  
-				assert.eq(result, 14.774)  
+			script: itn.HereDoc(`
+				load('json', 'eval')
+				data = '''` + jsonData + `'''
+				result = eval(data, 'sum($..price) / size($..price)')
+				assert.eq(result, 14.774)
 			`),
 		},
 		{
 			name: "json.eval - expression returning boolean",
-			script: itn.HereDoc(`  
-				load('json', 'eval')  
-				data = {'value': 10}  
-				result = eval(data, '$.value > 5')  
+			script: itn.HereDoc(`
+				load('json', 'eval')
+				data = {'value': 10}
+				result = eval(data, '$.value > 5')
 				assert.true(result)
 			`),
 		},
 		{
 			name: "json.eval - expression returning string",
-			script: itn.HereDoc(`  
-				load('json', 'eval')  
-				data = {'greeting': 'Hello', 'name': 'World'}  
-				result = eval(data, '$.greeting + ", " + $.name + "!"')  
-				assert.eq(result, 'Hello, World!')  
+			script: itn.HereDoc(`
+				load('json', 'eval')
+				data = {'greeting': 'Hello', 'name': 'World'}
+				result = eval(data, '$.greeting + ", " + $.name + "!"')
+				assert.eq(result, 'Hello, World!')
 			`),
 		},
 		{
 			name: "json.eval - nested JSONPath in expression",
-			script: itn.HereDoc(`  
-				load('json', 'eval')  
-				data = {'nums': [1, 2, 3, 4, 5]}  
-				result = eval(data, 'sum($.nums[0:3])')  
-				assert.eq(result, 6)  
+			script: itn.HereDoc(`
+				load('json', 'eval')
+				data = {'nums': [1, 2, 3, 4, 5]}
+				result = eval(data, 'sum($.nums[0:3])')
+				assert.eq(result, 6)
 			`),
 		},
 		{
 			name: "json.path - JSON data with multiple types",
-			script: itn.HereDoc(`  
-				load('json', 'path')  
-				data = {  
-					"string": "text",  
-					"number": 42,  
-					"bool": true,  
-					"null": None,  
-					"array": [1, 2, {'key': 'value'}],  
-					"object": {"nested": {"inner": "value"}}  
-				}  
-				result = path(data, '$..*')  
-				assert.eq(result, ['text', 42, True, None, [1,2,{'key':'value'}], {'nested': {'inner': 'value'}}])  
+			script: itn.HereDoc(`
+				load('json', 'path')
+				data = {
+					"string": "text",
+					"number": 42,
+					"bool": True,
+					"null": None,
+					"array": [1, 2, {'key': 'value'}],
+					"object": {"nested": {"inner": "value"}}
+				}
+				result = path(data, '$..*')
+				assert.eq(result, [[1, 2, {"key": "value"}],True,None,42,{"nested": {"inner": "value"}},"text",1,2,{"key": "value"},{"inner": "value"},"value","value"])
 			`),
 		},
 		{
 			name: "json.path - wildcard and recursive descent",
-			script: itn.HereDoc(`  
-				load('json', 'path')  
-				data = {'a': {'b': {'c': 1}}, 'd': {'b': {'c': 2}}}  
-				result = path(data, '$..b.c')  
-				assert.eq(result, [1, 2])  
+			script: itn.HereDoc(`
+				load('json', 'path')
+				data = {'a': {'b': {'c': 1}}, 'd': {'b': {'c': 2}}}
+				result = path(data, '$..b.c')
+				assert.eq(result, [1, 2])
 			`),
 		},
 		{
 			name: "json.try_eval - division by zero",
-			script: itn.HereDoc(`  
-				load('json', 'try_eval')  
-				data = '''` + jsonData + `'''  
-				result, err = try_eval(data, '10 / 0')  
-				assert.eq(result, None)  
-				assert.true("division by zero" in err)  
+			script: itn.HereDoc(`
+				load('json', 'try_eval')
+				data = '''` + jsonData + `'''
+				result, err = try_eval(data, '10 / 0')
+				assert.eq(result, None)
+				assert.true("division by zero" in err)
 			`),
 		},
 		{
 			name: "json.try_eval - data as invalid type",
-			script: itn.HereDoc(`  
-				load('json', 'try_eval')  
-				data = lambda x: x + 5  
+			script: itn.HereDoc(`
+				load('json', 'try_eval')
+				data = lambda x: x + 5
 				result, err = try_eval(data, '$ + 5')
-				assert.eq(result, None)  
-				assert.true("unrecognized starlark" in err)  
+				assert.eq(result, None)
+				assert.true("unrecognized starlark" in err)
 			`),
 		},
 		{
 			name: "json.eval - accessing non-existent key",
-			script: itn.HereDoc(`  
-				load('json', 'eval')  
-				data = {'a': 1}  
+			script: itn.HereDoc(`
+				load('json', 'eval')
+				data = {'a': 1}
 				result = eval(data, '$.b')
-				assert.eq(result, None)  
+				assert.eq(result, None)
 			`),
 		},
 		{
 			name: "json.try_path - data as invalid JSON",
-			script: itn.HereDoc(`  
-				load('json', 'try_path')  
-				data = '{"invalid": json'  
-				result, err = try_path(data, '$..*')  
-				assert.eq(result, None)  
-				assert.true("wrong symbol 'j' at 12" in err)  
+			script: itn.HereDoc(`
+				load('json', 'try_path')
+				data = '{"invalid": json'
+				result, err = try_path(data, '$..*')
+				assert.eq(result, None)
+				assert.true("wrong symbol 'j' at 12" in err)
 			`),
 		},
 		{
 			name: "json.path - array slicing",
-			script: itn.HereDoc(`  
-				load('json', 'path')  
-				data = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]  
-				result = path(data, '$[2:5]')  
-				assert.eq(result, [2,3,4])  
+			script: itn.HereDoc(`
+				load('json', 'path')
+				data = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+				result = path(data, '$[2:5]')
+				assert.eq(result, [2,3,4])
 			`),
 		},
 		{
 			name: "json.path - filter expression",
-			script: itn.HereDoc(`  
-				load('json', 'path')  
-				data = {'items': [{'value': 5}, {'value': 10}, {'value': 15}]}  
-				result = path(data, '$.items[?(@.value > 7)].value')  
-				assert.eq(result, [10, 15])  
+			script: itn.HereDoc(`
+				load('json', 'path')
+				data = {'items': [{'value': 5}, {'value': 10}, {'value': 15}]}
+				result = path(data, '$.items[?(@.value > 7)].value')
+				assert.eq(result, [10, 15])
 			`),
 		},
 		{
 			name: "json.path - parent operator",
-			script: itn.HereDoc(`  
-				load('json', 'path')  
-				data = {'store': {'book': [{'title': 'A', 'price': 5}, {'title': 'B', 'price': 15}]}}  
-				result = path(data, '$.store.book[?(@.price > 10)]..title')  
-				assert.eq(result, ['B'])  
+			script: itn.HereDoc(`
+				load('json', 'path')
+				data = {'store': {'book': [{'title': 'A', 'price': 5}, {'title': 'B', 'price': 15}]}}
+				result = path(data, '$.store.book[?(@.price > 10)]..title')
+				assert.eq(result, ['B'])
 			`),
 		},
 		{
 			name: "json.eval - use of built-in constants",
-			script: itn.HereDoc(`  
-				load('json', 'eval')  
-				data = {}  
-				result = eval(data, 'pi * 2')  
-				assert.eq(result, 6.283185307179586)  
+			script: itn.HereDoc(`
+				load('json', 'eval')
+				data = {}
+				result = eval(data, 'pi * 2')
+				assert.eq(result, 6.283185307179586)
 			`),
 		},
 		{
 			name: "json.eval - calling undefined function",
-			script: itn.HereDoc(`  
-				load('json', 'eval')  
-				data = {}  
-				eval(data, 'undefined_function()')  
+			script: itn.HereDoc(`
+				load('json', 'eval')
+				data = {}
+				eval(data, 'undefined_function()')
 			`),
 			wantErr: "json.eval: wrong request: wrong formula, 'undefined_function' is not a function",
 		},
 		{
 			name: "json.eval - invalid syntax in expression",
-			script: itn.HereDoc(`  
-				load('json', 'eval')  
-				data = {}  
+			script: itn.HereDoc(`
+				load('json', 'eval')
+				data = {}
 				eval(data, 'sum(')
 			`),
 			wantErr: "json.eval: wrong request: wrong formula, '(' is not an operation or function",
 		},
 		{
 			name: "json.path - use of '@' current object",
-			script: itn.HereDoc(`  
-				load('json', 'path')  
-				data = {'items': [{'name': 'A'}, {'name': 'B'}, {'name': 'C'}]}  
-				result = path(data, '$.items[?(@.name == "B")].name')  
-				assert.eq(result, ['B'])  
+			script: itn.HereDoc(`
+				load('json', 'path')
+				data = {'items': [{'name': 'A'}, {'name': 'B'}, {'name': 'C'}]}
+				result = path(data, '$.items[?(@.name == "B")].name')
+				assert.eq(result, ['B'])
 			`),
 		},
 		{
 			name: "json.path - access keys with special characters",
-			script: itn.HereDoc(`  
-				load('json', 'path')  
-				data = {'weird:key': {'another:weird': 42}}  
-				result = path(data, '$["weird:key"]["another:weird"]')  
-				assert.eq(result, [42])  
+			script: itn.HereDoc(`
+				load('json', 'path')
+				data = {'weird:key': {'another:weird': 42}}
+				result = path(data, '$["weird:key"]["another:weird"]')
+				assert.eq(result, [42])
 			`),
 		},
 		{
 			name: "json.eval - accessing array elements by index",
-			script: itn.HereDoc(`  
-				load('json', 'eval')  
-				data = {'array': [10, 20, 30]}  
-				result = eval(data, '$.array[1]')  
-				assert.eq(result, 20)  
+			script: itn.HereDoc(`
+				load('json', 'eval')
+				data = {'array': [10, 20, 30]}
+				result = eval(data, '$.array[1]')
+				assert.eq(result, 20)
 			`),
 		},
 	}
