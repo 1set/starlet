@@ -410,7 +410,7 @@ func TestJSONPathAndEvalFunctions(t *testing.T) {
 			script: itn.HereDoc(`
 				load('json', 'path')
 				data = '''` + jsonData + `'''
-				result = path(data, '$.store.book[*].title')
+				result = path(bytes(data), '$.store.book[*].title')
 				assert.eq(result, ['Sayings of the Century', 'Sword of Honour', 'Moby Dick', 'The Lord of the Rings'])
 			`),
 		},
@@ -681,6 +681,14 @@ func TestJSONPathAndEvalFunctions(t *testing.T) {
 				eval(data, 'sum(')
 			`),
 			wantErr: "json.eval: wrong request: wrong formula, '(' is not an operation or function",
+		},
+		{
+			name: "json.eval - invalid data",
+			script: itn.HereDoc(`
+				load('json', 'eval')
+				eval('{"a": 123', '$ + 5')
+			`),
+			wantErr: "json.eval: unexpected end of file",
 		},
 		{
 			name: "json.eval - accessing array elements by index",
