@@ -532,6 +532,15 @@ func TestJSONPathAndEvalFunctions(t *testing.T) {
 				assert.eq(result, [42])
 			`),
 		},
+		{
+			name: "json.path - data as invalid type",
+			script: itn.HereDoc(`
+				load('json', 'path')
+				data = lambda x: x + 5
+				path(data, '$ + 5')
+			`),
+			wantErr: `json.path: unrecognized starlark type`,
+		},
 
 		// eval
 		{
@@ -671,6 +680,15 @@ func TestJSONPathAndEvalFunctions(t *testing.T) {
 				assert.eq(result, 20)
 			`),
 		},
+		{
+			name: "json.eval - data as invalid type",
+			script: itn.HereDoc(`
+				load('json', 'eval')
+				data = lambda x: x + 5
+				eval(data, '$ + 5')
+			`),
+			wantErr: `json.eval: unrecognized starlark type`,
+		},
 
 		// try path
 		{
@@ -721,6 +739,16 @@ func TestJSONPathAndEvalFunctions(t *testing.T) {
 				result, err = try_path(data, '$..*')
 				assert.eq(result, None)
 				assert.true("wrong symbol 'j' at 12" in err)
+			`),
+		},
+		{
+			name: "json.try_path - data as invalid type",
+			script: itn.HereDoc(`
+				load('json', 'try_path')
+				data = lambda x: x + 5
+				result, err = try_path(data, '$ + 5')
+				assert.eq(result, None)
+				assert.true("unrecognized starlark" in err)
 			`),
 		},
 
