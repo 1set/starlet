@@ -358,3 +358,129 @@ func TestLoadModule_JSON(t *testing.T) {
 		})
 	}
 }
+
+func TestJSONPathAndEvalFunctions(t *testing.T) {
+	const jsonData = `
+				{
+					"store": {
+						"book": [
+							{ "category": "reference", "author": "Nigel Rees", "title": "Sayings of the Century", "price": 8.95 },
+							{ "category": "fiction", "author": "Evelyn Waugh", "title": "Sword of Honour", "price": 12.99 },
+							{ "category": "fiction", "author": "Herman Melville", "title": "Moby Dick", "isbn": "0-553-21311-3", "price": 8.99 },
+							{ "category": "fiction", "author": "J. R. R. Tolkien", "title": "The Lord of the Rings", "isbn": "0-395-19395-8", "price": 22.99 }
+						],
+						"bicycle": { "color": "red", "price": 19.95 }
+					}
+				}`
+
+	tests := []struct {
+		name    string
+		script  string
+		want    string
+		wantErr string
+	}{
+		{
+			name: "json.path - retrieve all prices",
+			script: itn.HereDoc(`
+				load('json', 'path')
+				data = '''` + jsonData + `'''
+				result = path(data, '$..price')
+				assert.eq(result, [19.95, 8.95, 12.99, 8.99, 22.99])
+			`),
+		},
+		{
+			name: "json.path - retrieve all book titles",
+			script: itn.HereDoc(`
+				load('json', 'path')
+				data = '''` + jsonData + `'''
+				result = path(data, '$.store.book[*].title')
+				assert.eq(result, ['Sayings of the Century', 'Sword of Honour', 'Moby Dick', 'The Lord of the Rings'])
+			`),
+		},
+		{
+			name: "json.path - retrieve non-existent path",
+			script: itn.HereDoc(`
+				load('json', 'path')
+				data = '''` + jsonData + `'''
+				result = path(data, '$.store.nonexistent')
+				assert.eq(result, [])
+			`),
+		},
+		{
+			name: "json.eval - average price of all items",
+			script: itn.HereDoc(`
+				load('json', 'eval')
+				data = '''` + jsonData + `'''
+				result = eval(data, 'avg($..price)')
+				assert.eq(result, 14.774)
+			`),
+		},
+		{
+			name: "json.eval - sum of all book prices",
+			script: itn.HereDoc(`
+				load('json', 'eval')
+				data = '''` + jsonData + `'''
+				result = eval(data, 'sum($.store.book[*].price)')
+				assert.eq(result, 53.92)
+			`),
+		},
+		{
+			name: "json.eval - invalid expression",
+			script: itn.HereDoc(`
+				load('json', 'eval')
+				data = '''` + jsonData + `'''
+				eval(data, 'invalid($..price)')
+			`),
+			wantErr: "json.eval: wrong request: wrong formula, 'invalid' is not a function",
+		},
+		{
+			name: "json.try_path - retrieve all prices",
+			script: itn.HereDoc(`
+				load('json', 'try_path')
+				data = '''` + jsonData + `'''
+				result, err = try_path(data, '$..price')
+				assert.eq(result, [19.95, 8.95, 12.99, 8.99, 22.99])
+				assert.eq(err, None)
+			`),
+		},
+		{
+			name: "json.try_path - invalid JSONPath",
+			script: itn.HereDoc(`
+				load('json', 'try_path')
+				data = '''` + jsonData + `'''
+				result, err = try_path(data, '$..[invalid]')
+				assert.eq(result, [])
+				assert.true('unknown binary op' in err)
+			`),
+		},
+		{
+			name: "json.try_eval - average price of all items",
+			script: itn.HereDoc(`
+				load('json', 'try_eval')
+				data = '''` + jsonData + `'''
+				result, err = try_eval(data, 'avg($..price)')
+				assert.eq(result, 14.974)
+				assert.eq(err, None)
+			`),
+		},
+		{
+			name: "json.try_eval - invalid expression",
+			script: itn.HereDoc(`
+				load('json', 'try_eval')
+				data = '''` + jsonData + `'''
+				result, err = try_eval(data, 'invalid($..price)')
+				assert.eq(result, None)
+				assert.true('unsupported function: invalid' in err)
+			`),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res, err := itn.ExecModuleWithErrorTest(t, json.ModuleName, json.LoadModule, tt.script, tt.wantErr, nil)
+			if (err != nil) != (tt.wantErr != "") {
+				t.Errorf("json(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
+				return
+			}
+		})
+	}
+}
