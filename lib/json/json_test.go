@@ -541,6 +541,17 @@ func TestJSONPathAndEvalFunctions(t *testing.T) {
 			`),
 			wantErr: `json.path: unrecognized starlark type`,
 		},
+		{
+			name: "json.path - int as key",
+			script: itn.HereDoc(`
+				load('json', 'path')
+				data = {
+					42: {"a": 100}
+				}
+				result = path(data, '$.42.a')
+				assert.eq(result, [100])
+			`),
+		},
 
 		// eval
 		{
@@ -688,6 +699,17 @@ func TestJSONPathAndEvalFunctions(t *testing.T) {
 				eval(data, '$ + 5')
 			`),
 			wantErr: `json.eval: unrecognized starlark type`,
+		},
+		{
+			name: "json.eval - int as key",
+			script: itn.HereDoc(`
+				load('json', 'eval')
+				data = {
+					42: {"a": 100}
+				}
+				result = eval(data, '$.42.a')
+				assert.eq(result, 100)
+			`),
 		},
 
 		// try path
