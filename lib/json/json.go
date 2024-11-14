@@ -141,7 +141,7 @@ func tryIndent(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tupl
 
 // generateJsonPath generates a Starlark function that performs a JSONPath query on the given JSON data and returns the matching elements.
 func generateJsonPath(try bool) itn.StarlarkFunc {
-	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (res starlark.Value, err error) {
 		var (
 			data     starlark.Value
 			pathExpr string
@@ -160,6 +160,14 @@ func generateJsonPath(try bool) itn.StarlarkFunc {
 			}
 			return none, fmt.Errorf("json.path: %w", err)
 		}
+
+		// HACK: Recover from panic in ajson.Unmarshal and ajson.Eval
+		defer func() {
+			if r := recover(); r != nil {
+				res = none
+				err = fmt.Errorf("json.path: ajson panic: %v", r)
+			}
+		}()
 
 		nodes, err := ajson.JSONPath(jb, pathExpr)
 		if err != nil {
@@ -186,7 +194,7 @@ func generateJsonPath(try bool) itn.StarlarkFunc {
 
 // generateJsonEval generates a Starlark function that evaluates a JSONPath query with an expression on the given JSON data and returns the evaluation result.
 func generateJsonEval(try bool) itn.StarlarkFunc {
-	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (res starlark.Value, err error) {
 		var (
 			data starlark.Value
 			expr string
@@ -205,6 +213,14 @@ func generateJsonEval(try bool) itn.StarlarkFunc {
 			}
 			return none, fmt.Errorf("json.eval: %w", err)
 		}
+
+		// HACK: Recover from panic in ajson.Unmarshal and ajson.Eval
+		defer func() {
+			if r := recover(); r != nil {
+				res = none
+				err = fmt.Errorf("json.eval: ajson panic: %v", r)
+			}
+		}()
 
 		root, err := ajson.Unmarshal(jb)
 		if err != nil {
