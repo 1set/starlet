@@ -735,11 +735,15 @@ func TestJSONPathAndEvalFunctions(t *testing.T) {
 			script: itn.HereDoc(`
 				load('json', 'eval')
 				data = [{"abc": 123}]
-				result = eval(data, '$..length')
-				assert.eq(result, 1)
-				result2 = eval(data, '$..')
+				r0 = eval(data, '$..length')
+				assert.eq(r0, 1)
+				r1 = eval(data, '$.')
+				assert.eq(r1, [{"abc": 123}])
+				r2 = eval(data, '$..')
+				assert.eq(r2, [[{"abc": 123}],{"abc": 123}])
+				r3 = eval(data, '$...')
+				assert.eq(r3, [[{"abc": 123}],{"abc": 123},{"abc": 123}])
 			`),
-			wantErr: `json.eval: ajson panic: runtime error: index out of range [1] with length 1`,
 		},
 
 		// try path

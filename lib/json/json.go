@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"sort"
+	"strconv"
 	"sync"
 
 	itn "github.com/1set/starlet/dataconv"
@@ -304,12 +306,29 @@ func ajsonNodeToStarlarkValue(node *ajson.Node) (starlark.Value, error) {
 		}
 		return dict, nil
 	case ajson.Array:
-		elements, err := node.GetArray()
-		if err != nil {
-			return nil, err
+		// Use keys and indices to avoid relying on invalid index pointers
+		keys := node.Keys()
+		if len(keys) == 0 {
+			return starlark.NewList(nil), nil
 		}
-		vals := make([]starlark.Value, len(elements))
-		for i, elem := range elements {
+		indices := make([]int, len(keys))
+		indexMap := make(map[int]*ajson.Node)
+		for i, key := range keys {
+			idx, err := strconv.Atoi(key)
+			if err != nil {
+				return nil, fmt.Errorf("invalid array index: %v", err)
+			}
+			indices[i] = idx
+			child, err := node.GetIndex(idx)
+			if err != nil {
+				return nil, err
+			}
+			indexMap[idx] = child
+		}
+		sort.Ints(indices)
+		vals := make([]starlark.Value, len(indices))
+		for i, idx := range indices {
+			elem := indexMap[idx]
 			val, err := ajsonNodeToStarlarkValue(elem)
 			if err != nil {
 				return nil, err
