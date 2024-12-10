@@ -163,14 +163,6 @@ func generateJsonPath(try bool) itn.StarlarkFunc {
 			return none, fmt.Errorf("json.path: %w", err)
 		}
 
-		// HACK: Recover from panic in ajson.Unmarshal and ajson.Eval
-		defer func() {
-			if r := recover(); r != nil {
-				res = none
-				err = fmt.Errorf("json.path: ajson panic: %v", r)
-			}
-		}()
-
 		nodes, err := ajson.JSONPath(jb, pathExpr)
 		if err != nil {
 			if try {
@@ -215,14 +207,6 @@ func generateJsonEval(try bool) itn.StarlarkFunc {
 			}
 			return none, fmt.Errorf("json.eval: %w", err)
 		}
-
-		// // HACK: Recover from panic in ajson.Unmarshal and ajson.Eval
-		// defer func() {
-		// 	if r := recover(); r != nil {
-		// 		res = none
-		// 		err = fmt.Errorf("json.eval: ajson panic: %v", r)
-		// 	}
-		// }()
 
 		root, err := ajson.Unmarshal(jb)
 		if err != nil {
