@@ -214,13 +214,13 @@ func generateJsonEval(try bool) itn.StarlarkFunc {
 			return none, fmt.Errorf("json.eval: %w", err)
 		}
 
-		// HACK: Recover from panic in ajson.Unmarshal and ajson.Eval
-		defer func() {
-			if r := recover(); r != nil {
-				res = none
-				err = fmt.Errorf("json.eval: ajson panic: %v", r)
-			}
-		}()
+		// // HACK: Recover from panic in ajson.Unmarshal and ajson.Eval
+		// defer func() {
+		// 	if r := recover(); r != nil {
+		// 		res = none
+		// 		err = fmt.Errorf("json.eval: ajson panic: %v", r)
+		// 	}
+		// }()
 
 		root, err := ajson.Unmarshal(jb)
 		if err != nil {
@@ -304,7 +304,6 @@ func ajsonNodeToStarlarkValue(node *ajson.Node) (starlark.Value, error) {
 		}
 		return dict, nil
 	case ajson.Array:
-		// Convert JSON array to Starlark list
 		elements, err := node.GetArray()
 		if err != nil {
 			return nil, err
@@ -321,13 +320,10 @@ func ajsonNodeToStarlarkValue(node *ajson.Node) (starlark.Value, error) {
 	case ajson.String:
 		return starlark.String(node.MustString()), nil
 	case ajson.Numeric:
-		// Number value
 		num := node.MustNumeric()
 		if math.Mod(num, 1.0) == 0 {
-			// Integer value
 			return starlark.MakeInt64(int64(num)), nil
 		} else {
-			// Float value
 			return starlark.Float(num), nil
 		}
 	case ajson.Bool:

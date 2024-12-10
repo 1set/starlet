@@ -154,6 +154,10 @@ func TestUnmarshal(t *testing.T) {
 	if err := cycDict.SetKey(starlark.String("bar"), cycDict); err != nil {
 		t.Fatal(err)
 	}
+	tupDict := starlark.NewDict(2)
+	if err := tupDict.SetKey(starlark.Tuple{starlark.String("Aloha"), starlark.MakeInt(100)}, starlark.MakeInt(42)); err != nil {
+		t.Fatal(err)
+	}
 
 	cycList := starlark.NewList([]starlark.Value{starlark.MakeInt(42)})
 	if err := cycList.Append(cycList); err != nil {
@@ -258,6 +262,7 @@ func TestUnmarshal(t *testing.T) {
 		{strDictCT, map[string]interface{}{"foo": 42, "bar": &customType{42}}, ""},
 		{cycDict, nil, "cyclic reference found"},
 		{cycList, nil, "cyclic reference found"},
+		{tupDict, nil, "cyclic reference found"},
 		{starlark.NewList([]starlark.Value{starlark.MakeInt(42), ct}), []interface{}{42, &customType{42}}, ""},
 		{starlark.Tuple{starlark.String("foo"), starlark.MakeInt(42)}, []interface{}{"foo", 42}, ""},
 		{ss, []interface{}{"Hello", "World"}, ""},
