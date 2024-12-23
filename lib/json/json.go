@@ -288,7 +288,6 @@ func ajsonNodeToStarlarkValue(node *ajson.Node) (starlark.Value, error) {
 		}
 		return dict, nil
 	case ajson.Array:
-		// Convert JSON array to Starlark list
 		elements, err := node.GetArray()
 		if err != nil {
 			return nil, err
