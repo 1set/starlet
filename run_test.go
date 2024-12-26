@@ -701,7 +701,7 @@ x = fib(10)
 	expectErr(t, err, `starlark: exec: function fib called recursively`)
 }
 
-func Test_Machine_Run_LoadRecursion(t *testing.T) {
+func Test_Machine_Run_RecursionLoad(t *testing.T) {
 	code := `
 load("fibonacci2.star", "fib")
 x = fib(10)
