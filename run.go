@@ -241,8 +241,9 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 
 		// cache load&read + printf -> thread
 		m.loadCache = &cache{
-			cache:   make(map[string]*entry),
-			loadMod: m.lazyloadMods.GetLazyLoader(),
+			cache:    make(map[string]*entry),
+			execOpts: m.getFileOptions(),
+			loadMod:  m.lazyloadMods.GetLazyLoader(),
 			readFile: func(name string) ([]byte, error) {
 				return readScriptFile(name, m.scriptFS)
 			},

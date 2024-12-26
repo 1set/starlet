@@ -710,7 +710,7 @@ func Test_Machine_Run_LoadRecursion(t *testing.T) {
 load("fibonacci2.star", "fib")
 x = fib(10)
 `
-	m.SetScript("test.star", []byte(code), os.DirFS("testdata"))
+	m.SetScript("ans.star", []byte(code), os.DirFS("testdata"))
 	// run
 	out, err := m.Run()
 	if err != nil {
