@@ -702,25 +702,40 @@ x = fib(10)
 }
 
 func Test_Machine_Run_LoadRecursion(t *testing.T) {
-	// create machine
-	m := starlet.NewDefault()
-	m.EnableRecursionSupport()
-	// set code
 	code := `
 load("fibonacci2.star", "fib")
 x = fib(10)
 `
-	m.SetScript("ans.star", []byte(code), os.DirFS("testdata"))
-	// run
-	out, err := m.Run()
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+	{
+		// create machine
+		m := starlet.NewDefault()
+		// set code
+		m.SetScript("ans.star", []byte(code), os.DirFS("testdata"))
+		// run
+		_, err := m.Run()
+		if err == nil {
+			t.Errorf("expected error, got nil")
+			return
+		}
 	}
-	// check result
-	if out == nil {
-		t.Errorf("unexpected nil output")
-	} else if out["x"] != int64(55) {
-		t.Errorf("unexpected output: %v", out)
+
+	{
+		// create machine
+		m := starlet.NewDefault()
+		m.EnableRecursionSupport()
+		// set code
+		m.SetScript("ans.star", []byte(code), os.DirFS("testdata"))
+		// run
+		out, err := m.Run()
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		// check result
+		if out == nil {
+			t.Errorf("unexpected nil output")
+		} else if out["x"] != int64(55) {
+			t.Errorf("unexpected output: %v", out)
+		}
 	}
 }
 

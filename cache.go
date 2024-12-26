@@ -3,11 +3,12 @@ package starlet
 import (
 	"errors"
 	"fmt"
-	"go.starlark.net/starlark"
-	"go.starlark.net/syntax"
 	"sync"
 	"sync/atomic"
 	"unsafe"
+
+	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
 )
 
 // The following code is copied and modified from the starlark-go repo,
