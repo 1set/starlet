@@ -17,7 +17,7 @@ jobs:
     name: Test with ${{ matrix.go-version }} on ${{ matrix.vm-os }}
     runs-on: ${{ matrix.vm-os }}
     env:
-      CI_REPORT: ${{ matrix.vm-os == 'ubuntu-20.04' && matrix.go-version == '1.18.10' }}
+      CI_REPORT: ${{ matrix.vm-os == 'ubuntu-20.04' && startsWith(matrix.go-version, '1.18.') }}
     strategy:
       max-parallel: 10
       fail-fast: false
