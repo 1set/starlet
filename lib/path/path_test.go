@@ -375,7 +375,7 @@ func TestLoadModule_Path(t *testing.T) {
 				load('path', 'listdir')
 				def run():
 					if runtime_os == "darwin":
-						p = listdir('/var/root')
+						p = listdir('/var/db/sudo')
 					elif runtime_os == "linux":
 						p = listdir('/root')
 					else:
