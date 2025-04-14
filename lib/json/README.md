@@ -90,3 +90,195 @@ print(dumps({'a': 10, 'b': 20}, indent=2))
 #   "b": 20
 # }
 ```
+
+### `try_dumps(obj, indent=0) tuple`
+
+The try_dumps function is a variant of dumps that handles errors gracefully.
+It accepts the same parameters as dumps, but returns a tuple of (result, error).
+If successful, error will be None. If an error occurs, result will be None and error will contain the error message.
+
+#### Examples
+
+**Basic**
+
+Try to dump a Starlark dict to a JSON string and handle potential errors.
+
+```python
+load('json', 'try_dumps')
+result, error = try_dumps({'a': 10, 'b': 20}, indent=2)
+print("Result:", result)
+print("Error:", error)
+# Output:
+# Result: {
+#   "a": 10,
+#   "b": 20
+# }
+# Error: None
+```
+
+### `try_encode(x) tuple`
+
+The try_encode function is a variant of encode that handles errors gracefully.
+It accepts the same parameter as encode, but returns a tuple of (result, error).
+If successful, error will be None. If an error occurs, result will be None and error will contain the error message.
+
+#### Examples
+
+**Basic**
+
+Try to encode a Starlark dict to a JSON string and handle potential errors.
+
+```python
+load('json', 'try_encode')
+result, error = try_encode({'a': 10, 'b': 20})
+print("Result:", result)
+print("Error:", error)
+# Output:
+# Result: {"a":10,"b":20}
+# Error: None
+```
+
+### `try_decode(x) tuple`
+
+The try_decode function is a variant of decode that handles errors gracefully.
+It accepts the same parameter as decode, but returns a tuple of (result, error).
+If successful, error will be None. If an error occurs, result will be None and error will contain the error message.
+
+#### Examples
+
+**Basic**
+
+Try to decode a JSON string to a Starlark dict and handle potential errors.
+
+```python
+load('json', 'try_decode')
+result, error = try_decode('{"a":10,"b":20}')
+print("Result:", result)
+print("Error:", error)
+# Output:
+# Result: {'a': 10, 'b': 20}
+# Error: None
+```
+
+### `try_indent(str, prefix="", indent="\t") tuple`
+
+The try_indent function is a variant of indent that handles errors gracefully.
+It accepts the same parameters as indent, but returns a tuple of (result, error).
+If successful, error will be None. If an error occurs, result will be None and error will contain the error message.
+
+#### Examples
+
+**Basic**
+
+Try to indent a JSON string and handle potential errors.
+
+```python
+load('json', 'try_indent')
+result, error = try_indent('{"a":10,"b":20}', indent="  ")
+print("Result:", result)
+print("Error:", error)
+# Output:
+# Result: {
+#   "a": 10,
+#   "b": 20
+# }
+# Error: None
+```
+
+### `path(data, path) list`
+
+The path function performs a JSONPath query on the given JSON data and returns the matching elements.
+It accepts two positional arguments:
+- data: JSON data as a string, bytes, or Starlark value (dict, list, etc.)
+- path: A JSONPath expression string
+  It returns a list of matching elements. If no matches are found, an empty list is returned.
+  If the JSONPath expression is invalid, an error is raised.
+
+#### Examples
+
+**Basic**
+
+Query JSON data using JSONPath expressions.
+
+```python
+load('json', 'path')
+data = '''{"store":{"book":[{"title":"Moby Dick","price":8.99},{"title":"War and Peace","price":12.99}]}}'''
+titles = path(data, '$.store.book[*].title')
+print(titles)
+# Output: ['Moby Dick', 'War and Peace']
+prices = path(data, '$..price')
+print(prices)
+# Output: [8.99, 12.99]
+```
+
+### `try_path(data, path) tuple`
+
+The try_path function is a variant of path that handles errors gracefully.
+It accepts the same parameters as path, but returns a tuple of (result, error).
+If successful, error will be None. If an error occurs, result will be None and error will contain the error message.
+
+#### Examples
+
+**Basic**
+
+Try to query JSON data using JSONPath and handle potential errors.
+
+```python
+load('json', 'try_path')
+data = '''{"store":{"book":[{"title":"Moby Dick","price":8.99},{"title":"War and Peace","price":12.99}]}}'''
+result, error = try_path(data, '$..price')
+print("Result:", result)
+print("Error:", error)
+# Output:
+# Result: [8.99, 12.99]
+# Error: None
+```
+
+### `eval(data, expr) value`
+
+The eval function evaluates a JSONPath expression on the given JSON data and returns the evaluation result.
+It accepts two positional arguments:
+- data: JSON data as a string, bytes, or Starlark value (dict, list, etc.)
+- expr: A JSONPath expression string to evaluate
+  It returns the result of the evaluation, which can be a number, string, boolean, list, dict, or None.
+  If the expression is invalid, an error is raised.
+
+#### Examples
+
+**Basic**
+
+Evaluate JSONPath expressions on JSON data.
+
+```python
+load('json', 'eval')
+data = '''{"store":{"book":[{"price":8.99},{"price":12.99},{"price":5.99}]}}'''
+avg_price = eval(data, 'avg($..price)')
+print(avg_price)
+# Output: 9.323333333333334
+sum_price = eval(data, 'sum($..price)')
+print(sum_price)
+# Output: 27.97
+```
+
+### `try_eval(data, expr) tuple`
+
+The try_eval function is a variant of eval that handles errors gracefully.
+It accepts the same parameters as eval, but returns a tuple of (result, error).
+If successful, error will be None. If an error occurs, result will be None and error will contain the error message.
+
+#### Examples
+
+**Basic**
+
+Try to evaluate JSONPath expressions on JSON data and handle potential errors.
+
+```python
+load('json', 'try_eval')
+data = '''{"store":{"book":[{"price":8.99},{"price":12.99},{"price":5.99}]}}'''
+result, error = try_eval(data, 'avg($..price)')
+print("Result:", result)
+print("Error:", error)
+# Output:
+# Result: 9.323333333333334
+# Error: None
+```
