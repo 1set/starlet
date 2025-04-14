@@ -7,12 +7,12 @@ import (
 	"bytes"
 	"encoding/csv"
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/1set/starlet/dataconv"
 	tps "github.com/1set/starlet/dataconv/types"
 	"github.com/1set/starlet/internal/replacecr"
+	"github.com/1set/starlet/lib/file"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
@@ -65,7 +65,8 @@ func readAll(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, 
 	}
 
 	// prepare reader
-	csvr := csv.NewReader(replacecr.Reader(strings.NewReader(source.GoString())))
+	rawStr := file.TrimUTF8BOM([]byte(source.GoString()))
+	csvr := csv.NewReader(replacecr.Reader(bytes.NewReader(rawStr)))
 	csvr.LazyQuotes = lazyQuotes
 	csvr.TrimLeadingSpace = trimLeadingSpace
 
