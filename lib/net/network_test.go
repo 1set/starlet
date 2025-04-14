@@ -82,7 +82,7 @@ func TestLoadModule_NSLookUp(t *testing.T) {
 			name: `nslookup: wrong dns`,
 			script: itn.HereDoc(`
 				load('net', 'nslookup')
-				ips = nslookup('bing.com', '127.0.0.1', timeout=1)
+				ips = nslookup('bing.com', 'microsoft.com', timeout=1)
 			`),
 			wantErr:     `timeout`, // Accept any error containing "timeout"
 			skipWindows: true,      // on Windows 2022 with Go 1.18.10, it returns results from the default DNS server
