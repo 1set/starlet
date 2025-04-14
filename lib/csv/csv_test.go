@@ -305,6 +305,47 @@ x = write_dict([{"a": 200, "b": 100, "c": 500},{"b": 1024, "C": 2048}], header=[
 assert.eq(x, "c,b\n500,100\n,1024\n")
 			`),
 		},
+		{
+			name: `read_all: with UTF-8 BOM`,
+			script: itn.HereDoc(`
+load('csv', 'read_all')
+# UTF-8 BOM is represented by bytes EF BB BF at the beginning of the file
+# In this test we use the hex representation as a string
+csv_with_bom = b"\xef\xbb\xbfa,b,c\n1,2,3\n4,5,6"
+assert.eq(read_all(csv_with_bom), [["a","b","c"],["1","2","3"],["4","5","6"]])
+			`),
+		},
+		{
+			name: `read_all: with UTF-8 BOM and different comma`,
+			script: itn.HereDoc(`
+load('csv', 'read_all')
+# UTF-8 BOM with semicolon as delimiter
+csv_with_bom = b"\xef\xbb\xbfa;b;c\n1;2;3\n4;5;6"
+assert.eq(read_all(csv_with_bom, comma=";"), [["a","b","c"],["1","2","3"],["4","5","6"]])
+			`),
+		},
+		{
+			name: `read_all: with UTF-8 BOM and comments`,
+			script: itn.HereDoc(`
+load('csv', 'read_all')
+# UTF-8 BOM with comments
+csv_with_bom = b"\xef\xbb\xbfa,b,c\n#comment line\n1,2,3\n4,5,6"
+assert.eq(read_all(csv_with_bom, comment="#"), [["a","b","c"],["1","2","3"],["4","5","6"]])
+			`),
+		},
+		{
+			name: `read_all: ensure BOM is properly removed`,
+			script: itn.HereDoc(`
+load('csv', 'read_all')
+# UTF-8 BOM should be removed properly and not affect the first field
+# If not handled properly, the first character "a" would include the BOM bytes
+csv_with_bom = b"\xef\xbb\xbfa,b,c\n1,2,3\n4,5,6"
+result = read_all(csv_with_bom)
+first_field = result[0][0]
+assert.eq(first_field, "a")
+assert.eq(len(first_field), 1)  # Length should be 1, not 4 (3 BOM bytes + "a")
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
