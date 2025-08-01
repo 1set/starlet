@@ -3,6 +3,7 @@ package dataconv
 // Based on https://github.com/qri-io/starlib/tree/master/util with some modifications and additions
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -22,6 +23,8 @@ func Marshal(data interface{}) (v starlark.Value, err error) {
 	case bool:
 		v = starlark.Bool(x)
 	case string:
+		v = starlark.String(x)
+	case json.Number:
 		v = starlark.String(x)
 	case int:
 		v = starlark.MakeInt(x)
