@@ -319,6 +319,180 @@ func TestLoadModule_Regex(t *testing.T) {
 			`),
 			wantErr: `no such group: "nope"`,
 		},
+		{
+			name:    `arg error: match`,
+			script:  "load('regex', 'match')\nmatch(1, 'a')",
+			wantErr: `for parameter pattern`,
+		},
+		{
+			name:    `arg error: fullmatch`,
+			script:  "load('regex', 'fullmatch')\nfullmatch()",
+			wantErr: `missing argument`,
+		},
+		{
+			name:    `arg error: findall`,
+			script:  "load('regex', 'findall')\nfindall('a')",
+			wantErr: `missing argument for string`,
+		},
+		{
+			name:    `arg error: finditer`,
+			script:  "load('regex', 'finditer')\nfinditer()",
+			wantErr: `missing argument`,
+		},
+		{
+			name:    `arg error: split`,
+			script:  "load('regex', 'split')\nsplit('a')",
+			wantErr: `missing argument for string`,
+		},
+		{
+			name:    `arg error: subn`,
+			script:  "load('regex', 'subn')\nsubn('a', 'b')",
+			wantErr: `missing argument for string`,
+		},
+		{
+			name:    `arg error: escape`,
+			script:  "load('regex', 'escape')\nescape()",
+			wantErr: `missing argument`,
+		},
+		{
+			name:    `arg error: compile bad type`,
+			script:  "load('regex', 'compile')\ncompile(123)",
+			wantErr: `for parameter pattern`,
+		},
+		{
+			name:    `arg error: pattern.search`,
+			script:  "load('regex', 'compile')\ncompile('a').search()",
+			wantErr: `missing argument`,
+		},
+		{
+			name:    `arg error: pattern.findall`,
+			script:  "load('regex', 'compile')\ncompile('a').findall()",
+			wantErr: `missing argument`,
+		},
+		{
+			name:    `arg error: pattern.finditer`,
+			script:  "load('regex', 'compile')\ncompile('a').finditer()",
+			wantErr: `missing argument`,
+		},
+		{
+			name:    `arg error: pattern.split`,
+			script:  "load('regex', 'compile')\ncompile('a').split()",
+			wantErr: `missing argument`,
+		},
+		{
+			name:    `arg error: pattern.sub`,
+			script:  "load('regex', 'compile')\ncompile('a').sub('x')",
+			wantErr: `missing argument for string`,
+		},
+		{
+			name:    `arg error: expand`,
+			script:  "load('regex', 'search')\nsearch('a', 'a').expand()",
+			wantErr: `missing argument`,
+		},
+		{
+			name:    `arg error: span bad type`,
+			script:  "load('regex', 'search')\nsearch('a', 'a').span([])",
+			wantErr: `group index must be an int or string`,
+		},
+		{
+			name: `pattern is hashable (dict key)`,
+			script: itn.HereDoc(`
+				load('regex', 'compile')
+				p = compile('a')
+				d = {p: 'v'}
+				assert.eq(d[p], 'v')
+			`),
+		},
+		{
+			name: `start/end/span by name; group default`,
+			script: itn.HereDoc(`
+				load('regex', 'search')
+				m = search(r'(?P<w>\w+)', 'hi')
+				assert.eq(m.start('w'), 0)
+				assert.eq(m.end('w'), 2)
+				assert.eq(m.span('w'), (0, 2))
+				m2 = search(r'(a)(b)?', 'a')
+				assert.eq(m2.groupdict(), {})
+				assert.eq(m2.group(), 'a')
+			`),
+		},
+		{
+			name: `repl: unclosed \g`,
+			script: itn.HereDoc(`
+				load('regex', 'sub')
+				assert.eq(sub('X', '\\g<unclosed', 'aXb'), 'a\\g<unclosedb')
+			`),
+		},
+		{
+			name:    `error: split invalid pattern`,
+			script:  "load('regex', 'split')\nsplit('(', 'a')",
+			wantErr: `cannot compile pattern`,
+		},
+		{
+			name:    `error: sub invalid pattern`,
+			script:  "load('regex', 'sub')\nsub('(', 'x', 'a')",
+			wantErr: `cannot compile pattern`,
+		},
+		{
+			name:    `error: subn invalid pattern`,
+			script:  "load('regex', 'subn')\nsubn('(', 'x', 'a')",
+			wantErr: `cannot compile pattern`,
+		},
+		{
+			name:    `error: finditer invalid pattern`,
+			script:  "load('regex', 'finditer')\nfinditer('(', 'a')",
+			wantErr: `cannot compile pattern`,
+		},
+		{
+			name:    `error: findall invalid pattern`,
+			script:  "load('regex', 'findall')\nfindall('(', 'a')",
+			wantErr: `cannot compile pattern`,
+		},
+		{
+			name:    `error: start by bad name`,
+			script:  "load('regex', 'search')\nsearch('(a)', 'a').start('nope')",
+			wantErr: `no such group: "nope"`,
+		},
+		{
+			name:    `error: span by bad name`,
+			script:  "load('regex', 'search')\nsearch('(a)', 'a').span('nope')",
+			wantErr: `no such group: "nope"`,
+		},
+		{
+			name:    `error: groups bad arg`,
+			script:  "load('regex', 'search')\nsearch('a', 'a').groups(1, 2, 3)",
+			wantErr: `groups: got 3 arguments`,
+		},
+		{
+			name:    `error: pattern has no such attr`,
+			script:  "load('regex', 'compile')\ncompile('a').nope",
+			wantErr: `no .nope field or method`,
+		},
+		{
+			name:    `error: match has no such attr`,
+			script:  "load('regex', 'search')\nsearch('a', 'a').nope",
+			wantErr: `no .nope field or method`,
+		},
+		{
+			name: `try_search: no match returns (None, None)`,
+			script: itn.HereDoc(`
+				load('regex', 'try_search')
+				res, err = try_search('z', 'abc')
+				assert.eq(res, None)
+				assert.eq(err, None)
+			`),
+		},
+		{
+			name: `sub via pattern with function repl`,
+			script: itn.HereDoc(`
+				load('regex', 'compile')
+				p = compile('[a-z]')
+				def up(m):
+					return m.group(0).upper()
+				assert.eq(p.sub(up, 'abc'), 'ABC')
+				assert.eq(p.subn('X', 'abc', 2), ('XXc', 2))
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
