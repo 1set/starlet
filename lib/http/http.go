@@ -160,13 +160,32 @@ var (
 	supportedMethods = []string{"get", "put", "post", "postForm", "delete", "head", "patch", "options"}
 )
 
+// wrapTry converts a builtin into its try_ variant: instead of aborting the
+// whole script on failure, it returns a (value, error-string) pair with the
+// Go error always nil - the shape established by lib/json's try_* functions.
+// Argument-unpacking errors are captured the same way.
+func wrapTry(fn func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		res, err := fn(thread, b, args, kwargs)
+		if err != nil {
+			return starlark.Tuple{starlark.None, starlark.String(err.Error())}, nil
+		}
+		if res == nil {
+			res = starlark.None
+		}
+		return starlark.Tuple{res, starlark.None}, nil
+	}
+}
+
 // StringDict returns all module methods in a starlark.StringDict
 func (m *Module) StringDict() starlark.StringDict {
-	sd := make(starlark.StringDict, len(supportedMethods))
+	sd := make(starlark.StringDict, 2*len(supportedMethods)+4)
 	for _, name := range supportedMethods {
 		sd[name] = starlark.NewBuiltin(ModuleName+"."+name, m.reqMethod(name))
+		sd["try_"+name] = starlark.NewBuiltin(ModuleName+".try_"+name, wrapTry(m.reqMethod(name)))
 	}
 	sd["call"] = starlark.NewBuiltin(ModuleName+".call", m.callMethod)
+	sd["try_call"] = starlark.NewBuiltin(ModuleName+".try_call", wrapTry(m.callMethod))
 	sd["set_timeout"] = starlark.NewBuiltin(ModuleName+".set_timeout", m.setRequestTimeout)
 	sd["get_timeout"] = starlark.NewBuiltin(ModuleName+".get_timeout", m.getRequestTimeout)
 	return sd
@@ -246,10 +265,11 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 			timeout        = types.FloatOrInt(m.defaultTimeout())
 			allowRedirect  = starlark.Bool(defaultRedirect)
 			verifySSL      = starlark.Bool(defaultVerify)
+			raiseForStatus starlark.Bool // default False: non-2xx responses return normally
 		)
 
 		if err := starlark.UnpackArgs(b.Name(), args, kwargs, "url", &urlv, "params?", params, "headers", headers, "body", body, "json_body", &jsonBody, "form_body", formBody, "form_encoding", &formEncoding,
-			"auth?", &auth, "timeout?", &timeout, "allow_redirects?", &allowRedirect, "verify?", &verifySSL); err != nil {
+			"auth?", &auth, "timeout?", &timeout, "allow_redirects?", &allowRedirect, "verify?", &verifySSL, "raise_for_status?", &raiseForStatus); err != nil {
 			return nil, err
 		}
 
@@ -306,6 +326,11 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 		res, err := cli.Do(req)
 		if err != nil {
 			return nil, err
+		}
+
+		if bool(raiseForStatus) && (res.StatusCode < 200 || res.StatusCode >= 300) {
+			_ = res.Body.Close()
+			return nil, fmt.Errorf("%s: unexpected status: %s", b.Name(), res.Status)
 		}
 
 		r := &Response{Response: *res, maxBodyBytes: m.maxBodyBytes()}
@@ -618,11 +643,35 @@ func (r *Response) Struct() *starlarkstruct.Struct {
 	return starlarkstruct.FromStringDict(starlarkstruct.Default, starlark.StringDict{
 		"url":         starlark.String(r.Request.URL.String()),
 		"status_code": starlark.MakeInt(r.StatusCode),
+		"ok":          starlark.Bool(r.StatusCode >= 200 && r.StatusCode < 300),
 		"headers":     r.HeadersDict(),
 		"encoding":    starlark.String(strings.Join(r.TransferEncoding, ",")),
 		"body":        starlark.NewBuiltin("body", r.Text),
 		"json":        starlark.NewBuiltin("json", r.JSON),
+		"try_body":    starlark.NewBuiltin("try_body", wrapTry(r.Text)),
+		"try_json":    starlark.NewBuiltin("try_json", r.tryJSON),
 	})
+}
+
+// tryJSON parses the body as JSON and returns a (value, error-string)
+// pair. Unlike json() - which folds read and parse failures into None for
+// backward compatibility - it lets scripts tell a parse failure apart from
+// a JSON null.
+func (r *Response) tryJSON(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	body, err := r.readBody()
+	if err != nil {
+		return starlark.Tuple{starlark.None, starlark.String(err.Error())}, nil
+	}
+
+	// reset reader to allow multiple calls
+	_ = r.Body.Close()
+	r.Body = ioutil.NopCloser(bytes.NewReader(body))
+
+	sv, err := dataconv.UnmarshalStarlarkJSON(body)
+	if err != nil {
+		return starlark.Tuple{starlark.None, starlark.String(err.Error())}, nil
+	}
+	return starlark.Tuple{sv, starlark.None}, nil
 }
 
 // HeadersDict flops
