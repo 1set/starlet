@@ -125,6 +125,9 @@ func TestLoadModule_Path(t *testing.T) {
 				assert.eq(normpath('///a'), '/a')
 				assert.eq(normpath(''), '.')
 				assert.eq(normpath('a/b/'), 'a/b')
+				assert.eq(normpath('../../a'), '../../a')
+				assert.eq(normpath('/../a'), '/a')
+				assert.eq(normpath('.'), '.')
 			`),
 		},
 		{
@@ -140,6 +143,8 @@ func TestLoadModule_Path(t *testing.T) {
 				assert.eq(splitext('a/.bashrc'), ('a/.bashrc', ''))
 				assert.eq(splitext('noext'), ('noext', ''))
 				assert.eq(splitext('a.b/c'), ('a.b/c', ''))
+				assert.eq(splitext('..b'), ('..b', ''))
+				assert.eq(splitext('a/..'), ('a/..', ''))
 			`),
 		},
 		{
@@ -160,7 +165,17 @@ func TestLoadModule_Path(t *testing.T) {
 				assert.eq(relpath('/a/b', '/a/c/d'), '../../b')
 				assert.eq(relpath('a/b', 'a'), 'b')
 				assert.eq(relpath('a/b'), 'a/b')
+				assert.eq(relpath('a/b', ''), 'a/b')
+				assert.eq(relpath('./a/b', '.'), 'a/b')
 			`),
+		},
+		{
+			name: `lexical: relpath empty path`,
+			script: itn.HereDoc(`
+				load('path', 'relpath')
+				relpath('')
+			`),
+			wantErr: `path.relpath: no path specified`,
 		},
 		{
 			name: `lexical: relpath mixed kinds`,
