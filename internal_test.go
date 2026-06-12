@@ -2,6 +2,7 @@ package starlet
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"go.starlark.net/starlark"
@@ -96,5 +97,60 @@ func TestSetOutputConversionEnabled(t *testing.T) {
 	m.SetOutputConversionEnabled(true)
 	if m.enableOutConv != true {
 		t.Errorf("Expected output conversion to be enabled, but it wasn't")
+	}
+}
+
+func TestGetCacheKey(t *testing.T) {
+	m1 := NewDefault()
+	k1, ok := m1.getCacheKey("a = 1")
+	if !ok || k1 == "" {
+		t.Errorf("expected a usable key for a string source, got %q ok=%v", k1, ok)
+	}
+
+	// bytes and string of the same content agree
+	if k, _ := m1.getCacheKey([]byte("a = 1")); k != k1 {
+		t.Errorf("expected the byte and string keys to agree, got %q vs %q", k, k1)
+	}
+
+	// reader-like sources cannot be content-keyed and must skip the cache
+	if _, ok := m1.getCacheKey(strings.NewReader("a = 1")); ok {
+		t.Errorf("expected a reader source to be uncacheable")
+	}
+
+	// a different predeclared name set changes the key
+	m2 := NewDefault()
+	m2.predeclared = starlark.StringDict{"x": starlark.None}
+	if k, _ := m2.getCacheKey("a = 1"); k == k1 {
+		t.Errorf("expected the predeclared name set to be part of the key")
+	}
+
+	// dialect bits change the key
+	m3 := NewDefault()
+	m3.allowRecursion = true
+	if k, _ := m3.getCacheKey("a = 1"); k == k1 {
+		t.Errorf("expected the dialect bits to be part of the key")
+	}
+	m4 := NewDefault()
+	m4.allowGlobalReassign = true
+	if k, _ := m4.getCacheKey("a = 1"); k == k1 {
+		t.Errorf("expected the global-reassign bit to be part of the key")
+	}
+}
+
+func TestExecStarlarkFileUncacheableSource(t *testing.T) {
+	// a source that cannot be content-keyed must execute without touching
+	// the cache instead of risking a stale filename-only hit
+	m := NewDefault()
+	m.SetScriptCacheEnabled(true)
+	m.SetScript("seed.star", []byte("a = 1"), nil)
+	if _, err := m.Run(); err != nil {
+		t.Fatalf("seed run expects no error, got: %v", err)
+	}
+	res, err := m.execStarlarkFile("reader.star", strings.NewReader("zz = 9"), true)
+	if err != nil {
+		t.Fatalf("reader source expects no error, got: %v", err)
+	}
+	if v, ok := res["zz"]; !ok || v.String() != "9" {
+		t.Errorf("expected zz = 9 from the uncached reader source, got: %v", res)
 	}
 }

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
 	"sync"
 
 	itn "github.com/1set/starlet/internal"
@@ -24,12 +26,16 @@ func (m *Machine) execStarlarkFile(filename string, src interface{}, allowCache 
 		return starlark.ExecFileOptions(opts, thread, filename, src, predeclared)
 	}
 
-	// for compiled program and cache key
+	// for compiled program and cache key; sources that cannot be
+	// content-keyed (e.g. an io.Reader) are executed without the cache
+	// rather than risking a stale hit on a filename-only key
+	key, ok := m.getCacheKey(src)
+	if !ok {
+		return starlark.ExecFileOptions(opts, thread, filename, src, predeclared)
+	}
 	var (
 		prog *starlark.Program
 		err  error
-		//key = fmt.Sprintf("%d:%s", starlark.CompilerVersion, filename)
-		key = getCacheKey(filename, src)
 	)
 
 	// try to load compiled program from cache first
@@ -65,7 +71,24 @@ func (m *Machine) execStarlarkFile(filename string, src interface{}, allowCache 
 	return g, err
 }
 
-func getCacheKey(filename string, src interface{}) string {
+// getCacheKey derives the cache key for a compiled program. The key must
+// cover everything the compiler consumes, not just the source text:
+//
+//   - the predeclared NAME SET: resolution binds each identifier as
+//     predeclared vs global/undefined via predeclared.Has, so the same
+//     source compiled under a different name set is a different program.
+//     A stale hit either failed at run time with "internal error:
+//     predeclared variable X is uninitialized" or silently validated a
+//     source that must not compile;
+//   - the dialect bits (recursion / global-reassign FileOptions), which
+//     gate parsing and resolution;
+//   - the source content. An io.Reader source used to fall back to a
+//     filename-only key, so identical names with different content
+//     collided — such sources now report ok=false and skip the cache.
+//
+// The key layout is internal and may change between releases; persisted
+// caches then miss once and recompile.
+func (m *Machine) getCacheKey(src interface{}) (key string, ok bool) {
 	var k string
 	switch s := src.(type) {
 	case string:
@@ -73,9 +96,27 @@ func getCacheKey(filename string, src interface{}) string {
 	case []byte:
 		k = itn.GetBytesMD5(s)
 	default:
-		k = filename
+		return "", false
 	}
-	return fmt.Sprintf("%d:%s", starlark.CompilerVersion, k)
+
+	// fold in the sorted predeclared names
+	names := make([]string, 0, len(m.predeclared))
+	for n := range m.predeclared {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	nd := itn.GetStringMD5(strings.Join(names, "\x00"))
+
+	// fold in the dialect bits
+	var opt int
+	if m.allowRecursion {
+		opt |= 1
+	}
+	if m.allowGlobalReassign {
+		opt |= 2
+	}
+
+	return fmt.Sprintf("%d:%d:%s:%s", starlark.CompilerVersion, opt, nd, k), true
 }
 
 // ByteCache is an interface for caching byte data, used for caching compiled Starlark programs.

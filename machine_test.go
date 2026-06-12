@@ -649,9 +649,12 @@ func TestMachine_SetScriptCache(t *testing.T) {
 		res, err := m.Run()
 		checkRes(701, err, res, 2)
 
-		// NOTICE: cache pollution is possible here if the file content is not used as cache key
+		// a different file with the same name must not hit the cached
+		// program of the first file: the key covers the file content
+		// (the old filename-only key for file sources made this case
+		// return the polluted 2)
 		res, err = m.RunFile("two.star", os.DirFS("testdata/nemo"), nil)
-		checkRes(702, err, res, 2)
+		checkRes(702, err, res, 200)
 
 		m.SetScriptCacheEnabled(false)
 		res, err = m.RunFile("two.star", os.DirFS("testdata"), nil)
