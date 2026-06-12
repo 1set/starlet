@@ -29,6 +29,11 @@ func TestSetBody(t *testing.T) {
 		// TODO - this should check multipart form data is being set
 		{nil, fd, starlark.String("multipart/form-data"), nil, "", ""},
 		{nil, nil, starlark.String(""), starlark.Tuple{starlark.Bool(true), starlark.MakeInt(1), starlark.String("der")}, "[true,1,\"der\"]", ""},
+		// the body kinds are mutually exclusive: the old code silently
+		// dropped the later ones (or corrupted the request for json+form)
+		{types.NewNullableStringOrBytes("hallo"), nil, starlark.String(""), starlark.MakeInt(1), "", "body, json_body and form_body are mutually exclusive, got 2 of them"},
+		{types.NewNullableStringOrBytes(""), fd, starlark.String(""), starlark.MakeInt(1), "", "body, json_body and form_body are mutually exclusive, got 2 of them"},
+		{types.NewNullableStringOrBytes("hallo"), fd, starlark.String(""), starlark.MakeInt(1), "", "body, json_body and form_body are mutually exclusive, got 3 of them"},
 	}
 
 	for i, c := range cases {

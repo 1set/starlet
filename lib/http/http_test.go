@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -835,5 +836,70 @@ func TestModuleInjectedClientRejectsTransportArgs(t *testing.T) {
 				t.Errorf("expected a conflict error, got result: %v", res)
 			}
 		})
+	}
+}
+
+func TestModuleMaxResponseBodyBytes(t *testing.T) {
+	// a server with a deterministic 64-byte body
+	hand := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(strings.Repeat("a", 60) + `"end"`))
+	})
+	ts := httptest.NewServer(hand)
+	defer ts.Close()
+
+	// over the limit: body() and json() must refuse instead of buffering
+	md := lh.NewModule()
+	md.SetMaxResponseBodyBytes(16)
+	script := itn.HereDoc(`
+		load('http', 'get')
+		res = get(test_url)
+		res.body()
+	`)
+	extra := starlark.StringDict{"test_url": starlark.String(ts.URL)}
+	if _, err := itn.ExecModuleWithErrorTest(t, lh.ModuleName, md.LoadModule, script, `response body exceeds the 16-byte limit`, extra); err == nil {
+		t.Errorf("expected the body read to be limited")
+	}
+
+	// within the limit: everything works as before
+	md2 := lh.NewModule()
+	md2.SetMaxResponseBodyBytes(1024)
+	script2 := itn.HereDoc(`
+		load('http', 'get')
+		res = get(test_url)
+		assert.eq(len(res.body()), 65)
+	`)
+	if _, err := itn.ExecModuleWithErrorTest(t, lh.ModuleName, md2.LoadModule, script2, "", extra); err != nil {
+		t.Errorf("expected the in-limit read to pass, got: %v", err)
+	}
+
+	// the package-level knob seeds new instances
+	lh.ConfigLock.Lock()
+	lh.MaxResponseBodyBytes = 8
+	lh.ConfigLock.Unlock()
+	defer func() {
+		lh.ConfigLock.Lock()
+		lh.MaxResponseBodyBytes = 0
+		lh.ConfigLock.Unlock()
+	}()
+	script3 := itn.HereDoc(`
+		load('http', 'get')
+		res = get(test_url)
+		res.json()
+	`)
+	if _, err := itn.ExecModuleWithErrorTest(t, lh.ModuleName, lh.LoadModule, script3, `response body exceeds the 8-byte limit`, extra); err == nil {
+		t.Errorf("expected the seeded limit to apply to json()")
+	}
+}
+
+func TestRequestBodyKindsConflict(t *testing.T) {
+	// script-level pin of the mutual exclusion (the json+form combination
+	// used to send form bytes under an application/json Content-Type)
+	md := lh.NewModule()
+	script := itn.HereDoc(`
+		load('http', 'post')
+		post('http://127.0.0.1:1/', json_body={"a": 1}, form_body={"b": "2"})
+	`)
+	if _, err := itn.ExecModuleWithErrorTest(t, lh.ModuleName, md.LoadModule, script, `body, json_body and form_body are mutually exclusive`, nil); err == nil {
+		t.Errorf("expected a mutual-exclusion error")
 	}
 }

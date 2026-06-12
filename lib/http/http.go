@@ -7,6 +7,7 @@ package http
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
@@ -39,6 +40,10 @@ var (
 	Client *http.Client
 	// Guard is a global RequestGuard used in LoadModule, override with a custom implementation before calling LoadModule.
 	Guard RequestGuard
+	// MaxResponseBodyBytes limits how many bytes body()/json() read from a
+	// response; 0 means unlimited. It seeds new module instances, override
+	// with a custom value before calling LoadModule.
+	MaxResponseBodyBytes int64
 	// ConfigLock is a global lock for settings, use it to ensure thread safety when setting.
 	ConfigLock sync.RWMutex
 )
@@ -56,10 +61,11 @@ func LoadModule() (starlark.StringDict, error) {
 
 // Module defines the actual HTTP module with methods for making requests.
 type Module struct {
-	cli        *http.Client
-	rg         RequestGuard
-	mu         sync.RWMutex
-	timeoutSec float64
+	cli         *http.Client
+	rg          RequestGuard
+	mu          sync.RWMutex
+	timeoutSec  float64
+	maxBodySize int64
 }
 
 // NewModule creates a new http module with default settings. The package
@@ -69,7 +75,7 @@ type Module struct {
 func NewModule() *Module {
 	ConfigLock.RLock()
 	defer ConfigLock.RUnlock()
-	m := &Module{timeoutSec: TimeoutSecond}
+	m := &Module{timeoutSec: TimeoutSecond, maxBodySize: MaxResponseBodyBytes}
 	if Client != nil {
 		m.cli = Client
 	}
@@ -84,6 +90,24 @@ func (m *Module) defaultTimeout() float64 {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.timeoutSec
+}
+
+// maxBodyBytes returns the instance's response-body size limit in bytes.
+func (m *Module) maxBodyBytes() int64 {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.maxBodySize
+}
+
+// SetMaxResponseBodyBytes limits how many bytes body()/json() will read
+// from a response for this module instance; 0 (the default) means
+// unlimited, preserving the historical behavior. Hosts running untrusted
+// scripts should set a limit: an attacker-controlled server can otherwise
+// stream an unbounded body straight into host memory.
+func (m *Module) SetMaxResponseBodyBytes(n int64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.maxBodySize = n
 }
 
 // SetClient sets the http client for this module, useful for setting custom clients for testing or multiple loadings.
@@ -249,7 +273,7 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 			return nil, err
 		}
 
-		r := &Response{*res}
+		r := &Response{Response: *res, maxBodyBytes: m.maxBodyBytes()}
 		return r.Struct(), nil
 	}
 }
@@ -410,6 +434,23 @@ func setHeaders(req *http.Request, headers *starlark.Dict) error {
 }
 
 func setBody(req *http.Request, body *types.NullableStringOrBytes, formData *starlark.Dict, formEncoding starlark.String, jsonData starlark.Value) error {
+	// exactly one body kind may be provided: the old fallthrough silently
+	// dropped json_body/form_body when body was set, and json_body together
+	// with form_body produced a corrupt request - form bytes sent under an
+	// application/json Content-Type
+	hasBody := !body.IsNullOrEmpty()
+	hasJSON := jsonData != nil && jsonData != starlark.None && jsonData.String() != ""
+	hasForm := formData != nil && formData.Len() > 0
+	cnt := 0
+	for _, ok := range []bool{hasBody, hasJSON, hasForm} {
+		if ok {
+			cnt++
+		}
+	}
+	if cnt > 1 {
+		return fmt.Errorf("body, json_body and form_body are mutually exclusive, got %d of them", cnt)
+	}
+
 	if !body.IsNullOrEmpty() {
 		uq := body.GoString()
 		req.Body = ioutil.NopCloser(strings.NewReader(uq))
@@ -534,6 +575,7 @@ func setBody(req *http.Request, body *types.NullableStringOrBytes, formData *sta
 // Response represents an HTTP response, wrapping a Go http.Response with Starlark methods.
 type Response struct {
 	http.Response
+	maxBodyBytes int64
 }
 
 // Struct turns a response into a *starlark.Struct
@@ -552,16 +594,34 @@ func (r *Response) Struct() *starlarkstruct.Struct {
 func (r *Response) HeadersDict() *starlark.Dict {
 	d := new(starlark.Dict)
 	for key, vals := range r.Header {
-		if err := d.SetKey(starlark.String(key), starlark.String(strings.Join(vals, ","))); err != nil {
-			panic(err)
-		}
+		// a fresh unfrozen dict with string keys cannot fail SetKey; if it
+		// ever does, drop the header instead of panicking the host
+		_ = d.SetKey(starlark.String(key), starlark.String(strings.Join(vals, ",")))
 	}
 	return d
 }
 
+// readBody reads the whole response body, enforcing the configured size
+// limit: without one, ioutil.ReadAll streamed an attacker-controlled body
+// of any size straight into host memory.
+func (r *Response) readBody() ([]byte, error) {
+	limit := r.maxBodyBytes
+	if limit <= 0 {
+		return ioutil.ReadAll(r.Body)
+	}
+	data, err := ioutil.ReadAll(io.LimitReader(r.Body, limit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > limit {
+		return nil, fmt.Errorf("response body exceeds the %d-byte limit", limit)
+	}
+	return data, nil
+}
+
 // Text returns the raw data as a string
 func (r *Response) Text(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	data, err := ioutil.ReadAll(r.Body)
+	data, err := r.readBody()
 	if err != nil {
 		return nil, err
 	}
@@ -576,7 +636,7 @@ func (r *Response) Text(thread *starlark.Thread, _ *starlark.Builtin, args starl
 
 // JSON attempts to parse the response body as JSON
 func (r *Response) JSON(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := r.readBody()
 	if err != nil {
 		return nil, err
 	}
