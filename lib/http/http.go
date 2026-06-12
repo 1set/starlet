@@ -44,6 +44,11 @@ var (
 	// response; 0 means unlimited. It seeds new module instances, override
 	// with a custom value before calling LoadModule.
 	MaxResponseBodyBytes int64
+	// ForceTLSVerify, when true, refuses requests that pass verify=False
+	// and ignores SkipInsecureVerify, so scripts cannot turn off TLS
+	// certificate verification. It seeds new module instances, override
+	// with a custom value before calling LoadModule.
+	ForceTLSVerify bool
 	// ConfigLock is a global lock for settings, use it to ensure thread safety when setting.
 	ConfigLock sync.RWMutex
 )
@@ -66,6 +71,7 @@ type Module struct {
 	mu          sync.RWMutex
 	timeoutSec  float64
 	maxBodySize int64
+	forceVerify bool
 }
 
 // NewModule creates a new http module with default settings. The package
@@ -75,7 +81,7 @@ type Module struct {
 func NewModule() *Module {
 	ConfigLock.RLock()
 	defer ConfigLock.RUnlock()
-	m := &Module{timeoutSec: TimeoutSecond, maxBodySize: MaxResponseBodyBytes}
+	m := &Module{timeoutSec: TimeoutSecond, maxBodySize: MaxResponseBodyBytes, forceVerify: ForceTLSVerify}
 	if Client != nil {
 		m.cli = Client
 	}
@@ -97,6 +103,24 @@ func (m *Module) maxBodyBytes() int64 {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.maxBodySize
+}
+
+// tlsVerifyForced reports whether the host forbids disabling TLS verification.
+func (m *Module) tlsVerifyForced() bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.forceVerify
+}
+
+// SetForceTLSVerify controls whether scripts may disable TLS certificate
+// verification for this module instance. When forced, verify=False is
+// rejected loudly and the SkipInsecureVerify package default is ignored.
+// Hosts running untrusted scripts should force verification: a script
+// that can turn off TLS checks can be man-in-the-middled.
+func (m *Module) SetForceTLSVerify(force bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.forceVerify = force
 }
 
 // SetMaxResponseBodyBytes limits how many bytes body()/json() will read
@@ -204,6 +228,11 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 		defaultRedirect := !DisableRedirect
 		defaultVerify := !SkipInsecureVerify
 		ConfigLock.RUnlock()
+		forceVerify := m.tlsVerifyForced()
+		if forceVerify {
+			// the host policy wins over the package-level default
+			defaultVerify = true
+		}
 		var (
 			getDefaultDict = func() *types.NullableDict { return types.NewNullableDict(starlark.NewDict(0)) }
 			urlv           starlark.String
@@ -222,6 +251,12 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 		if err := starlark.UnpackArgs(b.Name(), args, kwargs, "url", &urlv, "params?", params, "headers", headers, "body", body, "json_body", &jsonBody, "form_body", formBody, "form_encoding", &formEncoding,
 			"auth?", &auth, "timeout?", &timeout, "allow_redirects?", &allowRedirect, "verify?", &verifySSL); err != nil {
 			return nil, err
+		}
+
+		// a host that forces TLS verification refuses the verify=False
+		// escape hatch outright
+		if forceVerify && !bool(verifySSL) {
+			return nil, fmt.Errorf("%s: verify=False is not allowed by the host policy", b.Name())
 		}
 
 		// with a host-injected client, per-request transport options cannot

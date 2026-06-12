@@ -903,3 +903,50 @@ func TestRequestBodyKindsConflict(t *testing.T) {
 		t.Errorf("expected a mutual-exclusion error")
 	}
 }
+
+func TestModuleForceTLSVerify(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	extra := starlark.StringDict{"test_url": starlark.String(ts.URL)}
+
+	// with the policy forced, verify=False is refused outright
+	md := lh.NewModule()
+	md.SetForceTLSVerify(true)
+	script := itn.HereDoc(`
+		load('http', 'get')
+		get(test_url, verify=False)
+	`)
+	if _, err := itn.ExecModuleWithErrorTest(t, lh.ModuleName, md.LoadModule, script, `verify=False is not allowed by the host policy`, extra); err == nil {
+		t.Errorf("expected the policy to refuse verify=False")
+	}
+
+	// ordinary requests keep working under the policy
+	script2 := itn.HereDoc(`
+		load('http', 'get')
+		res = get(test_url)
+		assert.eq(res.status_code, 200)
+	`)
+	if _, err := itn.ExecModuleWithErrorTest(t, lh.ModuleName, md.LoadModule, script2, "", extra); err != nil {
+		t.Errorf("expected plain requests to pass under the policy, got: %v", err)
+	}
+
+	// the policy overrides the package-level SkipInsecureVerify default
+	lh.ConfigLock.Lock()
+	lh.SkipInsecureVerify = true
+	lh.ForceTLSVerify = true
+	lh.ConfigLock.Unlock()
+	defer func() {
+		lh.ConfigLock.Lock()
+		lh.SkipInsecureVerify = false
+		lh.ForceTLSVerify = false
+		lh.ConfigLock.Unlock()
+	}()
+	if _, err := itn.ExecModuleWithErrorTest(t, lh.ModuleName, lh.LoadModule, script2, "", extra); err != nil {
+		t.Errorf("expected the seeded policy to pass plain requests, got: %v", err)
+	}
+	if _, err := itn.ExecModuleWithErrorTest(t, lh.ModuleName, lh.LoadModule, script, `verify=False is not allowed by the host policy`, extra); err == nil {
+		t.Errorf("expected the seeded policy to refuse verify=False")
+	}
+}
