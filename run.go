@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math"
 	"sync"
 	"time"
 
@@ -132,7 +133,11 @@ func (m *Machine) watchContextCancel(ctx context.Context) (stop func()) {
 func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap, allowCache bool) (out StringAnyMap, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = errorStarlarkPanic("exec", r)
+			if me, ok := r.(MaxStepsExceededError); ok {
+				err = errorStarlarkError("exec", me)
+			} else {
+				err = errorStarlarkPanic("exec", r)
+			}
 		}
 	}()
 
@@ -298,7 +303,32 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 		m.thread.Print = m.printFunc
 		m.thread.Uncancel()
 	}
+
+	// arm the per-run step budget
+	m.applyStepBudget()
 	return nil
+}
+
+// applyStepBudget arms the thread with the configured step budget; it must
+// run before every execution. The Starlark runtime normalizes a zero limit
+// to "unlimited" only on a thread's very first use, so the translation to
+// MaxUint64 happens here for reused threads; the step counter resets so
+// the budget applies per execution.
+func (m *Machine) applyStepBudget() {
+	limit := m.maxSteps
+	if limit == 0 {
+		limit = math.MaxUint64
+	}
+	m.thread.SetMaxExecutionSteps(limit)
+	if lim := m.maxSteps; lim > 0 {
+		m.thread.OnMaxSteps = func(*starlark.Thread) {
+			// recovered by the run/call recover and mapped to a typed error
+			panic(MaxStepsExceededError{Limit: lim})
+		}
+	} else {
+		m.thread.OnMaxSteps = nil
+	}
+	m.thread.Steps = 0
 }
 
 // Reset resets the machine to initial state before the first run.

@@ -121,3 +121,15 @@ type ModuleWithheldError struct {
 func (e ModuleWithheldError) Error() string {
 	return fmt.Sprintf("module %q is withheld and not available to this machine", e.Name)
 }
+
+// MaxStepsExceededError marks an execution aborted because it exhausted the
+// step budget configured with Machine.SetMaxExecutionSteps. Detect it with
+// errors.As through the execution error chain.
+type MaxStepsExceededError struct {
+	Limit uint64
+}
+
+// Error returns the error message.
+func (e MaxStepsExceededError) Error() string {
+	return fmt.Sprintf("execution exceeded the step limit (%d)", e.Limit)
+}

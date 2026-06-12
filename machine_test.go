@@ -795,3 +795,76 @@ func TestMachine_GetThreadLocal(t *testing.T) {
 		t.Errorf("expected 'Deeper', got %v", v)
 	}
 }
+
+func TestMachine_SetMaxExecutionSteps(t *testing.T) {
+	loopScript := []byte("def burn():\n    x = 0\n    for i in range(10000):\n        x += 1\n    return x\nr = burn()\n")
+
+	// the budget trips and surfaces as a typed error
+	{
+		m := starlet.NewDefault()
+		m.SetMaxExecutionSteps(100)
+		m.SetScript("loop.star", loopScript, nil)
+		_, err := m.Run()
+		var me starlet.MaxStepsExceededError
+		if err == nil || !errors.As(err, &me) || me.Limit != 100 {
+			t.Errorf("expected MaxStepsExceededError{100}, got: %v", err)
+		}
+	}
+
+	// zero (the default) means unlimited
+	{
+		m := starlet.NewDefault()
+		m.SetScript("loop.star", loopScript, nil)
+		if _, err := m.Run(); err != nil {
+			t.Errorf("expected the unlimited run to pass, got: %v", err)
+		}
+	}
+
+	// clearing the budget on a REUSED thread must mean unlimited again:
+	// the runtime normalizes 0 to "unlimited" only on a thread's first
+	// use, so a literal 0 would trip on the very first step
+	{
+		m := starlet.NewDefault()
+		m.SetMaxExecutionSteps(100)
+		m.SetScript("loop.star", loopScript, nil)
+		if _, err := m.Run(); err == nil {
+			t.Errorf("expected the budget to trip on the first run")
+		}
+		m.SetMaxExecutionSteps(0)
+		if _, err := m.Run(); err != nil {
+			t.Errorf("expected the unlimited rerun to pass, got: %v", err)
+		}
+	}
+
+	// the step counter resets per run instead of accumulating
+	{
+		m := starlet.NewDefault()
+		m.SetScript("small.star", []byte("y = 1 + 1"), nil)
+		if _, err := m.Run(); err != nil {
+			t.Fatalf("run #1 expects no error, got: %v", err)
+		}
+		s1 := m.GetStarlarkThread().Steps
+		if _, err := m.Run(); err != nil {
+			t.Fatalf("run #2 expects no error, got: %v", err)
+		}
+		s2 := m.GetStarlarkThread().Steps
+		if s1 == 0 || s1 != s2 {
+			t.Errorf("expected matching per-run step counts, got %d then %d", s1, s2)
+		}
+	}
+
+	// the budget guards Call the same way as Run
+	{
+		m := starlet.NewDefault()
+		m.SetScript("def.star", []byte("def loop():\n    x = 0\n    for i in range(10000):\n        x += 1\n    return x\n"), nil)
+		if _, err := m.Run(); err != nil {
+			t.Fatalf("prep run expects no error, got: %v", err)
+		}
+		m.SetMaxExecutionSteps(100)
+		_, err := m.Call("loop")
+		var me starlet.MaxStepsExceededError
+		if err == nil || !errors.As(err, &me) || me.Limit != 100 {
+			t.Errorf("expected MaxStepsExceededError{100} from Call, got: %v", err)
+		}
+	}
+}
