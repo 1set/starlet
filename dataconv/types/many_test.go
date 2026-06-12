@@ -441,3 +441,165 @@ func TestOneOrMany_UnpackArgs(t *testing.T) {
 		})
 	}
 }
+
+func TestOneOrMany_StringVsValue(t *testing.T) {
+	// Create a list of strings
+	strList := starlark.NewList([]starlark.Value{
+		starlark.String("abc"),
+		starlark.String("def"),
+	})
+
+	// Test OneOrMany[starlark.String]
+	t.Run("OneOrMany[starlark.String]", func(t *testing.T) {
+		target := NewOneOrManyNoDefault[starlark.String]()
+		err := target.Unpack(strList)
+		if err != nil {
+			t.Errorf("OneOrMany[starlark.String].Unpack() error = %v", err)
+			return
+		}
+
+		expected := []starlark.String{starlark.String("abc"), starlark.String("def")}
+		if !reflect.DeepEqual(target.Slice(), expected) {
+			t.Errorf("OneOrMany[starlark.String].Unpack() got = %v, want %v", target.Slice(), expected)
+		}
+
+		// Verify first element
+		if target.First() != starlark.String("abc") {
+			t.Errorf("OneOrMany[starlark.String].First() got = %v, want %v", target.First(), starlark.String("abc"))
+		}
+
+		// Verify length
+		if target.Len() != 2 {
+			t.Errorf("OneOrMany[starlark.String].Len() got = %v, want %v", target.Len(), 2)
+		}
+	})
+
+	// Test OneOrMany[starlark.Value]
+	t.Run("OneOrMany[starlark.Value]", func(t *testing.T) {
+		target := NewOneOrManyNoDefault[starlark.Value]()
+		err := target.Unpack(strList)
+		if err != nil {
+			t.Errorf("OneOrMany[starlark.Value].Unpack() error = %v", err)
+			return
+		}
+
+		// For starlark.Value type, the whole list is treated as a single value
+		values := target.Slice()
+		if len(values) != 1 {
+			t.Errorf("OneOrMany[starlark.Value].Unpack() got len = %v, want %v", len(values), 1)
+			return
+		}
+
+		// Verify the value is a list type
+		list, ok := values[0].(*starlark.List)
+		if !ok {
+			t.Errorf("OneOrMany[starlark.Value].Unpack() value is not starlark.List type, but %T", values[0])
+			return
+		}
+
+		// Verify list contents
+		if list.Len() != 2 {
+			t.Errorf("List length got = %v, want %v", list.Len(), 2)
+			return
+		}
+
+		v1, ok := starlark.AsString(list.Index(0))
+		if !ok || v1 != "abc" {
+			t.Errorf("First list element got = %v, want %v", v1, "abc")
+		}
+
+		v2, ok := starlark.AsString(list.Index(1))
+		if !ok || v2 != "def" {
+			t.Errorf("Second list element got = %v, want %v", v2, "def")
+		}
+
+		// Verify first element is the list itself
+		first, ok := target.First().(*starlark.List)
+		if !ok || first != list {
+			t.Errorf("OneOrMany[starlark.Value].First() result is not the expected list")
+		}
+	})
+
+	// Test unpacking a single string
+	t.Run("Single_String", func(t *testing.T) {
+		singleStr := starlark.String("xyz")
+
+		// For starlark.String type
+		stringTarget := NewOneOrManyNoDefault[starlark.String]()
+		if err := stringTarget.Unpack(singleStr); err != nil {
+			t.Errorf("OneOrMany[starlark.String].Unpack(single) error = %v", err)
+			return
+		}
+
+		if stringTarget.First() != starlark.String("xyz") {
+			t.Errorf("OneOrMany[starlark.String].First() got = %v, want %v",
+				stringTarget.First(), starlark.String("xyz"))
+		}
+
+		// For starlark.Value type
+		valueTarget := NewOneOrManyNoDefault[starlark.Value]()
+		if err := valueTarget.Unpack(singleStr); err != nil {
+			t.Errorf("OneOrMany[starlark.Value].Unpack(single) error = %v", err)
+			return
+		}
+
+		first, ok := valueTarget.First().(starlark.String)
+		if !ok || first != starlark.String("xyz") {
+			t.Errorf("OneOrMany[starlark.Value].First() got = %v, want %v",
+				valueTarget.First(), starlark.String("xyz"))
+		}
+	})
+
+	// Test UnpackArgs method differences
+	t.Run("UnpackArgs", func(t *testing.T) {
+		// For starlark.String type
+		stringTarget := NewOneOrManyNoDefault[starlark.String]()
+		if err := starlark.UnpackArgs("test", []starlark.Value{strList}, nil, "v?", stringTarget); err != nil {
+			t.Errorf("OneOrMany[starlark.String].UnpackArgs() error = %v", err)
+			return
+		}
+
+		expected := []starlark.String{starlark.String("abc"), starlark.String("def")}
+		if !reflect.DeepEqual(stringTarget.Slice(), expected) {
+			t.Errorf("OneOrMany[starlark.String].UnpackArgs() got = %v, want %v",
+				stringTarget.Slice(), expected)
+		}
+
+		// For starlark.Value type
+		valueTarget := NewOneOrManyNoDefault[starlark.Value]()
+		if err := starlark.UnpackArgs("test", []starlark.Value{strList}, nil, "v?", valueTarget); err != nil {
+			t.Errorf("OneOrMany[starlark.Value].UnpackArgs() error = %v", err)
+			return
+		}
+
+		values := valueTarget.Slice()
+		if len(values) != 1 {
+			t.Errorf("OneOrMany[starlark.Value].UnpackArgs() got len = %v, want %v",
+				len(values), 1)
+			return
+		}
+
+		// Verify first element is a list
+		list, ok := values[0].(*starlark.List)
+		if !ok {
+			t.Errorf("OneOrMany[starlark.Value].UnpackArgs() value is not starlark.List type, but %T", values[0])
+			return
+		}
+
+		// Verify list contents
+		if list.Len() != 2 {
+			t.Errorf("List length got = %v, want %v", list.Len(), 2)
+			return
+		}
+
+		v1, ok := starlark.AsString(list.Index(0))
+		if !ok || v1 != "abc" {
+			t.Errorf("First list element got = %v, want %v", v1, "abc")
+		}
+
+		v2, ok := starlark.AsString(list.Index(1))
+		if !ok || v2 != "def" {
+			t.Errorf("Second list element got = %v, want %v", v2, "def")
+		}
+	})
+}

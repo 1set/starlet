@@ -5,6 +5,7 @@ package dataconv
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/1set/starlight/convert"
@@ -114,9 +115,40 @@ func Marshal(data interface{}) (v starlark.Value, err error) {
 	return
 }
 
-// Unmarshal converts a starlark.Value into it's Golang counterpart, like FromValue() of package starlight does.
+// Unmarshal converts a starlark.Value into its Golang counterpart, like FromValue() of package starlight does.
+//
+// The contract:
+//   - Int values within the platform int range come back as int; larger
+//     values degrade losslessly to uint64 and then *big.Int (they used to
+//     be an error).
+//   - Dicts always come back as map[string]interface{}: string keys keep
+//     their value, any other hashable key is stringified via its Starlark
+//     representation (bool keys use json-style "true"/"false"), and a
+//     post-stringification collision is an error. This deliberately
+//     prefers JSON-friendly shapes over key fidelity; use starlight's
+//     FromValue for typed dict keys.
+//   - Cyclic values, direct or indirect, are reported as errors.
+//
 // It's the opposite of Marshal().
 func Unmarshal(x starlark.Value) (val interface{}, err error) {
+	return unmarshalValue(x, nil)
+}
+
+// unmarshalValue is Unmarshal's engine; visited tracks the mutable
+// containers (dict/list/set) on the current descent path so that cyclic
+// values - direct or indirect - are reported instead of overflowing the
+// stack. The map is allocated lazily on the first container.
+func unmarshalValue(x starlark.Value, visited map[starlark.Value]bool) (val interface{}, err error) {
+	enter := func(c starlark.Value) (map[starlark.Value]bool, error) {
+		if visited[c] {
+			return nil, fmt.Errorf("cyclic reference found")
+		}
+		if visited == nil {
+			visited = make(map[starlark.Value]bool)
+		}
+		visited[c] = true
+		return visited, nil
+	}
 	iterAttrs := func(v starlark.HasAttrs) (map[string]interface{}, error) {
 		jo := make(map[string]interface{})
 		for _, name := range v.AttrNames() {
@@ -124,7 +156,7 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 			if err != nil {
 				return nil, err
 			}
-			jo[name], err = Unmarshal(sv)
+			jo[name], err = unmarshalValue(sv, visited)
 			if err != nil {
 				return nil, err
 			}
@@ -147,9 +179,18 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 	case starlark.Bool:
 		val = v.Truth() == starlark.True
 	case starlark.Int:
+		// in-range values keep returning the platform int (the historical
+		// dynamic type, which downstream type assertions depend on); values
+		// beyond it used to be an error and now degrade losslessly through
+		// uint64 to *big.Int instead
 		var tmp int
-		err = starlark.AsInt(x, &tmp)
-		val = tmp
+		if errConv := starlark.AsInt(x, &tmp); errConv == nil {
+			val = tmp
+		} else if u, ok := v.Uint64(); ok {
+			val = u
+		} else {
+			val = new(big.Int).Set(v.BigInt())
+		}
 	case starlark.Float:
 		if f, ok := starlark.AsFloat(x); !ok {
 			err = fmt.Errorf("couldn't parse float")
@@ -163,66 +204,52 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 	case startime.Time:
 		val = time.Time(v)
 	case *starlark.Dict:
-		var (
-			dictVal starlark.Value
-			pval    interface{}
-			kval    interface{}
-			keys    []interface{}
-			vals    []interface{}
-			// use interface{} as key type if found one key is not a string
-			keyIf bool
-		)
+		if visited, err = enter(v); err != nil {
+			return nil, err
+		}
+		defer delete(visited, v)
+		// the result is uniformly map[string]interface{} (JSON-marshalable):
+		// string keys keep their value, every other hashable key uses its
+		// Starlark representation. The old behavior flipped the whole map to
+		// map[interface{}]interface{} on the first non-string key - which
+		// json.Marshal rejects - and crashed the host outright on a tuple
+		// key. A post-stringification collision is reported instead of
+		// silently dropping an entry.
+		rs := make(map[string]interface{}, v.Len())
 		for _, k := range v.Keys() {
-			dictVal, _, err = v.Get(k)
-			if err != nil {
-				return
+			dictVal, _, errGet := v.Get(k)
+			if errGet != nil {
+				return nil, errGet
 			}
-
-			// check for cyclic reference
-			if dictVal == x {
-				err = fmt.Errorf("cyclic reference found")
-				return
+			pval, errVal := unmarshalValue(dictVal, visited)
+			if errVal != nil {
+				return nil, fmt.Errorf("unmarshaling starlark value: %w", errVal)
 			}
-
-			pval, err = Unmarshal(dictVal)
-			if err != nil {
-				err = fmt.Errorf("unmarshaling starlark value: %w", err)
-				return
+			var ks string
+			switch kk := k.(type) {
+			case starlark.String:
+				ks = kk.GoString()
+			case starlark.Bool:
+				// json-style lowercase, matching the historical dumps output
+				if bool(kk) {
+					ks = "true"
+				} else {
+					ks = "false"
+				}
+			default:
+				ks = kk.String()
 			}
-
-			kval, err = Unmarshal(k)
-			if err != nil {
-				err = fmt.Errorf("unmarshaling starlark key: %w", err)
-				return
+			if _, dup := rs[ks]; dup {
+				return nil, fmt.Errorf("dict key collision after stringification: %q", ks)
 			}
-
-			if _, ok := kval.(string); !ok {
-				// found key as not a string
-				keyIf = true
-			}
-
-			keys = append(keys, kval)
-			vals = append(vals, pval)
+			rs[ks] = pval
 		}
-
-		// prepare result
-		rs := map[string]interface{}{}
-		ri := map[interface{}]interface{}{}
-		for i, key := range keys {
-			// key as interface
-			if keyIf {
-				ri[key] = vals[i]
-			} else {
-				rs[key.(string)] = vals[i]
-			}
-		}
-
-		if keyIf {
-			val = ri // map[interface{}]interface{}
-		} else {
-			val = rs // map[string]interface{}
-		}
+		val = rs
 	case *starlark.List:
+		if visited, err = enter(v); err != nil {
+			return nil, err
+		}
+		defer delete(visited, v)
 		var (
 			i       int
 			listVal starlark.Value
@@ -232,11 +259,7 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 
 		defer iter.Done()
 		for iter.Next(&listVal) {
-			if listVal == x {
-				err = fmt.Errorf("cyclic reference found")
-				return
-			}
-			value[i], err = Unmarshal(listVal)
+			value[i], err = unmarshalValue(listVal, visited)
 			if err != nil {
 				return
 			}
@@ -253,7 +276,9 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 
 		defer iter.Done()
 		for iter.Next(&tupleVal) {
-			value[i], err = Unmarshal(tupleVal)
+			// tuples are immutable and cannot contain themselves, so they
+			// are not tracked in visited - their elements still are
+			value[i], err = unmarshalValue(tupleVal, visited)
 			if err != nil {
 				return
 			}
@@ -261,6 +286,10 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 		}
 		val = value
 	case *starlark.Set:
+		if visited, err = enter(v); err != nil {
+			return nil, err
+		}
+		defer delete(visited, v)
 		var (
 			i      int
 			setVal starlark.Value
@@ -270,7 +299,7 @@ func Unmarshal(x starlark.Value) (val interface{}, err error) {
 
 		defer iter.Done()
 		for iter.Next(&setVal) {
-			value[i], err = Unmarshal(setVal)
+			value[i], err = unmarshalValue(setVal, visited)
 			if err != nil {
 				return
 			}

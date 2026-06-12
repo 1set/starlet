@@ -1391,3 +1391,25 @@ func BenchmarkDecodeStarlarkJSON(b *testing.B) {
 		}
 	}
 }
+
+func TestMarshalStarlarkJSONLossless(t *testing.T) {
+	// big integers used to fail in dumps (while json.encode accepted them)
+	big1 := starlark.MakeInt64(1).Lsh(100)
+	if got, err := MarshalStarlarkJSON(big1, 0); err != nil {
+		t.Errorf("expected the big int to dump, got error: %v", err)
+	} else if got != "1267650600228229401496703205376" {
+		t.Errorf("unexpected dump of 1<<100: %s", got)
+	}
+
+	// nested non-string-key dicts used to fail: the old top-level-only
+	// stringification patch could not reach them
+	inner := starlark.NewDict(1)
+	_ = inner.SetKey(starlark.MakeInt(1), starlark.String("x"))
+	outer := starlark.NewDict(1)
+	_ = outer.SetKey(starlark.String("outer"), inner)
+	if got, err := MarshalStarlarkJSON(outer, 0); err != nil {
+		t.Errorf("expected the nested non-string-key dict to dump, got error: %v", err)
+	} else if got != `{"outer":{"1":"x"}}` {
+		t.Errorf("unexpected dump: %s", got)
+	}
+}
