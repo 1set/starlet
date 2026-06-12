@@ -44,6 +44,7 @@ type Machine struct {
 	enableInConv        bool
 	enableOutConv       bool
 	customTag           string
+	maxSteps            uint64
 	// source code
 	scriptName    string
 	scriptContent []byte
@@ -330,6 +331,19 @@ func (m *Machine) Export() StringAnyMap {
 	defer m.mu.RUnlock()
 
 	return m.convertOutput(m.predeclared)
+}
+
+// SetMaxExecutionSteps sets the per-execution budget of Starlark steps (an
+// abstract measure of interpreter work); 0 (the default) means unlimited.
+// When the budget is exhausted, the Run or Call fails with a
+// MaxStepsExceededError, reachable host-side via errors.As. The step
+// counter resets at the start of every Run/Call, so the budget applies per
+// execution, not cumulatively.
+func (m *Machine) SetMaxExecutionSteps(steps uint64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.maxSteps = steps
 }
 
 // EnableRecursionSupport enables recursion support in all Starlark environments.
