@@ -273,3 +273,48 @@ func TestDecodeStarlarkDestinationEdges(t *testing.T) {
 		t.Errorf("expected a struct-shape error, got: %v", err)
 	}
 }
+
+func TestDecodeStarlarkMoreArms(t *testing.T) {
+	// successful uint decode, and the non-int source arm
+	var u8 uint8
+	if err := DecodeJSONStarlark(starlark.MakeInt(7), &u8); err != nil || u8 != 7 {
+		t.Errorf("expected uint8(7), got %d / %v", u8, err)
+	}
+	if err := DecodeJSONStarlark(starlark.String("x"), &u8); err == nil || !strings.Contains(err.Error(), "want int") {
+		t.Errorf("expected a uint type error, got: %v", err)
+	}
+	// the non-float source arm
+	var f float64
+	if err := DecodeJSONStarlark(starlark.Bool(true), &f); err == nil || !strings.Contains(err.Error(), "want float") {
+		t.Errorf("expected a float type error, got: %v", err)
+	}
+	// interface{} destinations: None becomes nil, unsupported sources error
+	var any interface{} = 42
+	if err := DecodeJSONStarlark(starlark.None, &any); err != nil || any != nil {
+		t.Errorf("expected nil from None, got %v / %v", any, err)
+	}
+	if err := DecodeJSONStarlark(mockStarlarkBuiltin("nope"), &any); err == nil {
+		t.Errorf("expected an error for a builtin into interface{}")
+	}
+	// a non-empty interface destination is rejected
+	var er error
+	if err := DecodeJSONStarlark(starlark.MakeInt(1), &er); err == nil || !strings.Contains(err.Error(), "unsupported destination interface") {
+		t.Errorf("expected an interface-destination error, got: %v", err)
+	}
+	// unexported struct fields are skipped, absent source attributes stay zero
+	type mixed struct {
+		Seen    int `json:"seen"`
+		Missing int `json:"missing"`
+		hidden  int
+	}
+	st := starlarkstruct.FromStringDict(starlarkstruct.Default, starlark.StringDict{"seen": starlark.MakeInt(1)})
+	var mx mixed
+	if err := DecodeJSONStarlark(st, &mx); err != nil || mx.Seen != 1 || mx.Missing != 0 || mx.hidden != 0 {
+		t.Errorf("unexpected mixed decode: %+v / %v", mx, err)
+	}
+	mod := &starlarkstruct.Module{Name: "m", Members: starlark.StringDict{"seen": starlark.MakeInt(2)}}
+	var mx2 mixed
+	if err := DecodeJSONStarlark(mod, &mx2); err != nil || mx2.Seen != 2 || mx2.Missing != 0 {
+		t.Errorf("unexpected module decode: %+v / %v", mx2, err)
+	}
+}
