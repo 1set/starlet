@@ -1,10 +1,13 @@
 package starlet_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/1set/starlet"
 	"go.starlark.net/starlark"
@@ -247,5 +250,60 @@ def work(x, y):
 		return
 	} else if v != starlark.MakeInt(30) {
 		t.Errorf("got unexpected value: %v", v)
+	}
+}
+
+func TestMachine_CallWithContext(t *testing.T) {
+	prep := func() *starlet.Machine {
+		m := starlet.NewWithNames(nil, []string{"go_idiomatic"}, nil)
+		m.SetScript("test.star", []byte("def slow():\n    sleep(2)\n    return 1\n\ndef quick(x):\n    return x + 1\n"), nil)
+		if _, err := m.Run(); err != nil {
+			t.Fatalf("prep run expects no error, got: %v", err)
+		}
+		return m
+	}
+
+	// the timeout aborts the call long before the function finishes
+	{
+		m := prep()
+		ts := time.Now()
+		_, err := m.CallWithTimeout(200*time.Millisecond, "slow")
+		if err == nil || !strings.Contains(err.Error(), "context") {
+			t.Errorf("expected a context error from the timed-out call, got: %v", err)
+		}
+		if elapsed := time.Since(ts); elapsed > time.Second {
+			t.Errorf("call was not aborted in time: %v", elapsed)
+		}
+	}
+
+	// an already-cancelled context fails immediately
+	{
+		m := prep()
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		_, err := m.CallWithContext(ctx, "quick", 1)
+		if err == nil || !strings.Contains(err.Error(), "starlet: call: context canceled") {
+			t.Errorf("expected fail-fast on a cancelled context, got: %v", err)
+		}
+	}
+
+	// a nil context behaves like plain Call
+	{
+		m := prep()
+		out, err := m.CallWithContext(nil, "quick", 41)
+		if err != nil || out != int64(42) {
+			t.Errorf("expected 42 with no error, got: %v / %v", out, err)
+		}
+	}
+
+	// a live context lets the call complete
+	{
+		m := prep()
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		out, err := m.CallWithContext(ctx, "quick", 1)
+		if err != nil || out != int64(2) {
+			t.Errorf("expected 2 with no error, got: %v / %v", out, err)
+		}
 	}
 }
