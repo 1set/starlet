@@ -94,15 +94,15 @@ func httpPingFunc(ctx context.Context, url string, timeout time.Duration) (time.
 		},
 	}
 
-	// create a http client with timeout and tracing
+	// create a http client with timeout and tracing.
+	// NOTE: behind a proxy, the traced connect duration measures the TCP
+	// connection to the proxy (the first hop), not to the origin server.
 	client := &http.Client{
 		Timeout: timeout,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse // do not follow redirects
 		},
-		Transport: &http.Transport{
-			DisableKeepAlives: true,
-		},
+		Transport: newPingTransport(),
 	}
 	req, err := http.NewRequestWithContext(httptrace.WithClientTrace(ctx, trace), "GET", url, nil)
 	if err != nil {
@@ -141,6 +141,27 @@ func pingDurations(b *starlark.Builtin, timeout, interval tps.FloatOrInt) (timeo
 	timeoutDur = time.Duration(float64(timeout) * float64(time.Second))
 	intervalDur = time.Duration(float64(interval) * float64(time.Second))
 	return timeoutDur, intervalDur, nil
+}
+
+// newPingTransport returns the transport used by httping: a clone of the
+// default transport (so the system proxy settings - HTTP_PROXY etc. -
+// apply, exactly as they do for lib/http) with keep-alives disabled. The
+// zero-value Transport used before never consulted any proxy, so httping
+// failed entirely in forced-egress-proxy environments while http.get in
+// the same script worked.
+func newPingTransport() *http.Transport {
+	if dt, ok := http.DefaultTransport.(*http.Transport); ok {
+		tr := dt.Clone()
+		tr.DisableKeepAlives = true
+		return tr
+	}
+	// the default transport was replaced by the host with a custom
+	// RoundTripper: fall back to a fresh transport that still honors the
+	// system proxy settings
+	return &http.Transport{
+		Proxy:             http.ProxyFromEnvironment,
+		DisableKeepAlives: true,
+	}
 }
 
 func createPingStats(address string, count int, rtts []time.Duration) starlark.Value {
