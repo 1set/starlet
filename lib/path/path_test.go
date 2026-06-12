@@ -65,32 +65,143 @@ func TestLoadModule_Path(t *testing.T) {
 			name: `join: partial empty`,
 			script: itn.HereDoc(`
 				load('path', 'join')
-				assert.eq(join("a", "", ""), "a")
-				assert.eq(join("a", "b", ""), "a/b")
+				# Python semantics: an empty component contributes a
+				# trailing separator instead of being dropped
+				assert.eq(join("a", "", ""), "a/")
+				assert.eq(join("a", "b", ""), "a/b/")
 				assert.eq(join("a", "", "c"), "a/c")
 				assert.eq(join("", "b", "c"), "b/c")
 			`),
-			skipWindows: true,
 		},
 		{
 			name: `join: relative path`,
 			script: itn.HereDoc(`
 				load('path', 'join')
-				assert.eq(join("a/b", "../../../xyz"), "../xyz")
-				assert.eq(join("a/b", "../../xyz"), "xyz")
+				# Python semantics: no lexical cleaning - ".." stays put
+				# (use normpath to collapse it)
+				assert.eq(join("a/b", "../../../xyz"), "a/b/../../../xyz")
+				assert.eq(join("a/b", "../../xyz"), "a/b/../../xyz")
 			`),
-			skipWindows: true,
 		},
 		{
 			name: `join: absolute path`,
 			script: itn.HereDoc(`
 				load('path', 'join')
 				assert.eq(join("/a100"), "/a100")
-				assert.eq(join("/a100", ""), "/a100")
+				assert.eq(join("/a100", ""), "/a100/")
 				assert.eq(join("/a100", "b"), "/a100/b")
 				assert.eq(join("/a100", "b", "c"), "/a100/b/c")
+				# an absolute component resets the result
+				assert.eq(join("a", "/b"), "/b")
+				assert.eq(join("a", "/b", "c"), "/b/c")
 			`),
-			skipWindows: true,
+		},
+		{
+			name: `lexical: basename and dirname`,
+			script: itn.HereDoc(`
+				load('path', 'basename', 'dirname')
+				assert.eq(basename('a/b/c.txt'), 'c.txt')
+				assert.eq(basename('a/b/'), '')
+				assert.eq(basename('plain'), 'plain')
+				assert.eq(basename('/'), '')
+				assert.eq(dirname('a/b/c.txt'), 'a/b')
+				assert.eq(dirname('a/b/'), 'a/b')
+				assert.eq(dirname('plain'), '')
+				assert.eq(dirname('/a'), '/')
+				assert.eq(dirname('//a'), '//')
+			`),
+		},
+		{
+			name: `lexical: normpath`,
+			script: itn.HereDoc(`
+				load('path', 'normpath')
+				assert.eq(normpath('a//b'), 'a/b')
+				assert.eq(normpath('a/./b'), 'a/b')
+				assert.eq(normpath('a/c/../b'), 'a/b')
+				assert.eq(normpath('../a'), '../a')
+				assert.eq(normpath('a/../../b'), '../b')
+				assert.eq(normpath('/a/../../b'), '/b')
+				assert.eq(normpath('//a'), '//a')
+				assert.eq(normpath('///a'), '/a')
+				assert.eq(normpath(''), '.')
+				assert.eq(normpath('a/b/'), 'a/b')
+			`),
+		},
+		{
+			name: `lexical: split and splitext`,
+			script: itn.HereDoc(`
+				load('path', 'split', 'splitext')
+				assert.eq(split('a/b/c.txt'), ('a/b', 'c.txt'))
+				assert.eq(split('/a'), ('/', 'a'))
+				assert.eq(split('a/b/'), ('a/b', ''))
+				assert.eq(split('plain'), ('', 'plain'))
+				assert.eq(splitext('a/b.tar.gz'), ('a/b.tar', '.gz'))
+				assert.eq(splitext('.bashrc'), ('.bashrc', ''))
+				assert.eq(splitext('a/.bashrc'), ('a/.bashrc', ''))
+				assert.eq(splitext('noext'), ('noext', ''))
+				assert.eq(splitext('a.b/c'), ('a.b/c', ''))
+			`),
+		},
+		{
+			name: `lexical: isabs`,
+			script: itn.HereDoc(`
+				load('path', 'isabs')
+				assert.true(isabs('/a/b'))
+				assert.true(not isabs('a/b'))
+				assert.true(not isabs(''))
+			`),
+		},
+		{
+			name: `lexical: relpath`,
+			script: itn.HereDoc(`
+				load('path', 'relpath')
+				assert.eq(relpath('/a/b/c', '/a'), 'b/c')
+				assert.eq(relpath('/a/b', '/a/b'), '.')
+				assert.eq(relpath('/a/b', '/a/c/d'), '../../b')
+				assert.eq(relpath('a/b', 'a'), 'b')
+				assert.eq(relpath('a/b'), 'a/b')
+			`),
+		},
+		{
+			name: `lexical: relpath mixed kinds`,
+			script: itn.HereDoc(`
+				load('path', 'relpath')
+				relpath('/a/b', 'c')
+			`),
+			wantErr: `path.relpath: cannot mix an absolute path with a relative start`,
+		},
+		{
+			name: `lexical: try_relpath`,
+			script: itn.HereDoc(`
+				load('path', 'try_relpath')
+				v, err = try_relpath('/a/b/c', '/a')
+				assert.eq(err, None)
+				assert.eq(v, 'b/c')
+				v2, err2 = try_relpath('/a', 'c')
+				assert.eq(v2, None)
+				assert.true('cannot mix' in err2)
+			`),
+		},
+		{
+			name: `try_abs`,
+			script: itn.HereDoc(`
+				load('path', 'try_abs')
+				v, err = try_abs('.')
+				assert.eq(err, None)
+				assert.true(len(v) > 0)
+			`),
+		},
+		{
+			name: `expanduser`,
+			script: itn.HereDoc(`
+				load('path', 'expanduser')
+				h = expanduser('~')
+				assert.true(h != '~')
+				hs = expanduser('~/x')
+				assert.true(hs.endswith('/x'))
+				assert.eq(expanduser('~user/x'), '~user/x')
+				assert.eq(expanduser('plain'), 'plain')
+			`),
 		},
 		{
 			name: `abs: no args`,

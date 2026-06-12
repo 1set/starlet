@@ -1,6 +1,22 @@
 # path
 
-`path` provides functions to manipulate directories and file paths. It is inspired by `pathlib` module from Mojo.
+`path` provides functions to manipulate directories and file paths. It follows one rule:
+
+- **Lexical functions** — `join`, `basename`, `dirname`, `normpath`, `split`, `splitext`, `isabs`, `relpath` — use **Python (`posixpath`) semantics**: pure string work on `/`-separated paths, no implicit cleaning, identical results on every OS.
+- **Filesystem functions** — `abs`, `exists`, `is_file`, `is_dir`, `is_link`, `listdir`, `getcwd`, `chdir`, `mkdir` — operate on the real, OS-native filesystem.
+
+## Migrating from v0.1.x
+
+`join` previously used Go's `filepath.Join`, which cleaned the result. With Python semantics:
+
+| call | v0.1.x | now |
+|---|---|---|
+| `join("a", "/b")` | `a/b` | `/b` (an absolute component resets the result) |
+| `join("a", "")` | `a` | `a/` (an empty component adds a trailing separator) |
+| `join("a", "../b")` | `b` | `a/../b` (no cleaning — apply `normpath` to collapse) |
+| `join("a//b", "c")` | `a/b/c` | `a//b/c` |
+
+Use `normpath(join(...))` where the old cleaned result is wanted.
 
 ## Functions
 
@@ -29,7 +45,7 @@ print(p)
 
 ### `join(path, *paths) string`
 
-Joins one or more path elements into a single path intelligently, separating them with an OS specific separator. Empty elements are ignored.
+Joins one or more path elements with Python (`posixpath`) semantics: components are joined with `/`, an absolute component resets the result, an empty component contributes a trailing separator, and no cleaning is applied (see the migration notes above).
 
 #### Parameters
 
@@ -221,7 +237,9 @@ print(p)
 
 ### `chdir(path)`
 
-Changes the current working directory.
+Changes the current working directory **of the whole process**.
+
+> ⚠️ The effect is global: it applies to every machine and goroutine in the host, persists after the script ends, and concurrent machines calling it race with each other. Never expose this module to untrusted scripts; host runtimes typically exclude `path` from restricted module sets for this reason.
 
 #### Parameters
 
@@ -273,3 +291,39 @@ load("path", "mkdir")
 mkdir('secure_directory', 0o700)
 # New directory named 'secure_directory' is created with permissions set to 0700
 ```
+
+### `basename(path) string`
+
+Returns the final component of a path — everything after the last `/`; a path ending in `/` has an empty basename (`basename("a/b/")` is `""`, unlike Go's `filepath.Base`).
+
+### `dirname(path) string`
+
+Returns the directory part of a path — everything before the last `/`, with trailing slashes stripped unless the result is all slashes.
+
+### `normpath(path) string`
+
+Collapses redundant separators and up-level references lexically: `a//b`, `a/./b` and `a/c/../b` all become `a/b`. Exactly two leading slashes are preserved (POSIX gives them special meaning); an empty path normalizes to `.`.
+
+### `split(path) (string, string)`
+
+Splits a path into a `(head, tail)` pair: `split("/a")` is `("/", "a")`, `split("a/b/")` is `("a/b", "")`.
+
+### `splitext(path) (string, string)`
+
+Splits a path into a `(root, extension)` pair: `splitext("a/b.tar.gz")` is `("a/b.tar", ".gz")`; leading dots do not count, so `splitext(".bashrc")` is `(".bashrc", "")`.
+
+### `isabs(path) bool`
+
+Reports whether the path is absolute (starts with `/`).
+
+### `relpath(path, start=".") string`
+
+Returns a relative path to `path` from `start`, computed lexically on the normalized inputs. Mixing an absolute path with a relative one is an error here — resolving the mix would silently depend on the process working directory; call `abs()` first when that is intended. `try_relpath` returns a `(value, error)` pair instead of aborting.
+
+### `expanduser(path) string`
+
+Replaces a leading `~` with the current user's home directory. Only the bare `~`/`~/...` form expands; `~user/...` is returned unchanged. Note that this reads the host environment.
+
+### `try_abs(path) (string, error)` / `try_relpath(path, start=".") (string, error)`
+
+The `(value, error)` pair forms of `abs` and `relpath`, never aborting the script — the same shape as the `json`/`csv`/`http` modules' `try_*` functions.
