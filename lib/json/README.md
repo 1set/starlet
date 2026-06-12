@@ -282,3 +282,50 @@ print("Error:", error)
 # Result: 9.323333333333334
 # Error: None
 ```
+
+### `repair(text) string`
+
+The repair function recovers valid JSON **text** from the messy output that language models often produce, so the result can then be passed to `decode`. It accepts one required positional parameter, the text, and returns a JSON string.
+
+It fixes the common breakages: code fences (` ```json … ``` `), surrounding prose, single-quoted keys/strings, trailing commas, comments, Python literals (`True`/`False`/`None`), unquoted keys, and truncated (cut-off) JSON.
+
+It returns **text, not a value** — the idiom is `decode(repair(x))`, which keeps repair composable with `decode`'s `default` and the `try_*` variants. Because repair returns text, a recovered bare scalar (e.g. the input `The answer is 42` yields `42`) is honest output; scripts that require a structured result should check the type of the decoded value.
+
+**Already-valid JSON is returned byte-for-byte unchanged** (repair is idempotent on good input), so it is safe to call defensively.
+
+#### Examples
+
+**Basic**
+
+Repair a fenced, single-quoted, trailing-comma response and decode it.
+
+```python
+load('json', 'repair', 'decode')
+messy = '''Here is the result:
+```json
+{'name': 'Ann', 'tags': ['a', 'b',],}
+```
+'''
+print(decode(repair(messy)))
+# Output: {'name': 'Ann', 'tags': ['a', 'b']}
+```
+
+### `try_repair(text) tuple`
+
+The try_repair function is a variant of repair that handles errors gracefully.
+It accepts the same parameter as repair, but returns a tuple of (result, error).
+If successful, error will be None. If an error occurs, result will be None and error will contain the error message.
+
+#### Examples
+
+**Basic**
+
+```python
+load('json', 'try_repair')
+result, error = try_repair('{"a": 1,}')
+print("Result:", result)
+print("Error:", error)
+# Output:
+# Result: {"a": 1}
+# Error: None
+```
