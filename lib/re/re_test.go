@@ -311,6 +311,16 @@ func TestLoadModule_Re(t *testing.T) {
 			`),
 			wantErr: `sub: flags are not supported`,
 		},
+		{
+			name: `compiled search and attrs`,
+			script: itn.HereDoc(`
+			load('re', 'compile')
+			b = compile('b')
+			assert.eq(b.search('abc'), [1, 2])
+			assert.eq(b.search('xyz'), None)
+			assert.eq(dir(b), ["findall", "match", "search", "split", "sub"])
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
