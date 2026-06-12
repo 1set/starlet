@@ -328,6 +328,65 @@ func TestLoadModule_Serial(t *testing.T) {
 				assert.true('unknown type tag' in err)
 				`),
 		},
+		{
+			name: `try_loads: wrong argument type`,
+			script: itn.HereDoc(`
+				load('serial', 'try_loads')
+				v, err = try_loads(42)
+				assert.eq(v, None)
+				assert.true(err != None)
+				`),
+		},
+		{
+			name: `error: reference cycle through a dict`,
+			script: itn.HereDoc(`
+				load('serial', 'dumps')
+				d = {}
+				d['self'] = d
+				dumps(d)
+				`),
+			wantErr: `cycle`,
+		},
+		{
+			name: `error: bad element inside a list propagates on load`,
+			script: itn.HereDoc(`
+				load('serial', 'loads')
+				loads('[{"$t":"nope"}]')
+				`),
+			wantErr: `unknown type tag`,
+		},
+		{
+			name: `error: bad element inside a tuple propagates on load`,
+			script: itn.HereDoc(`
+				load('serial', 'loads')
+				loads('{"$t":"tuple","v":[{"$t":"nope"}]}')
+				`),
+			wantErr: `unknown type tag`,
+		},
+		{
+			name: `error: bad element inside a set propagates on load`,
+			script: itn.HereDoc(`
+				load('serial', 'loads')
+				loads('{"$t":"set","v":[{"$t":"nope"}]}')
+				`),
+			wantErr: `unknown type tag`,
+		},
+		{
+			name: `error: bad key inside mapkv propagates on load`,
+			script: itn.HereDoc(`
+				load('serial', 'loads')
+				loads('{"$t":"mapkv","v":[[{"$t":"nope"},1]]}')
+				`),
+			wantErr: `unknown type tag`,
+		},
+		{
+			name: `error: bad value inside mapkv propagates on load`,
+			script: itn.HereDoc(`
+				load('serial', 'loads')
+				loads('{"$t":"mapkv","v":[["k",{"$t":"nope"}]]}')
+				`),
+			wantErr: `unknown type tag`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
