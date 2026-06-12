@@ -142,6 +142,112 @@ func TestLoadModule_Re(t *testing.T) {
 			`),
 			wantErr: `re.findall: for parameter pattern: got int, want string`,
 		},
+		{
+			name: `sub invalid pattern`,
+			script: itn.HereDoc(`
+			load('re', 'sub')
+			sub('(', 'x', 'abc')
+			`),
+			wantErr: `missing closing`,
+		},
+		{
+			name: `sub with count`,
+			script: itn.HereDoc(`
+			load('re', 'sub')
+			assert.eq(sub('a', 'X', 'aaa', 1), 'Xaa')
+			assert.eq(sub('a', 'X', 'aaa', count=2), 'XXa')
+			assert.eq(sub('a', 'X', 'aaa', 9), 'XXX')
+			assert.eq(sub('a', 'X', 'aaa', 0), 'XXX')
+			assert.eq(sub('a', 'X', 'aaa', -1), 'aaa')
+			`),
+		},
+		{
+			name: `sub group template`,
+			script: itn.HereDoc(`
+			load('re', 'sub')
+			assert.eq(sub('(a)(b)', '${2}${1}', 'ab ab'), 'ba ba')
+			assert.eq(sub('a', '$$5', 'a'), '$5')
+			`),
+		},
+		{
+			name: `sub flags rejected`,
+			script: itn.HereDoc(`
+			load('re', 'sub')
+			sub('a', 'b', 'c', 0, 2)
+			`),
+			wantErr: `re.sub: flags are not supported`,
+		},
+		{
+			name: `split maxsplit`,
+			script: itn.HereDoc(`
+			load('re', 'split')
+			assert.eq(split(',', 'a,b,c', 1), ('a', 'b,c'))
+			assert.eq(split(',', 'a,b,c', maxsplit=2), ('a', 'b', 'c'))
+			assert.eq(split(',', 'a,b,c', 99), ('a', 'b', 'c'))
+			assert.eq(split(',', 'a,b,c', -1), ('a,b,c',))
+			`),
+		},
+		{
+			name: `split flags rejected`,
+			script: itn.HereDoc(`
+			load('re', 'split')
+			split(',', 'a,b', 0, 1)
+			`),
+			wantErr: `re.split: flags are not supported`,
+		},
+		{
+			name: `match anchored`,
+			script: itn.HereDoc(`
+			load('re', 'match')
+			assert.eq(match('world', 'hello world'), [])
+			assert.eq(match('hello', 'hello world'), [('hello',)])
+			assert.eq(match('(h)(e)', 'hello'), [('he', 'h', 'e')])
+			`),
+		},
+		{
+			name: `findall groups`,
+			script: itn.HereDoc(`
+			load('re', 'findall')
+			assert.eq(findall(r'(\w)(\d)', 'a1 b2'), (('a', '1'), ('b', '2')))
+			assert.eq(findall(r'\w(\d)', 'a1 b2'), ('1', '2'))
+			`),
+		},
+		{
+			name: `findall flags rejected`,
+			script: itn.HereDoc(`
+			load('re', 'findall')
+			findall('a', 'a', flags=1)
+			`),
+			wantErr: `re.findall: flags are not supported`,
+		},
+		{
+			name: `compile flags rejected`,
+			script: itn.HereDoc(`
+			load('re', 'compile')
+			compile('a', 1)
+			`),
+			wantErr: `re.compile: flags are not supported`,
+		},
+		{
+			name: `compiled methods semantics`,
+			script: itn.HereDoc(`
+			load('re', 'compile')
+			c = compile(',')
+			assert.eq(c.split('a,b,c', 1), ('a', 'b,c'))
+			a = compile('a')
+			assert.eq(a.sub('X', 'aaa', 2), 'XXa')
+			assert.eq(a.match('abc'), [('a',)])
+			assert.eq(a.match('bca'), [])
+			`),
+		},
+		{
+			name: `compiled flags rejected`,
+			script: itn.HereDoc(`
+			load('re', 'compile')
+			compile('a').findall('a', flags=1)
+			`),
+			wantErr: `findall: flags are not supported`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
