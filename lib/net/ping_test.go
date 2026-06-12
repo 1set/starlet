@@ -1,12 +1,16 @@
 package net_test
 
 import (
+	"fmt"
 	stdnet "net"
 	"net/http"
 	"net/http/httptest"
 	"runtime"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/1set/starlet"
 	itn "github.com/1set/starlet/internal"
 	"github.com/1set/starlet/lib/net"
 	"go.starlark.net/starlark"
@@ -272,5 +276,75 @@ func TestLoadModule_Ping(t *testing.T) {
 				return
 			}
 		})
+	}
+}
+
+func TestPingBounds(t *testing.T) {
+	port := startLocalTCPServer(t)
+	tests := []struct {
+		name    string
+		script  string
+		wantErr string
+	}{
+		{
+			name:    `tcping: count too large`,
+			script:  "load('net', 'tcping')\ns = tcping('127.0.0.1', port=tcp_port, count=2000)",
+			wantErr: `net.tcping: count must be at most 1024`,
+		},
+		{
+			name:    `tcping: interval too large`,
+			script:  "load('net', 'tcping')\ns = tcping('127.0.0.1', port=tcp_port, interval=7200)",
+			wantErr: `net.tcping: interval must be at most 3600 seconds`,
+		},
+		{
+			name:    `tcping: timeout too large`,
+			script:  "load('net', 'tcping')\ns = tcping('127.0.0.1', port=tcp_port, timeout=1000000)",
+			wantErr: `net.tcping: timeout must be at most 3600 seconds`,
+		},
+		{
+			name:    `httping: count too large`,
+			script:  "load('net', 'httping')\ns = httping('http://127.0.0.1/', count=2000)",
+			wantErr: `net.httping: count must be at most 1024`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			extra := starlark.StringDict{"tcp_port": starlark.MakeInt(port)}
+			res, err := itn.ExecModuleWithErrorTest(t, net.ModuleName, net.LoadModule, tt.script, tt.wantErr, extra)
+			if (err != nil) != (tt.wantErr != "") {
+				t.Errorf("net(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
+			}
+		})
+	}
+}
+
+func TestTCPingSubSecondInterval(t *testing.T) {
+	// the old time.Duration(f)*time.Second conversion truncated sub-second
+	// values to 0, so this two-round ping paused for no time at all
+	port := startLocalTCPServer(t)
+	script := fmt.Sprintf("load('net', 'tcping')\ns = tcping('127.0.0.1', port=%d, count=2, interval=0.3)", port)
+	ts := time.Now()
+	if _, err := itn.ExecModuleWithErrorTest(t, net.ModuleName, net.LoadModule, script, "", nil); err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if elapsed := time.Since(ts); elapsed < 250*time.Millisecond {
+		t.Errorf("sub-second interval was truncated away, two rounds took only %v", elapsed)
+	}
+}
+
+func TestTCPingCancellation(t *testing.T) {
+	// the ping loop must honor the machine context: with an interruptible
+	// pause the run aborts within the timeout instead of finishing all
+	// rounds first
+	port := startLocalTCPServer(t)
+	m := starlet.NewWithNames(nil, nil, []string{"net"})
+	m.SetScript("ping.star", []byte(fmt.Sprintf("load('net', 'tcping')\ns = tcping('127.0.0.1', port=%d, count=5, interval=1)", port)), nil)
+	ts := time.Now()
+	_, err := m.RunWithTimeout(time.Second, nil)
+	if err == nil || !strings.Contains(err.Error(), "context") {
+		t.Errorf("expected a context cancellation error, got: %v", err)
+	}
+	if elapsed := time.Since(ts); elapsed > 3*time.Second {
+		t.Errorf("ping was not cancelled in time, took %v", elapsed)
 	}
 }
