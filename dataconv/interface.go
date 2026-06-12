@@ -10,6 +10,26 @@
 //	|  Value  | <---------- |  Value     | <---------------------- | String   |
 //	|         |  Unmarshal  |            |   UnmarshalStarlarkJSON |          |
 //	+---------+             +------------+                         +----------+
+//
+// Which function to use:
+//
+//   - Starlark value -> native Go value: Unmarshal. Ints stay platform int
+//     in range and degrade to uint64/*big.Int beyond it; dicts come back as
+//     map[string]interface{} with non-string keys stringified (JSON-ready).
+//   - Go value -> Starlark value: Marshal (common types only; package
+//     starlight wraps everything else).
+//   - Starlark value -> JSON text and back, via the Go shapes above:
+//     MarshalStarlarkJSON / UnmarshalStarlarkJSON. The decode direction
+//     applies TypeConvert heuristics (RFC3339-looking strings become time
+//     values, whole floats become ints).
+//   - Starlark value -> JSON text and back, staying inside Starlark types:
+//     EncodeStarlarkJSON / DecodeStarlarkJSON (the interpreter's own json
+//     encoder: big ints work, bytes/time are errors, no heuristics).
+//
+// The starlight convert package remains the third conversion surface used
+// by the Machine API itself (Run/Call results): its FromValue returns
+// int64-first integers and fidelity-preserving typed dict keys, where this
+// package prefers JSON-friendly shapes.
 package dataconv
 
 import "go.starlark.net/starlark"

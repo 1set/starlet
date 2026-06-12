@@ -3,6 +3,7 @@ package dataconv
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"reflect"
 	"strconv"
 	"strings"
@@ -256,7 +257,10 @@ func TestUnmarshal(t *testing.T) {
 		{startime.Time(now), now, ""},
 		{starlark.NewList([]starlark.Value{starlark.MakeInt(42)}), []interface{}{42}, ""},
 		{strDict, map[string]interface{}{"foo": 42}, ""},
-		{intDict, map[interface{}]interface{}{42 * 2: 42}, ""},
+		// non-string keys are stringified: the whole map stays
+		// map[string]interface{} instead of flipping to
+		// map[interface{}]interface{} on the first non-string key
+		{intDict, map[string]interface{}{"84": 42}, ""},
 		{ct, &customType{42}, ""},
 		{act, &customType{43}, ""},
 		{strDictCT, map[string]interface{}{"foo": 42, "bar": &customType{42}}, ""},
@@ -288,7 +292,10 @@ func TestUnmarshal(t *testing.T) {
 		{sse, nil, "unrecognized starlark type: *starlark.Builtin"},
 		{sle, nil, "unrecognized starlark type: *starlark.Builtin"},
 		{ste, nil, "unrecognized starlark type: *starlark.Builtin"},
-		{sdke, nil, "unmarshaling starlark key: unrecognized starlark type: *starlark.Builtin"},
+		// hashable non-string keys no longer go through Unmarshal: they are
+		// stringified via their Starlark representation, so a builtin key
+		// succeeds instead of erroring
+		{sdke, map[string]interface{}{"<built-in function foo>": 42}, ""},
 		{sdve, nil, "unmarshaling starlark value: unrecognized starlark type: *starlark.Builtin"},
 	}
 	for i, c := range cases {
@@ -553,5 +560,78 @@ func TestStructGoJSONMarshal(t *testing.T) {
 		return
 	} else if exp := `{"Name":"simple","Members":{"bar":{},"foo":"baz","now":{}}}`; string(got) != exp {
 		t.Logf("expected: %q, got: %q", exp, string(got))
+	}
+}
+
+func TestUnmarshalLosslessContract(t *testing.T) {
+	// ints beyond the platform int used to error; they now degrade
+	// losslessly through uint64 to *big.Int (in-range stays int)
+	huge := starlark.MakeInt64(1).Lsh(70)   // 1 << 70: beyond uint64, lands in *big.Int
+	overInt := starlark.MakeUint64(1 << 63) // beyond int64, fits uint64
+	if v, err := Unmarshal(overInt); err != nil {
+		t.Errorf("expected the uint64-range int to unmarshal, got error: %v", err)
+	} else if u, ok := v.(uint64); !ok || u != 1<<63 {
+		t.Errorf("expected uint64(1<<63), got %T %v", v, v)
+	}
+	if v, err := Unmarshal(huge); err != nil {
+		t.Errorf("expected the big int to unmarshal, got error: %v", err)
+	} else if b, ok := v.(*big.Int); !ok || b.BitLen() != 71 {
+		t.Errorf("expected *big.Int of 71 bits, got %T %v", v, v)
+	}
+
+	// a tuple key used to crash the host with 'hash of unhashable type';
+	// it is now stringified like any other non-string key
+	td := starlark.NewDict(1)
+	if err := td.SetKey(starlark.Tuple{starlark.String("a"), starlark.MakeInt(1)}, starlark.String("v")); err != nil {
+		t.Fatal(err)
+	}
+	if v, err := Unmarshal(td); err != nil {
+		t.Errorf("expected the tuple-key dict to unmarshal, got error: %v", err)
+	} else if m, ok := v.(map[string]interface{}); !ok || m[`("a", 1)`] != "v" {
+		t.Errorf("expected the tuple key to stringify, got %T %v", v, v)
+	}
+
+	// a post-stringification collision errors instead of dropping a value
+	cd := starlark.NewDict(2)
+	_ = cd.SetKey(starlark.MakeInt(1), starlark.String("a"))
+	_ = cd.SetKey(starlark.String("1"), starlark.String("b"))
+	if _, err := Unmarshal(cd); err == nil || !strings.Contains(err.Error(), "key collision") {
+		t.Errorf("expected a key-collision error, got: %v", err)
+	}
+
+	// bool keys keep the historical json-style lowercase text
+	bd := starlark.NewDict(2)
+	_ = bd.SetKey(starlark.Bool(true), starlark.MakeInt(1))
+	_ = bd.SetKey(starlark.Bool(false), starlark.MakeInt(2))
+	if v, err := Unmarshal(bd); err != nil {
+		t.Errorf("expected the bool-key dict to unmarshal, got: %v", err)
+	} else if m := v.(map[string]interface{}); m["true"] != 1 || m["false"] != 2 {
+		t.Errorf("expected json-style bool keys, got %v", m)
+	}
+
+	// a list directly containing itself errors at the list's own guard
+	selfList := starlark.NewList(nil)
+	_ = selfList.Append(selfList)
+	if _, err := Unmarshal(selfList); err == nil || !strings.Contains(err.Error(), "cyclic reference") {
+		t.Errorf("expected a cyclic-reference error for the self-list, got: %v", err)
+	}
+
+	// an indirect cycle (dict -> list -> dict) used to overflow the stack:
+	// the old detection only caught a container directly containing itself
+	cl := starlark.NewList(nil)
+	cdict := starlark.NewDict(1)
+	_ = cdict.SetKey(starlark.String("l"), cl)
+	_ = cl.Append(cdict)
+	if _, err := Unmarshal(cdict); err == nil || !strings.Contains(err.Error(), "cyclic reference") {
+		t.Errorf("expected a cyclic-reference error, got: %v", err)
+	}
+
+	// the same container appearing twice WITHOUT a cycle is fine
+	shared := starlark.NewList([]starlark.Value{starlark.MakeInt(1)})
+	dd := starlark.NewDict(2)
+	_ = dd.SetKey(starlark.String("a"), shared)
+	_ = dd.SetKey(starlark.String("b"), shared)
+	if _, err := Unmarshal(dd); err != nil {
+		t.Errorf("expected the diamond-shaped value to unmarshal, got: %v", err)
 	}
 }

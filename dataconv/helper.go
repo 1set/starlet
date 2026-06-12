@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"math"
 	"reflect"
 	"strings"
@@ -53,15 +52,6 @@ func MarshalStarlarkJSON(data starlark.Value, indent int) (string, error) {
 	v, err := Unmarshal(data)
 	if err != nil {
 		return emptyStr, err
-	}
-
-	// fix map[interface {}]interface {}
-	if m, ok := v.(map[interface{}]interface{}); ok {
-		mm := make(map[string]interface{})
-		for k, v := range m {
-			mm[fmt.Sprintf("%v", k)] = v
-		}
-		v = mm
 	}
 
 	// prepare json encoder
