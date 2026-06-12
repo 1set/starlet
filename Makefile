@@ -45,6 +45,10 @@ build:
 test:
 	$(GOTEST) -v -race -cover -covermode=atomic -count 1 ./...
 
+# real-network smoke tests, excluded from the default (hermetic) suite
+test_integration:
+	$(GOTEST) -v -race -tags integration -count 1 ./lib/net/...
+
 test_loop:
 	while true; do \
 		$(GOTEST) -v -race -cover -covermode=atomic -count 1 ./...; \
