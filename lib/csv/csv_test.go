@@ -2,9 +2,12 @@ package csv_test
 
 import (
 	"testing"
+	"time"
 
 	itn "github.com/1set/starlet/internal"
 	libcsv "github.com/1set/starlet/lib/csv"
+	startime "go.starlark.net/lib/time"
+	"go.starlark.net/starlark"
 )
 
 func TestLoadModule_CSV(t *testing.T) {
@@ -216,6 +219,31 @@ assert.eq(write_all(csv_data), csv_data_string)
 			`),
 		},
 		{
+			name: `write_all: cell types`,
+			script: itn.HereDoc(`
+load('csv', 'write_all')
+assert.eq(write_all([[1000000.0, 0.00001, -2.5]]), "1000000,0.00001,-2.5\n")
+assert.eq(write_all([[None, True, False]]), ",true,false\n")
+assert.eq(write_all([[test_time]]), "2023-01-15T12:30:45Z\n")
+			`),
+		},
+		{
+			name: `write_all: non-finite float cell`,
+			script: itn.HereDoc(`
+load('csv', 'write_all')
+write_all([[float("nan")]])
+			`),
+			wantErr: `not representable in CSV`,
+		},
+		{
+			name: `write_all: nested cell`,
+			script: itn.HereDoc(`
+load('csv', 'write_all')
+write_all([[[1, 2]]])
+			`),
+			wantErr: `unsupported cell type`,
+		},
+		{
 			name: `write_dict: no args`,
 			script: itn.HereDoc(`
 load('csv', 'write_dict')
@@ -298,6 +326,22 @@ assert.eq(x, "a\n100\n")
 			`),
 		},
 		{
+			name: `write_dict: cell types`,
+			script: itn.HereDoc(`
+load('csv', 'write_dict')
+x = write_dict([{"a": 1000000.0, "b": None, "c": True}], header=["a", "b", "c", "d"])
+assert.eq(x, "a,b,c,d\n1000000,,true,\n")
+			`),
+		},
+		{
+			name: `write_dict: nested cell`,
+			script: itn.HereDoc(`
+load('csv', 'write_dict')
+write_dict([{"a": {"x": 1}}], header=["a"])
+			`),
+			wantErr: `unsupported cell type`,
+		},
+		{
 			name: `write_dict: normal`,
 			script: itn.HereDoc(`
 load('csv', 'write_dict')
@@ -349,7 +393,10 @@ assert.eq(len(first_field), 1)  # Length should be 1, not 4 (3 BOM bytes + "a")
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res, err := itn.ExecModuleWithErrorTest(t, libcsv.ModuleName, libcsv.LoadModule, tt.script, tt.wantErr, nil)
+			predecl := starlark.StringDict{
+				"test_time": startime.Time(time.Date(2023, 1, 15, 12, 30, 45, 0, time.UTC)),
+			}
+			res, err := itn.ExecModuleWithErrorTest(t, libcsv.ModuleName, libcsv.LoadModule, tt.script, tt.wantErr, predecl)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("csv(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
 				return

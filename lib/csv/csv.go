@@ -7,7 +7,10 @@ import (
 	"bytes"
 	"encoding/csv"
 	"fmt"
+	"math"
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/1set/starlet/dataconv"
 	tps "github.com/1set/starlet/dataconv/types"
@@ -16,6 +19,41 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
+
+// cellToString renders a single cell value for CSV output. Every supported
+// type is rendered explicitly: the previous fmt.Sprintf("%v", v) silently
+// produced Go-flavored text — scientific notation for large/small floats
+// ("1e+06"), "<nil>" for None, Go syntax for nested collections — which
+// corrupted the written file without any error.
+func cellToString(v interface{}) (string, error) {
+	switch c := v.(type) {
+	case nil:
+		// matches the empty cell written for a missing write_dict key
+		return "", nil
+	case string:
+		return c, nil
+	case bool:
+		// lowercase, consistent with json.encode output
+		if c {
+			return "true", nil
+		}
+		return "false", nil
+	case int:
+		return strconv.Itoa(c), nil
+	case float64:
+		if math.IsNaN(c) || math.IsInf(c, 0) {
+			return "", fmt.Errorf("float value %v is not representable in CSV", c)
+		}
+		// plain decimal notation, never scientific: 1000000.0 -> "1000000"
+		return strconv.FormatFloat(c, 'f', -1, 64), nil
+	case time.Time:
+		return c.Format(time.RFC3339), nil
+	default:
+		// nested lists/dicts and anything else would serialize as Go syntax
+		// ("[1 a]" / "map[a:1]") — reject loudly instead of corrupting
+		return "", fmt.Errorf("unsupported cell type %T", v)
+	}
+}
 
 // ModuleName defines the expected name for this Module when used in starlark's load() function, eg: load('csv', 'read_all')
 const ModuleName = "csv"
@@ -155,7 +193,11 @@ func writeAll(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple,
 		}
 		var row = make([]string, len(sl))
 		for j, v := range sl {
-			row[j] = fmt.Sprintf("%v", v)
+			cell, err := cellToString(v)
+			if err != nil {
+				return starlark.None, fmt.Errorf("%s: row %d column %d: %w", b.Name(), i, j, err)
+			}
+			row[j] = cell
 		}
 		records = append(records, row)
 	}
@@ -227,7 +269,11 @@ func writeDict(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple
 		var row = make([]string, len(headerStr))
 		for j, k := range headerStr {
 			if v, ok := mm[k]; ok {
-				row[j] = fmt.Sprintf("%v", v)
+				cell, err := cellToString(v)
+				if err != nil {
+					return starlark.None, fmt.Errorf("%s: row %d field %q: %w", b.Name(), len(records)-1, k, err)
+				}
+				row[j] = cell
 			}
 		}
 		records = append(records, row)

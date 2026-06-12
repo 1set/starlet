@@ -59,6 +59,8 @@ print(data)
 
 write all rows from source to a csv-encoded string
 
+Cell values are rendered per type: strings as-is; ints and floats in plain decimal notation (never scientific, e.g. `1000000.0` → `1000000`); `True`/`False` as `true`/`false`; `None` as an empty cell; time values as RFC 3339. Nested lists/dicts and non-finite floats (`nan`, `inf`) are reported as errors instead of being silently written in Go syntax.
+
 #### Parameters
 
 | name     | type         | description                                                                                                                                                     |
@@ -88,6 +90,8 @@ print(csv_str)
 ### `write_dict(data, header, comma=",") string`
 
 write a list of dictionaries to a csv string based on the provided header
+
+Cell values are rendered with the same per-type rules as `write_all`; a key missing from a row produces an empty cell, the same as an explicit `None`.
 
 #### Parameters
 
