@@ -2160,3 +2160,12 @@ func Test_Machine_Run_LoadTypedErrors(t *testing.T) {
 		t.Errorf("expected ModuleWithheldError{json} via errors.As, got: %v", err)
 	}
 }
+
+// permErrFS fails every Open with a non-NotExist error, exercising the
+// load path that must keep real filesystem errors intact (only "not
+// found anywhere" conditions become typed module errors).
+type permErrFS struct{}
+
+func (permErrFS) Open(name string) (fs.File, error) {
+	return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrPermission}
+}
