@@ -280,7 +280,7 @@ print(unescape(s))
 
 ### `quote(str) string`
 
-Returns a shell-escaped version of the string str. This returns a string that can safely be used as one token in a shell command line.
+Returns a double-quoted string literal in Go syntax representing str, with control characters and non-printable runes escaped (like Go's `strconv.Quote`). NOTE: this is **not** shell escaping — do not use it to build shell command lines.
 
 #### Parameters
 
@@ -323,3 +323,23 @@ s = '"Hello\tWorld"'
 print(unquote(s))
 World
 ```
+
+### `head(s, n) string`
+
+Returns the first `n` characters (runes) of `s`. `n` must be non-negative and is clamped at the length of the string, so a short input never errors. Unlike the language-level `s[:n]`, the cut is rune-aware and never splits a multi-byte character.
+
+### `tail(s, n) string`
+
+Returns the last `n` characters (runes) of `s`, with the same clamping and rune-awareness as `head`.
+
+### `head_lines(s, n) string`
+
+Returns the first `n` lines of `s` (split on `\n`), clamped at the number of lines.
+
+### `tail_lines(s, n) string`
+
+Returns the last `n` lines of `s` (split on `\n`), clamped at the number of lines.
+
+### `truncate(s, length, suffix="...") string`
+
+Shortens `s` to at most `length` characters (runes). If a cut happens, `suffix` is appended and the result — including the suffix — never exceeds `length` runes; a string already within the limit is returned unchanged.

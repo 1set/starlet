@@ -463,3 +463,91 @@ func TestLoadModule_String(t *testing.T) {
 		})
 	}
 }
+
+func TestLoadModule_String_HeadTailTruncate(t *testing.T) {
+	tests := []struct {
+		name    string
+		script  string
+		wantErr string
+	}{
+		{
+			name: `head and tail`,
+			script: itn.HereDoc(`
+				load('string', 'head', 'tail')
+				assert.eq(head('hello', 2), 'he')
+				assert.eq(head('hello', 99), 'hello')
+				assert.eq(head('hello', 0), '')
+				assert.eq(head('你好世界', 2), '你好')
+				assert.eq(tail('hello', 2), 'lo')
+				assert.eq(tail('hello', 99), 'hello')
+				assert.eq(tail('你好世界', 2), '世界')
+				assert.eq(tail('a☕c', 2), '☕c')
+			`),
+		},
+		{
+			name: `head negative`,
+			script: itn.HereDoc(`
+				load('string', 'head')
+				head('hello', -1)
+			`),
+			wantErr: `head: n must be non-negative`,
+		},
+		{
+			name: `tail negative`,
+			script: itn.HereDoc(`
+				load('string', 'tail')
+				tail('hello', -1)
+			`),
+			wantErr: `tail: n must be non-negative`,
+		},
+		{
+			name: `head_lines and tail_lines`,
+			script: itn.HereDoc(`
+				load('string', 'head_lines', 'tail_lines')
+				s = 'a\nb\nc'
+				assert.eq(head_lines(s, 2), 'a\nb')
+				assert.eq(head_lines(s, 99), s)
+				assert.eq(head_lines(s, 0), '')
+				assert.eq(tail_lines(s, 2), 'b\nc')
+				assert.eq(tail_lines(s, 99), s)
+			`),
+		},
+		{
+			name: `head_lines negative`,
+			script: itn.HereDoc(`
+				load('string', 'head_lines')
+				head_lines('a\nb', -2)
+			`),
+			wantErr: `head_lines: n must be non-negative`,
+		},
+		{
+			name: `truncate`,
+			script: itn.HereDoc(`
+				load('string', 'truncate')
+				assert.eq(truncate('hello world', 8), 'hello...')
+				assert.eq(truncate('hello', 99), 'hello')
+				assert.eq(truncate('hello', 5), 'hello')
+				assert.eq(truncate('hello world', 8, suffix='~'), 'hello w~')
+				assert.eq(truncate('你好世界你好世界', 5), '你好...')
+				assert.eq(truncate('hello', 2), '..')
+				assert.eq(truncate('hello', 0), '')
+			`),
+		},
+		{
+			name: `truncate negative`,
+			script: itn.HereDoc(`
+				load('string', 'truncate')
+				truncate('hello', -1)
+			`),
+			wantErr: `truncate: length must be non-negative`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res, err := itn.ExecModuleWithErrorTest(t, ls.ModuleName, ls.LoadModule, tt.script, tt.wantErr, nil)
+			if (err != nil) != (tt.wantErr != "") {
+				t.Errorf("string(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
+			}
+		})
+	}
+}
