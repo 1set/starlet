@@ -315,10 +315,12 @@ func (p *Pattern) doFind(str, kind string) starlark.Value {
 }
 
 // doFindall implements Python findall shaping: no group -> the full matches;
-// one group -> that group's text; several groups -> a tuple per match.
+// one group -> that group's text; several groups -> a tuple per match. The
+// outer container is a list, matching Python's re.findall (and the legacy re
+// module); only the per-match multi-group element stays a tuple.
 func (p *Pattern) doFindall(str string) starlark.Value {
 	ng := p.search.NumSubexp()
-	var out starlark.Tuple
+	var out []starlark.Value
 	for _, m := range p.search.FindAllStringSubmatchIndex(str, -1) {
 		switch ng {
 		case 0:
@@ -333,7 +335,7 @@ func (p *Pattern) doFindall(str string) starlark.Value {
 			out = append(out, grp)
 		}
 	}
-	return out
+	return starlark.NewList(out)
 }
 
 func (p *Pattern) doFinditer(str string) starlark.Value {
@@ -347,10 +349,11 @@ func (p *Pattern) doFinditer(str string) starlark.Value {
 }
 
 // doSplit implements Python split: the text of capture groups is included in
-// the result. A non-positive maxsplit means no limit.
+// the result. A non-positive maxsplit means no limit. The result is a list,
+// matching Python's re.split (and the legacy re module).
 func (p *Pattern) doSplit(str string, maxsplit int) starlark.Value {
 	ng := p.search.NumSubexp()
-	var out starlark.Tuple
+	var out []starlark.Value
 	last := 0
 	n := 0
 	for _, m := range p.search.FindAllStringSubmatchIndex(str, -1) {
@@ -365,7 +368,7 @@ func (p *Pattern) doSplit(str string, maxsplit int) starlark.Value {
 		n++
 	}
 	out = append(out, starlark.String(str[last:]))
-	return out
+	return starlark.NewList(out)
 }
 
 // doSub replaces matches. repl is either a string template (Python \1 /
