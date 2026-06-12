@@ -1059,3 +1059,29 @@ func TestTryRequestFamily(t *testing.T) {
 		})
 	}
 }
+
+func TestTryReadsUnderLimit(t *testing.T) {
+	// the size-limit failure must land in the error slot of the pair
+	// instead of aborting the script like body()/json() do
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"a": 1, "padding": "pppppppppppppppppppp"}`))
+	}))
+	defer srv.Close()
+
+	md := lh.NewModule()
+	md.SetMaxResponseBodyBytes(4)
+	script := itn.HereDoc(`
+		load('http', 'get')
+		res = get(test_url)
+		b, err = res.try_body()
+		assert.eq(b, None)
+		assert.true('exceeds' in err)
+		v, err2 = res.try_json()
+		assert.eq(v, None)
+		assert.true('exceeds' in err2)
+	`)
+	extra := starlark.StringDict{"test_url": starlark.String(srv.URL)}
+	if _, err := itn.ExecModuleWithErrorTest(t, lh.ModuleName, md.LoadModule, script, "", extra); err != nil {
+		t.Errorf("expected the limited try-reads to pass with captured errors, got: %v", err)
+	}
+}
