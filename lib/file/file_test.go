@@ -20,6 +20,7 @@ func TestLoadModule_File(t *testing.T) {
 		wantErr     string
 		fileContent string
 		skipWindows bool
+		skipRoot    bool
 	}{
 		{
 			name: `trim bom`,
@@ -965,12 +966,12 @@ func TestLoadModule_File(t *testing.T) {
 			name: `stat: no perm`,
 			script: itn.HereDoc(`
 				load('file', 'stat')
-				fp = '/etc/sudoers'
-				s = stat(fp)
+				s = stat(no_perm_file)
 				s.get_md5()
 			`),
-			wantErr:     `get_md5: open /etc/sudoers`,
+			wantErr:     `permission denied`,
 			skipWindows: true,
+			skipRoot:    true, // root ignores file permission bits
 		},
 	}
 	for _, tt := range tests {
@@ -978,6 +979,10 @@ func TestLoadModule_File(t *testing.T) {
 			// skip windows
 			if isOnWindows && tt.skipWindows {
 				t.Skipf("Skip test on Windows")
+				return
+			}
+			if tt.skipRoot && os.Geteuid() == 0 {
+				t.Skipf("Skip test as root")
 				return
 			}
 
@@ -1007,6 +1012,25 @@ func TestLoadModule_File(t *testing.T) {
 					"temp_file": starlark.String(tp),
 					"temp_dir":  starlark.String(td),
 				}
+			}
+
+			// a hermetic permission barrier: an unreadable temp file (instead
+			// of relying on environment-specific paths like /etc/sudoers)
+			if strings.Contains(tt.script, "no_perm_file") {
+				npf, err := os.CreateTemp("", "starlet-file-test-noperm")
+				if err != nil {
+					t.Errorf("os.CreateTemp() expects no error, actual error = '%v'", err)
+					return
+				}
+				_ = npf.Close()
+				if err := os.Chmod(npf.Name(), 0o000); err != nil {
+					t.Errorf("os.Chmod() expects no error, actual error = '%v'", err)
+					return
+				}
+				if predecl == nil {
+					predecl = starlark.StringDict{}
+				}
+				predecl["no_perm_file"] = starlark.String(npf.Name())
 			}
 
 			// execute test

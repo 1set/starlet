@@ -17,6 +17,7 @@ func TestLoadModule_Path(t *testing.T) {
 		script      string
 		wantErr     string
 		skipWindows bool
+		skipRoot    bool
 	}{
 		{
 			name: `join: no args`,
@@ -384,6 +385,7 @@ func TestLoadModule_Path(t *testing.T) {
 			`),
 			wantErr:     `path.listdir: open /`,
 			skipWindows: true,
+			skipRoot:    true, // root can read these directories, so the error never happens
 		},
 		{
 			name: `getcwd: no args`,
@@ -492,6 +494,22 @@ func TestLoadModule_Path(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.skipRoot && os.Geteuid() == 0 {
+				t.Skipf("Skip test as root")
+				return
+			}
+			// path.chdir mutates the process-global CWD; restore it after each
+			// case so cases stay independent and the suite survives -count=2.
+			origWD, err := os.Getwd()
+			if err != nil {
+				t.Fatalf("os.Getwd() expects no error, actual error = '%v'", err)
+			}
+			defer func() {
+				if err := os.Chdir(origWD); err != nil {
+					t.Fatalf("failed to restore working directory: %v", err)
+				}
+			}()
+
 			// prepare temp file if needed
 			var (
 				tp string
