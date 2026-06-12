@@ -1,6 +1,9 @@
 package starlet
 
 import (
+	"fmt"
+	"strings"
+
 	libatom "github.com/1set/starlet/lib/atom"
 	libb64 "github.com/1set/starlet/lib/base64"
 	libcsv "github.com/1set/starlet/lib/csv"
@@ -99,4 +102,124 @@ func EnableGlobalReassign() {
 // DisableGlobalReassign disables global reassignment in Starlark environments for loading modules.
 func DisableGlobalReassign() {
 	resolve.AllowGlobalReassign = false
+}
+
+// ModuleCapability is a bit set classifying what a builtin module can
+// touch on the host. Policy layers use it to derive module sets instead of
+// maintaining hand-written name lists that silently rot as modules are
+// added.
+type ModuleCapability uint
+
+const (
+	// CapLog marks modules that write to the host's logging or console
+	// facilities (including stderr helpers).
+	CapLog ModuleCapability = 1 << iota
+	// CapProcess marks modules that read or mutate process-level state:
+	// working directory, host identity, runtime information.
+	CapProcess
+	// CapFileSystem marks modules that read or write the real filesystem.
+	CapFileSystem
+	// CapNetwork marks modules that open network connections.
+	CapNetwork
+
+	// CapPure is the empty set: pure computation with no host effects.
+	CapPure ModuleCapability = 0
+)
+
+// Has reports whether c includes every capability in other.
+func (c ModuleCapability) Has(other ModuleCapability) bool {
+	return c&other == other
+}
+
+// Intersects reports whether c shares any capability with other.
+func (c ModuleCapability) Intersects(other ModuleCapability) bool {
+	return c&other != 0
+}
+
+// String returns a "+"-joined list of capability names, or "pure".
+func (c ModuleCapability) String() string {
+	if c == CapPure {
+		return "pure"
+	}
+	var parts []string
+	for _, e := range []struct {
+		bit  ModuleCapability
+		name string
+	}{
+		{CapLog, "log"},
+		{CapProcess, "process"},
+		{CapFileSystem, "filesystem"},
+		{CapNetwork, "network"},
+	} {
+		if c.Has(e.bit) {
+			parts = append(parts, e.name)
+		}
+	}
+	return strings.Join(parts, "+")
+}
+
+// builtinModuleCapabilities declares the capability set of every builtin
+// module. A test pins this map to the module registry, so adding a module
+// without classifying it fails the build bar.
+var builtinModuleCapabilities = map[string]ModuleCapability{
+	"atom":         CapPure,
+	"base64":       CapPure,
+	"csv":          CapPure,
+	"file":         CapFileSystem,
+	"go_idiomatic": CapLog | CapProcess, // eprint/pprint write the host's stderr; sleep/exit touch run control
+	"hashlib":      CapPure,
+	"http":         CapNetwork,
+	"json":         CapPure,
+	"log":          CapLog,
+	"math":         CapPure,
+	"net":          CapNetwork,
+	"path":         CapFileSystem | CapProcess, // listdir/mkdir touch the FS; chdir/getcwd the process CWD
+	"random":       CapPure,
+	"re":           CapPure,
+	"runtime":      CapProcess, // exposes host identity, directories, process info
+	"stats":        CapPure,
+	"string":       CapPure,
+	"struct":       CapPure,
+	"time":         CapPure,
+}
+
+// GetBuiltinModuleCapability returns the capability set of a builtin
+// module; ok is false for names that are not builtin modules.
+func GetBuiltinModuleCapability(name string) (cap ModuleCapability, ok bool) {
+	cap, ok = builtinModuleCapabilities[name]
+	return
+}
+
+// GetBuiltinModuleNamesExcluding returns all builtin module names except
+// the given ones. An unknown name in the exclusion list is an error -
+// fail-closed, because a typo in a denylist must not silently include the
+// module it meant to block.
+func GetBuiltinModuleNamesExcluding(excludes ...string) ([]string, error) {
+	ex := make(map[string]bool, len(excludes))
+	for _, e := range excludes {
+		if _, found := allBuiltinModules[e]; !found {
+			return nil, fmt.Errorf("unknown builtin module to exclude: %q", e)
+		}
+		ex[e] = true
+	}
+	var names []string
+	for _, n := range GetAllBuiltinModuleNames() {
+		if !ex[n] {
+			names = append(names, n)
+		}
+	}
+	return names, nil
+}
+
+// GetBuiltinModuleNamesWithoutCapabilities returns the builtin module
+// names whose capability sets share nothing with caps - e.g. passing
+// CapNetwork|CapFileSystem yields the modules that can touch neither.
+func GetBuiltinModuleNamesWithoutCapabilities(caps ModuleCapability) []string {
+	var names []string
+	for _, n := range GetAllBuiltinModuleNames() {
+		if !builtinModuleCapabilities[n].Intersects(caps) {
+			names = append(names, n)
+		}
+	}
+	return names
 }

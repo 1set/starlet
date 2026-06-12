@@ -1284,3 +1284,79 @@ func TestWrapStructData_Edit(t *testing.T) {
 		}
 	}
 }
+
+func TestModuleCapabilities(t *testing.T) {
+	// the capability map must classify exactly the builtin registry:
+	// adding a module without declaring its capabilities fails here
+	names := starlet.GetAllBuiltinModuleNames()
+	for _, n := range names {
+		if _, ok := starlet.GetBuiltinModuleCapability(n); !ok {
+			t.Errorf("builtin module %q has no capability classification", n)
+		}
+	}
+	if _, ok := starlet.GetBuiltinModuleCapability("no_such_module"); ok {
+		t.Errorf("expected ok=false for an unknown module name")
+	}
+
+	// spot-check the classifications that drive policy decisions
+	for name, want := range map[string]starlet.ModuleCapability{
+		"http": starlet.CapNetwork,
+		"net":  starlet.CapNetwork,
+		"file": starlet.CapFileSystem,
+		"path": starlet.CapFileSystem | starlet.CapProcess,
+		"json": starlet.CapPure,
+		"log":  starlet.CapLog,
+	} {
+		if got, _ := starlet.GetBuiltinModuleCapability(name); got != want {
+			t.Errorf("capability of %q = %v, want %v", name, got, want)
+		}
+	}
+
+	// String renders readable sets
+	if s := starlet.CapPure.String(); s != "pure" {
+		t.Errorf("CapPure.String() = %q", s)
+	}
+	if s := (starlet.CapFileSystem | starlet.CapProcess).String(); s != "process+filesystem" {
+		t.Errorf("combined String() = %q", s)
+	}
+}
+
+func TestGetBuiltinModuleNamesExcluding(t *testing.T) {
+	all := starlet.GetAllBuiltinModuleNames()
+	got, err := starlet.GetBuiltinModuleNamesExcluding("http", "net")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if len(got) != len(all)-2 {
+		t.Errorf("expected %d names, got %d", len(all)-2, len(got))
+	}
+	for _, n := range got {
+		if n == "http" || n == "net" {
+			t.Errorf("excluded module %q leaked through", n)
+		}
+	}
+
+	// fail-closed: a typo must not silently include the module it meant
+	// to block
+	if _, err := starlet.GetBuiltinModuleNamesExcluding("htpp"); err == nil {
+		t.Errorf("expected an error for an unknown exclusion name")
+	}
+}
+
+func TestGetBuiltinModuleNamesWithoutCapabilities(t *testing.T) {
+	got := starlet.GetBuiltinModuleNamesWithoutCapabilities(starlet.CapNetwork | starlet.CapFileSystem)
+	for _, n := range got {
+		if n == "http" || n == "net" || n == "file" || n == "path" {
+			t.Errorf("module %q must be excluded by its capabilities", n)
+		}
+	}
+	found := map[string]bool{}
+	for _, n := range got {
+		found[n] = true
+	}
+	for _, want := range []string{"json", "string", "re", "math"} {
+		if !found[want] {
+			t.Errorf("expected pure module %q in the result", want)
+		}
+	}
+}
