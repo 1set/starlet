@@ -218,6 +218,46 @@ read_dict('a,b\n1\n')
 			wantErr: `wrong number of fields`,
 		},
 		{
+			name: `read_dict: no args`,
+			script: itn.HereDoc(`
+load('csv', 'read_dict')
+read_dict()
+			`),
+			wantErr: `csv.read_dict: missing argument for source`,
+		},
+		{
+			name: `read_dict: invalid comma`,
+			script: itn.HereDoc(`
+load('csv', 'read_dict')
+read_dict('a,b\n', comma=', ')
+			`),
+			wantErr: `csv.read_dict: expected comma param to be a single-character string`,
+		},
+		{
+			name: `read_dict: malformed header`,
+			script: itn.HereDoc(`
+load('csv', 'read_dict')
+read_dict('"bad\n')
+			`),
+			wantErr: `csv.read_dict: parse error on line 1`,
+		},
+		{
+			name: `read_dict: malformed data row`,
+			script: itn.HereDoc(`
+load('csv', 'read_dict')
+read_dict('a,b\n"bad\n')
+			`),
+			wantErr: `csv.read_dict: parse error on line 2`,
+		},
+		{
+			name: `read_dict: variable fields`,
+			script: itn.HereDoc(`
+load('csv', 'read_dict')
+rows = read_dict('a\n1,2\n3\n', fields_per_record=-1)
+assert.eq(rows, [{"a": "1"}, {"a": "3"}])
+			`),
+		},
+		{
 			name: `try_read_dict: error`,
 			script: itn.HereDoc(`
 load('csv', 'try_read_dict')
