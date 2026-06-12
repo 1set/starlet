@@ -56,13 +56,20 @@ func LoadModule() (starlark.StringDict, error) {
 
 // Module defines the actual HTTP module with methods for making requests.
 type Module struct {
-	cli *http.Client
-	rg  RequestGuard
+	cli        *http.Client
+	rg         RequestGuard
+	mu         sync.RWMutex
+	timeoutSec float64
 }
 
-// NewModule creates a new http module with default settings.
+// NewModule creates a new http module with default settings. The package
+// level knobs (TimeoutSecond, Client, Guard) seed the new instance; later
+// changes through set_timeout stay within the instance instead of mutating
+// process-wide state shared by every machine.
 func NewModule() *Module {
-	m := &Module{}
+	ConfigLock.RLock()
+	defer ConfigLock.RUnlock()
+	m := &Module{timeoutSec: TimeoutSecond}
 	if Client != nil {
 		m.cli = Client
 	}
@@ -70,6 +77,13 @@ func NewModule() *Module {
 		m.rg = Guard
 	}
 	return m
+}
+
+// defaultTimeout returns the instance's default request timeout in seconds.
+func (m *Module) defaultTimeout() float64 {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.timeoutSec
 }
 
 // SetClient sets the http client for this module, useful for setting custom clients for testing or multiple loadings.
@@ -105,13 +119,15 @@ func (m *Module) StringDict() starlark.StringDict {
 		sd[name] = starlark.NewBuiltin(ModuleName+"."+name, m.reqMethod(name))
 	}
 	sd["call"] = starlark.NewBuiltin(ModuleName+".call", m.callMethod)
-	sd["set_timeout"] = starlark.NewBuiltin(ModuleName+".set_timeout", setRequestTimeout)
-	sd["get_timeout"] = starlark.NewBuiltin(ModuleName+".get_timeout", getRequestTimeout)
+	sd["set_timeout"] = starlark.NewBuiltin(ModuleName+".set_timeout", m.setRequestTimeout)
+	sd["get_timeout"] = starlark.NewBuiltin(ModuleName+".get_timeout", m.getRequestTimeout)
 	return sd
 }
 
-// setRequestTimeout sets the timeout for http requests
-func setRequestTimeout(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+// setRequestTimeout sets the default timeout for this module instance.
+// It used to write the package-level TimeoutSecond, so one script's
+// set_timeout leaked into every machine in the process.
+func (m *Module) setRequestTimeout(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var timeout types.FloatOrInt
 	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "timeout", &timeout); err != nil {
 		return nil, err
@@ -119,22 +135,19 @@ func setRequestTimeout(thread *starlark.Thread, b *starlark.Builtin, args starla
 	if timeout < 0 {
 		return nil, fmt.Errorf("%s: timeout must be non-negative", b.Name())
 	}
-	// update the global TimeoutSecond variable which influences all future HTTP requests.
-	ConfigLock.Lock()
-	defer ConfigLock.Unlock()
-	TimeoutSecond = float64(timeout)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.timeoutSec = float64(timeout)
 	return starlark.None, nil
 }
 
-// getRequestTimeout returns the current timeout for http requests
-func getRequestTimeout(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+// getRequestTimeout returns the current default timeout of this module instance.
+func (m *Module) getRequestTimeout(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// check the arguments: no arguments
 	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
 		return nil, err
 	}
-	ConfigLock.RLock()
-	defer ConfigLock.RUnlock()
-	return starlark.Float(TimeoutSecond), nil
+	return starlark.Float(m.defaultTimeout()), nil
 }
 
 // callMethod is a general function for making http requests which takes the method name and arguments.
@@ -160,6 +173,13 @@ func (m *Module) callMethod(thread *starlark.Thread, b *starlark.Builtin, args s
 // reqMethod is a factory function for generating starlark builtin functions for different http request methods
 func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		// snapshot the defaults: the timeout from the module instance, the
+		// rest from the package knobs under the config lock (these reads
+		// used to be unlocked, racing with concurrent writers)
+		ConfigLock.RLock()
+		defaultRedirect := !DisableRedirect
+		defaultVerify := !SkipInsecureVerify
+		ConfigLock.RUnlock()
 		var (
 			getDefaultDict = func() *types.NullableDict { return types.NewNullableDict(starlark.NewDict(0)) }
 			urlv           starlark.String
@@ -170,14 +190,22 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 			jsonBody       starlark.Value                       // default None, expect JSON serializable object
 			formBody       = getDefaultDict()                   // default None, expect Dict
 			formEncoding   starlark.String                      // default empty string, expect string
-			timeout        = types.FloatOrInt(TimeoutSecond)
-			allowRedirect  = starlark.Bool(!DisableRedirect)
-			verifySSL      = starlark.Bool(!SkipInsecureVerify)
+			timeout        = types.FloatOrInt(m.defaultTimeout())
+			allowRedirect  = starlark.Bool(defaultRedirect)
+			verifySSL      = starlark.Bool(defaultVerify)
 		)
 
 		if err := starlark.UnpackArgs(b.Name(), args, kwargs, "url", &urlv, "params?", params, "headers", headers, "body", body, "json_body", &jsonBody, "form_body", formBody, "form_encoding", &formEncoding,
 			"auth?", &auth, "timeout?", &timeout, "allow_redirects?", &allowRedirect, "verify?", &verifySSL); err != nil {
 			return nil, err
+		}
+
+		// with a host-injected client, per-request transport options cannot
+		// be applied; reject explicit ones instead of silently dropping them
+		if m.cli != nil {
+			if name := findTransportArg(args, kwargs); name != "" {
+				return nil, fmt.Errorf("%s: %s conflicts with the http client provided by the host and would be ignored", b.Name(), name)
+			}
 		}
 
 		rawURL, err := AsString(urlv)
@@ -224,6 +252,29 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 		r := &Response{*res}
 		return r.Struct(), nil
 	}
+}
+
+// findTransportArg reports which of the transport-affecting parameters
+// (timeout, allow_redirects, verify) the caller passed explicitly, either
+// by keyword or positionally (they sit at positions 9..11).
+func findTransportArg(args starlark.Tuple, kwargs []starlark.Tuple) string {
+	switch {
+	case len(args) > 10:
+		return "verify"
+	case len(args) > 9:
+		return "allow_redirects"
+	case len(args) > 8:
+		return "timeout"
+	}
+	for _, kv := range kwargs {
+		if n, ok := starlark.AsString(kv[0]); ok {
+			switch n {
+			case "timeout", "allow_redirects", "verify":
+				return n
+			}
+		}
+	}
+	return ""
 }
 
 func (m *Module) getHTTPClient(timeoutSec float64, allowRedirect, verifySSL bool) *http.Client {
@@ -349,8 +400,11 @@ func setHeaders(req *http.Request, headers *starlark.Dict) error {
 		}
 	}
 
-	if UserAgent != "" && !isUASet {
-		req.Header.Set(UAKey, UserAgent)
+	ConfigLock.RLock()
+	ua := UserAgent
+	ConfigLock.RUnlock()
+	if ua != "" && !isUASet {
+		req.Header.Set(UAKey, ua)
 	}
 	return nil
 }
