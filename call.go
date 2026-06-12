@@ -2,13 +2,37 @@ package starlet
 
 import (
 	"context"
+	"time"
 
 	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 )
 
 // Call executes a Starlark function or builtin saved in the thread and returns the result.
+// The function runs without a context: it cannot be cancelled or time-bounded;
+// use CallWithContext or CallWithTimeout for that.
 func (m *Machine) Call(name string, args ...interface{}) (out interface{}, err error) {
+	return m.callInternal(nil, name, args)
+}
+
+// CallWithTimeout executes like Call, but the function call (and any
+// context-aware library builtin it invokes) is aborted once the timeout
+// elapses, matching RunWithTimeout semantics.
+func (m *Machine) CallWithTimeout(timeout time.Duration, name string, args ...interface{}) (out interface{}, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return m.callInternal(ctx, name, args)
+}
+
+// CallWithContext executes like Call, but the function call (and any
+// context-aware library builtin it invokes) is aborted when ctx is
+// cancelled, matching RunWithContext semantics. A nil context behaves like
+// plain Call; an already-cancelled context fails immediately.
+func (m *Machine) CallWithContext(ctx context.Context, name string, args ...interface{}) (out interface{}, err error) {
+	return m.callInternal(ctx, name, args)
+}
+
+func (m *Machine) callInternal(ctx context.Context, name string, args []interface{}) (out interface{}, err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -46,9 +70,21 @@ func (m *Machine) Call(name string, args ...interface{}) (out interface{}, err e
 		sl = append(sl, sv)
 	}
 
-	// reset thread
+	// reset the thread and wire the context
 	m.thread.Uncancel()
-	m.thread.SetLocal("context", context.TODO())
+	if ctx == nil {
+		// plain Call: no cancellation channel, as before
+		m.thread.SetLocal("context", context.TODO())
+	} else {
+		if err := ctx.Err(); err != nil {
+			// fail fast instead of silently calling with a context that
+			// can never fire again
+			return nil, errorStarletError("call", err)
+		}
+		m.thread.SetLocal("context", ctx)
+		stop := m.watchContextCancel(ctx)
+		defer stop()
+	}
 
 	// call and convert result
 	res, err := starlark.Call(m.thread, callFunc, sl, nil)

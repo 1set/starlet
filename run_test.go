@@ -1575,20 +1575,12 @@ func Test_Machine_Run_With_CancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	// run script
+	// run script: an already-cancelled context fails fast instead of being
+	// silently replaced with an uncancellable one (the old behavior ran the
+	// script with no deadline at all)
 	m.SetScript("timer.star", []byte(`a = 1; b = 2`), nil)
-	out, err := m.RunWithContext(ctx, nil)
-	if err != nil {
-		t.Errorf("Expected no errors, got error: %v", err)
-		return
-	}
-	if out == nil {
-		t.Errorf("Unexpected empty result: %v", out)
-	} else if len(out) != 2 {
-		t.Errorf("Unexpected result: %v", out)
-	} else {
-		t.Logf("got result after run: %v", out)
-	}
+	_, err := m.RunWithContext(ctx, nil)
+	expectErr(t, err, `starlet: run: context canceled`)
 }
 
 func Test_Machine_Run_With_Context(t *testing.T) {

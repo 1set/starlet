@@ -103,6 +103,32 @@ func (m *Machine) RunWithContext(ctx context.Context, extras StringAnyMap) (Stri
 	return m.runInternal(ctx, extras, true)
 }
 
+// watchContextCancel cancels the machine's thread when ctx fires, until the
+// returned stop function is called. stop is idempotent and waits for the
+// watcher goroutine to exit, so callers can both defer it (panic safety)
+// and invoke it right after execution finishes.
+func (m *Machine) watchContextCancel(ctx context.Context) (stop func()) {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	done := make(chan struct{})
+	go func() {
+		defer wg.Done()
+		select {
+		case <-ctx.Done():
+			m.thread.Cancel("context cancelled")
+		case <-done:
+			// no action if execution has finished
+		}
+	}()
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			close(done)
+			wg.Wait()
+		})
+	}
+}
+
 func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap, allowCache bool) (out StringAnyMap, err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -152,35 +178,25 @@ func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap, allowCac
 	}
 
 	// cancel thread when context cancelled
-	if ctx == nil || ctx.Err() != nil {
-		// for nil context, or context already cancelled, use a new one
+	if ctx == nil {
+		// no context given: use an inert placeholder
 		ctx = context.TODO()
+	} else if e := ctx.Err(); e != nil {
+		// an already-cancelled context used to be silently replaced with an
+		// uncancellable one, running the script with no deadline at all —
+		// fail fast instead
+		return nil, errorStarletError("run", e)
 	}
 	m.thread.SetLocal("context", ctx)
 
-	// wait for the routine to finish, or cancel it when context cancelled
-	var wg sync.WaitGroup
-	defer wg.Wait()
-	wg.Add(1)
-
-	// if context is not cancelled, cancel the routine when execution is done, or panic
-	done := make(chan struct{}, 1)
-	defer close(done)
-
-	go func() {
-		defer wg.Done()
-		select {
-		case <-ctx.Done():
-			m.thread.Cancel("context cancelled")
-		case <-done:
-			// No action if the script has finished
-		}
-	}()
+	// cancel the thread when the context fires, until execution finishes
+	stop := m.watchContextCancel(ctx)
+	defer stop()
 
 	// run with everything prepared
 	m.runTimes++
 	res, err := m.execStarlarkFile(scriptName, source, allowCache)
-	done <- struct{}{}
+	stop()
 
 	// merge result as predeclared for next run
 	for k, v := range res {
