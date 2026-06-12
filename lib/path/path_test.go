@@ -170,6 +170,48 @@ func TestLoadModule_Path(t *testing.T) {
 			`),
 		},
 		{
+			name: `lexical: basename invalid`,
+			script: `load('path', 'basename')
+basename(1)`,
+			wantErr: `path.basename: for parameter path: got int, want string`,
+		},
+		{
+			name: `lexical: normpath invalid`,
+			script: `load('path', 'normpath')
+normpath(1)`,
+			wantErr: `path.normpath: for parameter path: got int, want string`,
+		},
+		{
+			name: `lexical: split invalid`,
+			script: `load('path', 'split')
+split(1)`,
+			wantErr: `path.split: for parameter path: got int, want string`,
+		},
+		{
+			name: `lexical: splitext invalid`,
+			script: `load('path', 'splitext')
+splitext(1)`,
+			wantErr: `path.splitext: for parameter path: got int, want string`,
+		},
+		{
+			name: `lexical: isabs invalid`,
+			script: `load('path', 'isabs')
+isabs(1)`,
+			wantErr: `path.isabs: for parameter path: got int, want string`,
+		},
+		{
+			name: `lexical: expanduser invalid`,
+			script: `load('path', 'expanduser')
+expanduser(1)`,
+			wantErr: `path.expanduser: for parameter path: got int, want string`,
+		},
+		{
+			name: `lexical: relpath invalid`,
+			script: `load('path', 'relpath')
+relpath(1)`,
+			wantErr: `path.relpath: for parameter path: got int, want string`,
+		},
+		{
 			name: `lexical: relpath empty path`,
 			script: itn.HereDoc(`
 				load('path', 'relpath')
