@@ -150,6 +150,83 @@ assert.eq(read_all(csv_string_1, comma="|", comment="#"), [["a","b","c"],["4","5
 			`),
 		},
 		{
+			name: `read_all: malformed row after limit`,
+			script: itn.HereDoc(`
+load('csv', 'read_all')
+csv_string = 'a,b\nc,d\n"bad\n'
+assert.eq(read_all(csv_string, limit=2), [["a","b"],["c","d"]])
+			`),
+		},
+		{
+			name: `read_all: malformed row within limit`,
+			script: itn.HereDoc(`
+load('csv', 'read_all')
+read_all('a,b\n"bad\n', limit=2)
+			`),
+			wantErr: `csv.read_all: parse error on line 2`,
+		},
+		{
+			name: `try_read_all: ok and error`,
+			script: itn.HereDoc(`
+load('csv', 'try_read_all')
+rows, err = try_read_all('a,b\nc,d\n')
+assert.eq(err, None)
+assert.eq(rows, [["a","b"],["c","d"]])
+bad, err2 = try_read_all('"bad\n')
+assert.eq(bad, None)
+assert.true('parse error' in err2)
+			`),
+		},
+		{
+			name: `read_dict: normal`,
+			script: itn.HereDoc(`
+load('csv', 'read_dict')
+rows = read_dict('a,b\n1,2\n3,4\n')
+assert.eq(rows, [{"a": "1", "b": "2"}, {"a": "3", "b": "4"}])
+			`),
+		},
+		{
+			name: `read_dict: skip and limit`,
+			script: itn.HereDoc(`
+load('csv', 'read_dict')
+csv_string = '# note\na,b\n1,2\n3,4\n'
+rows = read_dict(csv_string, skip=1, limit=1)
+assert.eq(rows, [{"a": "1", "b": "2"}])
+			`),
+		},
+		{
+			name: `read_dict: empty source`,
+			script: itn.HereDoc(`
+load('csv', 'read_dict')
+assert.eq(read_dict(''), [])
+			`),
+		},
+		{
+			name: `read_dict: duplicate header`,
+			script: itn.HereDoc(`
+load('csv', 'read_dict')
+read_dict('a,a\n1,2\n')
+			`),
+			wantErr: `csv.read_dict: duplicate header field "a"`,
+		},
+		{
+			name: `read_dict: mismatched row`,
+			script: itn.HereDoc(`
+load('csv', 'read_dict')
+read_dict('a,b\n1\n')
+			`),
+			wantErr: `wrong number of fields`,
+		},
+		{
+			name: `try_read_dict: error`,
+			script: itn.HereDoc(`
+load('csv', 'try_read_dict')
+rows, err = try_read_dict('a,a\n1,2\n')
+assert.eq(rows, None)
+assert.true('duplicate header' in err)
+			`),
+		},
+		{
 			name: `write_all: no args`,
 			script: itn.HereDoc(`
 load('csv', 'write_all')
@@ -340,6 +417,30 @@ load('csv', 'write_dict')
 write_dict([{"a": {"x": 1}}], header=["a"])
 			`),
 			wantErr: `unsupported cell type`,
+		},
+		{
+			name: `try_write_all: ok and error`,
+			script: itn.HereDoc(`
+load('csv', 'try_write_all')
+text, err = try_write_all([[1, 2]])
+assert.eq(err, None)
+assert.eq(text, "1,2\n")
+bad, err2 = try_write_all([[[1]]])
+assert.eq(bad, None)
+assert.true('unsupported cell type' in err2)
+			`),
+		},
+		{
+			name: `try_write_dict: ok and error`,
+			script: itn.HereDoc(`
+load('csv', 'try_write_dict')
+text, err = try_write_dict([{"a": 1}], header=["a"])
+assert.eq(err, None)
+assert.eq(text, "a\n1\n")
+bad, err2 = try_write_dict([{"a": {}}], header=["a"])
+assert.eq(bad, None)
+assert.true('unsupported cell type' in err2)
+			`),
 		},
 		{
 			name: `write_dict: normal`,
