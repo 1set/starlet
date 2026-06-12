@@ -47,10 +47,11 @@ func TestLoadModule_Regex(t *testing.T) {
 			name: `findall: python shaping by group count`,
 			script: itn.HereDoc(`
 				load('regex', 'findall')
-				assert.eq(findall(r'\d+', 'a1 b22 c333'), ('1', '22', '333'))
-				assert.eq(findall(r'(\w)(\d)', 'a1 b2'), (('a', '1'), ('b', '2')))
-				assert.eq(findall(r'x(\d)', 'x1 x2'), ('1', '2'))
-				assert.eq(findall('z', 'abc'), ())
+				assert.eq(findall(r'\d+', 'a1 b22 c333'), ['1', '22', '333'])
+				assert.eq(type(findall(r'\d+', 'a1 b22 c333')), 'list')
+				assert.eq(findall(r'(\w)(\d)', 'a1 b2'), [('a', '1'), ('b', '2')])
+				assert.eq(findall(r'x(\d)', 'x1 x2'), ['1', '2'])
+				assert.eq(findall('z', 'abc'), [])
 			`),
 		},
 		{
@@ -88,7 +89,7 @@ func TestLoadModule_Regex(t *testing.T) {
 			script: itn.HereDoc(`
 				load('regex', 'search', 'findall', 'I', 'M', 'S')
 				assert.eq(search('hello', 'HELLO', I).group(0), 'HELLO')
-				assert.eq(findall('^x', 'x\nx\ny', M), ('x', 'x'))
+				assert.eq(findall('^x', 'x\nx\ny', M), ['x', 'x'])
 				assert.eq(search('a.b', 'a\nb', S).group(0), 'a\nb')
 				assert.eq(search('a.b', 'a\nb'), None)
 			`),
@@ -125,9 +126,27 @@ func TestLoadModule_Regex(t *testing.T) {
 			name: `split: includes capture groups, maxsplit`,
 			script: itn.HereDoc(`
 				load('regex', 'split')
-				assert.eq(split(r'\s+', 'a b  c'), ('a', 'b', 'c'))
-				assert.eq(split(r'(\s+)', 'a b'), ('a', ' ', 'b'))
-				assert.eq(split(',', 'a,b,c', 1), ('a', 'b,c'))
+				assert.eq(split(r'\s+', 'a b  c'), ['a', 'b', 'c'])
+				assert.eq(split(r'(\s+)', 'a b'), ['a', ' ', 'b'])
+				assert.eq(split(',', 'a,b,c', 1), ['a', 'b,c'])
+			`),
+		},
+		{
+			name: `regression: findall/split return list (Python re + legacy re parity)`,
+			script: itn.HereDoc(`
+				load('regex', 'findall', 'split', 'compile')
+				# Python re and the legacy re module return lists here; guard
+				# against silently regressing to a tuple.
+				assert.eq(type(findall(r'\w', 'ab')), 'list')
+				assert.eq(type(findall(r'(\w)(\d)', 'a1')), 'list')
+				assert.eq(type(findall(r'(\w)(\d)', 'a1')[0]), 'tuple')
+				assert.eq(type(split(r',', 'a,b')), 'list')
+				assert.eq(type(compile(r'\w').findall('ab')), 'list')
+				assert.eq(type(compile(r',').split('a,b')), 'list')
+				# list-only operations work on the result:
+				r = findall(r'\d', '1 2 3')
+				r.append('4')
+				assert.eq(r, ['1', '2', '3', '4'])
 			`),
 		},
 		{
@@ -147,7 +166,7 @@ func TestLoadModule_Regex(t *testing.T) {
 				assert.eq(p.pattern, r'(?P<n>\d+)')
 				assert.eq(p.groups, 1)
 				assert.eq(p.search('x42').group('n'), '42')
-				assert.eq(p.findall('1 2 3'), ('1', '2', '3'))
+				assert.eq(p.findall('1 2 3'), ['1', '2', '3'])
 				assert.eq(p.sub('#', 'a1b2'), 'a#b#')
 				assert.true(p.match('5x') != None)
 				assert.eq(p.match('x5'), None)
@@ -286,7 +305,7 @@ func TestLoadModule_Regex(t *testing.T) {
 			script: itn.HereDoc(`
 				load('regex', 'compile')
 				p = compile(r'(\w)(\d)')
-				assert.eq(p.findall('a1 b2'), (('a', '1'), ('b', '2')))
+				assert.eq(p.findall('a1 b2'), [('a', '1'), ('b', '2')])
 				assert.eq(p.finditer('a1')[0].group(2), '1')
 				assert.eq(p.split('a1xb2', 1)[0], '')
 				assert.eq(p.subn('#', 'a1b2'), ('##', 2))

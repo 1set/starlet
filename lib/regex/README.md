@@ -14,16 +14,16 @@ It is the successor to the legacy `re` module (which is frozen): `regex` adds **
 | `search(pattern, string, flags=0)` | first match anywhere → `Match` or `None` |
 | `match(pattern, string, flags=0)` | match anchored at the **start** → `Match` or `None` |
 | `fullmatch(pattern, string, flags=0)` | match the **whole** string → `Match` or `None` |
-| `findall(pattern, string, flags=0)` | all matches as a tuple (Python group shaping, see below) |
+| `findall(pattern, string, flags=0)` | all matches as a list (Python group shaping, see below) |
 | `finditer(pattern, string, flags=0)` | a tuple of `Match` objects |
 | `sub(pattern, repl, string, count=0, flags=0)` | replace matches → string |
 | `subn(pattern, repl, string, count=0, flags=0)` | replace → `(string, count)` |
-| `split(pattern, string, maxsplit=0, flags=0)` | split, **including capture-group text** (Python semantics) |
+| `split(pattern, string, maxsplit=0, flags=0)` | split into a list, **including capture-group text** (Python semantics) |
 | `escape(pattern)` | escape regex metacharacters |
 
 `try_compile` / `try_search` are also provided, returning a `(value, error)` pair instead of aborting the script — the same shape as the `json`/`csv`/`http` modules.
 
-**findall shaping** (matches Python): no capture group → the full match text; one group → that group's text; two or more groups → a tuple of the group texts per match.
+**findall shaping** (matches Python): the result is a **list**; no capture group → the full match text; one group → that group's text; two or more groups → a **tuple** of the group texts per match. (`split` likewise returns a list — the same as Python's `re` and starlet's legacy `re` module.)
 
 **sub replacement**: `repl` is either a string template — `\1`/`\g<name>` reference capture groups, `\n`/`\t`/`\r` are the usual escapes, a literal `$` is preserved — or a function called with each `Match`, returning the replacement string. `count` limits the number of replacements (`0` = all, negative = none).
 
