@@ -150,9 +150,18 @@ func pingDurations(b *starlark.Builtin, timeout, interval tps.FloatOrInt) (timeo
 // failed entirely in forced-egress-proxy environments while http.get in
 // the same script worked.
 func newPingTransport() *http.Transport {
-	tr := http.DefaultTransport.(*http.Transport).Clone()
-	tr.DisableKeepAlives = true
-	return tr
+	if dt, ok := http.DefaultTransport.(*http.Transport); ok {
+		tr := dt.Clone()
+		tr.DisableKeepAlives = true
+		return tr
+	}
+	// the default transport was replaced by the host with a custom
+	// RoundTripper: fall back to a fresh transport that still honors the
+	// system proxy settings
+	return &http.Transport{
+		Proxy:             http.ProxyFromEnvironment,
+		DisableKeepAlives: true,
+	}
 }
 
 func createPingStats(address string, count int, rtts []time.Duration) starlark.Value {
