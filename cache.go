@@ -3,6 +3,7 @@ package starlet
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"sync"
 	"sync/atomic"
 	"unsafe"
@@ -108,6 +109,18 @@ func (c *cache) doLoad(cc *cycleChecker, module string) (starlark.StringDict, er
 	// 2: load from source file
 	b, err := c.readFile(module)
 	if err != nil {
+		// A missing file or an absent filesystem means the name was found
+		// nowhere; report a typed error that names the module instead of
+		// surfacing the misleading filesystem message ("no file system
+		// given"). A name that matches a known builtin must have been
+		// deliberately left out of this machine's module set — withheld —
+		// which is different from a misspelled or unknown name.
+		if errors.Is(err, errNoFS) || errors.Is(err, fs.ErrNotExist) {
+			if _, known := allBuiltinModules[module]; known {
+				return nil, ModuleWithheldError{Name: module}
+			}
+			return nil, ModuleNotFoundError{Name: module}
+		}
 		return nil, err
 	}
 
