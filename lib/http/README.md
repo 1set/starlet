@@ -2,6 +2,8 @@
 
 `http` defines an HTTP client implementation. It is a thin wrapper around the Go standard package `net/http` but in Python `requests` style.
 
+Every request function (and `call`) has a `try_`-prefixed variant (`try_get`, `try_post`, …, `try_call`) that never aborts the script: it returns a `(response, error)` pair where exactly one side is `None`, the same shape as the `json` module's `try_*` functions. All request functions also accept `raise_for_status=True` to turn any non-2xx response into an error.
+
 ## Functions
 
 ### `call(method, url, params=None, headers=None, auth=(), body=None, json_body=None, form_body=None, form_encoding="", timeout=30, allow_redirects=True, verify=True) response`
@@ -27,6 +29,7 @@ It is a convenience wrapper that enables users to use any supported HTTP method 
 | `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                  |
 | `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                        |
 | `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                     |
+| `raise_for_status` | `bool` | optional. if True, a response with a non-2xx status code is reported as an error. defaults to False. |
 
 ### `get(url, params=None, headers=None, auth=(), body=None, json_body=None, form_body=None, form_encoding="", timeout=30, allow_redirects=True, verify=True) response`
 
@@ -47,6 +50,7 @@ Perform an HTTP GET request, returning a response.
 | `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                                                                       |
 | `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
 | `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
+| `raise_for_status` | `bool` | optional. if True, a response with a non-2xx status code is reported as an error. defaults to False. |
 
 ### `put(url, params=None, headers=None, auth=(), body=None, json_body=None, form_body=None, form_encoding="", timeout=30, allow_redirects=True, verify=True) response`
 
@@ -67,6 +71,7 @@ Perform an HTTP PUT request, returning a response.
 | `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                                                                       |
 | `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
 | `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
+| `raise_for_status` | `bool` | optional. if True, a response with a non-2xx status code is reported as an error. defaults to False. |
 
 ### `post(url, params=None, headers=None, auth=(), body=None, json_body=None, form_body=None, form_encoding="", timeout=30, allow_redirects=True, verify=True) response`
 
@@ -87,6 +92,7 @@ Perform an HTTP POST request, returning a response.
 | `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                                                                       |
 | `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
 | `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
+| `raise_for_status` | `bool` | optional. if True, a response with a non-2xx status code is reported as an error. defaults to False. |
 
 ### `postForm(url, params=None, headers=None, auth=(), body=None, json_body=None, form_body=None, form_encoding="", timeout=30, allow_redirects=True, verify=True) response`
 
@@ -107,6 +113,7 @@ Perform an HTTP POST request with form data, returning a response.
 | `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                                                                       |
 | `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
 | `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
+| `raise_for_status` | `bool` | optional. if True, a response with a non-2xx status code is reported as an error. defaults to False. |
 
 ### `delete(url, params=None, headers=None, auth=(), body=None, json_body=None, form_body=None, form_encoding="", timeout=30, allow_redirects=True, verify=True) response`
 
@@ -127,6 +134,7 @@ Perform an HTTP DELETE request, returning a response.
 | `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                                                                       |
 | `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
 | `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
+| `raise_for_status` | `bool` | optional. if True, a response with a non-2xx status code is reported as an error. defaults to False. |
 
 ### `patch(url, params=None, headers=None, auth=(), body=None, json_body=None, form_body=None, form_encoding="", timeout=30, allow_redirects=True, verify=True) response`
 
@@ -147,6 +155,7 @@ Perform an HTTP PATCH request, returning a response.
 | `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                                                                       |
 | `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
 | `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
+| `raise_for_status` | `bool` | optional. if True, a response with a non-2xx status code is reported as an error. defaults to False. |
 
 ### `options(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=(),timeout=30,allow_redirects=True,verify=True) response`
 
@@ -167,6 +176,7 @@ Perform an HTTP OPTIONS request, returning a response.
 | `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                                                                       |
 | `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
 | `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
+| `raise_for_status` | `bool` | optional. if True, a response with a non-2xx status code is reported as an error. defaults to False. |
 
 ### `set_timeout(timeout)`
 
@@ -196,6 +206,7 @@ The result of performing a HTTP request.
 |---------------|----------|---------------------------------------------------------------------|
 | `url`         | `string` | the URL that was ultimately requested (may change after redirects). |
 | `status_code` | `int`    | response status code (for example: `200 == OK`).                    |
+| `ok`          | `bool`   | True when the status code is in the 2xx range.                      |
 | `headers`     | `dict`   | dictionary of response headers.                                     |
 | `encoding`    | `string` | transfer encoding. example: "octet-stream" or "application/json".   |
 
@@ -207,7 +218,15 @@ output response body as a string.
 
 #### `json() object`
 
-attempt to parse response body as json, returning a JSON-decoded result, or None if the response body is empty or not valid JSON.
+attempt to parse response body as json, returning a JSON-decoded result, or None if the response body is empty or not valid JSON (a parse failure and a JSON `null` are indistinguishable here; use `try_json()` to tell them apart).
+
+#### `try_body() (string, error)`
+
+like `body()`, but returns a `(value, error)` pair instead of aborting the script (for example when the configured response size limit is exceeded).
+
+#### `try_json() (object, error)`
+
+like `json()`, but returns a `(value, error)` pair: a parse or read failure lands in the error slot instead of being folded into None.
 
 ### `ExportedServerRequest`
 

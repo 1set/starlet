@@ -950,3 +950,112 @@ func TestModuleForceTLSVerify(t *testing.T) {
 		t.Errorf("expected the seeded policy to refuse verify=False")
 	}
 }
+
+func TestTryRequestFamily(t *testing.T) {
+	okSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"a": 1}`))
+	}))
+	defer okSrv.Close()
+	notFoundSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(`not json`))
+	}))
+	defer notFoundSrv.Close()
+
+	tests := []struct {
+		name    string
+		script  string
+		wantErr string
+	}{
+		{
+			name: `try_get: success and ok`,
+			script: itn.HereDoc(`
+				load('http', 'try_get')
+				res, err = try_get(ok_url)
+				assert.eq(err, None)
+				assert.true(res.ok)
+				assert.eq(res.status_code, 200)
+			`),
+		},
+		{
+			name: `try_get: transport error captured`,
+			script: itn.HereDoc(`
+				load('http', 'try_get')
+				res, err = try_get('http://127.0.0.1:1/')
+				assert.eq(res, None)
+				assert.true('connect' in err or 'refused' in err)
+			`),
+		},
+		{
+			name: `try_call: argument error captured`,
+			script: itn.HereDoc(`
+				load('http', 'try_call')
+				res, err = try_call('TRACE', ok_url)
+				assert.eq(res, None)
+				assert.true('unsupported method' in err)
+			`),
+		},
+		{
+			name: `ok: false on non-2xx`,
+			script: itn.HereDoc(`
+				load('http', 'get')
+				res = get(nf_url)
+				assert.eq(res.ok, False)
+				assert.eq(res.status_code, 404)
+			`),
+		},
+		{
+			name: `raise_for_status: error on non-2xx`,
+			script: itn.HereDoc(`
+				load('http', 'get')
+				get(nf_url, raise_for_status=True)
+			`),
+			wantErr: `http.get: unexpected status: 404 Not Found`,
+		},
+		{
+			name: `raise_for_status: default keeps old behavior`,
+			script: itn.HereDoc(`
+				load('http', 'get')
+				res = get(nf_url)
+				assert.eq(res.status_code, 404)
+			`),
+		},
+		{
+			name: `try_json: parse failure is visible`,
+			script: itn.HereDoc(`
+				load('http', 'get')
+				res = get(nf_url)
+				v, err = res.try_json()
+				assert.eq(v, None)
+				assert.true(err != None)
+				# while json() folds the same failure into None
+				assert.eq(res.json(), None)
+			`),
+		},
+		{
+			name: `try_json and try_body: success`,
+			script: itn.HereDoc(`
+				load('http', 'get')
+				res = get(ok_url)
+				v, err = res.try_json()
+				assert.eq(err, None)
+				assert.eq(v, {"a": 1})
+				b, err2 = res.try_body()
+				assert.eq(err2, None)
+				assert.eq(b, '{"a": 1}')
+			`),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			extra := starlark.StringDict{
+				"ok_url": starlark.String(okSrv.URL),
+				"nf_url": starlark.String(notFoundSrv.URL),
+			}
+			res, err := itn.ExecModuleWithErrorTest(t, lh.ModuleName, lh.LoadModule, tt.script, tt.wantErr, extra)
+			if (err != nil) != (tt.wantErr != "") {
+				t.Errorf("http(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
+			}
+		})
+	}
+}
