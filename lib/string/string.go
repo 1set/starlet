@@ -201,10 +201,14 @@ func createIndexFunc(name string, reverse, returnNegative bool) func(thread *sta
 // substring returns a substring from start to end (exclusive) indices.
 func substring(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
-		s          string
-		start, end int
+		s     string
+		start int
+		endV  starlark.Value
 	)
-	if err := starlark.UnpackArgs("substring", args, kwargs, "s", &s, "start", &start, "end?", &end); err != nil {
+	// end is unpacked as a Value so that an omitted end (nil) is
+	// distinguishable from an explicit 0 or -len(s), which are honoured
+	// as given instead of silently meaning "to the end of the string".
+	if err := starlark.UnpackArgs("substring", args, kwargs, "s", &s, "start", &start, "end?", &endV); err != nil {
 		return none, err
 	}
 
@@ -212,15 +216,22 @@ func substring(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple
 	rs := []rune(s)
 	n := len(rs)
 
-	// Handle negative indices
+	// end defaults to the length of the string when omitted or None
+	end := n
+	if endV != nil && endV != starlark.None {
+		ei, err := starlark.AsInt32(endV)
+		if err != nil {
+			return none, fmt.Errorf(`substring: for parameter end: %w`, err)
+		}
+		end = ei
+		if end < 0 {
+			end += n
+		}
+	}
+
+	// Handle negative start index
 	if start < 0 {
 		start += n
-	}
-	if end < 0 {
-		end += n
-	}
-	if end == 0 { // if end is not provided, use the length of the string
-		end = n
 	}
 
 	// Check for out of range indices

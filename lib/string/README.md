@@ -172,9 +172,9 @@ print(rfind(s, "x"))
 # Output: -1
 ```
 
-### `substring(s, start, end) string`
+### `substring(s, start, end=None) string`
 
-Returns a substring of `s` from index `start` to `end` (exclusive).
+Returns a substring of `s` from index `start` to `end` (exclusive). If `end` is omitted or `None`, the substring extends to the end of the string. An explicit `end` of `0` (or `-len(s)`) means an empty range, as in Python slicing; out-of-range indices are reported as errors.
 
 #### Parameters
 
@@ -182,7 +182,7 @@ Returns a substring of `s` from index `start` to `end` (exclusive).
 |---------|----------|--------------------------------------|
 | `s`     | `string` | The string to be sliced              |
 | `start` | `int`    | The starting index for the substring |
-| `end`   | `int`    | The ending index for the substring   |
+| `end`   | `int` or `None` | Optional ending index (exclusive); defaults to the end of the string |
 
 #### Examples
 
