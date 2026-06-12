@@ -350,7 +350,39 @@ func TestLoadModule_String(t *testing.T) {
 				assert.eq(substring('你好世界', 2, -1), '世')
 				assert.eq(substring('a☕c', 1, 2), '☕')
 				assert.eq(substring('a☕c', -2, -1), '☕')
+				assert.eq(substring('hello', 3, 3), '')
 			`),
+		},
+		{
+			name: `substring with explicit zero end`,
+			script: itn.HereDoc(`
+				load('string', 'substring')
+				assert.eq(substring('hello', 0, 0), '')
+				assert.eq(substring('hello', 0, -5), '')
+			`),
+		},
+		{
+			name: `substring with none end`,
+			script: itn.HereDoc(`
+				load('string', 'substring')
+				assert.eq(substring('hello', 1, None), 'ello')
+			`),
+		},
+		{
+			name: `substring with explicit zero end after start`,
+			script: itn.HereDoc(`
+				load('string', 'substring')
+				substring('hello', 2, 0)
+			`),
+			wantErr: `substring: indices are out of range`,
+		},
+		{
+			name: `substring with invalid end type`,
+			script: itn.HereDoc(`
+				load('string', 'substring')
+				substring('hello', 1, '2')
+			`),
+			wantErr: `substring: for parameter end: got string, want int`,
 		},
 		{
 			name: `substring with missing end`,
