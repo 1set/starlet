@@ -1020,6 +1020,13 @@ coins = 50
 			expectedErr: `starlark: exec: cannot load json: module "json" is withheld and not available to this machine`,
 		},
 		{
+			name:        "Unreadable File System keeps original error",
+			lazyMap:     starlet.ModuleLoaderMap{},
+			modFS:       permErrFS{},
+			code:        `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
+			expectedErr: `starlark: exec: cannot load fib: open fib.star: permission denied`,
+		},
+		{
 			name:        "No FS for Lazyload Modules",
 			lazyMap:     starlet.ModuleLoaderMap{"fib": starlet.MakeModuleLoaderFromFile("fibonacci.star", nil, nil)},
 			code:        `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
