@@ -248,6 +248,69 @@ func TestLoadModule_Re(t *testing.T) {
 			`),
 			wantErr: `findall: flags are not supported`,
 		},
+		{
+			name: `split huge maxsplit`,
+			script: itn.HereDoc(`
+			load('re', 'split')
+			assert.eq(split(',', 'a,b,c', 1 << 40), ('a', 'b', 'c'))
+			assert.eq(split(',', 'a,b,c', 1 << 80), ('a', 'b', 'c'))
+			`),
+		},
+		{
+			name: `sub huge count`,
+			script: itn.HereDoc(`
+			load('re', 'sub')
+			assert.eq(sub('a', 'X', 'aaa', 1 << 80), 'XXX')
+			`),
+		},
+		{
+			name: `search flags rejected`,
+			script: itn.HereDoc(`
+			load('re', 'search')
+			search('a', 'a', flags=1)
+			`),
+			wantErr: `re.search: flags are not supported`,
+		},
+		{
+			name: `match flags rejected`,
+			script: itn.HereDoc(`
+			load('re', 'match')
+			match('a', 'a', flags=1)
+			`),
+			wantErr: `re.match: flags are not supported`,
+		},
+		{
+			name: `compiled search flags rejected`,
+			script: itn.HereDoc(`
+			load('re', 'compile')
+			compile('a').search('a', flags=1)
+			`),
+			wantErr: `search: flags are not supported`,
+		},
+		{
+			name: `compiled match flags rejected`,
+			script: itn.HereDoc(`
+			load('re', 'compile')
+			compile('a').match('a', flags=1)
+			`),
+			wantErr: `match: flags are not supported`,
+		},
+		{
+			name: `compiled split flags rejected`,
+			script: itn.HereDoc(`
+			load('re', 'compile')
+			compile('a').split('a', flags=1)
+			`),
+			wantErr: `split: flags are not supported`,
+		},
+		{
+			name: `compiled sub flags rejected`,
+			script: itn.HereDoc(`
+			load('re', 'compile')
+			compile('a').sub('x', 'a', flags=1)
+			`),
+			wantErr: `sub: flags are not supported`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
