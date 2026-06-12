@@ -11,7 +11,9 @@ import (
 // for instances of lonely \r replacing them with \r\n before returning to the end consumer
 // lots of files in the wild will come without "proper" line breaks, which irritates go's
 // standard csv package. This'll fix by wrapping the reader passed to csv.NewReader:
-// 		rdr, err := csv.NewReader(replacecr.Reader(r))
+//
+//	rdr, err := csv.NewReader(replacecr.Reader(r))
+//
 // because Reader adds '\n' characters, the number of bytes reported from the underlying
 // reader can/will differ from what the underlyng reader would return
 // if read from directly. This can cause issues with checksums and byte counts.

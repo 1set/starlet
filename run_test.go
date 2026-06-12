@@ -1529,7 +1529,8 @@ func Test_Machine_Run_With_Timeout(t *testing.T) {
 	// second run with timeout, but context is not handled in builtin sleep
 	m.SetScript("time.star", []byte(`c = 3; sleep_go(itn); d = 4`), nil)
 	ts = time.Now()
-	ctx, _ := context.WithTimeout(context.Background(), interval/2)
+	ctx, cancel := context.WithTimeout(context.Background(), interval/2)
+	defer cancel()
 	out, err = m.RunWithContext(ctx, nil)
 	expectSameDuration(t, time.Since(ts), interval)
 	expectErr(t, err, "starlark: exec: Starlark computation cancelled: context cancelled")
@@ -1609,7 +1610,8 @@ sleep(1)
 t = 4
 `), nil)
 	ts = time.Now()
-	ctx, _ := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
 	out, err = m.RunWithContext(ctx, nil)
 	expectSameDuration(t, time.Since(ts), 500*time.Millisecond)
 	expectErr(t, err, "starlark: exec: context deadline exceeded")
@@ -1622,7 +1624,8 @@ sleep(0.5)
 t = 4
 `), nil)
 	ts = time.Now()
-	ctx, _ = context.WithTimeout(context.Background(), 800*time.Millisecond) // TODO! occasionally, this test fails with 500ms timeout
+	ctx, cancel2 := context.WithTimeout(context.Background(), 800*time.Millisecond) // TODO! occasionally, this test fails with 500ms timeout
+	defer cancel2()
 	out, err = m.RunWithContext(ctx, nil)
 	expectSameDuration(t, time.Since(ts), 500*time.Millisecond)
 	if err != nil {
