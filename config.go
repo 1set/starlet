@@ -19,6 +19,7 @@ import (
 	libre "github.com/1set/starlet/lib/re"
 	libregex "github.com/1set/starlet/lib/regex"
 	librt "github.com/1set/starlet/lib/runtime"
+	libserial "github.com/1set/starlet/lib/serial"
 	libstat "github.com/1set/starlet/lib/stats"
 	libstr "github.com/1set/starlet/lib/string"
 	stdmath "go.starlark.net/lib/math"
@@ -48,22 +49,23 @@ var allBuiltinModules = ModuleLoaderMap{
 		}, nil
 	},
 	// add third-party modules
-	libatom.ModuleName:  libatom.LoadModule,
-	libb64.ModuleName:   libb64.LoadModule,
-	libcsv.ModuleName:   libcsv.LoadModule,
-	libfile.ModuleName:  libfile.LoadModule,
-	libhash.ModuleName:  libhash.LoadModule,
-	libhttp.ModuleName:  libhttp.LoadModule,
-	libnet.ModuleName:   libnet.LoadModule,
-	libjson.ModuleName:  libjson.LoadModule,
-	liblog.ModuleName:   liblog.LoadModule,
-	libpath.ModuleName:  libpath.LoadModule,
-	librand.ModuleName:  librand.LoadModule,
-	libre.ModuleName:    libre.LoadModule,
-	libregex.ModuleName: libregex.LoadModule,
-	librt.ModuleName:    librt.LoadModule,
-	libstr.ModuleName:   libstr.LoadModule,
-	libstat.ModuleName:  libstat.LoadModule,
+	libatom.ModuleName:   libatom.LoadModule,
+	libb64.ModuleName:    libb64.LoadModule,
+	libcsv.ModuleName:    libcsv.LoadModule,
+	libfile.ModuleName:   libfile.LoadModule,
+	libhash.ModuleName:   libhash.LoadModule,
+	libhttp.ModuleName:   libhttp.LoadModule,
+	libnet.ModuleName:    libnet.LoadModule,
+	libjson.ModuleName:   libjson.LoadModule,
+	liblog.ModuleName:    liblog.LoadModule,
+	libpath.ModuleName:   libpath.LoadModule,
+	librand.ModuleName:   librand.LoadModule,
+	libre.ModuleName:     libre.LoadModule,
+	libregex.ModuleName:  libregex.LoadModule,
+	librt.ModuleName:     librt.LoadModule,
+	libserial.ModuleName: libserial.LoadModule,
+	libstr.ModuleName:    libstr.LoadModule,
+	libstat.ModuleName:   libstat.LoadModule,
 }
 
 // GetAllBuiltinModuleNames returns a list of all builtin module names.
@@ -180,6 +182,7 @@ var builtinModuleCapabilities = map[string]ModuleCapability{
 	"re":           CapPure,
 	"regex":        CapPure,
 	"runtime":      CapProcess, // exposes host identity, directories, process info
+	"serial":       CapPure,
 	"stats":        CapPure,
 	"string":       CapPure,
 	"struct":       CapPure,
