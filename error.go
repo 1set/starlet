@@ -92,3 +92,32 @@ func errorStarlightConvert(target string, err error) ExecError {
 		cause: err,
 	}
 }
+
+// ModuleNotFoundError is returned by load() when the named module is not
+// present in any source available to the machine: it is neither a builtin
+// or custom loader configured for this machine, nor a script file on the
+// configured filesystem. Hosts can detect it with errors.As through the
+// Starlark error chain.
+type ModuleNotFoundError struct {
+	Name string
+}
+
+// Error returns the error message.
+func (e ModuleNotFoundError) Error() string {
+	return fmt.Sprintf("module %q not found in builtin modules, custom loaders, or the script filesystem", e.Name)
+}
+
+// ModuleWithheldError marks a module that exists but is deliberately not
+// made available to the current machine: a known builtin that was not
+// enabled, or a module blocked by a host-side policy layer (which can
+// return this type from its own loaders). It lets hosts and script authors
+// tell a misspelled module apart from a forbidden one; detect it with
+// errors.As through the Starlark error chain.
+type ModuleWithheldError struct {
+	Name string
+}
+
+// Error returns the error message.
+func (e ModuleWithheldError) Error() string {
+	return fmt.Sprintf("module %q is withheld and not available to this machine", e.Name)
+}

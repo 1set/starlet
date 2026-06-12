@@ -215,11 +215,7 @@ func Test_DefaultMachine_Run_LoadNonExist(t *testing.T) {
 	// run
 	_, err := m.Run()
 	// check result
-	if isOnWindows {
-		expectErr(t, err, `starlark: exec: cannot load nonexist.star: open`, `The system cannot find the file specified.`)
-	} else {
-		expectErr(t, err, `starlark: exec: cannot load nonexist.star: open`, `: no such file or directory`)
-	}
+	expectErr(t, err, `starlark: exec: cannot load nonexist.star: module "nonexist.star" not found in builtin modules, custom loaders, or the script filesystem`)
 }
 
 func Test_Machine_Run_Globals(t *testing.T) {
@@ -822,7 +818,7 @@ coins = 50
 		{
 			name:        "No FS for User Modules",
 			code:        `load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]`,
-			expectedErr: `starlark: exec: cannot load fibonacci.star: no file system given`,
+			expectedErr: `starlark: exec: cannot load fibonacci.star: module "fibonacci.star" not found`,
 		},
 		{
 			name:        "Missed load() for User Modules",
@@ -840,13 +836,13 @@ coins = 50
 			name:        "NonExist User Modules",
 			code:        `load("nonexist.star", "fibonacci"); val = fibonacci(10)[-1]`,
 			modFS:       testFS,
-			expectedErr: `starlark: exec: cannot load nonexist.star: open`,
+			expectedErr: `starlark: exec: cannot load nonexist.star: module "nonexist.star" not found`,
 		},
 		{
 			name:        "NonExist File System",
 			code:        `load("fibonacci.star", "fibonacci"); val = fibonacci(10)[-1]`,
 			modFS:       nonExistFS,
-			expectedErr: `starlark: exec: cannot load fibonacci.star: open`,
+			expectedErr: `starlark: exec: cannot load fibonacci.star: module "fibonacci.star" not found`,
 		},
 		{
 			name:        "NonExist Function in User Modules",
@@ -1001,21 +997,34 @@ coins = 50
 			name:        "Missing Lazyload Modules",
 			lazyMap:     starlet.ModuleLoaderMap{},
 			code:        `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
-			expectedErr: `starlark: exec: cannot load fib: no file system given`,
+			expectedErr: `starlark: exec: cannot load fib: module "fib" not found`,
 		},
 		{
 			name:        "Missing Lazyload Modules with Invalid FS",
 			lazyMap:     starlet.ModuleLoaderMap{},
 			modFS:       nonExistFS,
 			code:        `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
-			expectedErr: `starlark: exec: cannot load fib: open `,
+			expectedErr: `starlark: exec: cannot load fib: module "fib" not found`,
 		},
 		{
 			name:        "Missing Lazyload Modules with Valid FS",
 			lazyMap:     starlet.ModuleLoaderMap{},
 			modFS:       testFS,
 			code:        `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
-			expectedErr: `starlark: exec: cannot load fib: open `,
+			expectedErr: `starlark: exec: cannot load fib: module "fib" not found`,
+		},
+		{
+			name:        "Disabled Builtin Module is Withheld",
+			lazyMap:     starlet.ModuleLoaderMap{},
+			code:        `load("json", "encode")`,
+			expectedErr: `starlark: exec: cannot load json: module "json" is withheld and not available to this machine`,
+		},
+		{
+			name:        "Unreadable File System keeps original error",
+			lazyMap:     starlet.ModuleLoaderMap{},
+			modFS:       permErrFS{},
+			code:        `load("fib", "fibonacci"); val = fibonacci(10)[-1]`,
+			expectedErr: `starlark: exec: cannot load fib: open fib.star: permission denied`,
 		},
 		{
 			name:        "No FS for Lazyload Modules",
@@ -2137,4 +2146,33 @@ func TestMachine_REPL_Error(t *testing.T) {
 	m := starlet.NewDefault()
 	m.SetGlobals(starlet.StringAnyMap{"x": make(chan int, 1)})
 	m.REPL()
+}
+
+func Test_Machine_Run_LoadTypedErrors(t *testing.T) {
+	// an unknown name surfaces as ModuleNotFoundError through the chain
+	m := starlet.NewDefault()
+	m.SetScript("test.star", []byte(`load("nope", "x")`), nil)
+	_, err := m.Run()
+	var nf starlet.ModuleNotFoundError
+	if err == nil || !errors.As(err, &nf) || nf.Name != "nope" {
+		t.Errorf("expected ModuleNotFoundError{nope} via errors.As, got: %v", err)
+	}
+
+	// a known builtin that is not enabled surfaces as ModuleWithheldError
+	m2 := starlet.NewDefault()
+	m2.SetScript("test.star", []byte(`load("json", "encode")`), nil)
+	_, err = m2.Run()
+	var wh starlet.ModuleWithheldError
+	if err == nil || !errors.As(err, &wh) || wh.Name != "json" {
+		t.Errorf("expected ModuleWithheldError{json} via errors.As, got: %v", err)
+	}
+}
+
+// permErrFS fails every Open with a non-NotExist error, exercising the
+// load path that must keep real filesystem errors intact (only "not
+// found anywhere" conditions become typed module errors).
+type permErrFS struct{}
+
+func (permErrFS) Open(name string) (fs.File, error) {
+	return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrPermission}
 }

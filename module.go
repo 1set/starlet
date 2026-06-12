@@ -212,6 +212,11 @@ func MakeModuleLoaderFromFile(name string, fileSys fs.FS, predeclared starlark.S
 	}
 }
 
+// errNoFS is returned by readScriptFile when no filesystem is configured;
+// the cache's load() path matches it to produce a typed not-found error
+// instead of surfacing the misleading filesystem message for module names.
+var errNoFS = errors.New("no file system given")
+
 // readScriptFile reads a script file from the given file system.
 // No need to wrap errors because they are usually used by the Starlark thread.
 func readScriptFile(name string, fileSys fs.FS) ([]byte, error) {
@@ -220,7 +225,7 @@ func readScriptFile(name string, fileSys fs.FS) ([]byte, error) {
 		return nil, errors.New("no file name given")
 	}
 	if fileSys == nil {
-		return nil, errors.New("no file system given")
+		return nil, errNoFS
 	}
 
 	// if file name does not end with ".star", append it
