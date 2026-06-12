@@ -170,7 +170,7 @@ Perform an HTTP OPTIONS request, returning a response.
 
 ### `set_timeout(timeout)`
 
-Set the global timeout for all HTTP requests.
+Set the default timeout for HTTP requests made through this module instance (i.e. this machine). It does not affect other machines in the process; the package-level `TimeoutSecond` variable seeds new instances. With a host-injected client the value is ignored (the client's own timeout applies).
 
 #### Parameters
 
@@ -180,7 +180,7 @@ Set the global timeout for all HTTP requests.
 
 ### `get_timeout() float`
 
-Get the current global timeout setting for HTTP requests.
+Get the current default timeout of this module instance.
 returns:
 The current timeout in seconds used for HTTP requests.
 

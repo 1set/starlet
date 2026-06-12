@@ -771,3 +771,69 @@ func TestLoadModule_CustomLoad(t *testing.T) {
 		})
 	}
 }
+
+func TestModuleTimeoutInstanceScope(t *testing.T) {
+	// set_timeout must stay within its module instance instead of leaking
+	// into every machine in the process via the package-level variable
+	m1 := lh.NewModule()
+	m2 := lh.NewModule()
+	script1 := itn.HereDoc(`
+		load('http', 'set_timeout', 'get_timeout')
+		set_timeout(5)
+		assert.eq(get_timeout(), 5)
+	`)
+	if _, err := itn.ExecModuleWithErrorTest(t, lh.ModuleName, m1.LoadModule, script1, "", nil); err != nil {
+		t.Fatalf("module 1 expects no error, got: %v", err)
+	}
+	script2 := itn.HereDoc(`
+		load('http', 'get_timeout')
+		assert.eq(get_timeout(), 30)
+	`)
+	if _, err := itn.ExecModuleWithErrorTest(t, lh.ModuleName, m2.LoadModule, script2, "", nil); err != nil {
+		t.Fatalf("module 2 must not see module 1's timeout, got: %v", err)
+	}
+
+	// the package-level knob still seeds new instances
+	lh.ConfigLock.Lock()
+	lh.TimeoutSecond = 42
+	lh.ConfigLock.Unlock()
+	defer func() {
+		lh.ConfigLock.Lock()
+		lh.TimeoutSecond = 30.0
+		lh.ConfigLock.Unlock()
+	}()
+	m3 := lh.NewModule()
+	script3 := itn.HereDoc(`
+		load('http', 'get_timeout')
+		assert.eq(get_timeout(), 42)
+	`)
+	if _, err := itn.ExecModuleWithErrorTest(t, lh.ModuleName, m3.LoadModule, script3, "", nil); err != nil {
+		t.Fatalf("expected the package default to seed the instance, got: %v", err)
+	}
+}
+
+func TestModuleInjectedClientRejectsTransportArgs(t *testing.T) {
+	wantErr := `conflicts with the http client provided by the host`
+	tests := []struct {
+		name   string
+		script string
+	}{
+		{name: "timeout kwarg", script: "res = get('http://127.0.0.1:1/', timeout=3)"},
+		{name: "allow_redirects kwarg", script: "res = get('http://127.0.0.1:1/', allow_redirects=False)"},
+		{name: "verify kwarg", script: "res = get('http://127.0.0.1:1/', verify=False)"},
+		{name: "timeout positional", script: `res = get('http://127.0.0.1:1/', None, None, None, None, None, "", ("u", "p"), 3)`},
+		{name: "allow_redirects positional", script: `res = get('http://127.0.0.1:1/', None, None, None, None, None, "", ("u", "p"), 3, False)`},
+		{name: "verify positional", script: `res = get('http://127.0.0.1:1/', None, None, None, None, None, "", ("u", "p"), 3, False, True)`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			md := lh.NewModule()
+			md.SetClient(&http.Client{})
+			script := "load('http', 'get')\n" + tt.script
+			res, err := itn.ExecModuleWithErrorTest(t, lh.ModuleName, md.LoadModule, script, wantErr, nil)
+			if err == nil {
+				t.Errorf("expected a conflict error, got result: %v", res)
+			}
+		})
+	}
+}
