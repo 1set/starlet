@@ -1,0 +1,9 @@
+---
+# Codacy configuration for starlet.
+#
+# Exclude the vendored, pinned third-party JSON-repair runtime from static
+# analysis. lib/json/internal/jsonrepair is a verbatim copy of
+# kaptinlin/jsonrepair v0.2.2 (MIT); its style/complexity is upstream's to
+# own, and the copy is kept byte-for-byte so it can be re-vendored cleanly.
+exclude_paths:
+  - 'lib/json/internal/jsonrepair/**'

@@ -40,6 +40,8 @@ func LoadModule() (starlark.StringDict, error) {
 				"try_path":   starlark.NewBuiltin(ModuleName+".try_path", generateJsonPath(true)),
 				"eval":       starlark.NewBuiltin(ModuleName+".eval", generateJsonEval(false)),
 				"try_eval":   starlark.NewBuiltin(ModuleName+".try_eval", generateJsonEval(true)),
+				"repair":     starlark.NewBuiltin(ModuleName+".repair", generateRepair(false)),
+				"try_repair": starlark.NewBuiltin(ModuleName+".try_repair", generateRepair(true)),
 			},
 		}
 		for k, v := range stdjson.Module.Members {

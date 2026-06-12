@@ -870,3 +870,111 @@ func TestJSONPathAndEvalFunctions(t *testing.T) {
 		})
 	}
 }
+
+func TestJSONRepair(t *testing.T) {
+	tests := []struct {
+		name    string
+		script  string
+		wantErr string
+	}{
+		{
+			name: `idempotent: valid JSON returned unchanged`,
+			script: itn.HereDoc(`
+				load('json', 'repair')
+				# already-valid JSON must come back byte-for-byte (no engine mangling)
+				assert.eq(repair('{"a":1,"b":[1,2,3]}'), '{"a":1,"b":[1,2,3]}')
+				assert.eq(repair('[1, 2, 3]'), '[1, 2, 3]')
+				assert.eq(repair('42'), '42')
+				assert.eq(repair('"plain"'), '"plain"')
+				assert.eq(repair('{"big":12345678901234567890}'), '{"big":12345678901234567890}')
+				# a backslash path — jsonrepair would double the backslash; the fast path returns valid input unchanged:
+				assert.eq(repair('{"p":"C:\\\\temp"}'), '{"p":"C:\\\\temp"}')
+				# backticks inside a string value must not trip fence stripping:
+				assert.eq(repair('{"code":"x` + "```" + `y"}'), '{"code":"x` + "```" + `y"}')
+			`),
+		},
+		{
+			name: `repair then decode: pathological inputs`,
+			script: itn.HereDoc(`
+				load('json', 'repair', 'decode')
+				def rd(x):
+					return decode(repair(x))
+				assert.eq(rd('` + "```json\\n" + `{"a": 1}` + "\\n```" + `'), {"a": 1})
+				assert.eq(rd('Sure! here:\n` + "```json\\n" + `{"a": 1}` + "\\n```" + `\nthanks'), {"a": 1})
+				assert.eq(rd('{"users": [{"name": "Ann", "age": 3'), {"users": [{"name": "Ann", "age": 3}]})
+				assert.eq(rd("{'name': 'John'}"), {"name": "John"})
+				assert.eq(rd('{"a": 1, "b": [1,2,3,],}'), {"a": 1, "b": [1, 2, 3]})
+				assert.eq(rd('{"ok": True, "v": None}'), {"ok": True, "v": None})
+				# top-level array (exercises the [ ... ] span branch):
+				assert.eq(rd('[1, 2, 3,]'), [1, 2, 3])
+				# truncated value with an escaped quote (exercises the escape branch):
+				assert.eq(rd('{"q":"a\\"b"'), {"q": 'a"b'})
+			`),
+		},
+		{
+			name: `fenced valid JSON: returns the inner`,
+			script: itn.HereDoc(`
+				load('json', 'repair')
+				assert.eq(repair('` + "```json\\n" + `{"a":1}` + "\\n```" + `'), '{"a":1}')
+			`),
+		},
+		{
+			name: `bare prose: yields a scalar (documented boundary)`,
+			script: itn.HereDoc(`
+				load('json', 'repair', 'decode')
+				# repair returns text; a bare scalar is honest, not an object.
+				# scripts that need a structured result check the decoded type.
+				v = decode(repair('The answer is 42'))
+				assert.eq(type(v) in ('dict', 'list'), False)
+			`),
+		},
+		{
+			name: `try_repair: ok and error`,
+			script: itn.HereDoc(`
+				load('json', 'try_repair')
+				out, err = try_repair('{"a": 1,}')
+				assert.eq(err, None)
+				assert.eq(out, '{"a": 1}')
+				bad, err2 = try_repair(123)
+				assert.eq(bad, None)
+				assert.true(err2 != None)
+				# unrepairable text -> (None, error) rather than aborting:
+				bad2, err3 = try_repair('{,,,}')
+				assert.eq(bad2, None)
+				assert.true(err3 != None)
+			`),
+		},
+		{
+			name: `repair: missing argument`,
+			script: itn.HereDoc(`
+				load('json', 'repair')
+				repair()
+			`),
+			wantErr: `json.repair: missing argument for text`,
+		},
+		{
+			name: `repair: wrong type`,
+			script: itn.HereDoc(`
+				load('json', 'repair')
+				repair(42)
+			`),
+			wantErr: `json.repair: for parameter text: got int, want string`,
+		},
+		{
+			name: `repair: unrepairable input aborts (non-try)`,
+			script: itn.HereDoc(`
+				load('json', 'repair')
+				repair('{,,,}')
+			`),
+			wantErr: `json.repair:`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res, err := itn.ExecModuleWithErrorTest(t, json.ModuleName, json.LoadModule, tt.script, tt.wantErr, nil)
+			if (err != nil) != (tt.wantErr != "") {
+				t.Errorf("json(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
+			}
+		})
+	}
+}
