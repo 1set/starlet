@@ -41,6 +41,7 @@ func LoadModule() (md starlark.StringDict, err error) {
 					"hostname":  starlark.String(host),
 					"workdir":   starlark.String(pwd),
 					"homedir":   starlark.String(hd),
+					"tempdir":   starlark.String(os.TempDir()),
 					"os":        starlark.String(grt.GOOS),
 					"arch":      starlark.String(grt.GOARCH),
 					"gover":     starlark.String(grt.Version()),
