@@ -17,6 +17,7 @@ import (
 	libpath "github.com/1set/starlet/lib/path"
 	librand "github.com/1set/starlet/lib/random"
 	libre "github.com/1set/starlet/lib/re"
+	libregex "github.com/1set/starlet/lib/regex"
 	librt "github.com/1set/starlet/lib/runtime"
 	libstat "github.com/1set/starlet/lib/stats"
 	libstr "github.com/1set/starlet/lib/string"
@@ -47,21 +48,22 @@ var allBuiltinModules = ModuleLoaderMap{
 		}, nil
 	},
 	// add third-party modules
-	libatom.ModuleName: libatom.LoadModule,
-	libb64.ModuleName:  libb64.LoadModule,
-	libcsv.ModuleName:  libcsv.LoadModule,
-	libfile.ModuleName: libfile.LoadModule,
-	libhash.ModuleName: libhash.LoadModule,
-	libhttp.ModuleName: libhttp.LoadModule,
-	libnet.ModuleName:  libnet.LoadModule,
-	libjson.ModuleName: libjson.LoadModule,
-	liblog.ModuleName:  liblog.LoadModule,
-	libpath.ModuleName: libpath.LoadModule,
-	librand.ModuleName: librand.LoadModule,
-	libre.ModuleName:   libre.LoadModule,
-	librt.ModuleName:   librt.LoadModule,
-	libstr.ModuleName:  libstr.LoadModule,
-	libstat.ModuleName: libstat.LoadModule,
+	libatom.ModuleName:  libatom.LoadModule,
+	libb64.ModuleName:   libb64.LoadModule,
+	libcsv.ModuleName:   libcsv.LoadModule,
+	libfile.ModuleName:  libfile.LoadModule,
+	libhash.ModuleName:  libhash.LoadModule,
+	libhttp.ModuleName:  libhttp.LoadModule,
+	libnet.ModuleName:   libnet.LoadModule,
+	libjson.ModuleName:  libjson.LoadModule,
+	liblog.ModuleName:   liblog.LoadModule,
+	libpath.ModuleName:  libpath.LoadModule,
+	librand.ModuleName:  librand.LoadModule,
+	libre.ModuleName:    libre.LoadModule,
+	libregex.ModuleName: libregex.LoadModule,
+	librt.ModuleName:    librt.LoadModule,
+	libstr.ModuleName:   libstr.LoadModule,
+	libstat.ModuleName:  libstat.LoadModule,
 }
 
 // GetAllBuiltinModuleNames returns a list of all builtin module names.
@@ -176,6 +178,7 @@ var builtinModuleCapabilities = map[string]ModuleCapability{
 	"path":         CapFileSystem | CapProcess, // listdir/mkdir touch the FS; chdir/getcwd the process CWD
 	"random":       CapPure,
 	"re":           CapPure,
+	"regex":        CapPure,
 	"runtime":      CapProcess, // exposes host identity, directories, process info
 	"stats":        CapPure,
 	"string":       CapPure,
