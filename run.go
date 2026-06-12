@@ -3,6 +3,7 @@ package starlet
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/fs"
 	"sync"
 	"time"
@@ -126,12 +127,21 @@ func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap, allowCac
 			// if no name, cannot load
 			return nil, errorStarletErrorf("run", "no script name")
 		}
-		// load script from FS
+		// load the script content from FS, so that the program cache can
+		// key on the content (passing the open reader through degraded the
+		// cache key to the bare filename, letting different files with the
+		// same name hit each other's compiled program) — and the file
+		// handle was never closed
 		rd, e := m.scriptFS.Open(scriptName)
 		if e != nil {
 			return nil, errorStarletError("run", e)
 		}
-		source = rd
+		b, e := io.ReadAll(rd)
+		_ = rd.Close()
+		if e != nil {
+			return nil, errorStarletError("run", e)
+		}
+		source = b
 	} else {
 		return nil, errorStarletErrorf("run", "no script to execute")
 	}
