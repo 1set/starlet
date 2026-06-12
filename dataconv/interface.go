@@ -4,13 +4,12 @@
 //
 // For data type conversion, it provides functions to convert between Starlark and Go types:
 //
-//     +---------+   Marshal   +------------+   MarshalStarlarkJSON   +----------+
-//     |         | ----------> |            | ----------------------> |          |
-//     |  Go     |             |  Starlark  |                         | JSON     |
-//     |  Value  | <---------- |  Value     | <---------------------- | String   |
-//     |         |  Unmarshal  |            |   UnmarshalStarlarkJSON |          |
-//     +---------+             +------------+                         +----------+
-//
+//	+---------+   Marshal   +------------+   MarshalStarlarkJSON   +----------+
+//	|         | ----------> |            | ----------------------> |          |
+//	|  Go     |             |  Starlark  |                         | JSON     |
+//	|  Value  | <---------- |  Value     | <---------------------- | String   |
+//	|         |  Unmarshal  |            |   UnmarshalStarlarkJSON |          |
+//	+---------+             +------------+                         +----------+
 package dataconv
 
 import "go.starlark.net/starlark"

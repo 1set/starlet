@@ -29,12 +29,12 @@ var (
 //   - JSON body support simplifies working with JSON payloads directly in scripts.
 //
 // Usage Pattern:
-//   1. Convert an incoming http.Request to ExportedServerRequest with NewExportedServerRequest for access in Go.
-//   2. Modify the ExportedServerRequest properties as needed in Go before handing off to Starlark.
-//   3. Use the Struct method to convert the ExportedServerRequest to a Starlark struct, passing it to Starlark scripts
-//      for read-only access. This step allows scripts to inspect the request's properties.
-//   4. Since the Starlark struct is read-only, modifications to the request must be performed in Go, either before
-//      or after script execution.
+//  1. Convert an incoming http.Request to ExportedServerRequest with NewExportedServerRequest for access in Go.
+//  2. Modify the ExportedServerRequest properties as needed in Go before handing off to Starlark.
+//  3. Use the Struct method to convert the ExportedServerRequest to a Starlark struct, passing it to Starlark scripts
+//     for read-only access. This step allows scripts to inspect the request's properties.
+//  4. Since the Starlark struct is read-only, modifications to the request must be performed in Go, either before
+//     or after script execution.
 //
 // This design prioritizes ease of use, security, and performance, facilitating dynamic and complex request processing
 // logic through Go and Starlark. It ensures the integrity of the HTTP request handling by preventing unauthorized
@@ -169,12 +169,12 @@ func NewServerResponse() *ServerResponse {
 //   - Setting the response body with support for various data types (e.g., binary, text, HTML, JSON).
 //
 // Usage Pattern:
-//   1. Create a ServerResponse instance using NewServerResponse().
-//   2. Utilize the Struct() method to obtain a Starlark struct that exposes ServerResponse functionalities to Starlark scripts.
-//   3. In the Starlark script, utilize provided methods (e.g., set_status, add_header, set_content_type) to prepare the response.
-//   4. Back in Go, the ServerResponse instance can directly write its content to an http.ResponseWriter using its Write() method.
-//      Alternatively, you can call the Export() method to convert the ServerResponse into an ExportedServerResponse for modification,
-//      which is then capable of being written to an http.ResponseWriter using its Write() method.
+//  1. Create a ServerResponse instance using NewServerResponse().
+//  2. Utilize the Struct() method to obtain a Starlark struct that exposes ServerResponse functionalities to Starlark scripts.
+//  3. In the Starlark script, utilize provided methods (e.g., set_status, add_header, set_content_type) to prepare the response.
+//  4. Back in Go, the ServerResponse instance can directly write its content to an http.ResponseWriter using its Write() method.
+//     Alternatively, you can call the Export() method to convert the ServerResponse into an ExportedServerResponse for modification,
+//     which is then capable of being written to an http.ResponseWriter using its Write() method.
 //
 // Internally, ServerResponse uses a private contentDataType enum to manage the intended type of the response data,
 // allowing for automatic adjustment of the Content-Type header based on the set data type by the Starlark script.
