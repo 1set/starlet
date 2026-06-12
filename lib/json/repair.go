@@ -24,10 +24,10 @@ var fenceRe = regexp.MustCompile("(?s)```(?:json|JSON)?[ \\t]*\\r?\\n?(.*?)```")
 // only genuinely-broken input reaches the repair engine — the vendored
 // jsonrepair can otherwise double-escape some valid escape sequences, so it
 // is never run on text that already parses.
-func generateRepair(try bool) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func generateRepair(try bool) func(_ *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return func(_ *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var text string
-		if err := starlark.UnpackArgs(b.Name(), args, kwargs, "text", &text); err != nil {
+		if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "text", &text); err != nil {
 			if try {
 				return starlark.Tuple{none, starlark.String(err.Error())}, nil
 			}
@@ -38,7 +38,7 @@ func generateRepair(try bool) func(thread *starlark.Thread, b *starlark.Builtin,
 			if try {
 				return starlark.Tuple{none, starlark.String(err.Error())}, nil
 			}
-			return none, fmt.Errorf("%s: %w", b.Name(), err)
+			return none, fmt.Errorf("%s: %w", fn.Name(), err)
 		}
 		if try {
 			return starlark.Tuple{starlark.String(out), none}, nil
@@ -85,47 +85,43 @@ func repairText(text string) (string, error) {
 // returned to its end so the repair stage can complete it.
 func firstBalancedSpan(s string) (string, bool) {
 	rs := []rune(s)
-	start := -1
-	var open, clos rune
-	for i, r := range rs {
-		if r == '{' || r == '[' {
-			start, open = i, r
-			if r == '{' {
-				clos = '}'
-			} else {
-				clos = ']'
-			}
-			break
-		}
-	}
+	start, clos := openBracket(rs)
 	if start < 0 {
 		return "", false
 	}
+	open := rs[start]
 	depth, inStr, esc := 0, false, false
 	for i := start; i < len(rs); i++ {
-		r := rs[i]
-		if inStr {
-			switch {
-			case esc:
-				esc = false
-			case r == '\\':
-				esc = true
-			case r == '"':
-				inStr = false
-			}
-			continue
-		}
-		switch r {
-		case '"':
-			inStr = true
-		case open:
+		switch r := rs[i]; {
+		case esc:
+			esc = false // this char is escaped; consume it
+		case inStr && r == '\\':
+			esc = true
+		case r == '"':
+			inStr = !inStr
+		case inStr:
+			// inside a string literal: brackets are not structural
+		case r == open:
 			depth++
-		case clos:
-			depth--
-			if depth == 0 {
+		case r == clos:
+			if depth--; depth == 0 {
 				return string(rs[start : i+1]), true
 			}
 		}
 	}
 	return string(rs[start:]), true // truncated; repair completes it
+}
+
+// openBracket returns the index of the first { or [ in rs and its matching
+// closing rune, or (-1, 0) if neither appears.
+func openBracket(rs []rune) (int, rune) {
+	for i, r := range rs {
+		switch r {
+		case '{':
+			return i, '}'
+		case '[':
+			return i, ']'
+		}
+	}
+	return -1, 0
 }
