@@ -17,6 +17,14 @@ import (
 	"go.starlark.net/starlarkstruct"
 )
 
+// bounds for the ping parameters: a script could otherwise park the host
+// goroutine nearly forever (count=10**9) - wall-clock timeouts cannot stop
+// a builtin mid-flight, only the checks below and the context plumbing can
+const (
+	maxPingCount   = 1024
+	maxPingSeconds = 3600
+)
+
 func goPingWrap(ctx context.Context, address string, count int, timeout, interval time.Duration, pingFunc func(ctx context.Context, address string, timeout time.Duration) (time.Duration, error)) ([]time.Duration, error) {
 	if count <= 0 {
 		return nil, fmt.Errorf("count must be greater than 0")
@@ -24,13 +32,25 @@ func goPingWrap(ctx context.Context, address string, count int, timeout, interva
 
 	rttDurations := make([]time.Duration, 0, count)
 	for i := 1; i <= count; i++ {
-		rtt, err := pingFunc(ctx, address, timeout)
-		if err != nil {
-			continue
+		// honor cancellation between rounds: the interpreter cannot stop a
+		// builtin mid-flight, so the loop has to check for itself
+		if err := ctx.Err(); err != nil {
+			return nil, err
 		}
-		rttDurations = append(rttDurations, rtt)
+		rtt, err := pingFunc(ctx, address, timeout)
+		if err == nil {
+			rttDurations = append(rttDurations, rtt)
+		}
 		if i < count {
-			time.Sleep(interval)
+			// a cancellable pause (time.Sleep cannot be interrupted);
+			// failed rounds pause too, instead of spinning
+			t := time.NewTimer(interval)
+			select {
+			case <-ctx.Done():
+				t.Stop()
+				return nil, ctx.Err()
+			case <-t.C:
+			}
 		}
 	}
 
@@ -42,7 +62,10 @@ func goPingWrap(ctx context.Context, address string, count int, timeout, interva
 
 func tcpPingFunc(ctx context.Context, address string, timeout time.Duration) (time.Duration, error) {
 	start := time.Now()
-	conn, err := net.DialTimeout("tcp", address, timeout)
+	// DialContext keeps the per-dial timeout but also aborts when the
+	// thread's context is cancelled (DialTimeout ignored ctx entirely)
+	d := net.Dialer{Timeout: timeout}
+	conn, err := d.DialContext(ctx, "tcp", address)
 	if err != nil {
 		return 0, err
 	}
@@ -98,6 +121,28 @@ func httpPingFunc(ctx context.Context, url string, timeout time.Duration) (time.
 	return connDur, nil
 }
 
+// pingDurations corrects and converts the timeout/interval parameters.
+// The conversion multiplies as float64: the old time.Duration(f)*time.Second
+// form truncated the float first, so any sub-second value became 0 -
+// timeout=0.5 meant "no timeout at all" and interval=0.01 meant no pause.
+func pingDurations(b *starlark.Builtin, timeout, interval tps.FloatOrInt) (timeoutDur, intervalDur time.Duration, err error) {
+	if timeout <= 0 {
+		timeout = 10
+	}
+	if interval <= 0 {
+		interval = 1
+	}
+	if timeout > maxPingSeconds {
+		return 0, 0, fmt.Errorf("%s: timeout must be at most %d seconds", b.Name(), maxPingSeconds)
+	}
+	if interval > maxPingSeconds {
+		return 0, 0, fmt.Errorf("%s: interval must be at most %d seconds", b.Name(), maxPingSeconds)
+	}
+	timeoutDur = time.Duration(float64(timeout) * float64(time.Second))
+	intervalDur = time.Duration(float64(interval) * float64(time.Second))
+	return timeoutDur, intervalDur, nil
+}
+
 func createPingStats(address string, count int, rtts []time.Duration) starlark.Value {
 	vals := make([]float64, len(rtts))
 	for i, rtt := range rtts {
@@ -134,19 +179,23 @@ func starTCPPing(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tup
 		return nil, err
 	}
 
-	// correct timeout value
-	if timeout <= 0 {
-		timeout = 10
+	// validate before any network work
+	if count <= 0 {
+		return none, fmt.Errorf("%s: count must be greater than 0", b.Name())
 	}
-	if interval <= 0 {
-		interval = 1
+	if count > maxPingCount {
+		return none, fmt.Errorf("%s: count must be at most %d", b.Name(), maxPingCount)
+	}
+	timeoutDur, intervalDur, err := pingDurations(b, timeout, interval)
+	if err != nil {
+		return none, err
 	}
 
 	// get the context for the DNS lookup and TCP ping
 	ctx := dataconv.GetThreadContext(thread)
 
 	// resolve the hostname to an IP address
-	ips, err := goLookup(ctx, hostname.GoString(), "", time.Duration(timeout)*time.Second)
+	ips, err := goLookup(ctx, hostname.GoString(), "", timeoutDur)
 	if err != nil {
 		return none, fmt.Errorf("%s: %w", b.Name(), err)
 	}
@@ -156,7 +205,7 @@ func starTCPPing(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tup
 	address := net.JoinHostPort(ips[0], strconv.Itoa(port))
 
 	// perform the TCP ping, and get the statistics
-	rtts, err := goPingWrap(ctx, address, count, time.Duration(timeout)*time.Second, time.Duration(interval)*time.Second, tcpPingFunc)
+	rtts, err := goPingWrap(ctx, address, count, timeoutDur, intervalDur, tcpPingFunc)
 	if err != nil {
 		return none, fmt.Errorf("%s: %w", b.Name(), err)
 	}
@@ -174,18 +223,22 @@ func starHTTPing(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tup
 		return nil, err
 	}
 
-	// correct timeout value
-	if timeout <= 0 {
-		timeout = 10
+	// validate before any network work
+	if count <= 0 {
+		return none, fmt.Errorf("%s: count must be greater than 0", b.Name())
 	}
-	if interval <= 0 {
-		interval = 1
+	if count > maxPingCount {
+		return none, fmt.Errorf("%s: count must be at most %d", b.Name(), maxPingCount)
+	}
+	timeoutDur, intervalDur, err := pingDurations(b, timeout, interval)
+	if err != nil {
+		return none, err
 	}
 
 	// perform the HTTP ping, and get the statistics
 	address := url.GoString()
 	ctx := dataconv.GetThreadContext(thread)
-	rtts, err := goPingWrap(ctx, address, count, time.Duration(timeout)*time.Second, time.Duration(interval)*time.Second, httpPingFunc)
+	rtts, err := goPingWrap(ctx, address, count, timeoutDur, intervalDur, httpPingFunc)
 	if err != nil {
 		return none, fmt.Errorf("%s: %w", b.Name(), err)
 	}
