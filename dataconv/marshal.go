@@ -286,10 +286,10 @@ func unmarshalValue(x starlark.Value, visited map[starlark.Value]bool) (val inte
 		}
 		val = value
 	case *starlark.Set:
-		if visited, err = enter(v); err != nil {
-			return nil, err
-		}
-		defer delete(visited, v)
+		// sets cannot participate in cycles: their elements must be
+		// hashable, and every container that could lead back to the set
+		// (dict/list/set, or a tuple holding one) is unhashable - so no
+		// visited tracking is needed here
 		var (
 			i      int
 			setVal starlark.Value

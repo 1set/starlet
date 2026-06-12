@@ -599,6 +599,23 @@ func TestUnmarshalLosslessContract(t *testing.T) {
 		t.Errorf("expected a key-collision error, got: %v", err)
 	}
 
+	// bool keys keep the historical json-style lowercase text
+	bd := starlark.NewDict(2)
+	_ = bd.SetKey(starlark.Bool(true), starlark.MakeInt(1))
+	_ = bd.SetKey(starlark.Bool(false), starlark.MakeInt(2))
+	if v, err := Unmarshal(bd); err != nil {
+		t.Errorf("expected the bool-key dict to unmarshal, got: %v", err)
+	} else if m := v.(map[string]interface{}); m["true"] != 1 || m["false"] != 2 {
+		t.Errorf("expected json-style bool keys, got %v", m)
+	}
+
+	// a list directly containing itself errors at the list's own guard
+	selfList := starlark.NewList(nil)
+	_ = selfList.Append(selfList)
+	if _, err := Unmarshal(selfList); err == nil || !strings.Contains(err.Error(), "cyclic reference") {
+		t.Errorf("expected a cyclic-reference error for the self-list, got: %v", err)
+	}
+
 	// an indirect cycle (dict -> list -> dict) used to overflow the stack:
 	// the old detection only caught a container directly containing itself
 	cl := starlark.NewList(nil)
