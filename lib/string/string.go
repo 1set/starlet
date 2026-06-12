@@ -54,18 +54,23 @@ func LoadModule() (starlark.StringDict, error) {
 					"printable":       starlark.String(printable),
 
 					// functions
-					"length":    starlark.NewBuiltin(ModuleName+".length", length),
-					"reverse":   starlark.NewBuiltin(ModuleName+".reverse", reverse),
-					"escape":    genStarStrBuiltin("escape", html.EscapeString),
-					"unescape":  genStarStrBuiltin("unescape", html.UnescapeString),
-					"quote":     genStarStrBuiltin("quote", strconv.Quote),
-					"unquote":   genStarStrBuiltin("unquote", robustUnquote),
-					"index":     starlark.NewBuiltin(ModuleName+".index", createIndexFunc("index", false, false)),
-					"find":      starlark.NewBuiltin(ModuleName+".find", createIndexFunc("find", false, true)),
-					"rindex":    starlark.NewBuiltin(ModuleName+".rindex", createIndexFunc("rindex", true, false)),
-					"rfind":     starlark.NewBuiltin(ModuleName+".rfind", createIndexFunc("rfind", true, true)),
-					"substring": starlark.NewBuiltin(ModuleName+".substring", substring),
-					"codepoint": starlark.NewBuiltin(ModuleName+".codepoint", codepoint),
+					"length":     starlark.NewBuiltin(ModuleName+".length", length),
+					"reverse":    starlark.NewBuiltin(ModuleName+".reverse", reverse),
+					"escape":     genStarStrBuiltin("escape", html.EscapeString),
+					"unescape":   genStarStrBuiltin("unescape", html.UnescapeString),
+					"quote":      genStarStrBuiltin("quote", strconv.Quote),
+					"unquote":    genStarStrBuiltin("unquote", robustUnquote),
+					"index":      starlark.NewBuiltin(ModuleName+".index", createIndexFunc("index", false, false)),
+					"find":       starlark.NewBuiltin(ModuleName+".find", createIndexFunc("find", false, true)),
+					"rindex":     starlark.NewBuiltin(ModuleName+".rindex", createIndexFunc("rindex", true, false)),
+					"rfind":      starlark.NewBuiltin(ModuleName+".rfind", createIndexFunc("rfind", true, true)),
+					"substring":  starlark.NewBuiltin(ModuleName+".substring", substring),
+					"codepoint":  starlark.NewBuiltin(ModuleName+".codepoint", codepoint),
+					"head":       starlark.NewBuiltin(ModuleName+".head", genHeadTail("head", false, false)),
+					"tail":       starlark.NewBuiltin(ModuleName+".tail", genHeadTail("tail", true, false)),
+					"head_lines": starlark.NewBuiltin(ModuleName+".head_lines", genHeadTail("head_lines", false, true)),
+					"tail_lines": starlark.NewBuiltin(ModuleName+".tail_lines", genHeadTail("tail_lines", true, true)),
+					"truncate":   starlark.NewBuiltin(ModuleName+".truncate", truncate),
 				},
 			},
 		}
@@ -240,6 +245,72 @@ func substring(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple
 	}
 
 	return starlark.String(rs[start:end]), nil
+}
+
+// genHeadTail builds the head/tail/head_lines/tail_lines builtins: the
+// first or last n runes (or lines) of a string. n is a non-negative count
+// and is clamped at the available length — unlike the language-level
+// byte slice s[a:b], the rune-based cut never splits a multi-byte
+// character, and clamping never errors on a short input.
+func genHeadTail(name string, fromEnd, byLines bool) func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var (
+			s string
+			n int
+		)
+		if err := starlark.UnpackArgs(name, args, kwargs, "s", &s, "n", &n); err != nil {
+			return none, err
+		}
+		if n < 0 {
+			return none, fmt.Errorf("%s: n must be non-negative", name)
+		}
+		if byLines {
+			lines := strings.Split(s, "\n")
+			if n > len(lines) {
+				n = len(lines)
+			}
+			if fromEnd {
+				return starlark.String(strings.Join(lines[len(lines)-n:], "\n")), nil
+			}
+			return starlark.String(strings.Join(lines[:n], "\n")), nil
+		}
+		rs := []rune(s)
+		if n > len(rs) {
+			n = len(rs)
+		}
+		if fromEnd {
+			return starlark.String(rs[len(rs)-n:]), nil
+		}
+		return starlark.String(rs[:n]), nil
+	}
+}
+
+// truncate shortens a string to at most length runes, appending the suffix
+// when a cut happens; the result (including the suffix) never exceeds
+// length runes. The cut is rune-aware, so multi-byte characters survive.
+func truncate(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var (
+		s      string
+		length int
+		suffix = "..."
+	)
+	if err := starlark.UnpackArgs("truncate", args, kwargs, "s", &s, "length", &length, "suffix?", &suffix); err != nil {
+		return none, err
+	}
+	if length < 0 {
+		return none, fmt.Errorf("truncate: length must be non-negative")
+	}
+	rs := []rune(s)
+	if len(rs) <= length {
+		return starlark.String(s), nil
+	}
+	sr := []rune(suffix)
+	keep := length - len(sr)
+	if keep < 0 {
+		keep = 0
+		sr = sr[:length]
+	}
+	return starlark.String(string(rs[:keep]) + string(sr)), nil
 }
 
 // codepoint returns the Unicode codepoint of the character at the given index.
