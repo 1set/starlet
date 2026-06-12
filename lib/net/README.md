@@ -10,8 +10,6 @@ All three functions honor the machine's context: a `RunWithTimeout`/`RunWithCont
 
 Looks up the IP addresses of a domain name, returning a list of strings.
 
-#### Parameters
-
 | name         | type     | description                                                                                                                                                                      |
 |--------------|----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `domain`     | `string` | the domain name to resolve (an IP literal is returned as-is)                                                                                                                    |
@@ -21,8 +19,6 @@ Looks up the IP addresses of a domain name, returning a list of strings.
 ### `tcping(hostname, port=80, count=4, timeout=10, interval=1) statistics`
 
 Measures TCP connect round-trip times to `hostname:port` and returns a `statistics` struct.
-
-#### Parameters
 
 | name       | type        | description                                                              |
 |------------|-------------|--------------------------------------------------------------------------|
