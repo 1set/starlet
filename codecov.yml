@@ -1,10 +1,10 @@
 # Codecov configuration for starlet.
 #
 # Exclude the vendored, pinned third-party JSON-repair runtime from coverage.
-# lib/json/internal/jsonrepair is a verbatim copy of kaptinlin/jsonrepair
+# internal/jsonrepair is a verbatim copy of kaptinlin/jsonrepair
 # v0.2.2 (MIT), frozen at its go1.18/1.19-compatible release. It is exercised
 # through the json.repair tests, but mirroring its upstream branch coverage is
 # not a gate this repository maintains.
 ignore:
-  - "lib/json/internal/jsonrepair"
-  - "lib/json/internal/jsonrepair/**/*"
+  - "internal/jsonrepair"
+  - "internal/jsonrepair/**/*"
