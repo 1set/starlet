@@ -81,15 +81,15 @@ func generateDumps(try bool) func(*starlark.Thread, *starlark.Builtin, starlark.
 	return func(_ *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var v starlark.Value
 		if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "value", &v); err != nil {
-			return failDumps(try, err, fn, false)
+			return failResult(try, err, fn, false)
 		}
 		enc, err := encode(v, map[uintptr]bool{})
 		if err != nil {
-			return failDumps(try, err, fn, true)
+			return failResult(try, err, fn, true)
 		}
 		b, err := json.Marshal(enc)
 		if err != nil {
-			return failDumps(try, err, fn, true)
+			return failResult(try, err, fn, true)
 		}
 		if try {
 			return starlark.Tuple{starlark.String(b), none}, nil
@@ -98,7 +98,9 @@ func generateDumps(try bool) func(*starlark.Thread, *starlark.Builtin, starlark.
 	}
 }
 
-func failDumps(try bool, err error, fn *starlark.Builtin, wrap bool) (starlark.Value, error) {
+// failResult shapes a builtin's failure: a (None, message) tuple for the
+// try_ variants, or a raw/wrapped error otherwise.
+func failResult(try bool, err error, fn *starlark.Builtin, wrap bool) (starlark.Value, error) {
 	if try {
 		return starlark.Tuple{none, starlark.String(err.Error())}, nil
 	}
@@ -114,26 +116,17 @@ func generateLoads(try bool) func(*starlark.Thread, *starlark.Builtin, starlark.
 	return func(_ *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var s string
 		if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "s", &s); err != nil {
-			if try {
-				return starlark.Tuple{none, starlark.String(err.Error())}, nil
-			}
-			return none, err
+			return failResult(try, err, fn, false)
 		}
 		dec := json.NewDecoder(strings.NewReader(s))
 		dec.UseNumber()
 		var raw interface{}
 		if err := dec.Decode(&raw); err != nil {
-			if try {
-				return starlark.Tuple{none, starlark.String(err.Error())}, nil
-			}
-			return none, fmt.Errorf("%s: %w", fn.Name(), err)
+			return failResult(try, err, fn, true)
 		}
 		val, err := decode(raw)
 		if err != nil {
-			if try {
-				return starlark.Tuple{none, starlark.String(err.Error())}, nil
-			}
-			return none, fmt.Errorf("%s: %w", fn.Name(), err)
+			return failResult(try, err, fn, true)
 		}
 		if try {
 			return starlark.Tuple{val, none}, nil
@@ -151,16 +144,9 @@ func encode(v starlark.Value, seen map[uintptr]bool) (interface{}, error) {
 	case starlark.Bool:
 		return bool(t), nil
 	case starlark.Int:
-		if i, ok := t.Int64(); ok {
-			return i, nil
-		}
-		return env(tagBigint, t.String()), nil
+		return encodeInt(t), nil
 	case starlark.Float:
-		f := float64(t)
-		if math.IsNaN(f) || math.IsInf(f, 0) {
-			return nil, fmt.Errorf("cannot serialize non-finite float %v", f)
-		}
-		return f, nil
+		return encodeFloat(t)
 	case starlark.String:
 		return string(t), nil
 	case starlark.Bytes:
@@ -168,21 +154,7 @@ func encode(v starlark.Value, seen map[uintptr]bool) (interface{}, error) {
 	case startime.Time:
 		return env(tagTime, time.Time(t).Format(time.RFC3339Nano)), nil
 	case *starlark.List:
-		p := reflect.ValueOf(t).Pointer()
-		if seen[p] {
-			return nil, fmt.Errorf("cannot serialize a value that refers to itself (cycle in list)")
-		}
-		seen[p] = true
-		defer delete(seen, p)
-		arr := make([]interface{}, 0, t.Len())
-		for i := 0; i < t.Len(); i++ {
-			e, err := encode(t.Index(i), seen)
-			if err != nil {
-				return nil, err
-			}
-			arr = append(arr, e)
-		}
-		return arr, nil
+		return encodeList(t, seen)
 	case starlark.Tuple:
 		arr, err := encodeElems(t, seen)
 		if err != nil {
@@ -204,6 +176,43 @@ func encode(v starlark.Value, seen map[uintptr]bool) (interface{}, error) {
 	default:
 		return nil, fmt.Errorf("cannot serialize value of type %s: serial round-trips data, not host objects", v.Type())
 	}
+}
+
+// encodeInt encodes an int as a JSON number when it fits int64, else as a
+// bigint envelope (a decimal string), so arbitrary precision survives.
+func encodeInt(i starlark.Int) interface{} {
+	if v, ok := i.Int64(); ok {
+		return v
+	}
+	return env(tagBigint, i.String())
+}
+
+// encodeFloat encodes a finite float; NaN and ±Inf have no JSON form and error.
+func encodeFloat(f starlark.Float) (interface{}, error) {
+	v := float64(f)
+	if math.IsNaN(v) || math.IsInf(v, 0) {
+		return nil, fmt.Errorf("cannot serialize non-finite float %v", v)
+	}
+	return v, nil
+}
+
+// encodeList encodes a list as a JSON array, guarding against reference cycles.
+func encodeList(l *starlark.List, seen map[uintptr]bool) (interface{}, error) {
+	p := reflect.ValueOf(l).Pointer()
+	if seen[p] {
+		return nil, fmt.Errorf("cannot serialize a value that refers to itself (cycle in list)")
+	}
+	seen[p] = true
+	defer delete(seen, p)
+	arr := make([]interface{}, 0, l.Len())
+	for i := 0; i < l.Len(); i++ {
+		e, err := encode(l.Index(i), seen)
+		if err != nil {
+			return nil, err
+		}
+		arr = append(arr, e)
+	}
+	return arr, nil
 }
 
 func encodeElems(elems []starlark.Value, seen map[uintptr]bool) ([]interface{}, error) {
@@ -248,35 +257,41 @@ func encodeDict(d *starlark.Dict, seen map[uintptr]bool) (interface{}, error) {
 	defer delete(seen, p)
 
 	keys := d.Keys()
-	allString := true
 	for _, k := range keys {
 		if _, ok := k.(starlark.String); !ok {
-			allString = false
-			break
+			return encodeMapKV(d, keys, seen)
 		}
 	}
+	return encodeStringDict(d, keys, seen)
+}
 
-	if allString {
-		m := make(map[string]interface{}, len(keys))
-		hasTag := false
-		for _, k := range keys {
-			ks := string(k.(starlark.String))
-			if ks == tagKey {
-				hasTag = true
-			}
-			val, _, _ := d.Get(k)
-			e, err := encode(val, seen)
-			if err != nil {
-				return nil, err
-			}
-			m[ks] = e
+// encodeStringDict encodes an all-string-keyed dict as a JSON object
+// (json.Marshal sorts the keys). A real "$t" key is wrapped in the object tag
+// so the dict is never mistaken for an envelope on the way back.
+func encodeStringDict(d *starlark.Dict, keys []starlark.Value, seen map[uintptr]bool) (interface{}, error) {
+	m := make(map[string]interface{}, len(keys))
+	hasTag := false
+	for _, k := range keys {
+		ks := string(k.(starlark.String))
+		if ks == tagKey {
+			hasTag = true
 		}
-		if hasTag {
-			return env(tagObject, m), nil
+		val, _, _ := d.Get(k)
+		e, err := encode(val, seen)
+		if err != nil {
+			return nil, err
 		}
-		return m, nil
+		m[ks] = e
 	}
+	if hasTag {
+		return env(tagObject, m), nil
+	}
+	return m, nil
+}
 
+// encodeMapKV encodes a dict with non-string keys as a deterministic, sorted
+// list of [key, value] pairs under the mapkv tag.
+func encodeMapKV(d *starlark.Dict, keys []starlark.Value, seen map[uintptr]bool) (interface{}, error) {
 	type pair struct {
 		entry []interface{}
 		order string
@@ -351,6 +366,8 @@ func decode(v interface{}) (starlark.Value, error) {
 	}
 }
 
+// decodeObject dispatches a parsed JSON object: an envelope (by its "$t" tag)
+// to the matching decoder, or a plain dict.
 func decodeObject(m map[string]interface{}) (starlark.Value, error) {
 	tag, ok := m[tagKey].(string)
 	if !ok {
@@ -359,71 +376,17 @@ func decodeObject(m map[string]interface{}) (starlark.Value, error) {
 	raw := m[valKey]
 	switch tag {
 	case tagBytes:
-		s, _ := raw.(string)
-		b, err := base64.StdEncoding.DecodeString(s)
-		if err != nil {
-			return nil, fmt.Errorf("invalid bytes payload: %w", err)
-		}
-		return starlark.Bytes(b), nil
+		return decodeBytes(raw)
 	case tagBigint:
-		s, _ := raw.(string)
-		bi, ok := new(big.Int).SetString(s, 10)
-		if !ok {
-			return nil, fmt.Errorf("invalid bigint payload %q", s)
-		}
-		return starlark.MakeBigInt(bi), nil
+		return decodeBigint(raw)
 	case tagTuple:
-		arr, _ := raw.([]interface{})
-		elems := make([]starlark.Value, len(arr))
-		for i, e := range arr {
-			ev, err := decode(e)
-			if err != nil {
-				return nil, err
-			}
-			elems[i] = ev
-		}
-		return starlark.Tuple(elems), nil
+		return decodeTuple(raw)
 	case tagSet:
-		arr, _ := raw.([]interface{})
-		set := starlark.NewSet(len(arr))
-		for _, e := range arr {
-			ev, err := decode(e)
-			if err != nil {
-				return nil, err
-			}
-			if err := set.Insert(ev); err != nil {
-				return nil, err
-			}
-		}
-		return set, nil
+		return decodeSet(raw)
 	case tagTime:
-		s, _ := raw.(string)
-		tm, err := time.Parse(time.RFC3339Nano, s)
-		if err != nil {
-			return nil, fmt.Errorf("invalid time payload %q: %w", s, err)
-		}
-		return startime.Time(tm), nil
+		return decodeTime(raw)
 	case tagMapKV:
-		arr, _ := raw.([]interface{})
-		d := starlark.NewDict(len(arr))
-		for _, pr := range arr {
-			kvp, ok := pr.([]interface{})
-			if !ok || len(kvp) != 2 {
-				return nil, fmt.Errorf("invalid mapkv entry")
-			}
-			kv, err := decode(kvp[0])
-			if err != nil {
-				return nil, err
-			}
-			vv, err := decode(kvp[1])
-			if err != nil {
-				return nil, err
-			}
-			if err := d.SetKey(kv, vv); err != nil {
-				return nil, err
-			}
-		}
-		return d, nil
+		return decodeMapKV(raw)
 	case tagObject:
 		mm, ok := raw.(map[string]interface{})
 		if !ok {
@@ -433,6 +396,84 @@ func decodeObject(m map[string]interface{}) (starlark.Value, error) {
 	default:
 		return nil, fmt.Errorf("unknown type tag %q", tag)
 	}
+}
+
+func decodeBytes(raw interface{}) (starlark.Value, error) {
+	s, _ := raw.(string)
+	b, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		return nil, fmt.Errorf("invalid bytes payload: %w", err)
+	}
+	return starlark.Bytes(b), nil
+}
+
+func decodeBigint(raw interface{}) (starlark.Value, error) {
+	s, _ := raw.(string)
+	bi, ok := new(big.Int).SetString(s, 10)
+	if !ok {
+		return nil, fmt.Errorf("invalid bigint payload %q", s)
+	}
+	return starlark.MakeBigInt(bi), nil
+}
+
+func decodeTuple(raw interface{}) (starlark.Value, error) {
+	arr, _ := raw.([]interface{})
+	elems := make([]starlark.Value, len(arr))
+	for i, e := range arr {
+		ev, err := decode(e)
+		if err != nil {
+			return nil, err
+		}
+		elems[i] = ev
+	}
+	return starlark.Tuple(elems), nil
+}
+
+func decodeSet(raw interface{}) (starlark.Value, error) {
+	arr, _ := raw.([]interface{})
+	set := starlark.NewSet(len(arr))
+	for _, e := range arr {
+		ev, err := decode(e)
+		if err != nil {
+			return nil, err
+		}
+		if err := set.Insert(ev); err != nil {
+			return nil, err
+		}
+	}
+	return set, nil
+}
+
+func decodeTime(raw interface{}) (starlark.Value, error) {
+	s, _ := raw.(string)
+	tm, err := time.Parse(time.RFC3339Nano, s)
+	if err != nil {
+		return nil, fmt.Errorf("invalid time payload %q: %w", s, err)
+	}
+	return startime.Time(tm), nil
+}
+
+func decodeMapKV(raw interface{}) (starlark.Value, error) {
+	arr, _ := raw.([]interface{})
+	d := starlark.NewDict(len(arr))
+	for _, pr := range arr {
+		kvp, ok := pr.([]interface{})
+		if !ok || len(kvp) != 2 {
+			return nil, fmt.Errorf("invalid mapkv entry")
+		}
+		kv, err := decode(kvp[0])
+		if err != nil {
+			return nil, err
+		}
+		vv, err := decode(kvp[1])
+		if err != nil {
+			return nil, err
+		}
+		if err := d.SetKey(kv, vv); err != nil {
+			return nil, err
+		}
+	}
+	return d, nil
 }
 
 func decodeDict(m map[string]interface{}) (starlark.Value, error) {
