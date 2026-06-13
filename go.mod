@@ -7,6 +7,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/h2so5/here v0.0.0-20200815043652-5e14eb691fae
 	github.com/montanaflynn/stats v0.7.1
+	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
 	github.com/spyzhov/ajson v0.9.6
 	go.starlark.net v0.0.0-20260324133313-ffb3f39dd27a
 	go.uber.org/atomic v1.11.0

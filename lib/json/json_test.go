@@ -978,3 +978,191 @@ func TestJSONRepair(t *testing.T) {
 		})
 	}
 }
+
+func TestJSONValidate(t *testing.T) {
+	tests := []struct {
+		name    string
+		script  string
+		wantErr string
+	}{
+		{
+			name: `validate: conforming data returns None`,
+			script: itn.HereDoc(`
+				load('json', 'validate')
+				schema = '{"type":"object","required":["name"],"properties":{"name":{"type":"string"},"age":{"type":"integer","minimum":0}}}'
+				assert.eq(validate('{"name":"Ann","age":3}', schema), None)
+			`),
+		},
+		{
+			name: `validate: schema and data as starlark values`,
+			script: itn.HereDoc(`
+				load('json', 'validate')
+				schema = {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}}}
+				assert.eq(validate({'name': 'Ann'}, schema), None)
+				assert.eq(validate([1, 2, 3], {'type': 'array', 'items': {'type': 'integer'}}), None)
+			`),
+		},
+		{
+			name: `validate: violation message carries the JSON pointer`,
+			script: itn.HereDoc(`
+				load('json', 'validate')
+				schema = '{"type":"object","properties":{"age":{"type":"integer","minimum":0}}}'
+				validate('{"age":-3}', schema)
+			`),
+			wantErr: `at /age: must be >= 0`,
+		},
+		{
+			name: `try_validate: the three outcomes`,
+			script: itn.HereDoc(`
+				load('json', 'try_validate')
+				schema = '{"type":"object","required":["name"]}'
+				ok, err = try_validate('{"name":"a"}', schema)
+				assert.eq(ok, True)
+				assert.eq(err, None)
+				bad, err2 = try_validate('{}', schema)
+				assert.eq(bad, False)
+				assert.true('missing properties' in err2)
+				cant, err3 = try_validate('{}', 'not a schema at all')
+				assert.eq(cant, None)
+				assert.true(err3 != None)
+			`),
+		},
+		{
+			name: `validate: draft-7 schema via $schema`,
+			script: itn.HereDoc(`
+				load('json', 'validate')
+				schema = '{"$schema":"http://json-schema.org/draft-07/schema#","type":"string"}'
+				assert.eq(validate('"hello"', schema), None)
+			`),
+		},
+		{
+			name: `validate: external file $ref is blocked`,
+			script: itn.HereDoc(`
+				load('json', 'validate')
+				validate('{}', '{"$ref":"file:///etc/passwd"}')
+			`),
+			wantErr: `not allowed`,
+		},
+		{
+			name: `validate: external http $ref is blocked`,
+			script: itn.HereDoc(`
+				load('json', 'validate')
+				validate('{}', '{"$ref":"http://example.com/s.json"}')
+			`),
+			wantErr: `not allowed`,
+		},
+		{
+			name: `validate: malformed data text cannot run`,
+			script: itn.HereDoc(`
+				load('json', 'validate')
+				validate('{not json', '{"type":"object"}')
+			`),
+			wantErr: `invalid data`,
+		},
+		{
+			name: `validate: bad schema cannot run`,
+			script: itn.HereDoc(`
+				load('json', 'validate')
+				validate('{}', '{"type":"nope"}')
+			`),
+			wantErr: `invalid schema`,
+		},
+		{
+			name: `validate: long violation list is capped`,
+			script: itn.HereDoc(`
+				load('json', 'try_validate')
+				schema = '{"type":"array","items":{"type":"integer"}}'
+				data = '["a","b","c","d","e","f","g","h","i","j","k","l"]'
+				ok, err = try_validate(data, schema)
+				assert.eq(ok, False)
+				assert.true('and' in err and 'more' in err)
+			`),
+		},
+		{
+			name: `validate: compiled schema cache hit`,
+			script: itn.HereDoc(`
+				load('json', 'validate')
+				schema = '{"type":"integer"}'
+				assert.eq(validate('1', schema), None)
+				assert.eq(validate('2', schema), None)
+			`),
+		},
+		{
+			name: `validate: missing arguments`,
+			script: itn.HereDoc(`
+				load('json', 'validate')
+				validate('{}')
+			`),
+			wantErr: `json.validate: missing argument for schema`,
+		},
+		{
+			name: `try_validate: missing arguments`,
+			script: itn.HereDoc(`
+				load('json', 'try_validate')
+				v, err = try_validate()
+				assert.eq(v, None)
+				assert.true('missing argument' in err)
+			`),
+		},
+		{
+			name: `validate: unserializable data value cannot run`,
+			script: itn.HereDoc(`
+				load('json', 'validate')
+				validate(lambda x: x, '{"type":"object"}')
+				`),
+			wantErr: `json.validate:`,
+		},
+		{
+			name: `validate: many distinct schemas exercise cache eviction`,
+			script: itn.HereDoc(`
+				load('json', 'validate')
+				def churn():
+					for i in range(70):
+						schema = '{"type":"object","maxProperties":' + str(i + 1) + '}'
+						assert.eq(validate('{}', schema), None)
+				churn()
+				`),
+		},
+		{
+			name: `robustness: self-referential $ref errors, no panic`,
+			script: itn.HereDoc(`
+				load('json', 'try_validate')
+				ok, err = try_validate('{"a":{"a":{"a":{}}}}', '{"$ref":"#"}')
+				assert.true(ok == None or ok == True or ok == False)
+				`),
+		},
+		{
+			name: `robustness: invalid pattern regex errors, no panic`,
+			script: itn.HereDoc(`
+				load('json', 'validate')
+				validate('"x"', '{"type":"string","pattern":"("}')
+				`),
+			wantErr: `invalid schema`,
+		},
+		{
+			name: `robustness: deeply nested data validates, no panic`,
+			script: itn.HereDoc(`
+				load('json', 'validate')
+				deep = '[' * 200 + ']' * 200
+				assert.eq(validate(deep, '{}'), None)
+				`),
+		},
+		{
+			name: `robustness: uniqueItems over objects, no panic`,
+			script: itn.HereDoc(`
+				load('json', 'try_validate')
+				ok, err = try_validate('[{"a":1},{"a":1}]', '{"type":"array","uniqueItems":true}')
+				assert.eq(ok, False)
+				assert.true(err != None)
+				`),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res, err := itn.ExecModuleWithErrorTest(t, json.ModuleName, json.LoadModule, tt.script, tt.wantErr, nil)
+			if (err != nil) != (tt.wantErr != "") {
+				t.Errorf("json(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
+			}
+		})
+	}
+}
