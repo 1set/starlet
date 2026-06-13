@@ -329,3 +329,47 @@ print("Error:", error)
 # Result: {"a": 1}
 # Error: None
 ```
+
+### `validate(data, schema) None`
+
+The validate function checks a JSON document against a [JSON Schema](https://json-schema.org) (drafts 4, 6, 7, 2019-09 and 2020-12, detected from the `$schema` keyword; 2020-12 by default). It accepts two positional arguments — both may be a JSON string, bytes, or a Starlark value (dict, list, etc.):
+- data: the document to check
+- schema: the JSON Schema
+
+It returns None when the data conforms. When the data is invalid, it fails with a message listing each violation prefixed by its [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901) location, e.g. `at /age: must be >= 0 but found -3`.
+
+Schemas must be **self-contained**: a `$ref` to an external resource (a file or the network) is an error. Compiled schemas are cached, so repeated validation against the same schema text has no recompilation cost.
+
+#### Examples
+
+**Basic**
+
+Validate a decoded value against a schema written as a Starlark dict.
+
+```python
+load('json', 'validate')
+schema = {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'age': {'type': 'integer', 'minimum': 0}}}
+print(validate({'name': 'Ann', 'age': 3}, schema))
+# Output: None
+```
+
+### `try_validate(data, schema) tuple`
+
+The try_validate function is a variant of validate that distinguishes three outcomes instead of aborting:
+- `(True, None)` — the data conforms to the schema.
+- `(False, details)` — the data was checked and is invalid; details lists the violations with their JSON Pointer locations.
+- `(None, error)` — validation could not run at all (invalid schema, malformed JSON text, or bad arguments).
+
+#### Examples
+
+**Basic**
+
+```python
+load('json', 'try_validate')
+ok, err = try_validate('{"age": -3}', '{"type":"object","properties":{"age":{"type":"integer","minimum":0}}}')
+print("OK:", ok)
+print("Error:", err)
+# Output:
+# OK: False
+# Error: at /age: must be >= 0 but found -3
+```
