@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"reflect"
 	"testing"
 	"time"
@@ -2138,6 +2139,27 @@ func TestMachine_REPL_Error(t *testing.T) {
 	m := starlet.NewDefault()
 	m.SetGlobals(starlet.StringAnyMap{"x": make(chan int, 1)})
 	m.REPL()
+}
+
+// TestBuildsForJSWASM guards the GOOS=js/wasm portability of the library core.
+// The interactive REPL pulls go.starlark.net/repl -> github.com/chzyer/readline,
+// a terminal library that does not compile for GOOS=js; it is therefore
+// isolated behind a build tag (run_repl.go //go:build !js, run_repl_js.go
+// //go:build js). Re-importing a terminal dependency into an always-compiled
+// file would silently break any js/wasm consumer (e.g. a browser playground).
+// This cross-compiles the package for js/wasm to catch that regression early.
+func TestBuildsForJSWASM(t *testing.T) {
+	goBin, err := exec.LookPath("go")
+	if err != nil {
+		t.Skip("go toolchain not found; skipping js/wasm build check")
+	}
+	cmd := exec.Command(goBin, "build", ".")
+	cmd.Env = append(os.Environ(), "GOOS=js", "GOARCH=wasm")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("starlet must compile for GOOS=js GOARCH=wasm — did a terminal "+
+			"dependency (e.g. chzyer/readline via go.starlark.net/repl) leak into "+
+			"an always-compiled file?\n%s\n%v", out, err)
+	}
 }
 
 func Test_Machine_Run_LoadTypedErrors(t *testing.T) {
