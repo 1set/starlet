@@ -69,6 +69,7 @@ func TestMarshal(t *testing.T) {
 		{nil, starlark.None, ""},
 		{true, starlark.True, ""},
 		{"foo", starlark.String("foo"), ""},
+		{json.Number("42"), starlark.String("42"), ""},
 		{42, starlark.MakeInt(42), ""},
 		{int8(42), starlark.MakeInt(42), ""},
 		{int16(42), starlark.MakeInt(42), ""},
