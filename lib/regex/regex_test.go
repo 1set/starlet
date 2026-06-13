@@ -234,6 +234,21 @@ func TestLoadModule_Regex(t *testing.T) {
 			wantErr: `no such group: 5`,
 		},
 		{
+			// a group index too large for int64 used to be silently truncated
+			// to 0 (the whole match) instead of erroring; group/start/end/span
+			// all route through groupIndex and must reject it loudly.
+			name: `error: group index overflows int64`,
+			script: itn.HereDoc(`
+				load('regex', 'search')
+				m = search('(a)', 'a')
+				assert.eq(m.group(1), 'a')
+				assert.fails(lambda: m.group(1 << 70), 'no such group')
+				assert.fails(lambda: m.start(1 << 70), 'no such group')
+				assert.fails(lambda: m.end(1 << 70), 'no such group')
+				assert.fails(lambda: m.span(1 << 70), 'no such group')
+			`),
+		},
+		{
 			name: `error: bad repl type`,
 			script: itn.HereDoc(`
 				load('regex', 'sub')

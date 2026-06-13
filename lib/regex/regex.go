@@ -605,9 +605,14 @@ func (m *Match) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable type: 
 func (m *Match) groupIndex(v starlark.Value) (int, error) {
 	switch g := v.(type) {
 	case starlark.Int:
-		i, _ := g.Int64()
-		if i < 0 || int(i) > m.p.search.NumSubexp() {
-			return 0, fmt.Errorf("no such group: %d", i)
+		// Int64 reports ok=false when the index overflows int64; the
+		// discarded ok used to leave i==0, silently selecting group 0 (the
+		// whole match) for a huge index instead of erroring. Compare as
+		// int64 to avoid truncating on the way to int, and format the
+		// original value (an overflowing index prints as 0 via %d).
+		i, ok := g.Int64()
+		if !ok || i < 0 || i > int64(m.p.search.NumSubexp()) {
+			return 0, fmt.Errorf("no such group: %s", g.String())
 		}
 		return int(i), nil
 	case starlark.String:
