@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"math"
+	"math/big"
 	"reflect"
 	"strings"
 	"time"
@@ -76,9 +78,18 @@ func MarshalStarlarkJSON(data starlark.Value, indent int) (string, error) {
 // In comparison with DecodeStarlarkJSON, it gives you more control over type conversion but may be less efficient due to intermediate steps.
 func UnmarshalStarlarkJSON(data []byte) (starlark.Value, error) {
 	var m interface{}
-	err := json.Unmarshal(data, &m)
-	if err != nil {
+	// decode with UseNumber so integers keep their exact value: a plain
+	// json.Unmarshal turns every number into a float64, which silently
+	// saturates/rounds integers beyond 2^53 before TypeConvert ever runs.
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.UseNumber()
+	if err := dec.Decode(&m); err != nil {
 		return starlark.None, err
+	}
+	// json.Unmarshal rejected trailing content; the decoder does not, so
+	// re-impose single-document strictness (trailing whitespace still passes).
+	if dec.More() {
+		return starlark.None, fmt.Errorf("unexpected trailing data after JSON value")
 	}
 
 	// fix all values to their appropriate types
@@ -177,6 +188,25 @@ func TypeConvert(data interface{}) interface{} {
 			}
 		}
 		// If not a time or number, return the original string
+		return v
+
+	case json.Number:
+		// UnmarshalStarlarkJSON now decodes with UseNumber, so numbers arrive
+		// here exact. Map by literal form, the same rule Marshal/json.decode
+		// use: an integer literal becomes an int (arbitrary precision, no
+		// float64 saturation), anything with a decimal point or exponent
+		// becomes a float.
+		if !strings.ContainsAny(v.String(), ".eE") {
+			if i, err := v.Int64(); err == nil {
+				return i
+			}
+			if bi, ok := new(big.Int).SetString(v.String(), 10); ok {
+				return bi
+			}
+		}
+		if f, err := v.Float64(); err == nil {
+			return f
+		}
 		return v
 
 	case float64:

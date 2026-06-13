@@ -21,7 +21,9 @@
 //   - Starlark value -> JSON text and back, via the Go shapes above:
 //     MarshalStarlarkJSON / UnmarshalStarlarkJSON. The decode direction
 //     applies TypeConvert heuristics (RFC3339-looking strings become time
-//     values, whole floats become ints).
+//     values) and maps numbers by literal form — an integer literal becomes
+//     an int (exact, arbitrary precision), a number with a decimal point or
+//     exponent becomes a float.
 //   - Starlark value -> JSON text and back, staying inside Starlark types:
 //     EncodeStarlarkJSON / DecodeStarlarkJSON (the interpreter's own json
 //     encoder: big ints work, bytes/time are errors, no heuristics).

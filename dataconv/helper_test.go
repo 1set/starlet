@@ -3,6 +3,7 @@ package dataconv
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"reflect"
 	"testing"
 	"time"
@@ -339,6 +340,11 @@ func TestUnmarshalStarlarkJSON(t *testing.T) {
 			want:  d42,
 		},
 		{
+			name:    "trailing data rejected",
+			input:   []byte(`{"foo":42} {"bar":1}`),
+			wantErr: true,
+		},
+		{
 			name:  "list",
 			input: []byte(`[43,"foo"]`),
 			want: starlark.NewList([]starlark.Value{
@@ -372,6 +378,60 @@ func TestUnmarshalStarlarkJSON(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestUnmarshalStarlarkJSONNumberFidelity pins the number handling of
+// UnmarshalStarlarkJSON: integers survive exactly at any magnitude (decoding
+// uses UseNumber instead of collapsing through float64, which silently
+// saturated large ints), and int vs float is decided by literal form. Values
+// are compared by starlark.Equal because big-int-bearing starlark.Int does
+// not reflect.DeepEqual reliably.
+func TestUnmarshalStarlarkJSONNumberFidelity(t *testing.T) {
+	bigID, _ := new(big.Int).SetString("12345678901234567890", 10)
+	equalsWant := func(t *testing.T, got, want starlark.Value, ctx string) {
+		t.Helper()
+		eq, err := starlark.Equal(got, want)
+		if err != nil {
+			t.Fatalf("%s: Equal: %v", ctx, err)
+		}
+		if !eq {
+			t.Fatalf("%s = %s (%s), want %s", ctx, got, got.Type(), want)
+		}
+	}
+
+	for _, c := range []struct {
+		name, input string
+		want        starlark.Value
+	}{
+		{"small int", `6`, starlark.MakeInt(6)},
+		{"big int exact", `12345678901234567890`, starlark.MakeBigInt(bigID)},
+		{"fractional is float", `6.5`, starlark.Float(6.5)},
+		{"exponent is float", `1e3`, starlark.Float(1000)},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			got, err := UnmarshalStarlarkJSON([]byte(c.input))
+			if err != nil {
+				t.Fatalf("UnmarshalStarlarkJSON(%q): %v", c.input, err)
+			}
+			equalsWant(t, got, c.want, c.name)
+		})
+	}
+
+	// the same exactness must hold for a number nested in a dict — this is
+	// the lib/http request-body path.
+	got, err := UnmarshalStarlarkJSON([]byte(`{"id":12345678901234567890}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, ok := got.(*starlark.Dict)
+	if !ok {
+		t.Fatalf("want dict, got %s", got.Type())
+	}
+	v, found, _ := d.Get(starlark.String("id"))
+	if !found {
+		t.Fatal("missing id key")
+	}
+	equalsWant(t, v, starlark.MakeBigInt(bigID), "dict id")
 }
 
 // TestEncodeStarlarkJSON tests the EncodeStarlarkJSON function
