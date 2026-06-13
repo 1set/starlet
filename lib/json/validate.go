@@ -136,6 +136,13 @@ func prepareValidation(data, schema starlark.Value) (*jsonschema.Schema, interfa
 	if err := dec.Decode(&doc); err != nil {
 		return nil, nil, fmt.Errorf("invalid data: %w", err)
 	}
+	// Validate a single JSON document. Trailing content (a second document
+	// or garbage) means the whole input was never checked, so reject it
+	// rather than silently validating only the first value. dec.More()
+	// stays false for trailing whitespace.
+	if dec.More() {
+		return nil, nil, fmt.Errorf("invalid data: unexpected trailing content after JSON document")
+	}
 	return compiled, doc, nil
 }
 
