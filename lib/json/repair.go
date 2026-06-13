@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/1set/starlet/lib/json/internal/jsonrepair"
+	"github.com/1set/starlet/internal/jsonrepair"
 	"go.starlark.net/starlark"
 )
 
