@@ -1028,6 +1028,33 @@ func TestJSONValidate(t *testing.T) {
 			`),
 		},
 		{
+			// only the first JSON document was validated; trailing content
+			// (a second document or garbage) silently passed, so a script
+			// believed the whole text conformed. The data must be a single
+			// JSON document.
+			name: `validate: trailing content after the data document is rejected`,
+			script: itn.HereDoc(`
+				load('json', 'validate')
+				validate('{"a":1} {"b":2}', '{"type":"object"}')
+			`),
+			wantErr: `trailing content`,
+		},
+		{
+			name: `try_validate: a trailing document cannot sneak past as cannot-run`,
+			script: itn.HereDoc(`
+				load('json', 'try_validate')
+				# the trailing "x" would fail {"type":"number"} but was never
+				# checked; now the whole input is rejected as cannot-run.
+				res, err = try_validate('5 "x"', '{"type":"number"}')
+				assert.eq(res, None)
+				assert.true('trailing content' in err)
+				# trailing whitespace is still fine
+				ok, e2 = try_validate('5\n', '{"type":"number"}')
+				assert.eq(ok, True)
+				assert.eq(e2, None)
+			`),
+		},
+		{
 			name: `validate: draft-7 schema via $schema`,
 			script: itn.HereDoc(`
 				load('json', 'validate')
