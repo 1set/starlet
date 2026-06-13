@@ -196,7 +196,7 @@ print(ok, err)
 
 ## Notes & boundaries
 
-- **Engines.** `encode`/`decode`/`indent` are go.starlark.net's stdlib `json`; `dumps` uses starlet's internal marshaler (handles host structs/modules); `path`/`eval` use [ajson](https://github.com/spyzhov/ajson) JSONPath; `repair` uses a vendored, frozen [jsonrepair](https://github.com/RealAlexandreAI/json-repair) (golden-locked); `validate` uses [santhosh-tekuri/jsonschema](https://github.com/santhosh-tekuri/jsonschema).
+- **Engines.** `encode`/`decode`/`indent` are go.starlark.net's stdlib `json`; `dumps` uses starlet's internal marshaler (handles host structs/modules); `path`/`eval` use [ajson](https://github.com/spyzhov/ajson) JSONPath; `repair` uses a vendored, frozen [jsonrepair](https://github.com/kaptinlin/jsonrepair) (golden-locked); `validate` uses [santhosh-tekuri/jsonschema](https://github.com/santhosh-tekuri/jsonschema).
 - **Purity.** No file or network access. JSON Schema `$ref` to external resources is blocked by design.
 - **Number shaping.** `path`/`eval` return integral numbers as `int` and non-integral as `float`; JSON `null` becomes `None`.
 - **`repair` vs `validate`.** `repair` fixes *text* and is idempotent on valid input; `validate` never mutates — it only reports conformance.

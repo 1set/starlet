@@ -112,6 +112,13 @@ func DisableGlobalReassign() {
 // touch on the host. Policy layers use it to derive module sets instead of
 // maintaining hand-written name lists that silently rot as modules are
 // added.
+//
+// The bits model host *effects* (filesystem, network, process, log) only.
+// They deliberately say nothing about determinism or reproducibility: e.g.
+// random is CapPure (it has no host side effects) yet is non-deterministic
+// by design. A consumer that needs a "replayable / pure-function" set must
+// define it on its own side (excluding entropy/clock sources such as random
+// and time) rather than reading it off these capability bits.
 type ModuleCapability uint
 
 const (
