@@ -67,7 +67,7 @@ print(dumps({'b': 2, 'a': 1}))
 
 Reconstruct the value from a `dumps` string, interpreting the type tags. The result is a fresh, **unfrozen** value (the same as `json.decode`), so scripts can read or mutate it.
 
-**Errors on**: invalid JSON (`serial.loads: …`), an unknown type tag (`unknown type tag "…"`), or a malformed envelope payload (`invalid bytes payload`, `invalid bigint payload`, `invalid time payload`, `invalid mapkv entry`, `invalid object payload`). A `set` with an unhashable element or a `mapkv` with an unhashable key errors (`unhashable`). Bare JSON numbers decode without a tag: an integer (any precision) to `int`, a number with `.`/`e`/`E` to `float`.
+**Errors on**: invalid JSON (`serial.loads: …`), trailing content after the value (`unexpected trailing data after JSON value` — a second JSON document or garbage; trailing whitespace is fine), an unknown type tag (`unknown type tag "…"`), or a malformed envelope payload whose `v` has the wrong shape (`invalid bytes payload`, `invalid bigint payload`, `invalid time payload`, `invalid tuple payload`, `invalid set payload`, `invalid mapkv payload`/`invalid mapkv entry`, `invalid object payload`). A `set` with an unhashable element or a `mapkv` with an unhashable key errors (`unhashable`). Bare JSON numbers decode without a tag: an integer (any precision) to `int`, a number with `.`/`e`/`E` to `float`.
 
 ```python
 load('serial', 'loads')

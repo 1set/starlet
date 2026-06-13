@@ -124,6 +124,13 @@ func generateLoads(try bool) func(*starlark.Thread, *starlark.Builtin, starlark.
 		if err := dec.Decode(&raw); err != nil {
 			return failResult(try, err, fn, true)
 		}
+		// loads round-trips a single value; reject a second JSON value or
+		// trailing garbage rather than silently dropping it. dec.More() is
+		// true only for a further non-whitespace token, so trailing
+		// whitespace/newlines still pass.
+		if dec.More() {
+			return failResult(try, fmt.Errorf("unexpected trailing data after JSON value"), fn, true)
+		}
 		val, err := decode(raw)
 		if err != nil {
 			return failResult(try, err, fn, true)
@@ -399,7 +406,10 @@ func decodeObject(m map[string]interface{}) (starlark.Value, error) {
 }
 
 func decodeBytes(raw interface{}) (starlark.Value, error) {
-	s, _ := raw.(string)
+	s, ok := raw.(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid bytes payload: expected a base64 string")
+	}
 	b, err := base64.StdEncoding.DecodeString(s)
 	if err != nil {
 		return nil, fmt.Errorf("invalid bytes payload: %w", err)
@@ -408,16 +418,22 @@ func decodeBytes(raw interface{}) (starlark.Value, error) {
 }
 
 func decodeBigint(raw interface{}) (starlark.Value, error) {
-	s, _ := raw.(string)
-	bi, ok := new(big.Int).SetString(s, 10)
+	s, ok := raw.(string)
 	if !ok {
+		return nil, fmt.Errorf("invalid bigint payload: expected a decimal string")
+	}
+	bi, valid := new(big.Int).SetString(s, 10)
+	if !valid {
 		return nil, fmt.Errorf("invalid bigint payload %q", s)
 	}
 	return starlark.MakeBigInt(bi), nil
 }
 
 func decodeTuple(raw interface{}) (starlark.Value, error) {
-	arr, _ := raw.([]interface{})
+	arr, ok := raw.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid tuple payload: expected an array")
+	}
 	elems := make([]starlark.Value, len(arr))
 	for i, e := range arr {
 		ev, err := decode(e)
@@ -430,7 +446,10 @@ func decodeTuple(raw interface{}) (starlark.Value, error) {
 }
 
 func decodeSet(raw interface{}) (starlark.Value, error) {
-	arr, _ := raw.([]interface{})
+	arr, ok := raw.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid set payload: expected an array")
+	}
 	set := starlark.NewSet(len(arr))
 	for _, e := range arr {
 		ev, err := decode(e)
@@ -445,7 +464,10 @@ func decodeSet(raw interface{}) (starlark.Value, error) {
 }
 
 func decodeTime(raw interface{}) (starlark.Value, error) {
-	s, _ := raw.(string)
+	s, ok := raw.(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid time payload: expected an RFC3339 string")
+	}
 	tm, err := time.Parse(time.RFC3339Nano, s)
 	if err != nil {
 		return nil, fmt.Errorf("invalid time payload %q: %w", s, err)
@@ -454,7 +476,10 @@ func decodeTime(raw interface{}) (starlark.Value, error) {
 }
 
 func decodeMapKV(raw interface{}) (starlark.Value, error) {
-	arr, _ := raw.([]interface{})
+	arr, ok := raw.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid mapkv payload: expected an array of [key, value] pairs")
+	}
 	d := starlark.NewDict(len(arr))
 	for _, pr := range arr {
 		kvp, ok := pr.([]interface{})

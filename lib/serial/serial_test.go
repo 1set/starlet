@@ -387,6 +387,36 @@ func TestLoadModule_Serial(t *testing.T) {
 				`),
 			wantErr: `unknown type tag`,
 		},
+		{
+			// a wrong-typed envelope payload (e.g. a number where an array or
+			// string is expected) used to be silently coerced to an empty
+			// value instead of erroring, violating the lossless-or-error
+			// contract. Each tag decoder must now reject the wrong shape.
+			name: `error: malformed envelope payloads reject the wrong type`,
+			script: itn.HereDoc(`
+				load('serial', 'loads')
+				assert.fails(lambda: loads('{"$t":"tuple","v":123}'), 'invalid tuple payload')
+				assert.fails(lambda: loads('{"$t":"set","v":123}'), 'invalid set payload')
+				assert.fails(lambda: loads('{"$t":"mapkv","v":123}'), 'invalid mapkv payload')
+				assert.fails(lambda: loads('{"$t":"bytes","v":123}'), 'invalid bytes payload')
+				assert.fails(lambda: loads('{"$t":"bigint","v":123}'), 'invalid bigint payload')
+				assert.fails(lambda: loads('{"$t":"time","v":123}'), 'invalid time payload')
+			`),
+		},
+		{
+			// loads round-trips a single value; a second JSON value or
+			// trailing garbage was silently dropped. Trailing whitespace is
+			// still fine.
+			name: `error: trailing content after the JSON value is rejected`,
+			script: itn.HereDoc(`
+				load('serial', 'loads')
+				assert.eq(loads('1'), 1)
+				assert.eq(loads('  [1, 2]  \n'), [1, 2])
+				assert.fails(lambda: loads('1 2'), 'trailing data')
+				assert.fails(lambda: loads('{"a":1}{"b":2}'), 'trailing data')
+				assert.fails(lambda: loads('[1,2] junk'), 'trailing data')
+			`),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
