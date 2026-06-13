@@ -3,9 +3,11 @@ package dataconv
 // Based on https://github.com/qri-io/starlib/tree/master/util with some modifications and additions
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/1set/starlight/convert"
@@ -24,6 +26,20 @@ func Marshal(data interface{}) (v starlark.Value, err error) {
 		v = starlark.Bool(x)
 	case string:
 		v = starlark.String(x)
+	case json.Number:
+		// a JSON number stays a number: Int for an integer literal (exact,
+		// arbitrary precision) and Float otherwise — matching json.decode and
+		// serial. A caller that decodes raw JSON into map[string]interface{}
+		// with dec.UseNumber() reaches this; it is the int-vs-float-preserving
+		// path that a plain json.Unmarshal (which collapses every number to
+		// float64, losing the int/float distinction) cannot offer.
+		v, err = marshalJSONNumber(x)
+	case *big.Int:
+		// the inverse of Unmarshal, which returns *big.Int for integers
+		// beyond uint64, so a marshal/unmarshal round-trip stays exact.
+		v = starlark.MakeBigInt(x)
+	case big.Int:
+		v = starlark.MakeBigInt(&x)
 	case int:
 		v = starlark.MakeInt(x)
 	case int8:
@@ -113,6 +129,28 @@ func Marshal(data interface{}) (v starlark.Value, err error) {
 		return starlark.None, fmt.Errorf("unrecognized type: %#v", x)
 	}
 	return
+}
+
+// marshalJSONNumber maps a json.Number to a Starlark Int (an integer literal,
+// at arbitrary precision) or Float (a literal with a decimal point or
+// exponent). It is the same int-vs-float rule json.decode and serial use, so a
+// number written without a fractional part round-trips as an int and large
+// integers keep their exact value instead of degrading through float64.
+func marshalJSONNumber(n json.Number) (starlark.Value, error) {
+	s := n.String()
+	if !strings.ContainsAny(s, ".eE") {
+		if i, err := n.Int64(); err == nil {
+			return starlark.MakeInt64(i), nil
+		}
+		if bi, ok := new(big.Int).SetString(s, 10); ok {
+			return starlark.MakeBigInt(bi), nil
+		}
+	}
+	f, err := n.Float64()
+	if err != nil {
+		return nil, fmt.Errorf("invalid number %q: %w", s, err)
+	}
+	return starlark.Float(f), nil
 }
 
 // Unmarshal converts a starlark.Value into its Golang counterpart, like FromValue() of package starlight does.

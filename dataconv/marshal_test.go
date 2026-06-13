@@ -17,6 +17,14 @@ import (
 	"go.starlark.net/syntax"
 )
 
+func mustBigInt(s string) *big.Int {
+	bi, ok := new(big.Int).SetString(s, 10)
+	if !ok {
+		panic("bad big int literal: " + s)
+	}
+	return bi
+}
+
 func TestMarshal(t *testing.T) {
 	expectedStringDict := starlark.NewDict(1)
 	if err := expectedStringDict.SetKey(starlark.String("foo"), starlark.MakeInt(42)); err != nil {
@@ -83,6 +91,19 @@ func TestMarshal(t *testing.T) {
 		{uint64(1 << 42), starlark.MakeUint64(1 << 42), ""},
 		{float32(42), starlark.Float(42), ""},
 		{42., starlark.Float(42), ""},
+		// json.Number maps by literal form: an integer literal -> Int (exact,
+		// arbitrary precision), a fractional/exponent literal -> Float. It is
+		// NOT mapped to a string (that would break value == 6 in scripts).
+		{json.Number("42"), starlark.MakeInt(42), ""},
+		{json.Number("-7"), starlark.MakeInt(-7), ""},
+		{json.Number("6.5"), starlark.Float(6.5), ""},
+		{json.Number("1e3"), starlark.Float(1000), ""},
+		{json.Number("12345678901234567890"), starlark.MakeBigInt(mustBigInt("12345678901234567890")), ""},
+		{json.Number("not-a-number"), nil, `invalid number "not-a-number"`},
+		// *big.Int is the inverse of Unmarshal (which returns *big.Int beyond
+		// uint64), so a marshal/unmarshal round-trip stays exact.
+		{mustBigInt("12345678901234567890"), starlark.MakeBigInt(mustBigInt("12345678901234567890")), ""},
+		{*mustBigInt("99"), starlark.MakeInt(99), ""},
 		{time.Unix(1588540633, 0), startime.Time(time.Unix(1588540633, 0)), ""},
 		{now, startime.Time(now), ""},
 		{[]byte("Aloha"), starlark.Bytes("Aloha"), ""},
