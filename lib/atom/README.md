@@ -1,188 +1,117 @@
 # atom
 
-atom provides atomic operations for integers, floats, and strings.
+`atom` provides atomic operations for integers, floats, and strings — lock-free counters and compare-and-swap cells safe to share across concurrent script work (backed by Go's `sync/atomic` via `go.uber.org/atomic`). Capability profile: **pure** (no filesystem, network, process, or log side effects).
 
 ## Functions
 
-### `new_int(value=0) -> AtomicInt`
+| function | description |
+|----------|-------------|
+| `new_int(value=0) -> atom_int` | create an atomic integer cell, optionally seeded with `value` |
+| `new_float(value=0.0) -> atom_float` | create an atomic float cell, optionally seeded with `value` |
+| `new_string(value="") -> atom_string` | create an atomic string cell, optionally seeded with `value` |
 
-create a new AtomicInt with an optional initial value
-
-#### Parameters
-
-| name    | type  | description                  |
-|---------|-------|------------------------------|
-| `value` | `int` | initial value, defaults to 0 |
-
-#### Examples
-
-**basic**
-
-create a new AtomicInt with default value
-
-```python
-load("atom", "new_int")
-ai = new_int()
-ai.inc()
-print(ai.get())
-# Output: 1
-```
-
-**with value**
-
-create a new AtomicInt with a specific value
-
-```python
-load("atom", "new_int")
-ai = new_int(42)
-ai.add(42)
-print(ai.get())
-# Output: 84
-```
-
-### `new_float(value=0.0) -> AtomicFloat`
-
-create a new AtomicFloat with an optional initial value
-
-#### Parameters
-
-| name    | type    | description                    |
-|---------|---------|--------------------------------|
-| `value` | `float` | initial value, defaults to 0.0 |
-
-#### Examples
-
-**basic**
-
-create a new AtomicFloat with default value
-
-```python
-load("atom", "new_float")
-af = new_float()
-print(af.get())
-# Output: 0.0
-```
-
-**with value**
-
-create a new AtomicFloat with a specific value
-
-```python
-load("atom", "new_float")
-af = new_float(3.14)
-print(af.get())
-# Output: 3.14
-```
-
-### `new_string(value="") -> AtomicString`
-
-create a new AtomicString with an optional initial value
-
-#### Parameters
-
-| name    | type     | description                                |
-|---------|----------|--------------------------------------------|
-| `value` | `string` | initial value, defaults to an empty string |
-
-#### Examples
-
-**basic**
-
-create a new AtomicString with default value
-
-```python
-load("atom", "new_string")
-as = new_string()
-print(as.get())  # Output: ""
-```
-
-**with value**
-
-create a new AtomicString with a specific value
-
-```python
-load("atom", "new_string")
-as = new_string("hello")
-print(as.get())
-# Output: "hello"
-```
+The constructors are the module's only top-level members; all mutation happens through methods on the returned cells (see Types).
 
 ## Types
 
-### `AtomicInt`
+The cells created above are custom Starlark values. Each is truthy when its value is non-zero / non-empty, hashable (usable as a dict key), and ordered (`==`, `!=`, `<`, `<=`, `>`, `>=` compare by current value against another cell of the same type). `str()` renders as `<atom_int:N>`, `<atom_float:N>`, `<atom_string:"S">`.
 
-an atomic integer type with various atomic operations
+### `atom_int`
 
-**Methods**
+An atomic `int64` cell. Methods:
 
-#### `get() -> int`
+| method | description |
+|--------|-------------|
+| `get() -> int` | return the current value |
+| `set(value)` | store `value` (int); returns `None` |
+| `cas(old, new) -> bool` | atomically set to `new` only if the current value equals `old`; returns whether the swap happened |
+| `add(delta) -> int` | add `delta` (int) and return the new value |
+| `sub(delta) -> int` | subtract `delta` (int) and return the new value |
+| `inc() -> int` | add 1 and return the new value |
+| `dec() -> int` | subtract 1 and return the new value |
 
-returns the current value
+### `atom_float`
 
-#### `set(value: int)`
+An atomic `float64` cell. `set`, `cas`, `add`, and `sub` accept either a float or an int (ints are widened to float). Methods:
 
-sets the value
+| method | description |
+|--------|-------------|
+| `get() -> float` | return the current value |
+| `set(value)` | store `value` (float or int); returns `None` |
+| `cas(old, new) -> bool` | atomically set to `new` only if the current value equals `old`; returns whether the swap happened |
+| `add(delta) -> float` | add `delta` (float or int) and return the new value |
+| `sub(delta) -> float` | subtract `delta` (float or int) and return the new value |
 
-#### `cas(old: int, new: int) -> bool`
+### `atom_string`
 
-compares and swaps the value if it matches old
+An atomic string cell. Methods:
 
-#### `add(delta: int) -> int`
+| method | description |
+|--------|-------------|
+| `get() -> string` | return the current value |
+| `set(value)` | store `value` (string); returns `None` |
+| `cas(old, new) -> bool` | atomically set to `new` only if the current value equals `old`; returns whether the swap happened |
 
-adds delta to the value and returns the new value
+## Details & examples
 
-#### `sub(delta: int) -> int`
+### `new_int`
 
-subtracts delta from the value and returns the new value
+`new_int(value=0) -> atom_int` — `value` is an optional initial `int` (defaults to `0`). Errors when `value` is not an int (e.g. `new_int('42')` → `new_int: for parameter value: got string, want int`).
 
-#### `inc() -> int`
+```python
+load("atom", "new_int")
+x = new_int()
+x.inc()
+x.set(20)
+print(x.add(5), x.sub(3), x.cas(22, 100), x.get())
+# Output: 25 22 True 100
+```
 
-increments the value by 1 and returns the new value
+### `new_float`
 
-#### `dec() -> int`
+`new_float(value=0.0) -> atom_float` — `value` is an optional initial number; an int is accepted and widened to float. Errors when `value` is a non-numeric type (e.g. `new_float('42.1')` → `new_float: for parameter value: got string, want float`).
 
-decrements the value by 1 and returns the new value
+```python
+load("atom", "new_float")
+x = new_float(1)
+x.set(20.1)
+print(x.add(5), x.cas(22.1, 200.5), x.get())
+# Output: 25.1 False 25.1
+```
 
-### `AtomicFloat`
+### `new_string`
 
-an atomic float type with various atomic operations
+`new_string(value="") -> atom_string` — `value` is an optional initial `string` (defaults to `""`). Errors when `value` is not a string (e.g. `new_string(1)` → `new_string: for parameter value: got int, want string`).
 
-**Methods**
+```python
+load("atom", "new_string")
+x = new_string("hello")
+x.set("world")
+print(x.cas("world", "new"), x.get(), x.cas("world", "new2"), x.get())
+# Output: True new False new
+```
 
-#### `get() -> float`
+### Methods, errors, and concurrency
 
-returns the current value
+- `get`, `inc`, and `dec` take no arguments — passing any errors (e.g. `x.get(2)` → `get: got 1 arguments, want 0`).
+- `set`, `add`, `sub`, and `cas` validate their argument types and error on a mismatch (e.g. `x.add('2')` on an `atom_int` → `add: for parameter delta: got string, want int`).
+- An unknown attribute errors via the standard Starlark message (e.g. `x.guess()` → `atom_int has no .guess field or method`).
+- Operations are atomic, so a cell can be safely mutated from comprehensions or callbacks sharing it:
 
-#### `set(value: float)`
+```python
+load("atom", "new_int")
+x = new_int()
+def work():
+    x.inc()
+[work() for _ in range(10)]
+print(x.get())
+# Output: 10
+```
 
-sets the value
+## Notes / boundaries
 
-#### `cas(old: float, new: float) -> bool`
-
-compares and swaps the value if it matches old
-
-#### `add(delta: float) -> float`
-
-adds delta to the value and returns the new value
-
-#### `sub(delta: float) -> float`
-
-subtracts delta from the value and returns the new value
-
-### `AtomicString`
-
-an atomic string type with various atomic operations
-
-**Methods**
-
-#### `get() -> string`
-
-returns the current value
-
-#### `set(value: string)`
-
-sets the value
-
-#### `cas(old: string, new: string) -> bool`
-
-compares and swaps the value if it matches old
+- **Type names.** Script-visible type names are `atom_int`, `atom_float`, `atom_string` (as returned by `type()`); the underlying Go types are `AtomicInt`, `AtomicFloat`, `AtomicString`.
+- **Truthiness.** A cell is falsy when its value is `0` / `0.0` / `""` and truthy otherwise (`bool(new_int(0))` is `False`).
+- **Comparison and hashing.** Cells are comparable only against the same cell type and are hashable by current value, so they work as dict keys. Mutating a cell after using it as a key leaves the existing entry under the old hash — treat keyed cells as you would any mutable key.
+- **Range.** `atom_int` is a 64-bit signed integer; `atom_float` is IEEE-754 `float64`. `add`/`sub` wrap or lose precision exactly as the underlying 64-bit types do.
+- **Float widening.** `atom_float` accepts ints for `set`/`cas`/`add`/`sub` and stores them as floats; `cas` compares with float equality, so seed `old` with the exact stored float.

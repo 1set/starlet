@@ -1,554 +1,266 @@
 # go_idiomatic
 
-`go_idiomatic` provides a Starlark module that defines Go idiomatic functions and values.
+`go_idiomatic` provides Go-flavored helpers, constants, and constructors for Starlark scripts — base conversions, `length`/`sum`/`distinct` utilities, struct and shared-dict factories, and `print`-style output. It is **not** a mirror of any single Python module; it borrows the spirit of several Python builtins (`hex`/`oct`/`bin`/`sum`/`bytes.hex`) while adding Star\* idioms.
+
+Capability profile: **Log + Process**. `eprint`/`pprint` write to stderr or the thread's `Print` handler (Log); `sleep` blocks the thread and `exit`/`quit` halt the program (Process). Everything else is pure.
+
+Load name for `load()`: `go_idiomatic`.
 
 ## Functions
 
-### `length(obj) int`
+| function | description |
+|----------|-------------|
+| `length(obj) -> int` | Length of a string (in Unicode code points), bytes, or any sequence. |
+| `sum(iterable, start=0) -> number` | Sum of `start` plus the items of `iterable`, left to right. |
+| `distinct(iterable) -> iterable` | Iterable with duplicates removed; shape follows the input type. |
+| `hex(x) -> str` | Lowercase hexadecimal string of an int, prefixed `0x`. |
+| `oct(x) -> str` | Octal string of an int, prefixed `0o`. |
+| `bin(x) -> str` | Binary string of an int, prefixed `0b`. |
+| `bytes_hex(bytes, sep="", bytes_per_sep=1) -> str` | Hex string of each byte, with an optional grouping separator. |
+| `is_nil(x) -> bool` | Whether `x` is `nil`/`None` or a Go wrapper holding a nil value. |
+| `sleep(secs)` | Block the current thread for `secs` seconds (cancellable). |
+| `exit(code=0)` / `quit(code=0)` | Halt the program with an exit code; `quit` is an alias of `exit`. |
+| `module(name, **kv) -> module` | Build a `starlarkstruct` module named `name`. |
+| `struct(**kv) -> struct` | Build an anonymous comparable struct. |
+| `make_struct(name, **kv) -> struct` | Build a struct whose constructor name is `name`. |
+| `shared_dict() -> shared_dict` | Create an empty thread-safe shared dictionary. |
+| `make_shared_dict(name="", data=None) -> shared_dict` | Create a shared dictionary with an optional type name and initial data. |
+| `to_dict(v) -> dict` | Convert a dict, `module`, `struct`, `GoStruct`, or `shared_dict` into a plain dict. |
+| `eprint(*args, sep=" ")` | `print`-style output to stderr. |
+| `pprint(*args, sep=" ")` | `print`-style output formatted as indented JSON. |
 
-Returns the length of the object, for string it returns the number of Unicode code points, instead of bytes like `len()`.
+## Constants
 
-#### Examples
+| constant | meaning |
+|----------|---------|
+| `true` | Alias for the Starlark boolean `True`. |
+| `false` | Alias for the Starlark boolean `False`. |
+| `nil` | Alias for `None`. |
 
-**String**
+```python
+load("go_idiomatic", "true", "false", "nil")
+print(true, false, nil)
+# Output: True False None
+```
 
-Calculate the length of a CJK string.
+## Types
+
+### `shared_dict`
+
+A thread-safe, mutable dictionary returned by `shared_dict()` and `make_shared_dict()`. Every read and write is locked, so multiple Starlark threads may share and mutate one instance without races. Its `type()` is `shared_dict` by default, or the custom name passed to `make_shared_dict`. It supports indexing (`sd["k"] = v`, `sd["k"]`), membership (`in`), the `.len()` method, and `==`/`!=` comparison with another `shared_dict`. It is **not** iterable, and the builtin `len()` does not apply — use the `.len()` method.
+
+Beyond the standard dict methods it inherits (`clear`, `get`, `items`, `keys`, `pop`, `popitem`, `setdefault`, `update`, `values`), it adds the methods below.
+
+| method | description |
+|--------|-------------|
+| `len() -> int` | Number of items in the dictionary. |
+| `perform(fn)` | Call `fn(self)` while holding the lock, for atomic compound updates. |
+| `to_dict() -> dict` | Shallow clone into a plain dict; mutating the clone never affects the original. |
+| `to_json() -> str` | Serialize the contents to a JSON string. |
+| `from_json(json_str)` | Decode a JSON object string and merge its pairs into the dictionary. |
+
+```python
+load("go_idiomatic", "make_shared_dict")
+sd = make_shared_dict("mydict", {"a": 1, "b": 2})
+print(type(sd), sd.len())
+# Output: mydict 2
+```
+
+`perform` runs the callback under the dict's lock so a read-modify-write stays atomic:
+
+```python
+load("go_idiomatic", "make_shared_dict")
+sd = make_shared_dict()
+def bump(d): d["cnt"] = d.get("cnt", 0) + 1
+sd.perform(bump)
+sd.perform(bump)
+print(sd)
+# Output: shared_dict({"cnt": 2})
+```
+
+`to_dict` clones; mutating the clone leaves the source empty:
+
+```python
+load("go_idiomatic", "make_shared_dict")
+sd = make_shared_dict()
+clone = sd.to_dict()
+clone["k"] = "v"
+print(sd, clone)
+# Output: shared_dict({}) {"k": "v"}
+```
+
+`to_json` serializes and `from_json` merges:
+
+```python
+load("go_idiomatic", "make_shared_dict")
+sd = make_shared_dict()
+sd.from_json('{"new_key": "new_value"}')
+print(sd.to_json())
+# Output: {"new_key":"new_value"}
+```
+
+## Details & examples
+
+### `length(obj) -> int`
+
+For a string, returns the number of Unicode code points (unlike the builtin `len()`, which counts UTF-8 bytes); for bytes, the byte count; otherwise the `Len()` of any `starlark.Sequence` (list, tuple, dict, set, and `starlight` slices/maps). Errors with `length() takes exactly one argument` if not given exactly one positional argument, and `length() function isn't supported for '<type>' type object` for a non-sized type (e.g. `bool`).
 
 ```python
 load("go_idiomatic", "length")
-s = "你好"
-print(length(s), len(s))
-# Output: 2 6
+print(length("水光肌"), len("水光肌"))
+# Output: 3 9
 ```
-
-**Misc**
-
-Calculate the length of a list, set and map.
 
 ```python
 load("go_idiomatic", "length")
-print(length([1, 2, 3]), length(set([1, 2])), length({1: 2}))
-# Output: 3 2 1
+print(length([1, 2, 3]), length(set(["a", "b"])), length({"a": 1, "b": 2}))
+# Output: 3 2 2
 ```
 
-### `sum(iterable, start=0)`
+### `sum(iterable, start=0) -> number`
 
-Returns the sum of `start` and the items of an iterable from left to right. The iterable's items and the `start` value are normally numbers.
-
-#### Examples
-
-**Basic**
-
-Calculate the sum of a list.
+Adds every item of `iterable` to `start`. Items and `start` must be numbers; `None` items are skipped (treated as zero). Mixing int and float yields an int when the result is whole. Errors with `unsupported type: <type>, expected float or int` on a non-numeric item, and `got <type>, want iterable` if `iterable` is not iterable.
 
 ```python
 load("go_idiomatic", "sum")
-print(sum([1, 2, 3]))
-# Output: 6
+print(sum([1, 2, 3]), sum([1, 2, 4], start=8), sum([1, 2, None]))
+# Output: 6 15 3
 ```
 
-**Start**
+### `distinct(iterable) -> iterable`
 
-Calculate the sum of a list with a start value.
-
-```python
-load("go_idiomatic", "sum")
-print(sum([1, 2, 3], 10))
-# Output: 16
-```
-
-### `distinct(iterable)`
-
-Returns an iterable with distinct elements from the given iterable, i.e., without duplicates. For a list and custom types, it returns a new list with distinct elements. For a tuple, it returns a new tuple with distinct elements. For a dict, it returns the keys in a list. For a set, it just returns the original set.
-
-#### Parameters
-
-| name       | type       | description                                    |
-|------------|------------|------------------------------------------------|
-| `iterable` | `iterable` | The iterable to process for distinct elements. |
-
-#### Examples
-
-**List**
-
-Get distinct elements from a list.
+Removes duplicates, preserving first-seen order. Returns a **list** for a list or custom iterable, a **tuple** for a tuple, the result of `.keys()` (a list) for a dict, and the original **set** unchanged for a set. Errors with `unhashable type: <type>` if an element cannot be hashed, and `got <type>, want iterable` for a non-iterable argument.
 
 ```python
 load("go_idiomatic", "distinct")
-print(distinct([1, 2, 2, 3, 3, 3]))
-# Output: [1, 2, 3]
+print(distinct([1, 2, 2, 3, 3, 3]), distinct((1, 2, 2, 3)))
+# Output: [1, 2, 3] (1, 2, 3)
 ```
 
-**Tuple**
+### `hex(x) -> str` / `oct(x) -> str` / `bin(x) -> str`
 
-Get distinct elements from a tuple.
+Convert an integer to a base-16 / base-8 / base-2 string with the `0x` / `0o` / `0b` prefix. A negative number keeps the sign before the prefix (`-0xf`); zero is `0x0` / `0o0` / `0b0`. Arbitrary-precision integers are supported. Each errors with `missing argument for x` if called with no argument.
 
 ```python
-load("go_idiomatic", "distinct")
-print(distinct((1, 2, 2, 3, 3, 3)))
-# Output: (1, 2, 3)
+load("go_idiomatic", "hex", "oct", "bin")
+print(hex(255), oct(255), bin(255))
+# Output: 0xff 0o377 0b11111111
 ```
-
-**Dict**
-
-Get distinct keys from a dictionary.
 
 ```python
-load("go_idiomatic", "distinct")
-print(distinct({1: 'a', 2: 'b', 3: 'c'}))
-# Output: [1, 2, 3]
+load("go_idiomatic", "hex", "oct", "bin")
+print(hex(-15), oct(-56), bin(-255))
+# Output: -0xf -0o70 -0b11111111
 ```
 
-**Set**
+### `bytes_hex(bytes, sep="", bytes_per_sep=1) -> str`
 
-Return original set (already distinct).
-
-```python
-load("go_idiomatic", "distinct")
-print(distinct(set([1, 2, 3, 3])))
-# Output: {1, 2, 3}
-```
-
-### `hex(x)`
-
-Convert an integer number to a lowercase hexadecimal string prefixed with `0x`.
-
-#### Examples
-
-**Basic**
-
-Convert an integer to a hexadecimal string.
-
-```python
-load("go_idiomatic", "hex")
-print(hex(255))
-# Output: 0xff
-```
-
-**Negative**
-
-Convert a negative integer to a hexadecimal string.
-
-```python
-load("go_idiomatic", "hex")
-print(hex(-42))
-# Output: -0x2a
-```
-
-### `oct(x)`
-
-Convert an integer number to an octal string prefixed with `0o`.
-
-#### Examples
-
-**Basic**
-
-Convert an integer to an octal string.
-
-```python
-load("go_idiomatic", "oct")
-print(oct(255))
-# Output: 0o377
-```
-
-**Negative**
-
-Convert a negative integer to an octal string.
-
-```python
-load("go_idiomatic", "oct")
-print(oct(-56))
-# Output: -0o70
-```
-
-### `bin(x)`
-
-Convert an integer number to a binary string prefixed with `0b`.
-
-#### Examples
-
-**Basic**
-
-Convert an integer to a binary string.
-
-```python
-load("go_idiomatic", "bin")
-print(bin(255))
-# Output: 0b11111111
-```
-
-**Negative**
-
-Convert a negative integer to a binary string.
-
-```python
-load("go_idiomatic", "bin")
-print(bin(-10))
-# Output: -0b1010
-```
-
-### `bytes_hex(bytes,sep="",bytes_per_sep=1)`
-
-Return a string containing two hexadecimal digits for each byte in the instance.
-If you want to make the hex string easier to read, you can specify a single character separator sep parameter to include in the output.
-By default, this separator will be included between each byte.
-A second optional bytes_per_sep parameter controls the spacing. Positive values calculate the separator position from the right, negative values from the left.
-
-#### Parameters
-
-| name            | type     | description                        |
-|-----------------|----------|------------------------------------|
-| `bytes`         | `bytes`  | The bytes to convert.              |
-| `sep`           | `string` | The separator to use.              |
-| `bytes_per_sep` | `int`    | The number of bytes per separator. |
-
-#### Examples
-
-**Basic**
-
-Convert bytes to a hexadecimal string.
+Two lowercase hex digits per byte. With a one-character `sep`, the separator is inserted between groups of `bytes_per_sep` bytes — a positive count groups from the right, a negative count from the left. Errors with `missing argument for bytes` if `bytes` is omitted.
 
 ```python
 load("go_idiomatic", "bytes_hex")
-print(bytes_hex(b"hello"))
-# Output: 68656c6c6f
+print(bytes_hex(b"123456"))
+# Output: 313233343536
 ```
-
-**Separator**
-
-Convert bytes to a hexadecimal string with a separator.
 
 ```python
 load("go_idiomatic", "bytes_hex")
-print(bytes_hex(b"hello", sep=":"))
-# Output: 68:65:6c:6c:6f
+print(bytes_hex(b"123456", "_", 4))
+print(bytes_hex(b"123456", "_", -4))
+# Output: 3132_33343536
+# 31323334_3536
 ```
 
-**Bytes per separator**
+### `is_nil(x) -> bool`
 
-Convert bytes to a hexadecimal string with a separator and bytes per separator.
+`True` for `None`/`nil`, or for a `starlight` Go wrapper (`GoSlice`, `GoMap`, `GoStruct`, `GoInterface`) whose underlying Go value is nil. Errors with `unsupported type: <type>` for any other Starlark value (e.g. an int) — it is intentionally not a general truthiness test.
 
 ```python
-load("go_idiomatic", "bytes_hex")
-print(bytes_hex(b"hello", sep=":", bytes_per_sep=2))
-# Output: 68:656c:6c6f
+load("go_idiomatic", "is_nil")
+print(is_nil(None))
+# Output: True
 ```
 
 ### `sleep(secs)`
 
-Sleeps for the given number of seconds.
-
-#### Examples
-
-**Basic**
-
-Sleep for 1 second.
+Blocks the current thread for `secs` seconds (int or float). `secs` must be non-negative — otherwise `secs must be non-negative`. The sleep is cancelled if the thread's context is done, returning that context error. Errors with `missing argument for secs` if omitted, or `want float or int` for a non-number.
 
 ```python
 load("go_idiomatic", "sleep")
-sleep(1)
+sleep(0.01)
+# Output:
 ```
 
-### `exit(code=0)`
+### `exit(code=0)` / `quit(code=0)`
 
-Exits the program with the given exit code.
-
-#### Examples
-
-**Default**
-
-Exit with default code (0).
-
-```python
-load("go_idiomatic", "exit")
-exit()
-```
-
-**Non-zero**
-
-Exit with code 1.
+Stores `code` as the thread-local `exit_code` and returns the sentinel error `ErrSystemExit` to unwind the program: `starlet runtime system exit (Use Ctrl-D in REPL to exit)`. `code` must fit an unsigned 8-bit range (0–255) — `exit(-1)` errors with `out of range`. `quit` is an exact alias.
 
 ```python
 load("go_idiomatic", "exit")
 exit(1)
+# Output:
 ```
 
-### `quit(code=0)`
+### `module(name, **kv) -> module`
 
-Alias for `exit()`.
-
-#### Examples
-
-**Default**
-
-Exit with default code (0).
-
-```python
-load("go_idiomatic", "quit")
-quit()
-```
-
-**Non-zero**
-
-Exit with code 1.
-
-```python
-load("go_idiomatic", "quit")
-quit(1)
-```
-
-### `module(name, **kv)`
-
-Returns the module with the given name and keyword arguments.
-The main difference between the `module` and the `struct` is that the string representation of the `module` does not enumerate its fields.
-The module can't be compared with `==` and `!=`, but the `struct` can.
-
-#### Parameters
-
-| name   | type       | description                            |
-|--------|------------|----------------------------------------|
-| `name` | `string`   | The name of the module to return.      |
-| `kv`   | `**kwargs` | Key-value pairs to provide attributes. |
-
-#### Examples
-
-**Basic**
-
-Get the `os` module with pid attribute.
+Builds a `starlarkstruct` module. Unlike `struct`, its string form hides the fields (`<module "name">`) and it is **not** comparable with `==`/`!=`. Takes exactly one positional argument (the name); extra positionals error with `got N arguments, want 1`.
 
 ```python
 load("go_idiomatic", "module")
-os = module("os", pid=1)
-print(os)
-# Output: <module "os">
+m = module("rose", a=100, b="hello")
+print(m, m.a, m.b)
+# Output: <module "rose"> 100 hello
 ```
 
-### `struct(**kv)`
+### `struct(**kv) -> struct` / `make_struct(name, **kv) -> struct`
 
-Returns a new struct with the given keyword arguments.
-
-#### Parameters
-
-| name | type       | description                            |
-|------|------------|----------------------------------------|
-| `kv` | `**kwargs` | Key-value pairs to provide attributes. |
-
-#### Examples
-
-**Basic**
-
-Create a struct with name and age attributes.
+`struct` builds an anonymous, field-comparable struct (printed as `struct(field = value, ...)`, fields sorted). `make_struct` is the same but takes a leading positional `name` used as the constructor in its string form and in equality (two structs are equal only if constructor *and* fields match). `struct` rejects positional arguments (`unexpected positional arguments`); `make_struct` requires exactly one (`got N arguments, want 1`).
 
 ```python
-load("go_idiomatic", "struct")
-person = struct(name="Alice", age=30)
-print(person)
-# Output: struct(age = 30, name = "Alice")
+load("go_idiomatic", "struct", "make_struct")
+print(struct(rose="red", lily="white"))
+print(make_struct("rose", color="red", price=100))
+# Output: struct(lily = "white", rose = "red")
+# rose(color = "red", price = 100)
 ```
 
-### `make_struct(name, **kv)`
+### `shared_dict() -> shared_dict` / `make_shared_dict(name="", data=None) -> shared_dict`
 
-Returns a new struct with the given name as constructor and keyword arguments.
-Comparing two structs with `==` and `!=` will compare their constructors first and then their fields.
-
-#### Parameters
-
-| name   | type       | description                            |
-|--------|------------|----------------------------------------|
-| `name` | `string`   | The name to use as constructor.        |
-| `kv`   | `**kwargs` | Key-value pairs to provide attributes. |
-
-#### Examples
-
-**Basic**
-
-Create a struct with name and age attributes.
-
-```python
-load("go_idiomatic", "make_struct")
-person = make_struct("Person", name="Alice", age=30)
-print(person)
-# Output: Person(age = 30, name = "Alice")
-```
-
-### `shared_dict()`
-
-Creates a new instance of a thread-safe, mutable shared dictionary.
-This allows for concurrent access and modification by multiple Starlark threads, ensuring data consistency and preventing race conditions.
-The function initializes a SharedDict with default settings.
-
-#### Examples
-
-**Basic**
-
-Create a new shared dictionary.
-
-```python
-load("go_idiomatic", "shared_dict")
-sd = shared_dict()
-print(sd)
-# Output: shared_dict({})
-```
-
-### `make_shared_dict(name="", data=None)`
-
-Creates a customized shared dictionary with an optional name and initial data.
-The name parameter allows for more descriptive representations and debugging, while the data parameter lets you initialize the shared dictionary with pre-existing key-value pairs.
-
-#### Parameters
-
-| name   | type     | description                                                                                                                              |
-|--------|----------|------------------------------------------------------------------------------------------------------------------------------------------|
-| `name` | `string` | An optional name for the shared dictionary. Defaults to an empty string, which results in the default name "shared_dict".                |
-| `data` | `dict`   | An optional Starlark dictionary to initialize the shared dictionary with. Defaults to None, which results in an empty shared dictionary. |
-
-#### Examples
-
-**Named Shared Dict**
-
-Create a named shared dictionary without initial data.
+Both create a `shared_dict` (see the Types section). `shared_dict()` takes no arguments and yields an empty dict named `shared_dict`. `make_shared_dict` accepts an optional type `name` and an optional `data` dict to seed it. `shared_dict(123)` errors with `got 1 arguments, want 0`; passing a non-string `name` errors with `want string`.
 
 ```python
 load("go_idiomatic", "make_shared_dict")
-sd = make_shared_dict(name="my_dict")
-print(sd)
-# Output: my_dict({})
+print(make_shared_dict("manaʻo", {"abc": 123}))
+# Output: manaʻo({"abc": 123})
 ```
 
-**Named Shared Dict with Data**
+### `to_dict(v) -> dict`
 
-Create a named shared dictionary with initial data.
-
-```python
-load("go_idiomatic", "make_shared_dict")
-initial_data = {"key1": "value1", "key2": "value2"}
-sd = make_shared_dict(name="custom_dict", data=initial_data)
-print(sd)
-# Output: custom_dict({"key1": "value1", "key2": "value2"})
-```
-
-### `to_dict(v)`
-
-Converts various Starlark values into a Starlark dictionary. Works with native Starlark dict, module, struct, and GoStruct, SharedDict.
-For GoStruct, it serializes the underlying Go struct to JSON and then deserializes it to a Starlark dict.
-
-#### Parameters
-
-| name | type  | description                                  |
-|------|-------|----------------------------------------------|
-| `v`  | `any` | The value to be converted into a dictionary. |
-
-#### Examples
-
-**Module to Dict**
-
-Convert a Starlark module to a dict.
+Converts a value into a plain Starlark `dict`. Accepts a native `dict` (cloned), a `module` or `struct` (members become entries), a `GoStruct` (marshalled to JSON via Go's encoder then decoded to a dict — Go field names are preserved, nil fields become `None`), and a `shared_dict` (clone of its contents). Any other type errors with `unsupported type: <type>`; a Go struct holding a JSON-unencodable field (e.g. a channel) surfaces the encoder error (`json: unsupported type: chan int`).
 
 ```python
-load("go_idiomatic", "to_dict")
-m = module("example", a=1, b=2)
-print(to_dict(m))
-# Output: {"a": 1, "b": 2}
-```
-
-**Struct to Dict**
-
-Convert a custom Starlark struct to a dict.
-
-```python
-load("go_idiomatic", "to_dict")
-person = struct(name="Alice", age=30)
-print(to_dict(person))
+load("go_idiomatic", "to_dict", "struct", "module")
+print(to_dict(struct(name="Alice", age=30)))
+print(to_dict(module("mod", foo="bar", num=42)))
 # Output: {"age": 30, "name": "Alice"}
-```
-
-**GoStruct to Dict**
-
-Convert a GoStruct to a dict.
-
-```python
-load("go_idiomatic", "to_dict")
-gs.Name = "Bob"
-gs.Age = 25
-print(to_dict(gs))
-# Output: {"age": 25, "name": "Bob"}
-```
-
-**SharedDict to Dict**
-
-Convert a SharedDict to a dict.
-
-```python
-load("go_idiomatic", "shared_dict", "to_dict")
-sd = shared_dict()
-sd["key"] = "value"
-print(to_dict(sd))
-# Output: {"key": "value"}
-```
-
-**Dict to Dict**
-
-Clone an existing Starlark dict.
-
-```python
-load("go_idiomatic", "to_dict")
-original_dict = {"a": 1, "b": 2}
-cloned_dict = to_dict(original_dict)
-print(cloned_dict)
-# Output: {"a": 1, "b": 2}
+# {"foo": "bar", "num": 42}
 ```
 
 ### `eprint(*args, sep=" ")`
 
-Works like the standard `print()` function but prints the given arguments to `stderr` instead of `Print` handler defined in Go.
-This is useful for logging errors or important warnings that should be separated from standard output.
-
-#### Parameters
-
-| name   | type     | description                                                             |
-|--------|----------|-------------------------------------------------------------------------|
-| `args` | `*args`  | The values to be printed.                                               |
-| `sep`  | `string` | An optional separator between values. Defaults to a single space (" "). |
-
-#### Examples
-
-**Basic**
-
-Print an error message to stderr.
-
-```python
-load("go_idiomatic", "eprint")
-eprint("Error:", "An unexpected error occurred")
-```
-
-**Custom Separator**
-
-Print multiple values to stderr with a custom separator.
+Like the builtin `print()` but always writes to **stderr**, bypassing the Go `Print` handler — useful for diagnostics kept out of normal output. `sep` (a string) joins the arguments. A non-string `sep` errors with `got <type>, want string`.
 
 ```python
 load("go_idiomatic", "eprint")
 eprint("Path", "/home/user/docs", sep=" -> ")
-# Output: Path -> /home/user/docs
+# Output:
 ```
+
+(Output goes to stderr, so stdout shows nothing.)
 
 ### `pprint(*args, sep=" ")`
 
-Works like the standard `print()` function but formats the given arguments in pretty JSON format with indentation.
-If an argument cannot be converted to JSON, it falls back to converting the value to a string.
-This is particularly useful for printing complex data structures in a human-readable format.
-
-#### Parameters
-
-| name   | type     | description                                                                                                    |
-|--------|----------|----------------------------------------------------------------------------------------------------------------|
-| `args` | `*args`  | The values to be printed. These can be any Starlark values, including lists, dictionaries, and custom structs. |
-| `sep`  | `string` | An optional separator between values. Defaults to a single space (" ").                                        |
-
-#### Examples
-
-**Basic**
-
-Pretty print a dictionary.
+Like `print()` but renders each argument as **indented JSON** (4-space indent) before writing through the thread's `Print` handler (falling back to stderr). Values that cannot be JSON-encoded — including self-referential structures — fall back to their string form, so `pprint` never fails on cyclic input. A non-string `sep` errors with `got <type>, want string`.
 
 ```python
 load("go_idiomatic", "pprint")
@@ -563,145 +275,11 @@ pprint({"key": "value", "list": [1, 2, 3]})
 # }
 ```
 
-**Multiple Values**
+## Notes / boundaries
 
-Pretty print multiple values with a custom separator.
-
-```python
-load("go_idiomatic", "pprint")
-pprint({"key1": "value1"}, {"key2": "value2"}, sep="\n---\n")
-# Output: {
-#     "key1": "value1"
-# }
-# ---
-# {
-#     "key2": "value2"
-# }
-```
-
-## Types
-
-### `nil`
-
-Value as an alias for `None`.
-
-### `true`
-
-Value as an alias for `True`.
-
-### `false`
-
-Value as an alias for `False`.
-
-### `SharedDict`
-
-A thread-safe, mutable dictionary that can be concurrently accessed and modified by multiple Starlark threads.
-It ensures data consistency and prevents race conditions in concurrent environments.
-
-**Methods**
-
-#### `len()`
-
-Returns the number of items in the shared dictionary.
-
-##### Examples
-
-**Basic**
-
-Get the length of a shared dictionary.
-
-```python
-load("go_idiomatic", "make_shared_dict")
-sd = make_shared_dict()
-sd["key1"] = "value1"
-print(sd.len())
-# Output: 1
-```
-
-#### `perform(fn)`
-
-Calls the given function with the shared dictionary as its argument. The function must be callable.
-
-##### Parameters
-
-| name | type       | description                                                                                                   |
-|------|------------|---------------------------------------------------------------------------------------------------------------|
-| `fn` | `callable` | The function to be called with the shared dictionary, and accepts the shared dictionary as its only argument. |
-
-##### Examples
-
-**Basic**
-
-Perform a custom operation on the shared dictionary.
-
-```python
-load("go_idiomatic", "make_shared_dict")
-sd = make_shared_dict()
-def my_operation(d): d["cnt"] = d.get("cnt", 0) + 1
-sd.perform(my_operation)
-print(sd)
-# Output: shared_dict({"new_key": "new_value"})
-```
-
-#### `to_dict()`
-
-Returns a shadow-clone of the shared dictionary. Modifications to the clone do not affect the original shared dictionary.
-
-##### Examples
-
-**Clone and Modify**
-
-Clone a shared dictionary and add new data to the clone.
-
-```python
-load("go_idiomatic", "make_shared_dict")
-sd = make_shared_dict()
-sd_clone = sd.to_dict()
-sd_clone["clone_key"] = "clone_value"
-print(sd)
-print(sd_clone)
-# Output: shared_dict({})
-#         {"clone_key": "clone_value"}
-```
-
-#### `to_json()`
-
-Serializes the shared dictionary to a JSON string.
-
-##### Examples
-
-**Serialize**
-
-Convert a shared dictionary to a JSON string.
-
-```python
-load("go_idiomatic", "make_shared_dict")
-sd = make_shared_dict(data={"key": "value"})
-json_str = sd.to_json()
-print(json_str)
-# Output: {"key": "value"}
-```
-
-#### `from_json(json_str)`
-
-Deserializes a JSON string into the shared dictionary, updating it with the key-value pairs decoded from the string.
-
-##### Parameters
-
-| name       | type     | description                                                          |
-|------------|----------|----------------------------------------------------------------------|
-| `json_str` | `string` | The JSON string to deserialize and merge into the shared dictionary. |
-
-##### Examples
-
-**Deserialize**
-
-Update a shared dictionary with data from a JSON string.
-
-```python
-load("go_idiomatic", "make_shared_dict")
-sd = make_shared_dict()
-sd.from_json('{"new_key": "new_value"}')
-print(sd)
-# Output: shared_dict({"new_key": "new_value"})
-```
+- **Not a Python module clone.** Names echo Python builtins, but this is a Star\* utility grab-bag, not a 1:1 API mirror — there is no module-level namespace; members load individually.
+- **`length` vs `len`.** `length` counts Unicode code points for strings; the builtin `len` counts UTF-8 bytes. They agree for sequences.
+- **`distinct` ordering.** First-seen order is preserved for list/tuple/custom inputs; dict-key order from `.keys()` is **not** guaranteed (sort it if you need stability). Sets are returned unchanged.
+- **Process effects.** `sleep` blocks (and respects context cancellation); `exit`/`quit` do not stop the goroutine themselves — they return `ErrSystemExit` for the host runner to act on, and set the thread-local `exit_code`.
+- **Determinism.** `struct`/`make_struct`/`module` print fields in sorted order; `to_dict` of a `GoStruct` keeps the Go field names verbatim.
+- **`shared_dict` scope.** Locking protects a single instance across threads; it does not make the values it holds deeply immutable or persist anything beyond the process.

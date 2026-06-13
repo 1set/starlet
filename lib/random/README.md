@@ -1,254 +1,155 @@
 # random
 
-`random` defines functions that generate random values for various distributions, it's intended to be a drop-in subset of [Python's **random** module](https://docs.python.org/3/library/random.html) for Starlark.
+`random` generates random values for various distributions — a drop-in subset of [Python's `random` module](https://docs.python.org/3/library/random.html) for Starlark. All randomness is drawn from the OS cryptographic source (`crypto/rand`), so it is suitable for security-sensitive use. **Capability profile: Pure** — no filesystem, network, process, or log side effects.
 
 ## Functions
 
-### `randbytes(n)`
+| function | description |
+|----------|-------------|
+| `randbytes(n=10) -> bytes` | Random byte string of `n` bytes. |
+| `randstr(chars, n=10) -> str` | Random string of `n` characters drawn from `chars`. |
+| `randb32(n=10, sep=0) -> str` | Random base32 string of `n` characters, optionally dash-separated every `sep` characters. |
+| `randint(a, b) -> int` | Random integer `N` with `a <= N <= b`. |
+| `random() -> float` | Random float in `[0.0, 1.0)`. |
+| `uniform(a, b) -> float` | Random float between `a` and `b`. |
+| `choice(seq) -> value` | Random element from the non-empty sequence `seq`. |
+| `choices(population, weights=None, cum_weights=None, k=1) -> list` | `k`-sized list chosen from `population` with replacement, optionally weighted. |
+| `shuffle(seq) -> None` | Shuffle the mutable sequence `seq` in place. |
+| `uuid() -> str` | Random RFC 4122 version 4 UUID string. |
 
-Generate a random byte string containing n number of bytes.
+This module exposes no constants and no custom types — every member is a function on the `random` module.
 
-#### Parameters
+## Details & examples
 
-| name | type  | description                                                               |
-|------|-------|---------------------------------------------------------------------------|
-| `n`  | `int` | If n bytes is non-positive or not supplied, a reasonable default is used. |
+### `randbytes(n=10) -> bytes`
 
-#### Examples
-
-**basic**
-
-Generate a random byte string containing 10 bytes.
+Returns a random byte string of length `n`. If `n` is non-positive or omitted, the default length `10` is used. Errors only if the underlying RNG read fails.
 
 ```python
 load("random", "randbytes")
 b = randbytes(10)
-print(b)
-# Output: b'K\xaa\xbb4\xbaEh0\x19\x9c'
+print(len(b))
+# Output: 10
 ```
 
-### `randstr(chars, n)`
+### `randstr(chars, n=10) -> str`
 
-Generate a random string containing n number of unicode characters from the given unicode string.
-
-#### Parameters
-
-| name    | type     | description                                                                                   |
-|---------|----------|-----------------------------------------------------------------------------------------------|
-| `chars` | `string` | The characters to choose from.                                                                |
-| `n`     | `int`    | The length of the string. If n is non-positive or not supplied, a reasonable default is used. |
-
-#### Examples
-
-**basic**
-
-Generate a random string containing 10 characters from the given unicode string.
+Returns a random string of `n` characters, each drawn uniformly from the characters in `chars`. `chars` is split into Unicode runes, so multi-byte characters are selected as whole code points (length is measured in bytes, e.g. each Chinese character contributes 3). If `n` is non-positive or omitted, the default length `10` is used. Errors when `chars` is empty (`chars must not be empty`).
 
 ```python
 load("random", "randstr")
-s = randstr("abcdefghijklmnopqrstuvwxyz", 10)
-print(s)
-# Output: "enfknqfbra"
+x = randstr("AAA", 10)
+print(x)
+# Output: AAAAAAAAAA
 ```
 
-### `randb32(n, sep)`
+### `randb32(n=10, sep=0) -> str`
 
-Generate a random base32 string containing n number of bytes with optional separator dash for every sep characters.
-
-#### Parameters
-
-| name  | type  | description                                                                                                   |
-|-------|-------|---------------------------------------------------------------------------------------------------------------|
-| `n`   | `int` | The number of bytes to generate. If n is non-positive or not supplied, a reasonable default is used.          |
-| `sep` | `int` | The number of characters to separate with a dash, if it's non-positive or not supplied, no separator is used. |
-
-#### Examples
-
-**basic**
-
-Generate a random base32 string containing 10 bytes with no separator.
+Returns a random base32 string of `n` characters using the standard RFC 4648 alphabet (`A-Z`, `2-7`). If `sep` is positive and smaller than the string length, a dash is inserted every `sep` characters (this adds separator characters to the total length). If `n` is non-positive or omitted, the default length `10` is used; if `sep` is non-positive or omitted, no separator is inserted.
 
 ```python
 load("random", "randb32")
-s = randb32(10, 4)
-print(s)
-# Output: 2RXQ-H45H-WV
+x = randb32(20, 5)
+print(len(x), x[5], len(x.split("-")))
+# Output: 23 - 4
 ```
 
-### `randint(a,b)`
+### `randint(a, b) -> int`
 
-Return a random integer N such that a <= N <= b.
-
-#### Parameters
-
-| name | type  | description                   |
-|------|-------|-------------------------------|
-| `a`  | `int` | The lower bound of the range. |
-| `b`  | `int` | The upper bound of the range. |
-
-#### Examples
-
-**basic**
-
-Return a random integer N such that 0 <= N <= 10.
+Returns a random integer `N` such that `a <= N <= b` (inclusive on both ends). Both `a` and `b` must be integers; backed by arbitrary-precision big integers. Errors when `a > b` (`a must be less than or equal to b`).
 
 ```python
 load("random", "randint")
-n = randint(0, 10)
-print(n)
-# Output: 7
+val = randint(1, 1)
+print(val)
+# Output: 1
 ```
 
-### `random()`
+### `random() -> float`
 
-Return a random floating point number in the range 0.0 <= X < 1.0.
-
-#### Examples
-
-**basic**
-
-Return a random floating point number in the range [0.0, 1.0).
+Returns a random float in the range `[0.0, 1.0)`. Takes no arguments; passing any argument errors (`random.random: got 1 arguments, want 0`).
 
 ```python
 load("random", "random")
-n = random()
-print(n)
-# Output: 0.7309677873766576
+val = random()
+print((0 <= val) and (val < 1))
+# Output: True
 ```
 
-### `uniform(a, b)`
+### `uniform(a, b) -> float`
 
-Return a random floating point number N such that a <= N <= b for a <= b and b <= N <= a for b < a.
-The end-point value b may or may not be included in the range depending on floating-point rounding in the equation a + (b-a) * random().
-
-#### Parameters
-
-| name | type    | description                   |
-|------|---------|-------------------------------|
-| `a`  | `float` | The lower bound of the range. |
-| `b`  | `float` | The upper bound of the range. |
-
-#### Examples
-
-**basic**
-
-Return a random floating point number N such that 5.0 <= N <= 10.0.
+Returns a random float `N` between `a` and `b`, computed as `a + (b - a) * random()`. For `a <= b` the range is `a <= N <= b`; for `b < a` it is `b <= N <= a`. The end-point `b` may or may not be included depending on floating-point rounding. Both `a` and `b` accept `int` or `float`.
 
 ```python
 load("random", "uniform")
-n = uniform(5, 10)
-print(n)
-# Output: 7.309677873766576
+val = uniform(1, 1)
+print(val)
+# Output: 1.0
 ```
 
-### `uuid()`
+### `choice(seq) -> value`
 
-Generate a random UUID (RFC 4122 version 4).
-
-#### Examples
-
-**basic**
-
-Generate a random UUID.
-
-```python
-load("random", "uuid")
-u = uuid()
-print(u)
-# Output: 6e360b7a-f677-4f6c-9c57-8b09694d66b3
-```
-
-### `choice(seq)`
-
-Return a random element from the non-empty sequence seq.
-
-#### Parameters
-
-| name  | type   | description           |
-|-------|--------|-----------------------|
-| `seq` | `list` | A non-empty sequence. |
-
-#### Examples
-
-**basic**
-
-Return a random element from the non-empty sequence [1, 2, 3, 4, 5].
+Returns a single random element from the non-empty indexable sequence `seq` (e.g. list, tuple, range). Errors when `seq` is empty (`cannot choose from an empty sequence`) or not indexable.
 
 ```python
 load("random", "choice")
-n = choice([1, 2, 3, 4, 5])
-print(n)
+val = choice((3, 3, 3, 3, 3))
+print(val)
 # Output: 3
 ```
 
-### `choices(population, weights=None, cum_weights=None, k=1)`
+### `choices(population, weights=None, cum_weights=None, k=1) -> list`
 
-Return a k-sized list of elements chosen from the population with replacement. If the population is empty, raises a ValueError.
+Returns a `k`-sized list of elements chosen from `population` **with replacement**.
 
-#### Parameters
+- `population` — a non-empty indexable sequence.
+- `weights` — relative weights per element; if omitted, selection is uniform.
+- `cum_weights` — cumulative weights per element; cannot be combined with `weights`.
+- `k` — result size (default `1`); if `k <= 0`, an empty list is returned.
 
-| name          | type   | description                                                                                                                                                |
-|---------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `population`  | `list` | A non-empty sequence to choose from.                                                                                                                       |
-| `weights`     | `list` | A sequence of weights corresponding to the population, where weights[i] is the weight of population[i]. If not provided, all weights are considered equal. |
-| `cum_weights` | `list` | A sequence of cumulative weights corresponding to the population. If provided, weights should not be provided.                                             |
-| `k`           | `int`  | The size of the result list. If not provided, defaults to 1. If k is non-positive, an empty list is returned.                                              |
-
-#### Examples
-
-**basic**
-
-Return a list of 2 random elements chosen from the population [1, 2, 3].
+Errors on: empty `population` (`population is empty`); both `weights` and `cum_weights` given (`cannot specify both weights and cumulative weights`); a weight list whose length differs from `population` (`the number of weights does not match the population`); non-numeric weights (`weights must be numeric`); decreasing cumulative weights (`cumulative weights must be non-decreasing`); a non-positive weight total (`total of weights must be greater than zero`); or a non-finite total (`total of weights must be finite`).
 
 ```python
 load("random", "choices")
-result = choices([1, 2, 3], k=2)
-print(result)
-# Output: [2, 3]
+a = choices([1, 2, 3], weights=[0, 1, 0])
+print(a)
+# Output: [2]
 ```
 
-**with_weights**
-
-Return a list of 3 random elements chosen from the population [1, 2, 3] with given weights.
+A zero weight (or a flat cumulative segment) makes an element unreachable, so deterministic weight vectors yield deterministic results:
 
 ```python
 load("random", "choices")
-result = choices([1, 2, 3], weights=[1, 2, 1], k=3)
-print(result)
-# Output: [2, 3, 1]
+a = choices([1, 2, 3, 4, 5], cum_weights=[0, 0, 1, 1, 1])
+print(a)
+# Output: [3]
 ```
 
-**with_cumulative_weights**
+### `shuffle(seq) -> None`
 
-Return a list of 2 random elements chosen from the population [1, 2, 3] with given cumulative weights.
-
-```python
-load("random", "choices")
-result = choices([1, 2, 3], cum_weights=[1, 3, 4], k=2)
-print(result)
-# Output: [3, 2]
-```
-
-### `shuffle(x)`
-
-Shuffle the sequence x in place.
-
-#### Parameters
-
-| name | type   | description           |
-|------|--------|-----------------------|
-| `x`  | `list` | A non-empty sequence. |
-
-#### Examples
-
-**basic**
-
-Shuffle the sequence [1, 2, 3, 4, 5] in place.
+Shuffles the mutable sequence `seq` in place using the Fisher-Yates algorithm and returns `None`. `seq` must support index assignment (a list); tuples and other immutable sequences error (`want starlark.HasSetIndex`), and a frozen list errors (`cannot assign to element of frozen list`). Sequences of length 0 or 1 are left unchanged.
 
 ```python
 load("random", "shuffle")
-x = [1, 2, 3, 4, 5]
-shuffle(x)
-print(x)
-# Output: [3, 1, 5, 4, 2]
+val = [1]
+shuffle(val)
+print(val)
+# Output: [1]
 ```
+
+### `uuid() -> str`
+
+Returns a random UUID (RFC 4122 version 4) as a 36-character string (32 hex digits plus 4 dashes). Takes no arguments; passing any argument errors (`random.uuid: got 1 arguments, want 0`).
+
+```python
+load("random", "uuid")
+val = uuid()
+print(len(val), len(val.replace("-", "")))
+# Output: 36 32
+```
+
+## Notes / boundaries
+
+- **Engine.** All values come from `crypto/rand` (the OS CSPRNG); integers use `math/big`, so `randint` is exact for arbitrarily large bounds. There is no seeding API and no `random.seed`/`getrandbits` equivalent — output is non-deterministic by design and cannot be made reproducible.
+- **Float precision.** `random()` and `uniform()` quantize to `1/2^53` (53 bits of mantissa), matching CPython's effective precision.
+- **Python parity.** This is a subset: `randbytes`, `randstr`, and `randb32` are extensions not present in CPython; `randint`, `random`, `uniform`, `choice`, `choices`, and `shuffle` mirror their CPython signatures. `choices` returns a `list` (never a tuple). Not provided: `randrange`, `sample`, `seed`, `getstate`/`setstate`, and the distribution helpers (`gauss`, `betavariate`, …).

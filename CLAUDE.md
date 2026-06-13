@@ -65,6 +65,23 @@ A new `lib/<m>` is never enough on its own; wire the whole ring or the build/tes
 - Go values enter scripts via the `predecl` parameter (see `lib/serial`'s use of `startime.Time` / `dataconv.ConvertStruct`).
 - The default suite must stay **hermetic** (no real network/DNS; `lib/net` uses local stubs) — real-network tests go behind `//go:build integration`.
 
+## Documentation standard for `lib/*` READMEs
+
+Module READMEs are read by humans skimming and by AI agents parsing — optimize for both: a scannable, complete surface table up front, runnable examples, explicit boundaries. Every script-visible member (function, constant, type) must be documented, and `TestDocCoverage` enforces it (see below).
+
+Required structure, in order:
+
+1. **Title + purpose** — `# <module>` then 1–2 sentences: what it does; what it mirrors or succeeds (e.g. "a subset of Python's `re`"); the capability profile (pure / filesystem / network / process / log), so a reader knows the side effects without reading code.
+2. **Functions** — a single scannable table listing **every** function, grouped if large: `| function | description |`, with the signature in the function cell as `` `name(args) → result` ``. `try_*` variants may share a row but each name must still appear as a backtick token (`` `try_get` ``) so coverage passes. This table is the contract `TestDocCoverage` checks.
+3. **Constants** (if any) — `| constant | meaning |`, every one present.
+4. **Types** (if any, e.g. `Pattern`, `Match`) — a subsection per type with a methods/attributes table.
+5. **Details & examples** — per function or group: the signature, parameters only where non-obvious, the return, **what it errors on** (the honest-boundary principle), and at least one **runnable example ending in `# Output:`**.
+6. **Notes / boundaries** — engine, determinism, limits, differences from the mirrored API.
+
+Style: names always in backticks; lead with the table before prose; examples real, minimal, runnable; drop framework boilerplate (no empty `#### Parameters` table for a one-arg function — fold into a sentence); state errors and edge behavior explicitly; flag any non-snake_case name (e.g. http's `postForm`).
+
+**Doc coverage check** — `tools/doccov/coverage.star` + `TestDocCoverage` enforce that every member of every `lib/*` module appears in its README (matched as a backtick-quoted identifier). The Go test enumerates the authoritative surface (each module's registered members across the Module/Struct/flat shapes) and runs the `.star` matcher through a Machine, so the check **dogfoods the `regex` module**. Run it with `go test -run TestDocCoverage -v .` — the report lists any undocumented members. (Scope: `lib/*` modules; the go.starlark.net-backed `math`/`struct`/`time` have no lib README and are skipped. Type methods are a standard requirement verified by review, not by the automated member check.)
+
 ## Release discipline
 
 - **Never tag or publish autonomously.** Draft the release title + notes, show the user, and tag only after explicit approval. Patch bump by default. A published tag is immutable in the Go module proxy.

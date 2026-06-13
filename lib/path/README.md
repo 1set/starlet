@@ -1,9 +1,38 @@
 # path
 
-`path` provides functions to manipulate directories and file paths. It follows one rule:
+`path` manipulates directories and file paths for Starlark. The **lexical** functions follow Python's `posixpath` semantics — pure string work on `/`-separated paths, no implicit cleaning, identical on every OS — while the **filesystem** functions operate on the real, OS-native filesystem.
 
-- **Lexical functions** — `join`, `basename`, `dirname`, `normpath`, `split`, `splitext`, `isabs`, `relpath` — use **Python (`posixpath`) semantics**: pure string work on `/`-separated paths, no implicit cleaning, identical results on every OS.
-- **Filesystem functions** — `abs`, `exists`, `is_file`, `is_dir`, `is_link`, `listdir`, `getcwd`, `chdir`, `mkdir` — operate on the real, OS-native filesystem.
+Capability profile: **FileSystem + Process**. The filesystem functions touch the host disk; `chdir` changes the working directory of the **whole process** (every machine and goroutine in the host, persisting after the script ends), so this is a Process effect too. Never expose this module to untrusted scripts; host runtimes typically exclude `path` from restricted module sets.
+
+## Functions
+
+### Lexical (pure string, `posixpath` semantics)
+
+| function | description |
+|---|---|
+| `join(*paths) -> string` | Join path elements with `/`; an absolute component resets the result, an empty component adds a trailing separator, no cleaning. |
+| `basename(path) -> string` | Final component (everything after the last `/`); empty when `path` ends in `/`. |
+| `dirname(path) -> string` | Directory part (everything before the last `/`), trailing slashes stripped unless all-slashes. |
+| `normpath(path) -> string` | Collapse redundant separators and `..`/`.` lexically. |
+| `split(path) -> (head, tail)` | Split into `(dirname, basename)`. |
+| `splitext(path) -> (root, ext)` | Split off the extension at the last dot of the final component. |
+| `isabs(path) -> bool` | Whether `path` is absolute (starts with `/`). |
+| `relpath(path, start=".") -> string`, `try_relpath(path, start=".") -> (string, error)` | Relative path from `start` to `path`, computed lexically. `try_relpath` returns a `(value, error)` pair instead of aborting. |
+
+### Filesystem (real OS-native disk)
+
+| function | description |
+|---|---|
+| `abs(path) -> string`, `try_abs(path) -> (string, error)` | Absolute representation of `path`. `try_abs` returns a `(value, error)` pair instead of aborting. |
+| `expanduser(path) -> string` | Replace a leading `~` with the current user's home directory (reads the host environment). |
+| `exists(path) -> bool` | Whether `path` exists (symlinks are followed). |
+| `is_file(path) -> bool` | Whether `path` exists and is a regular file (symlinks followed). |
+| `is_dir(path) -> bool` | Whether `path` exists and is a directory (symlinks followed). |
+| `is_link(path) -> bool` | Whether `path` exists and is a symbolic link (not followed). |
+| `listdir(path, recursive=False, filter=None) -> list[string]` | List directory contents, optionally recursively and filtered. |
+| `getcwd() -> string` | Current working directory of the process. |
+| `chdir(path) -> None` | Change the **process-wide** working directory (global side effect). |
+| `mkdir(path, mode=0o755) -> None` | Create a directory (and parents); existing directories are not an error. |
 
 ## Migrating from v0.1.x
 
@@ -18,312 +47,309 @@
 
 Use `normpath(join(...))` where the old cleaned result is wanted.
 
-## Functions
+## Lexical functions
 
-### `abs(path) string`
+### `join(*paths) -> string`
 
-Returns an absolute representation of path. If the path is not absolute it will be joined with the current working directory to turn it into an absolute path. The absolute path name for a given file is not guaranteed to be unique.
+Joins one or more string elements. Components are joined with `/`; an absolute component (one starting with `/`) resets the result; an empty component contributes a trailing separator; no lexical cleaning is applied. Requires at least one argument; every argument must be a string.
 
-#### Parameters
-
-| name   | type     | description                                        |
-|--------|----------|----------------------------------------------------|
-| `path` | `string` | The file path to be converted to its absolute form |
-
-#### Examples
-
-**basic**
-
-Convert a relative path to an absolute path.
-
-```python
-load("path", "abs")
-p = abs('.')
-print(p)
-# Output: '/current/absolute/path'
-```
-
-### `join(path, *paths) string`
-
-Joins one or more path elements with Python (`posixpath`) semantics: components are joined with `/`, an absolute component resets the result, an empty component contributes a trailing separator, and no cleaning is applied (see the migration notes above).
-
-#### Parameters
-
-| name       | type     | description                    |
-|------------|----------|--------------------------------|
-| `paths...` | `string` | The path elements to be joined |
-
-#### Examples
-
-**basic**
-
-Join multiple path parts.
+Errors on: zero arguments (`got 0 arguments, want at least 1`); a non-string argument (`for parameter path: got int, want string`).
 
 ```python
 load("path", "join")
-p = join('a', 'b', 'c')
-print(p)
-# Output: 'a/b/c'
+print(join("a", "b", "c"))     # 'a/b/c'
+print(join("a", "/b", "c"))    # '/b/c'   (absolute resets)
+print(join("a", "b", ""))      # 'a/b/'   (empty adds trailing /)
+print(join("a/b", "../../xyz")) # 'a/b/../../xyz' (no cleaning)
+# Output: a/b/c
+# /b/c
+# a/b/
+# a/b/../../xyz
 ```
 
-### `exists(path) bool`
+### `basename(path) -> string`
 
-Returns true if the path exists.
+Everything after the last `/`. A path ending in `/` has an empty basename (unlike Go's `filepath.Base`). Errors on a non-string argument.
 
-#### Parameters
+```python
+load("path", "basename")
+print(basename("a/b/c.txt")) # 'c.txt'
+print(basename("a/b/"))      # ''
+print(basename("/"))         # ''
+print(basename("plain"))     # 'plain'
+# Output: c.txt
+#
+#
+# plain
+```
 
-| name   | type     | description            |
-|--------|----------|------------------------|
-| `path` | `string` | The path to be checked |
+### `dirname(path) -> string`
 
-#### Examples
+Everything before the last `/`, with trailing slashes stripped unless the result is all slashes (so `dirname("//a")` keeps `//`). Errors on a non-string argument.
 
-**basic**
+```python
+load("path", "dirname")
+print(dirname("a/b/c.txt")) # 'a/b'
+print(dirname("a/b/"))      # 'a/b'
+print(dirname("plain"))     # ''
+print(dirname("/a"))        # '/'
+print(dirname("//a"))       # '//'
+# Output: a/b
+# a/b
+#
+# /
+# //
+```
 
-Check if a path exists.
+### `normpath(path) -> string`
+
+Collapses redundant separators and up-level references lexically: `a//b`, `a/./b` and `a/c/../b` all become `a/b`. Exactly two leading slashes are preserved (POSIX gives them implementation-defined meaning); three or more collapse to one; an empty path normalizes to `.`. Errors on a non-string argument.
+
+```python
+load("path", "normpath")
+print(normpath("a/c/../b")) # 'a/b'
+print(normpath("a/../../b")) # '../b'
+print(normpath("//a"))      # '//a'
+print(normpath("///a"))     # '/a'
+print(normpath(""))         # '.'
+# Output: a/b
+# ../b
+# //a
+# /a
+# .
+```
+
+### `split(path) -> (head, tail)`
+
+Returns the `(dirname, basename)` pair. `split("/a")` is `("/", "a")`; `split("a/b/")` is `("a/b", "")`. Errors on a non-string argument.
+
+```python
+load("path", "split")
+print(split("a/b/c.txt")) # ('a/b', 'c.txt')
+print(split("/a"))        # ('/', 'a')
+print(split("a/b/"))      # ('a/b', '')
+print(split("plain"))     # ('', 'plain')
+# Output: ("a/b", "c.txt")
+# ("/", "a")
+# ("a/b", "")
+# ("", "plain")
+```
+
+### `splitext(path) -> (root, ext)`
+
+Splits off the extension — the suffix beginning at the last dot of the final component. Leading dots do not count, so `splitext(".bashrc")` is `(".bashrc", "")`. A dot only in a directory component is ignored. Errors on a non-string argument.
+
+```python
+load("path", "splitext")
+print(splitext("a/b.tar.gz")) # ('a/b.tar', '.gz')
+print(splitext(".bashrc"))    # ('.bashrc', '')
+print(splitext("a/.bashrc"))  # ('a/.bashrc', '')
+print(splitext("a.b/c"))      # ('a.b/c', '')
+# Output: ("a/b.tar", ".gz")
+# (".bashrc", "")
+# ("a/.bashrc", "")
+# ("a.b/c", "")
+```
+
+### `isabs(path) -> bool`
+
+Reports whether `path` is absolute in the POSIX sense (starts with `/`). The empty string is not absolute. Errors on a non-string argument.
+
+```python
+load("path", "isabs")
+print(isabs("/a/b")) # True
+print(isabs("a/b"))  # False
+print(isabs(""))     # False
+# Output: True
+# False
+# False
+```
+
+### `relpath(path, start=".") -> string` / `try_relpath(path, start=".") -> (string, error)`
+
+Returns a relative path from `start` to `path`, computed lexically on the normalized inputs. `start` defaults to `"."` (an empty `start` is also treated as `"."`).
+
+Errors on: an empty `path` (`no path specified`); mixing an absolute path with a relative `start` (`cannot mix an absolute path with a relative start`) — resolving the mix would silently depend on the process working directory, so call `abs()` first when that is intended; a non-string argument. `try_relpath` returns these as the error half of a `(value, error)` pair rather than aborting.
+
+```python
+load("path", "relpath")
+print(relpath("/a/b/c", "/a"))   # 'b/c'
+print(relpath("/a/b", "/a/b"))   # '.'
+print(relpath("/a/b", "/a/c/d")) # '../../b'
+print(relpath("a/b", "a"))       # 'b'
+print(relpath("a/b"))            # 'a/b'  (start defaults to '.')
+# Output: b/c
+# .
+# ../../b
+# b
+# a/b
+```
+
+```python
+load("path", "try_relpath")
+v, err = try_relpath("/a/b/c", "/a")
+print(v, err)                 # 'b/c' None
+v2, err2 = try_relpath("/a", "c")
+print(v2, "cannot mix" in err2) # None True
+# Output: b/c None
+# None True
+```
+
+## Filesystem functions
+
+### `abs(path) -> string` / `try_abs(path) -> (string, error)`
+
+Returns an absolute representation of `path`. A relative path is joined with the current working directory; the result is not guaranteed to be unique. Errors on a missing argument (`missing argument for path`) or a non-string argument. `try_abs` returns a `(value, error)` pair instead of aborting.
+
+```python
+load("path", "abs")
+p = abs("path_test.go")
+print(p.endswith("lib/path/path_test.go"))
+# Output: True
+```
+
+```python
+load("path", "try_abs")
+v, err = try_abs(".")
+print(err, len(v) > 0)
+# Output: None True
+```
+
+### `expanduser(path) -> string`
+
+Replaces a leading `~` with the current user's home directory. Only the bare `~` or `~/...` form expands; `~user/...` is returned unchanged (matching Python when the user lookup is unavailable), and so is the path when the home directory cannot be determined. Reads the host environment. Errors on a non-string argument.
+
+```python
+load("path", "expanduser")
+print(expanduser("~") != "~")          # True (home resolved)
+print(expanduser("~/x").endswith("/x")) # True
+print(expanduser("~user/x"))           # '~user/x'
+print(expanduser("plain"))             # 'plain'
+# Output: True
+# True
+# ~user/x
+# plain
+```
+
+### `exists(path) -> bool`
+
+True if `path` exists; a symbolic link is followed. The empty string and non-existent paths return `False`. Errors only on a missing or non-string argument.
 
 ```python
 load("path", "exists")
-p = exists('path_test.go')
-print(p)
+print(exists("path_test.go")) # True
+print(exists("."))            # True
+print(exists("nope"))         # False
 # Output: True
+# True
+# False
 ```
 
-### `is_file(path) bool`
+### `is_file(path) -> bool`
 
-Returns true if the path exists and is a file.
-
-#### Parameters
-
-| name   | type     | description            |
-|--------|----------|------------------------|
-| `path` | `string` | The path to be checked |
-
-#### Examples
-
-**basic**
-
-Check if a path is a file.
+True if `path` exists and is a regular file (symlinks followed). Directories and non-existent paths return `False`.
 
 ```python
 load("path", "is_file")
-p = is_file('path_test.go')
-print(p)
+print(is_file("path_test.go")) # True
+print(is_file("."))            # False
+print(is_file("nope"))         # False
 # Output: True
+# False
+# False
 ```
 
-### `is_dir(path) bool`
+### `is_dir(path) -> bool`
 
-Returns true if the path exists and is a directory.
-
-#### Parameters
-
-| name   | type     | description            |
-|--------|----------|------------------------|
-| `path` | `string` | The path to be checked |
-
-#### Examples
-
-**basic**
-
-Check if a path is a directory.
+True if `path` exists and is a directory (symlinks followed).
 
 ```python
 load("path", "is_dir")
-p = is_dir('.')
-print(p)
+print(is_dir("."))             # True
+print(is_dir("path_test.go"))  # False
+print(is_dir("nope"))          # False
 # Output: True
+# False
+# False
 ```
 
-### `is_link(path) bool`
+### `is_link(path) -> bool`
 
-Returns true if the path exists and is a symbolic link.
-
-#### Parameters
-
-| name   | type     | description            |
-|--------|----------|------------------------|
-| `path` | `string` | The path to be checked |
-
-#### Examples
-
-**basic**
-
-Check if a path is a symbolic link.
+True if `path` exists and is a symbolic link. The link itself is inspected (not followed), so plain files, directories, and non-existent paths return `False`.
 
 ```python
 load("path", "is_link")
-p = is_link('link_to_path_test.go')
-print(p)
+print(is_link("path_test.go")) # False
+print(is_link("."))            # False
 # Output: False
+# False
 ```
 
-### `listdir(path, recursive=False, filter=None) []string`
+### `listdir(path, recursive=False, filter=None) -> list[string]`
 
-Returns a list of directory contents. Optionally applies a filter function to each path to decide inclusion in the final list.
+Returns a list of directory contents. Listing a non-directory (e.g. a file) returns an empty list. With `recursive=True` the walk descends into subdirectories. `filter` is a callable taking one path argument and returning a bool; paths for which it returns `False` are excluded.
 
-#### Parameters
-
-| name        | type       | description                                                                                                                                                                                            |
-|-------------|------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `path`      | `string`   | The directory path to be listed                                                                                                                                                                        |
-| `recursive` | `bool`     | If true, list contents recursively                                                                                                                                                                     |
-| `filter`    | `callable` | A callable object (e.g., lambda or function) that takes a single argument (a path) and returns a boolean value. Paths for which the filter function returns `False` are excluded from the result list. |
-
-#### Examples
-
-**basic**
-
-List directory contents.
+Errors on: a missing or non-string `path`; a non-existent path (`lstat ...`); an unreadable directory (`open ...`); a `filter` that is neither callable nor `None` (`expected <nil> or None, got int`); a filter returning a non-bool (`got int, want bool`); or a filter that itself fails (the inner error propagates).
 
 ```python
 load("path", "listdir")
-p = listdir('.')
-print(p)
-# Output: ['file1', 'file2', ...]
+p = listdir(".")
+print("path_test.go" in p)
+# Output: True
 ```
-
-**recursive**
-
-List directory contents recursively.
 
 ```python
 load("path", "listdir")
-p = listdir('.', True)
-print(p)
-# Output: ['file1', 'file2', 'subdir/file3', ...]
+p = listdir(".", filter=lambda x: not x.endswith(".go"))
+print("path_test.go" not in p)
+# Output: True
 ```
 
-**filtered**
+### `getcwd() -> string`
 
-List directory contents with a filter function.
-
-```python
-load("path", "listdir")
-is_not_go_file = lambda p: not p.endswith('.go')
-p = listdir('.', filter=is_not_go_file)
-print(p)
-# Output: ['file1.py', 'file2.txt', ...]
-```
-
-**filtered_recursive**
-
-List directory contents recursively with a filter function.
-
-```python
-load("path", "listdir")
-is_not_go_file = lambda p: not p.endswith('.go')
-p = listdir('.', True, filter=is_not_go_file)
-print(p)
-# Output: ['file1.py', 'file2.txt', 'subdir/file3']
-```
-
-### `getcwd() string`
-
-Returns the current working directory.
-
-#### Examples
-
-**basic**
-
-Get the current working directory.
+Returns the current working directory of the process. Takes no arguments; passing any is an error (`got 1 arguments, want 0`).
 
 ```python
 load("path", "getcwd")
 p = getcwd()
-print(p)
-# Output: '/current/directory'
+print(p.endswith("path"))
+# Output: True
 ```
 
-### `chdir(path)`
+### `chdir(path) -> None`
 
 Changes the current working directory **of the whole process**.
 
-> ⚠️ The effect is global: it applies to every machine and goroutine in the host, persists after the script ends, and concurrent machines calling it race with each other. Never expose this module to untrusted scripts; host runtimes typically exclude `path` from restricted module sets for this reason.
+> WARNING: the effect is global — it applies to every machine and goroutine in the host, persists after the script ends, and concurrent machines calling it race with each other. Never expose this module to untrusted scripts.
 
-#### Parameters
-
-| name   | type     | description                           |
-|--------|----------|---------------------------------------|
-| `path` | `string` | The path to the new current directory |
-
-#### Examples
-
-**basic**
-
-Change the current working directory.
+Errors on a missing or non-string argument, or when the target cannot be entered (a non-existent path or a file both error with `chdir ...`).
 
 ```python
-load("path", "chdir")
-chdir('/new/directory')
-# Current directory is now '/new/directory'
+load("path", "chdir", "abs")
+a = abs(".")
+chdir(".")
+b = abs(".")
+print(a == b)
+# Output: True
 ```
 
-### `mkdir(path, mode=0o755)`
+### `mkdir(path, mode=0o755) -> None`
 
-Creates a directory with the given name. If the directory already exists, no error is thrown. It's capable of creating nested directories.
+Creates a directory at `path`, creating parent directories as needed (like `mkdir -p`). An already-existing directory is not an error. `mode` is the octal permission bits for newly-created directories (default `0o755`); `path` may be a string or bytes.
 
-#### Parameters
-
-| name   | type     | description                                                                                                           |
-|--------|----------|-----------------------------------------------------------------------------------------------------------------------|
-| `path` | `string` | The directory path to be created                                                                                      |
-| `mode` | `int`    | The file mode (permissions) to use for the newly-created directory, represented as an octal number. Defaults to 0755. |
-
-#### Examples
-
-**default**
-
-Create a new directory.
+Errors on a missing argument, or when a path component is an existing non-directory (`not a directory`).
 
 ```python
 load("path", "mkdir")
-mkdir('new_directory')
-# New directory named 'new_directory' is created with default permissions
+mkdir("new_directory")          # default 0o755
+mkdir("secure_directory", 0o700) # explicit mode
+# Output:
 ```
 
-**permission**
+## Notes / boundaries
 
-Create a new directory with specific permissions.
-
-```python
-load("path", "mkdir")
-mkdir('secure_directory', 0o700)
-# New directory named 'secure_directory' is created with permissions set to 0700
-```
-
-### `basename(path) string`
-
-Returns the final component of a path — everything after the last `/`; a path ending in `/` has an empty basename (`basename("a/b/")` is `""`, unlike Go's `filepath.Base`).
-
-### `dirname(path) string`
-
-Returns the directory part of a path — everything before the last `/`, with trailing slashes stripped unless the result is all slashes.
-
-### `normpath(path) string`
-
-Collapses redundant separators and up-level references lexically: `a//b`, `a/./b` and `a/c/../b` all become `a/b`. Exactly two leading slashes are preserved (POSIX gives them special meaning); an empty path normalizes to `.`.
-
-### `split(path) (string, string)`
-
-Splits a path into a `(head, tail)` pair: `split("/a")` is `("/", "a")`, `split("a/b/")` is `("a/b", "")`.
-
-### `splitext(path) (string, string)`
-
-Splits a path into a `(root, extension)` pair: `splitext("a/b.tar.gz")` is `("a/b.tar", ".gz")`; leading dots do not count, so `splitext(".bashrc")` is `(".bashrc", "")`.
-
-### `isabs(path) bool`
-
-Reports whether the path is absolute (starts with `/`).
-
-### `relpath(path, start=".") string`
-
-Returns a relative path to `path` from `start`, computed lexically on the normalized inputs. Mixing an absolute path with a relative one is an error here — resolving the mix would silently depend on the process working directory; call `abs()` first when that is intended. `try_relpath` returns a `(value, error)` pair instead of aborting.
-
-### `expanduser(path) string`
-
-Replaces a leading `~` with the current user's home directory. Only the bare `~`/`~/...` form expands; `~user/...` is returned unchanged. Note that this reads the host environment.
-
-### `try_abs(path) (string, error)` / `try_relpath(path, start=".") (string, error)`
-
-The `(value, error)` pair forms of `abs` and `relpath`, never aborting the script — the same shape as the `json`/`csv`/`http` modules' `try_*` functions.
+- **Lexical vs filesystem.** `join`, `basename`, `dirname`, `normpath`, `split`, `splitext`, `isabs`, and `relpath` are pure string operations on `/`-separated paths and never touch disk — they match CPython's `posixpath` (not Go's `path/filepath`, which cleans eagerly and uses the OS separator). The rest read or mutate the real filesystem.
+- **`expanduser` and the filesystem functions are OS-native**, so paths use the host separator and `abs`/`getcwd` return host-absolute paths; examples above that assert OS-specific shapes are skipped on Windows in the test suite.
+- **`chdir` is a process-global, persistent side effect** shared across all machines — the Process capability. The test suite saves and restores the working directory around each case for this reason.
+- **`try_abs` / `try_relpath`** never abort the script: they return a `(value, error)` tuple with `None` error on success, the same shape as the `json`/`csv`/`http` modules' `try_*` functions.
+- All names are snake_case; the only non-alphabetic members are the `try_` prefixes on `try_abs` and `try_relpath`.

@@ -1,121 +1,130 @@
 # log
 
-`log` provides functionality for logging messages at various severity levels.
+`log` writes log messages at five severity levels from Starlark, backed by a [`zap`](https://github.com/uber-go/zap) sugared logger on the host side. Capability profile: **Log** — it produces log output as a side effect but touches no filesystem, network, or process state directly.
+
+By default the module logs through a `zap` development logger (console encoder, caller and stacktrace disabled). The host can swap the logger at runtime with `SetLog` (Go side), including a no-op logger that discards everything.
 
 ## Functions
 
-### `debug(msg, *misc, **kv)`
+| function | description |
+|----------|-------------|
+| `debug(msg, *misc, **kv) -> None` | Log `msg` at DEBUG level; returns `None`. |
+| `info(msg, *misc, **kv) -> None` | Log `msg` at INFO level; returns `None`. |
+| `warn(msg, *misc, **kv) -> None` | Log `msg` at WARN level; returns `None`. |
+| `error(msg, *misc, **kv) -> None` | Log `msg` at ERROR level; returns `None` (does **not** halt the script). |
+| `fatal(msg, *misc, **kv) -> error` | Log `msg` at ERROR level, then raise the message as an error that halts the script. |
 
-Logs a message at the debug log level.
+All five functions share the same calling shape: a required string `msg`, optional extra positional arguments (`*misc`) appended to the message, and optional keyword arguments (`**kv`) attached as structured key-value fields.
 
-#### Parameters
+This module exposes **no constants** and **no custom types** — its five members are all builtin callables on the `log` module struct.
 
-| name   | type       | description                                                                                   |
-|--------|------------|-----------------------------------------------------------------------------------------------|
-| `msg`  | `string`   | The message to log.                                                                           |
-| `misc` | `*args`    | Additional message arguments will be concatenated to the message string separated by a space. |
-| `kv`   | `**kwargs` | Key-value pairs to provide additional debug information.                                      |
+## Details & examples
 
-#### Examples
+### Common argument handling
 
-**basic**
+Every function takes the same arguments:
 
-Log a debug message with additional information.
+- `msg` (required, `string`) — the log message. It must be the first positional argument and must be a string.
+- `*misc` (optional) — any further positional arguments. Each is rendered to text and appended to `msg`, separated by single spaces. Booleans render as `True`/`False`, numbers and strings render naturally.
+- `**kv` (optional) — keyword arguments become structured fields. Keys are interpreted as strings; values are unmarshaled to Go types where possible (so dicts/lists/numbers serialize as JSON-like structures, `None` becomes `null`), falling back to the value's `String()` form for self-referential or non-marshalable values.
 
-```python
-load("log", "debug")
-debug("Fetching data at", "21:40", retry_attempt=1)
-{"retry_attempt": 1}
-```
+**Errors** (identical for all five functions):
 
-### `info(msg, *misc, **kv)`
+- Calling with no arguments fails: `log.<name>: expected at least 1 argument, got 0`.
+- A non-string first argument fails: `log.<name>: expected string as first argument, got <type>` (e.g. `got int`).
 
-Logs a message at the info log level.
+Note the error prefix uses the qualified builtin name, e.g. `log.debug`, `log.fatal`.
 
-#### Parameters
-
-| name   | type       | description                                                                                   |
-|--------|------------|-----------------------------------------------------------------------------------------------|
-| `msg`  | `string`   | The message to log.                                                                           |
-| `misc` | `*args`    | Additional message arguments will be concatenated to the message string separated by a space. |
-| `kv`   | `**kwargs` | Key-value pairs to provide additional information.                                            |
-
-#### Examples
-
-**basic**
-
-Log an info message with additional information.
+### `debug`
 
 ```python
-load("log", "info")
-info("Data fetched", response_time=42)
+load('log', 'debug')
+debug('this is a debug message only')
+# Output:
+# DEBUG	this is a debug message only
 ```
 
-### `warn(msg, *misc, **kv)`
-
-Logs a message at the warn log level.
-
-#### Parameters
-
-| name   | type       | description                                                                                   |
-|--------|------------|-----------------------------------------------------------------------------------------------|
-| `msg`  | `string`   | The message to log.                                                                           |
-| `misc` | `*args`    | Additional message arguments will be concatenated to the message string separated by a space. |
-| `kv`   | `**kwargs` | Key-value pairs to provide additional warning information.                                    |
-
-#### Examples
-
-**basic**
-
-Log a warning message with additional information.
+Extra positional arguments are concatenated onto the message:
 
 ```python
-load("log", "warn")
-warn("Fetching data took longer than expected", response_time=123)
+load('log', 'debug')
+debug('this is a broken message', "what", 123, True)
+# Output:
+# DEBUG	this is a broken message what 123 True
 ```
 
-### `error(msg, *misc, **kv)`
-
-Logs a message at the error log level and returns an error.
-
-#### Parameters
-
-| name   | type       | description                                                                                   |
-|--------|------------|-----------------------------------------------------------------------------------------------|
-| `msg`  | `string`   | The message to log.                                                                           |
-| `misc` | `*args`    | Additional message arguments will be concatenated to the message string separated by a space. |
-| `kv`   | `**kwargs` | Key-value pairs to provide additional error information.                                      |
-
-#### Examples
-
-**basic**
-
-Log an error message with additional information.
+Keyword arguments are attached as structured fields:
 
 ```python
-load("log", "error")
-error("Failed to fetch data", response_time=240)
+load('log', 'debug')
+m = {"mm": "this is more"}
+l = [2, "LIST", 3.14, True]
+debug('this is a data message', map=m, list=l)
+# Output:
+# DEBUG	this is a data message	{"map": {"mm":"this is more"}, "list": [2,"LIST",3.14,true]}
 ```
 
-### `fatal(msg, *misc, **kv)`
-
-Logs a message at the error log level, returns a `fail(msg)` to halt program execution.
-
-#### Parameters
-
-| name   | type       | description                                                                                   |
-|--------|------------|-----------------------------------------------------------------------------------------------|
-| `msg`  | `string`   | The message to log.                                                                           |
-| `misc` | `*args`    | Additional message arguments will be concatenated to the message string separated by a space. |
-| `kv`   | `**kwargs` | Key-value pairs to provide additional fatal error information.                                |
-
-#### Examples
-
-**basic**
-
-Log a fatal error message with additional information.
+### `info`
 
 ```python
-load("log", "fatal")
-fatal("Failed to fetch data and cannot recover", retry_attempts=3, response_time=360)
+load('log', 'info')
+info('this is an info message', a1=2, hello="world")
+# Output:
+# INFO	this is an info message	{"a1": 2, "hello": "world"}
 ```
+
+Self-referential values fall back to their string form rather than failing:
+
+```python
+load('log', 'info')
+d = {"hello": "world"}
+d["a"] = d
+l = [1, 2, 3]
+l.append(l)
+s = set([4, 5, 6])
+info('this is complex info message', self1=d, self2=l, self3=s)
+# Output:
+# INFO	this is complex info message	{"self1": "{\"hello\": \"world\", \"a\": {...}}", "self2": "[1, 2, 3, [...]]", "self3": [4,5,6]}
+```
+
+### `warn`
+
+```python
+load('log', 'warn')
+warn('this is a warning message only')
+# Output:
+# WARN	this is a warning message only
+```
+
+### `error`
+
+`error` logs at ERROR level and returns `None` — it does not stop execution. Use `fatal` (or Starlark's `fail`) to halt.
+
+```python
+load('log', 'error')
+error('this is an error message only', dsat=None)
+# Output:
+# ERROR	this is an error message only	{"dsat": null}
+```
+
+### `fatal`
+
+`fatal` logs the message at ERROR level and then raises it as an error, halting the script (the message becomes the error string). It does **not** call `os.Exit`; the host receives a normal Starlark error.
+
+```python
+load('log', 'fatal')
+fatal('this is a fatal message only')
+# Output:
+# this is a fatal message only
+```
+
+(The line above is the error raised to the host; an ERROR-level log entry with the same message is also written before the error returns.)
+
+## Notes / boundaries
+
+- **Engine.** Logging is delegated to a `go.uber.org/zap` `SugaredLogger`. The exact output format (level token casing, field separators, JSON shape of structured values) depends on the configured zap encoder. The examples above show the console-encoder form used by the test suite; the default development logger emits a similar human-readable line. Timestamps and any caller/stacktrace fields are omitted here for brevity.
+- **Levels.** Five levels are exposed: `debug`, `info`, `warn`, `error`, `fatal`. Internally `fatal` logs at zap's ERROR level (not zap's FatalLevel) and then returns an error — it never terminates the process.
+- **`error` vs `fatal`.** `error` records and continues; `fatal` records and aborts the script. Both write at ERROR severity.
+- **No-op mode.** When the host installs a nil/no-op logger via `SetLog`, all functions still validate arguments and return normally (and `fatal` still raises its error), but no output is produced.
+- **Determinism.** Output content is deterministic for given inputs; structured-field ordering follows the order of keyword arguments. Whether a line is emitted at all depends on the configured logger's level threshold.
+- All member names are snake_case-clean (single lowercase words); there are no irregular identifiers.
