@@ -30,7 +30,7 @@ export PACK=main
 export FLAGS="-s -w -X '$(PACK).AppName=$(BINARY)' -X '$(PACK).BuildDate=`date '+%Y-%m-%dT%T%z'`' -X '$(PACK).BuildHost=`hostname`' -X '$(PACK).GoVersion=`go version`' -X '$(PACK).GitBranch=`git symbolic-ref -q --short HEAD`' -X '$(PACK).GitCommit=`git rev-parse --short HEAD`' -X '$(PACK).GitSummary=`git describe --tags --dirty --always`' -X '$(PACK).CIBuildNum=${BUILD_NUM}'"
 
 # commands
-.PHONY: default ci test test_loop bench build
+.PHONY: default ci test test_loop bench build doc-check
 default:
 	@echo "build target is required for $(BINARY)"
 	@exit 1
@@ -38,6 +38,13 @@ default:
 ci:
 	$(GOTEST) -v -race -cover -covermode=atomic -coverprofile=coverage.txt -count 1 ./...
 	$(GOTEST) -v -parallel=4 -run="none" -benchtime="2s" -benchmem -bench=.
+
+# Documentation coverage gate: every script-visible member of every lib/*
+# module must be documented in its README. Runs tools/doccov/coverage.star
+# through a Machine (dogfoods the regex module). Already part of `make ci` via
+# ./... ; this target runs just it, with the undocumented-member report.
+doc-check:
+	$(GOTEST) -v -run TestDocCoverage -count 1 .
 
 build:
 	make -C cmd/starlet build

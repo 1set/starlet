@@ -1,286 +1,266 @@
 # http
 
-`http` defines an HTTP client implementation. It is a thin wrapper around the Go standard package `net/http` but in Python `requests` style.
+`http` is an HTTP **client** for Starlark scripts: a thin wrapper around Go's `net/http`, shaped after Python's `requests`. **Capability profile: Network** — every request function performs a real outbound HTTP request, so this module has network side effects.
 
-Every request function (and `call`) has a `try_`-prefixed variant (`try_get`, `try_post`, …, `try_call`) that never aborts the script: it returns a `(response, error)` pair where exactly one side is `None`, the same shape as the `json` module's `try_*` functions. All request functions also accept `raise_for_status=True` to turn any non-2xx response into an error.
+Every request function (and `call`) has a `try_`-prefixed twin (`try_get`, `try_post`, …, `try_call`) that never aborts the script: it returns a `(response, error)` tuple where exactly one side is `None`, the same shape as the `json` module's `try_*` functions. All request functions also accept `raise_for_status=True` to turn any non-2xx response into an error.
+
+> Note: `postForm` / `try_postForm` are **not** snake_case. The name is kept for historical compatibility (it is `post` with the form encoding forced to `application/x-www-form-urlencoded`).
+
+The server-side helpers (`ExportedServerRequest`, `ServerResponse`) are Go types this package exposes for embedding scripts inside a Go HTTP handler; they are documented under [Types](#types) but are not part of the loadable `http` module surface.
 
 ## Functions
 
-### `call(method, url, params=None, headers=None, auth=(), body=None, json_body=None, form_body=None, form_encoding="", timeout=30, allow_redirects=True, verify=True) response`
+| function | description |
+|----------|-------------|
+| `call(method, url, *, params=None, headers=None, body=None, json_body=None, form_body=None, form_encoding="", auth=(), timeout=30, allow_redirects=True, verify=True, raise_for_status=False) -> response` / `try_call(...) -> (response, error)` | Perform a request with the HTTP method named by `method` (case-insensitive), dispatching to one of the verb functions below. |
+| `get(url, ...) -> response` / `try_get(...) -> (response, error)` | Perform an HTTP GET request. |
+| `put(url, ...) -> response` / `try_put(...) -> (response, error)` | Perform an HTTP PUT request. |
+| `post(url, ...) -> response` / `try_post(...) -> (response, error)` | Perform an HTTP POST request. |
+| `postForm(url, ...) -> response` / `try_postForm(...) -> (response, error)` | POST with `form_encoding` forced to `application/x-www-form-urlencoded`. Non-snake_case name. |
+| `delete(url, ...) -> response` / `try_delete(...) -> (response, error)` | Perform an HTTP DELETE request. |
+| `head(url, ...) -> response` / `try_head(...) -> (response, error)` | Perform an HTTP HEAD request (response body is empty). |
+| `patch(url, ...) -> response` / `try_patch(...) -> (response, error)` | Perform an HTTP PATCH request. |
+| `options(url, ...) -> response` / `try_options(...) -> (response, error)` | Perform an HTTP OPTIONS request. |
+| `set_timeout(timeout)` | Set the default request timeout (seconds) for this module instance. |
+| `get_timeout() -> float` | Return the current default request timeout (seconds) of this module instance. |
 
-Perform an HTTP request of the specified method, returning a response.
-The `call` method allows for flexibility in making HTTP requests by specifying the HTTP method as an argument.
-It supports all common HTTP methods. This method dynamically dispatches the request based on the provided method name.
-It is a convenience wrapper that enables users to use any supported HTTP method without needing separate method calls for each type of request.
-
-#### Parameters
-
-| name              | type     | description                                                                                                                                                   |
-|-------------------|----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `method`          | `string` | The HTTP method to use for the request (e.g., GET, POST, PUT, DELETE).                                                                                        |
-| `url`             | `string` | URL to request.                                                                                                                                               |
-| `params`          | `dict`   | optional. dictionary of URL parameters to append to the request.                                                                                              |
-| `headers`         | `dict`   | optional. dictionary of headers to add to request.                                                                                                            |
-| `body`            | `string` | optional. raw string body to provide to the request.                                                                                                          |
-| `form_body`       | `dict`   | optional. dict of values that will be encoded as form data. the value can be a string or a list of two strings (filename, file content) for file attachments. |
-| `form_encoding`   | `string` | optional. `application/x-www-form-urlencoded` (default for form data) or `multipart/form-data`.                                                               |
-| `json_body`       | `any`    | optional. JSON data to supply as a request. handy for working with JSON-API's.                                                                                |
-| `auth`            | `tuple`  | optional. (username,password) tuple for HTTP Basic authorization.                                                                                             |
-| `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                  |
-| `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                        |
-| `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                     |
-| `raise_for_status` | `bool` | optional. if True, a response with a non-2xx status code is reported as an error. defaults to False. |
-
-### `get(url, params=None, headers=None, auth=(), body=None, json_body=None, form_body=None, form_encoding="", timeout=30, allow_redirects=True, verify=True) response`
-
-Perform an HTTP GET request, returning a response.
-
-#### Parameters
-
-| name              | type     | description                                                                                                                                                                                                        |
-|-------------------|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `url`             | `string` | URL to request.                                                                                                                                                                                                    |
-| `params`          | `dict`   | optional. dictionary of URL parameters to append to the request.                                                                                                                                                   |
-| `headers`         | `dict`   | optional. dictionary of headers to add to request.                                                                                                                                                                 |
-| `body`            | `string` | optional. raw string body to provide to the request.                                                                                                                                                               |
-| `json_body`       | `any`    | optional. optional. JSON data to supply as a request; mutually exclusive with body and form_body. handy for working with JSON-API's.                                                                                                    |
-| `form_body`       | `dict`   | optional. optional. dict of values that will be encoded as form data; mutually exclusive with body and json_body. the value can be a string or a list of two strings (filename, file content) for file attachments. |
-| `form_encoding`   | `string` | optional. `application/x-www-form-urlencoded` (default for form data) or `multipart/form-data`.                                                                                                                    |
-| `auth`            | `tuple`  | optional. (username,password) tuple for HTTP Basic authorization.                                                                                                                                                  |
-| `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                                                                       |
-| `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
-| `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
-| `raise_for_status` | `bool` | optional. if True, a response with a non-2xx status code is reported as an error. defaults to False. |
-
-### `put(url, params=None, headers=None, auth=(), body=None, json_body=None, form_body=None, form_encoding="", timeout=30, allow_redirects=True, verify=True) response`
-
-Perform an HTTP PUT request, returning a response.
-
-#### Parameters
-
-| name              | type     | description                                                                                                                                                                                                        |
-|-------------------|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `url`             | `string` | URL to request.                                                                                                                                                                                                    |
-| `params`          | `dict`   | optional. dictionary of URL parameters to append to the request.                                                                                                                                                   |
-| `headers`         | `dict`   | optional. dictionary of headers to add to request.                                                                                                                                                                 |
-| `body`            | `string` | optional. raw string body to provide to the request.                                                                                                                                                               |
-| `json_body`       | `any`    | optional. optional. JSON data to supply as a request; mutually exclusive with body and form_body. handy for working with JSON-API's.                                                                                                    |
-| `form_body`       | `dict`   | optional. optional. dict of values that will be encoded as form data; mutually exclusive with body and json_body. the value can be a string or a list of two strings (filename, file content) for file attachments. |
-| `form_encoding`   | `string` | optional. `application/x-www-form-urlencoded` (default for form data) or `multipart/form-data`.                                                                                                                    |
-| `auth`            | `tuple`  | optional. (username,password) tuple for HTTP Basic authorization.                                                                                                                                                  |
-| `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                                                                       |
-| `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
-| `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
-| `raise_for_status` | `bool` | optional. if True, a response with a non-2xx status code is reported as an error. defaults to False. |
-
-### `post(url, params=None, headers=None, auth=(), body=None, json_body=None, form_body=None, form_encoding="", timeout=30, allow_redirects=True, verify=True) response`
-
-Perform an HTTP POST request, returning a response.
-
-#### Parameters
-
-| name              | type     | description                                                                                                                                                                                                        |
-|-------------------|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `url`             | `string` | URL to request.                                                                                                                                                                                                    |
-| `params`          | `dict`   | optional. dictionary of URL parameters to append to the request.                                                                                                                                                   |
-| `headers`         | `dict`   | optional. dictionary of headers to add to request.                                                                                                                                                                 |
-| `body`            | `string` | optional. raw string body to provide to the request.                                                                                                                                                               |
-| `json_body`       | `any`    | optional. optional. JSON data to supply as a request; mutually exclusive with body and form_body. handy for working with JSON-API's.                                                                                                    |
-| `form_body`       | `dict`   | optional. optional. dict of values that will be encoded as form data; mutually exclusive with body and json_body. the value can be a string or a list of two strings (filename, file content) for file attachments. |
-| `form_encoding`   | `string` | optional. `application/x-www-form-urlencoded` (default for form data) or `multipart/form-data`.                                                                                                                    |
-| `auth`            | `tuple`  | optional. (username,password) tuple for HTTP Basic authorization.                                                                                                                                                  |
-| `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                                                                       |
-| `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
-| `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
-| `raise_for_status` | `bool` | optional. if True, a response with a non-2xx status code is reported as an error. defaults to False. |
-
-### `postForm(url, params=None, headers=None, auth=(), body=None, json_body=None, form_body=None, form_encoding="", timeout=30, allow_redirects=True, verify=True) response`
-
-Perform an HTTP POST request with form data, returning a response.
-
-#### Parameters
-
-| name              | type     | description                                                                                                                                                                                                        |
-|-------------------|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `url`             | `string` | URL to request.                                                                                                                                                                                                    |
-| `params`          | `dict`   | optional. dictionary of URL parameters to append to the request.                                                                                                                                                   |
-| `headers`         | `dict`   | optional. dictionary of headers to add to request.                                                                                                                                                                 |
-| `body`            | `string` | optional. raw string body to provide to the request.                                                                                                                                                               |
-| `json_body`       | `any`    | optional. optional. JSON data to supply as a request; mutually exclusive with body and form_body. handy for working with JSON-API's.                                                                                                    |
-| `form_body`       | `dict`   | optional. optional. dict of values that will be encoded as form data; mutually exclusive with body and json_body. the value can be a string or a list of two strings (filename, file content) for file attachments. |
-| `form_encoding`   | `string` | optional. `application/x-www-form-urlencoded` (default for form data) or `multipart/form-data`.                                                                                                                    |
-| `auth`            | `tuple`  | optional. (username,password) tuple for HTTP Basic authorization.                                                                                                                                                  |
-| `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                                                                       |
-| `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
-| `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
-| `raise_for_status` | `bool` | optional. if True, a response with a non-2xx status code is reported as an error. defaults to False. |
-
-### `delete(url, params=None, headers=None, auth=(), body=None, json_body=None, form_body=None, form_encoding="", timeout=30, allow_redirects=True, verify=True) response`
-
-Perform an HTTP DELETE request, returning a response.
-
-#### Parameters
-
-| name              | type     | description                                                                                                                                                                                                        |
-|-------------------|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `url`             | `string` | URL to request.                                                                                                                                                                                                    |
-| `params`          | `dict`   | optional. dictionary of URL parameters to append to the request.                                                                                                                                                   |
-| `headers`         | `dict`   | optional. dictionary of headers to add to request.                                                                                                                                                                 |
-| `body`            | `string` | optional. raw string body to provide to the request.                                                                                                                                                               |
-| `json_body`       | `any`    | optional. optional. JSON data to supply as a request; mutually exclusive with body and form_body. handy for working with JSON-API's.                                                                                                    |
-| `form_body`       | `dict`   | optional. optional. dict of values that will be encoded as form data; mutually exclusive with body and json_body. the value can be a string or a list of two strings (filename, file content) for file attachments. |
-| `form_encoding`   | `string` | optional. `application/x-www-form-urlencoded` (default for form data) or `multipart/form-data`.                                                                                                                    |
-| `auth`            | `tuple`  | optional. (username,password) tuple for HTTP Basic authorization.                                                                                                                                                  |
-| `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                                                                       |
-| `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
-| `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
-| `raise_for_status` | `bool` | optional. if True, a response with a non-2xx status code is reported as an error. defaults to False. |
-
-### `patch(url, params=None, headers=None, auth=(), body=None, json_body=None, form_body=None, form_encoding="", timeout=30, allow_redirects=True, verify=True) response`
-
-Perform an HTTP PATCH request, returning a response.
-
-#### Parameters
-
-| name              | type     | description                                                                                                                                                                                                        |
-|-------------------|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `url`             | `string` | URL to request.                                                                                                                                                                                                    |
-| `params`          | `dict`   | optional. dictionary of URL parameters to append to the request.                                                                                                                                                   |
-| `headers`         | `dict`   | optional. dictionary of headers to add to request.                                                                                                                                                                 |
-| `body`            | `string` | optional. raw string body to provide to the request.                                                                                                                                                               |
-| `json_body`       | `any`    | optional. optional. JSON data to supply as a request; mutually exclusive with body and form_body. handy for working with JSON-API's.                                                                                                    |
-| `form_body`       | `dict`   | optional. optional. dict of values that will be encoded as form data; mutually exclusive with body and json_body. the value can be a string or a list of two strings (filename, file content) for file attachments. |
-| `form_encoding`   | `string` | optional. `application/x-www-form-urlencoded` (default for form data) or `multipart/form-data`.                                                                                                                    |
-| `auth`            | `tuple`  | optional. (username,password) tuple for HTTP Basic authorization.                                                                                                                                                  |
-| `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                                                                       |
-| `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
-| `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
-| `raise_for_status` | `bool` | optional. if True, a response with a non-2xx status code is reported as an error. defaults to False. |
-
-### `options(url,params={},headers={},body="",form_body={},form_encoding="",json_body={},auth=(),timeout=30,allow_redirects=True,verify=True) response`
-
-Perform an HTTP OPTIONS request, returning a response.
-
-#### Parameters
-
-| name              | type     | description                                                                                                                                                                                                        |
-|-------------------|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `url`             | `string` | URL to request.                                                                                                                                                                                                    |
-| `params`          | `dict`   | optional. dictionary of URL parameters to append to the request.                                                                                                                                                   |
-| `headers`         | `dict`   | optional. dictionary of headers to add to request.                                                                                                                                                                 |
-| `body`            | `string` | optional. raw string body to provide to the request.                                                                                                                                                               |
-| `json_body`       | `any`    | optional. optional. JSON data to supply as a request; mutually exclusive with body and form_body. handy for working with JSON-API's.                                                                                                    |
-| `form_body`       | `dict`   | optional. optional. dict of values that will be encoded as form data; mutually exclusive with body and json_body. the value can be a string or a list of two strings (filename, file content) for file attachments. |
-| `form_encoding`   | `string` | optional. `application/x-www-form-urlencoded` (default for form data) or `multipart/form-data`.                                                                                                                    |
-| `auth`            | `tuple`  | optional. (username,password) tuple for HTTP Basic authorization.                                                                                                                                                  |
-| `timeout`         | `float`  | optional. how many seconds to wait for the server to send all the data before giving up. 0 means no timeout.                                                                                                       |
-| `allow_redirects` | `bool`   | optional. whether to follow redirects.                                                                                                                                                                             |
-| `verify`          | `bool`   | optional. whether to verify the server's SSL certificate.                                                                                                                                                          |
-| `raise_for_status` | `bool` | optional. if True, a response with a non-2xx status code is reported as an error. defaults to False. |
-
-### `set_timeout(timeout)`
-
-Set the default timeout for HTTP requests made through this module instance (i.e. this machine). It does not affect other machines in the process; the package-level `TimeoutSecond` variable seeds new instances. With a host-injected client the value is ignored (the client's own timeout applies).
-
-#### Parameters
-
-| name      | type    | description                                                                                                                  |
-|-----------|---------|------------------------------------------------------------------------------------------------------------------------------|
-| `timeout` | `float` | The timeout in seconds. Must be non-negative. This timeout will be used for all subsequent HTTP requests made by the module. |
-
-### `get_timeout() float`
-
-Get the current default timeout of this module instance.
-returns:
-The current timeout in seconds used for HTTP requests.
+Every verb function (`get`, `put`, `post`, `postForm`, `delete`, `head`, `patch`, `options`) and `call` share the same keyword parameters; see [Request parameters](#request-parameters).
 
 ## Types
 
 ### `response`
 
-The result of performing a HTTP request.
+The result of performing an HTTP request (a struct).
 
-**Fields**
+**Attributes**
 
-| name          | type     | description                                                         |
-|---------------|----------|---------------------------------------------------------------------|
-| `url`         | `string` | the URL that was ultimately requested (may change after redirects). |
-| `status_code` | `int`    | response status code (for example: `200 == OK`).                    |
-| `ok`          | `bool`   | True when the status code is in the 2xx range.                      |
-| `headers`     | `dict`   | dictionary of response headers.                                     |
-| `encoding`    | `string` | transfer encoding. example: "octet-stream" or "application/json".   |
+| attribute | type | description |
+|-----------|------|-------------|
+| `url` | `string` | the URL that was ultimately requested (may differ from the input after redirects). |
+| `status_code` | `int` | response status code (e.g. `200`). |
+| `ok` | `bool` | `True` when `status_code` is in the 2xx range. |
+| `headers` | `dict` | response headers; each value is the header's values joined by `,`. |
+| `encoding` | `string` | transfer encoding(s) joined by `,` (empty when none). |
 
 **Methods**
 
-#### `body() string`
-
-output response body as a string.
-
-#### `json() object`
-
-attempt to parse response body as json, returning a JSON-decoded result, or None if the response body is empty or not valid JSON (a parse failure and a JSON `null` are indistinguishable here; use `try_json()` to tell them apart).
-
-#### `try_body() (string, error)`
-
-like `body()`, but returns a `(value, error)` pair instead of aborting the script (for example when the configured response size limit is exceeded).
-
-#### `try_json() (object, error)`
-
-like `json()`, but returns a `(value, error)` pair: a parse or read failure lands in the error slot instead of being folded into None.
+| method | description |
+|--------|-------------|
+| `body() -> string` | Read and return the whole response body as a string. Re-readable. |
+| `json() -> object` | Parse the body as JSON; returns `None` when the body is empty or not valid JSON (a parse failure and a JSON `null` are indistinguishable — use `try_json` to tell them apart). |
+| `try_body() -> (string, error)` | Like `body()` but returns a `(value, error)` pair instead of aborting (e.g. when the response-size limit is exceeded). |
+| `try_json() -> (object, error)` | Like `json()` but a parse or read failure lands in the error slot instead of folding into `None`. |
 
 ### `ExportedServerRequest`
 
-Encapsulates HTTP request data in a format accessible to both Go code and Starlark scripts.
+Go-side helper (constructed via `NewExportedServerRequest` / `ConvertServerRequest`) that exposes an incoming `http.Request` to a script as a **read-only** struct. Not part of the loadable `http` module; passed in by the host.
 
-**Fields**
+**Attributes**
 
-| name       | type       | description                                                                            |
-|------------|------------|----------------------------------------------------------------------------------------|
-| `method`   | `string`   | The HTTP method (e.g., GET, POST, PUT, DELETE)                                         |
-| `url`      | `string`   | The request URL.                                                                       |
-| `proto`    | `string`   | The protocol used for the request (e.g., HTTP/1.1).                                    |
-| `host`     | `string`   | The host specified in the request.                                                     |
-| `remote`   | `string`   | The remote address of the client.                                                      |
-| `headers`  | `dict`     | The HTTP headers included in the request.                                              |
-| `query`    | `dict`     | The query parameters included in the request.                                          |
-| `encoding` | `[]string` | The transfer encodings specified in the request.                                       |
-| `body`     | `string`   | The request body data                                                                  |
-| `json`     | `any`      | The request body data as JSON, or None if the request body is empty or not valid JSON. |
+| attribute | type | description |
+|-----------|------|-------------|
+| `method` | `string` | the HTTP method (e.g. `GET`, `POST`). |
+| `url` | `string` | the request URL. |
+| `proto` | `string` | the protocol (e.g. `HTTP/1.1`). |
+| `host` | `string` | the request host. |
+| `remote` | `string` | the client's remote address. |
+| `headers` | `dict` | request headers (each value a list of strings). |
+| `query` | `dict` | parsed query parameters (each value a list of strings). |
+| `encoding` | `list` | transfer encodings specified in the request. |
+| `body` | `string` | the raw request body. |
+| `json` | `object` | the body parsed as JSON, or `None` if empty or invalid. |
 
 ### `ServerResponse`
 
-Enables HTTP response manipulation within Starlark scripts, facilitating dynamic preparation of HTTP responses in Go-based web servers.
+Go-side helper (constructed via `NewServerResponse`) that lets a script build an HTTP response the host later writes to an `http.ResponseWriter`. Not part of the loadable `http` module; passed in by the host.
 
 **Methods**
 
-#### `set_status(code int)`
+| method | description |
+|--------|-------------|
+| `set_status(code)` | Set the HTTP status code (must be 100–599). |
+| `set_code(code)` | Alias for `set_status`. |
+| `add_header(key, value)` | Append a header value under `key`. |
+| `set_content_type(content_type)` | Set the `Content-Type` header, overriding any implicit one. |
+| `set_data(data)` | Set the body as binary; implies `Content-Type: application/octet-stream`. |
+| `set_json(data)` | Marshal a Starlark value to JSON and set it as the body; implies `Content-Type: application/json`. |
+| `set_text(data)` | Set the body as plain text; implies `Content-Type: text/plain`. |
+| `set_html(data)` | Set the body as HTML; implies `Content-Type: text/html`. |
 
-Sets the HTTP status code for the response.
+## Details & examples
 
-#### `set_code(code int)`
+### Request parameters
 
-Alias for set_status.
+All verb functions and `call` accept the same parameters (for `call`, `method` is an extra first positional argument). Only `url` is required.
 
-#### `add_header(key string, value string)`
+| name | type | description |
+|------|------|-------------|
+| `url` | `string` | URL to request. |
+| `params` | `dict` | optional. URL query parameters to append; values must be strings. |
+| `headers` | `dict` | optional. headers to add; values must be strings. |
+| `body` | `string`/`bytes` | optional. raw request body. |
+| `json_body` | `any` | optional. JSON-serializable value sent with `Content-Type: application/json`. |
+| `form_body` | `dict` | optional. values encoded as form data; a value is either a string (a field) or a two-element list/tuple `[filename, content]` (a file). |
+| `form_encoding` | `string` | optional. `application/x-www-form-urlencoded` or `multipart/form-data`; inferred when omitted (multipart if any file is present, otherwise urlencoded). |
+| `auth` | `tuple` | optional. `(username, password)` for HTTP Basic auth. |
+| `timeout` | `float` | optional. seconds to wait before giving up; `0` means no timeout. Defaults to the instance timeout (30). |
+| `allow_redirects` | `bool` | optional. whether to follow redirects (default `True`). |
+| `verify` | `bool` | optional. whether to verify the server's TLS certificate (default `True`). |
+| `raise_for_status` | `bool` | optional. if `True`, a non-2xx response is reported as an error (default `False`). |
 
-Adds a header with the given key and value to the response.
+**Errors on:** a non-string `url`; a non-string `params`/`headers` value; an `auth` tuple that is not length 2; a `form_body` value that is neither a string nor a `(filename, content)` pair (e.g. `got: "int"`); supplying more than one of `body`/`json_body`/`form_body` (`body, json_body and form_body are mutually exclusive`); a JSON-unserializable `json_body`; a transport failure (connection refused, DNS, TLS); `raise_for_status=True` with a non-2xx response; `verify=False` when the host forces TLS verification; or passing `timeout`/`allow_redirects`/`verify` when the host injected its own client.
 
-#### `set_content_type(content_type string)`
+```python
+load('http', 'get')
+res = get(test_server_url, params={"a": "b", "c": "d"})
+print(res.url)
+print(res.status_code)
+print(res.body())
+print(res.json())
+# Output:
+# http://127.0.0.1:PORT?a=b&c=d
+# 200
+# {"hello":"world"}
+# {"hello": "world"}
+```
 
-Sets the Content-Type header for the response, it will overwrite any existing or implicit Content-Type header.
+(The server in the test returns `{"hello":"world"}`; `test_server_url` is the test server's base URL.)
 
-#### `set_data(data string|bytes)`
+#### POST with a JSON body
 
-Sets the response data as binary data, and the Content-Type header to `application/octet-stream`.
+`json_body` is marshaled to JSON and sent with `Content-Type: application/json`.
 
-#### `set_json(data any)`
+```python
+load('http', 'post')
+res = post(test_server_url, json_body={"a": "b", "c": "d"})
+b = res.body()           # the echo server returns the raw request it received
+print(res.status_code)
+print('application/json' in b)
+print('{"a":"b","c":"d"}' in b)
+# Output:
+# 200
+# True
+# True
+```
 
-Sets the response data as JSON, marshaling the given Starlark value to JSON, and the Content-Type header to `application/json`.
+#### POST form data and files
 
-#### `set_text(data string|bytes)`
+A string value becomes a form field; a `[filename, content]` pair becomes a file. With files present (or `form_encoding="multipart/form-data"`) the request is multipart; otherwise it is `application/x-www-form-urlencoded`.
 
-Sets the response data as plain text, and the Content-Type header to `text/plain`.
+```python
+load('http', 'post')
+res = post(test_server_url, form_body={
+    "a": ["better.txt", "123456"],
+    "b": ["dance.md", '"abcdef(@!'],
+})
+rb = res.body()
+print(res.status_code)
+print('multipart/form-data; boundary=' in rb)
+print('filename="better.txt"' in rb)
+# Output:
+# 200
+# True
+# True
+```
 
-#### `set_html(data string|bytes)`
+### `call` / `try_call`
 
-Sets the response data as HTML, and the Content-Type header to `text/html`.
+`call(method, url, ...)` dispatches to the verb function named by `method` (case-insensitive). The supported methods are `get`, `put`, `post`, `postForm`, `delete`, `head`, `patch`, `options`.
+
+**Errors on:** a missing method name (`http.call: missing method name`); a non-string method name; or an unsupported method (`unsupported method: <name>`).
+
+```python
+load('http', 'call')
+res = call('POST', test_server_url, params={"hello": "world"}, json_body={"a": "b", "c": "d"})
+b = res.body()
+print(res.status_code)
+print('/?hello=world' in b)
+print('{"a":"b","c":"d"}' in b)
+# Output:
+# 200
+# True
+# True
+```
+
+### `try_*` variants
+
+A `try_` function returns `(response, error)` with the Go error always `nil`: on success the error slot is `None`; on failure the response slot is `None` and the error slot holds the message string. Argument-unpacking and dispatch errors are captured the same way.
+
+```python
+load('http', 'try_get', 'try_call')
+# transport failure is captured, not raised
+res, err = try_get('http://127.0.0.1:1/')
+print(res == None)
+print('connect' in err or 'refused' in err)
+# an unsupported method is captured too
+res2, err2 = try_call('TRACE', test_server_url)
+print(res2 == None)
+print('unsupported method' in err2)
+# Output:
+# True
+# True
+# True
+# True
+```
+
+### `raise_for_status`
+
+By default a non-2xx response is returned normally (`res.ok` is `False`); with `raise_for_status=True` it becomes an error.
+
+```python
+load('http', 'get')
+res = get(nf_url)            # server replies 404
+print(res.ok)
+print(res.status_code)
+# Output:
+# False
+# 404
+```
+
+```python
+load('http', 'get')
+get(nf_url, raise_for_status=True)
+# Error: http.get: unexpected status: 404 Not Found
+```
+
+### `try_json` vs `json`
+
+`json()` folds a read/parse failure into `None`; `try_json()` surfaces it in the error slot, so a parse failure is distinguishable from a JSON `null`.
+
+```python
+load('http', 'get')
+res = get(ok_url)            # server replies {"a": 1}
+v, err = res.try_json()
+print(err == None)
+print(v)
+# Output:
+# True
+# {"a": 1}
+```
+
+### `set_timeout` / `get_timeout`
+
+`set_timeout(timeout)` sets the default request timeout (seconds) for **this module instance** only — it does not leak into other machines in the process; the package-level `TimeoutSecond` seeds new instances. `get_timeout()` returns the current value. With a host-injected client the value is ignored (the client's own timeout applies).
+
+**Errors on:** a non-numeric `timeout` (`got string, want float or int`); a negative `timeout` (`timeout must be non-negative`); or passing any argument to `get_timeout()` (`got 1 arguments, want 0`).
+
+```python
+load('http', 'get_timeout', 'set_timeout')
+print(get_timeout())
+set_timeout(10.5)
+print(get_timeout())
+# Output:
+# 30.0
+# 10.5
+```
+
+## Notes / boundaries
+
+- **Engine.** A thin wrapper over Go `net/http`; request/response semantics follow that package. JSON is handled by starlet's `dataconv` (Starlark-aware), so structs, `module`, `time`, and starlight-wrapped Go values marshal correctly.
+- **Instance vs package state.** `set_timeout` and the host-configurable knobs (`SetClient`, `SetGuard`, `SetMaxResponseBodyBytes`, `SetForceTLSVerify`) live on the module instance; the package-level `TimeoutSecond`, `UserAgent`, `SkipInsecureVerify`, `DisableRedirect`, `MaxResponseBodyBytes`, `ForceTLSVerify`, `Client`, and `Guard` only *seed* new instances at `LoadModule` time.
+- **Security knobs.** A host may force TLS verification (`verify=False` is then rejected), cap the response body size (over-limit `body()`/`json()` error with `response body exceeds the N-byte limit`), and install a `RequestGuard` to allow/deny requests by URL. When the host injects its own `*http.Client`, the per-request `timeout`/`allow_redirects`/`verify` options are rejected rather than silently ignored.
+- **Body kinds are mutually exclusive.** Pass at most one of `body`, `json_body`, `form_body`; supplying more than one is an error rather than a silent drop.
+- **Determinism.** Response `headers` and `encoding` join multiple values with `,`. `body()`/`json()` reset the body reader so they may be called repeatedly.
+- **Difference from `requests`.** `postForm` is a non-Pythonic convenience name; `params`/`headers` values must be strings; `json()` returns `None` (not raising) on parse failure — use `try_json()` for an explicit error.
+</content>
+</invoke>

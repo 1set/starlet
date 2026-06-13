@@ -1,33 +1,47 @@
 # runtime
 
-`runtime` is a Starlark module provides Go and app runtime information.
+`runtime` is a Starlark module that exposes Go and application runtime information — host, paths, OS/architecture, Go version, process IDs, app start time/uptime, and read/write access to environment variables.
 
-## Constants
-
-- `hostname`: A string representing the hostname of the system where the script is being executed.
-- `workdir`: A string representing the current working directory of the process.
-- `homedir`: A string representing the home directory of the user running the process, it's `$HOME` on Unix/Linux, `%USERPROFILE%` on Windows.
-- `tempdir`: A string representing the default directory to use for temporary files. This is similar to Python's `tempfile.gettempdir()`.
-- `os`: A string representing the operating system of the runtime. This value comes from Go's `runtime.GOOS`.
-- `arch`: A string representing the architecture of the machine. This value is derived from Go's `runtime.GOARCH`.
-- `gover`: A string representing the Go runtime version. This is obtained using `runtime.Version()` from the Go standard library.
-- `pid`: An integer representing the process ID of the current process.
-- `ppid`: An integer representing the parent process ID of the current process.
-- `uid`: An integer representing the user ID of the process owner.
-- `gid`: An integer representing the group ID of the process owner.
-- `app_start`: A time value representing the moment when the application started. This is used to calculate uptime.
+Capability profile: **Process**. The module reports host/process facts captured at load time and can read and mutate the process's environment (`getenv` / `putenv` / `setenv` / `unsetenv`); it does not touch the filesystem or network.
 
 ## Functions
 
-### `uptime()`
+| function | description |
+| --- | --- |
+| `uptime() -> time.duration` | Time elapsed since the application started. |
+| `getenv(key, default=None) -> string` | Value of environment variable `key`, or `default` if it is not set. |
+| `putenv(key, value) -> None` | Set environment variable `key` to `value` (coerced to a string). `setenv` is an alias. |
+| `setenv(key, value) -> None` | Alias of `putenv`. |
+| `unsetenv(key) -> None` | Unset a single environment variable. |
 
-Returns the uptime of the current process in `time.duration`.
+## Constants
 
-#### Examples
+Constants are captured once when the module is first loaded.
 
-**basic**
+| constant | meaning |
+| --- | --- |
+| `hostname` | `string` — the host name of the system (Go `os.Hostname()`). |
+| `workdir` | `string` — the current working directory of the process (Go `os.Getwd()`). |
+| `homedir` | `string` — the home directory of the user: `$HOME` on Unix/Linux, `%USERPROFILE%` on Windows (Go `os.UserHomeDir()`). |
+| `tempdir` | `string` — the default directory for temporary files, like Python's `tempfile.gettempdir()` (Go `os.TempDir()`). |
+| `os` | `string` — the operating system, from Go `runtime.GOOS` (e.g. `linux`, `darwin`, `windows`). |
+| `arch` | `string` — the machine architecture, from Go `runtime.GOARCH` (e.g. `amd64`, `arm64`). |
+| `gover` | `string` — the Go runtime version, from Go `runtime.Version()` (e.g. `go1.19`). |
+| `pid` | `int` — the process ID of the current process. |
+| `ppid` | `int` — the parent process ID. |
+| `uid` | `int` — the user ID of the process owner. |
+| `gid` | `int` — the group ID of the process owner. |
+| `app_start` | `time.time` — the moment the application started; used to compute `uptime`. |
 
-Returns the uptime of the current process immediately.
+## Details & examples
+
+### `uptime`
+
+`uptime() -> time.duration`
+
+Returns the elapsed time since the application started (relative to `app_start`) as a `time.duration`. Takes no arguments; passing any argument errors with `runtime.uptime: got 1 arguments, want 0`.
+
+The exact value depends on how long the process has been running, so the output below is illustrative.
 
 ```python
 load("runtime", "uptime")
@@ -35,64 +49,62 @@ print(uptime())
 # Output: 883.583µs
 ```
 
-### `getenv(key, default=None)`
+### `getenv`
 
-Returns the value of the environment variable key as a string if it exists, or default if it doesn't.
+`getenv(key, default=None) -> string`
 
-#### Examples
-
-**basic**
-
-Returns the value of the environment variable PATH if it exists, or None if it doesn't.
+Returns the value of environment variable `key` as a `string` if it is set, otherwise returns `default` (which defaults to `None` and may be any value). `key` must be a string; a missing or non-string `key` errors (`runtime.getenv: missing argument for key`, `runtime.getenv: for parameter key: got int, want string`).
 
 ```python
 load("runtime", "getenv")
-print(getenv("PATH"))
-# Output: /usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+x = getenv("very-long-long-non-existent")
+print(x)
+y = getenv("very-long-long-non-existent", 1000)
+print(y)
+# Output: None
+# 1000
 ```
 
-### `putenv(key, value)`
+### `putenv` / `setenv`
 
-Sets the value of the environment variable named by the key, returning an error if any.
+`putenv(key, value) -> None` — `setenv(key, value) -> None` is an identical alias.
 
-#### Examples
-
-**basic**
-
-Sets the environment variable `STARLET_TEST` to the value `123456`.
+Sets environment variable `key` to `value`. `value` is coerced to a string before being stored, so non-string values become their string form (e.g. the int `123456` is stored as `"123456"`). Returns `None`. `key` must be a string and both arguments are required; otherwise it errors (`runtime.putenv: missing argument for key`, `runtime.putenv: missing argument for value`, `runtime.putenv: for parameter key: got int, want string`).
 
 ```python
-load("runtime", "putenv")
+load("runtime", "putenv", "getenv")
 putenv("STARLET_TEST", 123456)
+print(getenv("STARLET_TEST"))
+# Output: 123456
 ```
 
-### `setenv(key, value)`
-
-Sets the value of the environment variable named by the key, returning an error if any.
-Alias of `putenv`.
-
-#### Examples
-
-**basic**
-
-Sets the environment variable `STARLET_TEST` to the value `ABC`.
+`setenv` behaves the same way:
 
 ```python
-load("runtime", "setenv")
-setenv("STARLET_TEST", "ABC")
+load("runtime", "setenv", "getenv")
+setenv("STARLET_TEST", 123456)
+print(getenv("STARLET_TEST"))
+# Output: 123456
 ```
 
-### `unsetenv(key)`
+### `unsetenv`
 
-Unsets a single environment variable.
+`unsetenv(key) -> None`
 
-#### Examples
-
-**basic**
-
-Unsets the environment variable STARLET_TEST.
+Unsets a single environment variable. Returns `None`. Unsetting a variable that does not exist is a no-op (not an error). `key` must be a string and is required; otherwise it errors (`runtime.unsetenv: missing argument for key`, `runtime.unsetenv: for parameter key: got int, want string`).
 
 ```python
-load("runtime", "unsetenv")
+load("runtime", "putenv", "unsetenv", "getenv")
+putenv("STARLET_TEST", 123456)
 unsetenv("STARLET_TEST")
+print(getenv("STARLET_TEST"))
+# Output: None
 ```
+
+## Notes / boundaries
+
+- **Capture timing.** The constants (`hostname`, `workdir`, `homedir`, `tempdir`, `os`, `arch`, `gover`, `pid`, `ppid`, `uid`, `gid`, `app_start`) are read when the module is first loaded and do not refresh afterwards. `uptime` is computed live at call time against `app_start`.
+- **No custom types.** All members are native Starlark values: strings, ints, a `time.time` (`app_start`), and a `time.duration` returned by `uptime`. The `time.*` values come from `go.starlark.net/lib/time`.
+- **Environment writes are global.** `putenv`/`setenv`/`unsetenv` mutate the host process environment, not a sandboxed copy; effects are visible to the rest of the process and to child processes.
+- **Platform differences.** `os`, `arch`, `gover`, `homedir`, and the numeric IDs reflect the underlying platform; on Windows, `uid`/`gid` follow Go's `os.Getuid()`/`os.Getgid()` semantics (which may be `-1`).
+- All exported names are snake_case.

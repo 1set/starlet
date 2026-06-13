@@ -1,64 +1,76 @@
 # json
 
-`json` defines utilities for converting Starlark values to/from JSON strings. The most recent IETF standard for JSON is https://www.ietf.org/rfc/rfc7159.txt .
+`json` converts Starlark values to and from JSON text and offers a small toolkit around it: pretty-printing, JSONPath query/evaluation, LLM-output repair, and JSON Schema validation. It extends Go Starlark's stdlib `json` (`encode`/`decode`/`indent`) with `dumps`-style and `try_*` helpers. **Capability profile: pure** — no filesystem, network, or process side effects (external schema `$ref` is deliberately blocked to keep it so).
+
+Every host-error function ships a `try_*` twin that, instead of aborting the script, returns a `(result, error)` tuple — `error` is `None` on success, and `result` is `None` on failure. `try_validate` is the one exception, distinguishing three outcomes (see below).
 
 ## Functions
 
-### `encode(x) string`
+| function | description |
+| --- | --- |
+| `encode(x) -> string` | Encode a Starlark value to compact JSON text (go.starlark.net stdlib). |
+| `decode(x[, default]) -> value` | Decode a JSON string to a Starlark value; on bad input returns `default` if given, else errors. |
+| `indent(str, *, prefix="", indent="\t") -> string` | Pretty-print valid JSON text with the given prefix/indent unit (stdlib). |
+| `dumps(obj, indent=0) -> string` / `try_dumps(obj, indent=0) -> tuple` | Encode a Starlark value (incl. struct/module) to JSON text, optionally indented by `indent` spaces. `try_dumps` returns `(text, error)`. |
+| `encode(x)` / `try_encode(x) -> tuple` | `try_encode` is the tuple-returning variant of `encode`. |
+| `decode(x)` / `try_decode(x) -> tuple` | `try_decode` is the tuple-returning variant of `decode` (no `default` param). |
+| `indent(...)` / `try_indent(str, prefix="", indent="\t") -> tuple` | `try_indent` is the tuple-returning variant of `indent`. |
+| `path(data, path) -> list` / `try_path(data, path) -> tuple` | Run a JSONPath query over `data`, returning the list of matches. `try_path` returns `(list, error)`. |
+| `eval(data, expr) -> value` / `try_eval(data, expr) -> tuple` | Evaluate a JSONPath expression (aggregates, arithmetic, comparisons) over `data`. `try_eval` returns `(value, error)`. |
+| `repair(text) -> string` / `try_repair(text) -> tuple` | Recover valid JSON *text* from messy/LLM output (fences, prose, single quotes, trailing commas, truncation). `try_repair` returns `(text, error)`. |
+| `validate(data, schema) -> None` / `try_validate(data, schema) -> tuple` | Validate a JSON document against a JSON Schema. `validate` returns `None` or errors; `try_validate` returns one of three outcomes. |
 
-The encode function accepts one required positional argument, which it converts to JSON by cases:
-- A Starlark value that implements Go's standard `json.Marshal` interface defines its own JSON encoding.
-- `None`, `True`, and `False` are converted to `null`, `true`, and `false`, respectively.
-- Starlark int values, no matter how large, are encoded as decimal integers. Some decoders may not be able to decode very large integers.
-- Starlark float values are encoded using decimal point notation, even if the value is an integer. It is an error to encode a non-finite floating-point value.
-- Starlark strings are encoded as JSON strings, using UTF-16 escapes.
-- a Starlark IterableMapping (e.g. dict) is encoded as a JSON object. It is an error if any key is not a string.
-- any other Starlark Iterable (e.g. list, tuple) is encoded as a JSON array.
-- a Starlark HasAttrs (e.g. struct) is encoded as a JSON object.
-  It an application-defined type matches more than one the cases describe above, (e.g. it implements both `Iterable` and `HasFields`), the first case takes precedence. Encoding any other value yields an error.
+`data` and `schema` arguments to `path` / `eval` / `validate` accept a JSON `string`, `bytes`, or any encodable Starlark value (dict, list, struct, …).
 
-#### Examples
+This module exposes no custom Starlark types — every result is a standard Starlark value (`dict`, `list`, `string`, `int`, `float`, `bool`, or `None`).
 
-**Basic**
+## Details & examples
 
-Encode a Starlark dict to a JSON string.
+### `encode` / `try_encode`
+
+`encode(x) -> string` converts a Starlark value to compact JSON using go.starlark.net's stdlib rules:
+
+- `None`, `True`, `False` → `null`, `true`, `false`.
+- Starlark ints (any size) → decimal integers; floats → decimal-point notation. Non-finite floats are an error.
+- Strings → JSON strings (UTF-16 escapes); `dict`/IterableMapping → object (non-string keys error); other Iterable (`list`, `tuple`) → array; `HasAttrs` (`struct`) → object.
+
+It **errors** when a value cannot be encoded (e.g. a function: `cannot encode function as JSON`). `try_encode(x)` returns `(text, None)` on success or `(None, message)` on failure.
 
 ```python
 load('json', 'encode')
-print(encode({'a': 1, 'b': 2}))
-# Output: {"a":1,"b":2}
+load("struct.star", "struct")
+s = struct(a="Aloha", b=0x10, c=True, d=[1,2,3])
+print(encode(s))
+# Output: {"a":"Aloha","b":16,"c":true,"d":[1,2,3]}
 ```
 
-### `decode(x[, default]) string`
+```python
+load('json', 'try_encode')
+result, error = try_encode({'a': 10, 'b': 20})
+print(result, error)
+# Output: {"a":10,"b":20} None
+```
 
-The decode function has one required positional parameter, a JSON string. It returns the Starlark value that the string denotes.
-- Numbers are parsed as int or float, depending on whether they contain a decimal point.
-- JSON objects are parsed as new unfrozen Starlark dicts.
-- JSON arrays are parsed as new unfrozen Starlark lists.
-  If x is not a valid JSON string, the behavior depends on the "default" parameter: if present, Decode returns its value; otherwise, Decode fails.
+### `decode` / `try_decode`
 
-#### Examples
-
-**Basic**
-
-Decode a JSON string to a Starlark dict.
+`decode(x[, default]) -> value` parses a JSON string into a Starlark value: numbers become `int` or `float` (by presence of a decimal point), objects become unfrozen `dict`s, arrays become unfrozen `list`s. On invalid input it returns `default` if supplied, otherwise it **errors**. `try_decode(x)` (no `default`) returns `(value, None)` or `(None, message)`.
 
 ```python
 load('json', 'decode')
 print(decode('{"a":10,"b":20}'))
-# Output: {'a': 10, 'b': 20}
+# Output: {"a": 10, "b": 20}
 ```
 
-### `indent(str, *, prefix="", indent="\t") string`
+```python
+load('json', 'try_decode')
+result, error = try_decode('{"a": "b"}')
+print(result, error)
+# Output: {"a": "b"} None
+```
 
-The indent function pretty-prints a valid JSON encoding, and returns a string containing the indented form.
-It accepts one required positional parameter, the JSON string, and two optional keyword-only string parameters, prefix and indent, that specify a prefix of each new line, and the unit of indentation.
+### `indent` / `try_indent`
 
-#### Examples
-
-**Basic**
-
-Indent a JSON string.
+`indent(str, *, prefix="", indent="\t") -> string` re-formats already-valid JSON text. `prefix` and `indent` are keyword-only on the stdlib `indent`; on `try_indent` they are ordinary optional params. It **errors** on invalid JSON text (e.g. `invalid character ...`). `try_indent(str, prefix="", indent="\t")` returns `(text, error)`.
 
 ```python
 load('json', 'indent')
@@ -70,16 +82,9 @@ print(indent('{"a":10,"b":20}', indent="  "))
 # }
 ```
 
-### `dumps(obj, indent=0) string`
+### `dumps` / `try_dumps`
 
-The dumps function converts a Starlark value to a JSON string, and returns it.
-It accepts one required positional parameter, the Starlark value, and one optional integer parameter, indent, that specifies the unit of indentation.
-
-#### Examples
-
-**Basic**
-
-Dump a Starlark dict to a JSON string with indentation.
+`dumps(obj, indent=0) -> string` encodes any Starlark value via the internal marshaler (which, unlike `encode`, also handles host structs/modules). `indent` is the number of spaces per level; `0` or negative produces compact output. It **errors** when a value cannot be marshaled (e.g. a function: `unrecognized starlark type: *starlark.Function`). `try_dumps(obj, indent=0)` returns `(text, error)`.
 
 ```python
 load('json', 'dumps')
@@ -91,213 +96,59 @@ print(dumps({'a': 10, 'b': 20}, indent=2))
 # }
 ```
 
-### `try_dumps(obj, indent=0) tuple`
-
-The try_dumps function is a variant of dumps that handles errors gracefully.
-It accepts the same parameters as dumps, but returns a tuple of (result, error).
-If successful, error will be None. If an error occurs, result will be None and error will contain the error message.
-
-#### Examples
-
-**Basic**
-
-Try to dump a Starlark dict to a JSON string and handle potential errors.
-
 ```python
 load('json', 'try_dumps')
-result, error = try_dumps({'a': 10, 'b': 20}, indent=2)
-print("Result:", result)
-print("Error:", error)
-# Output:
-# Result: {
-#   "a": 10,
-#   "b": 20
-# }
-# Error: None
+result, error = try_dumps(1, indent=-7)
+print(result, error)
+# Output: 1 None
 ```
 
-### `try_encode(x) tuple`
+Note: `dumps`/`encode` can differ for host structs. A struct carrying a `star` tag encodes by its Go field names under `encode` (`{"Message":...}`) but by its struct values under `dumps` — see the test suite for the exact shapes.
 
-The try_encode function is a variant of encode that handles errors gracefully.
-It accepts the same parameter as encode, but returns a tuple of (result, error).
-If successful, error will be None. If an error occurs, result will be None and error will contain the error message.
+### `path` / `try_path`
 
-#### Examples
-
-**Basic**
-
-Try to encode a Starlark dict to a JSON string and handle potential errors.
-
-```python
-load('json', 'try_encode')
-result, error = try_encode({'a': 10, 'b': 20})
-print("Result:", result)
-print("Error:", error)
-# Output:
-# Result: {"a":10,"b":20}
-# Error: None
-```
-
-### `try_decode(x) tuple`
-
-The try_decode function is a variant of decode that handles errors gracefully.
-It accepts the same parameter as decode, but returns a tuple of (result, error).
-If successful, error will be None. If an error occurs, result will be None and error will contain the error message.
-
-#### Examples
-
-**Basic**
-
-Try to decode a JSON string to a Starlark dict and handle potential errors.
-
-```python
-load('json', 'try_decode')
-result, error = try_decode('{"a":10,"b":20}')
-print("Result:", result)
-print("Error:", error)
-# Output:
-# Result: {'a': 10, 'b': 20}
-# Error: None
-```
-
-### `try_indent(str, prefix="", indent="\t") tuple`
-
-The try_indent function is a variant of indent that handles errors gracefully.
-It accepts the same parameters as indent, but returns a tuple of (result, error).
-If successful, error will be None. If an error occurs, result will be None and error will contain the error message.
-
-#### Examples
-
-**Basic**
-
-Try to indent a JSON string and handle potential errors.
-
-```python
-load('json', 'try_indent')
-result, error = try_indent('{"a":10,"b":20}', indent="  ")
-print("Result:", result)
-print("Error:", error)
-# Output:
-# Result: {
-#   "a": 10,
-#   "b": 20
-# }
-# Error: None
-```
-
-### `path(data, path) list`
-
-The path function performs a JSONPath query on the given JSON data and returns the matching elements.
-It accepts two positional arguments:
-- data: JSON data as a string, bytes, or Starlark value (dict, list, etc.)
-- path: A JSONPath expression string
-  It returns a list of matching elements. If no matches are found, an empty list is returned.
-  If the JSONPath expression is invalid, an error is raised.
-
-#### Examples
-
-**Basic**
-
-Query JSON data using JSONPath expressions.
+`path(data, path) -> list` runs a JSONPath query and returns the list of matching elements (empty list if nothing matches). Numeric matches come back as `int` when integral, else `float`. It **errors** on a malformed JSONPath expression (`wrong symbol 'X' at N`) or on `data` that is neither valid JSON nor an encodable value (`unrecognized starlark type`). `try_path(data, path)` returns `(list, error)`.
 
 ```python
 load('json', 'path')
-data = '''{"store":{"book":[{"title":"Moby Dick","price":8.99},{"title":"War and Peace","price":12.99}]}}'''
-titles = path(data, '$.store.book[*].title')
-print(titles)
-# Output: ['Moby Dick', 'War and Peace']
-prices = path(data, '$..price')
-print(prices)
-# Output: [8.99, 12.99]
+data = '''{"store":{"book":[{"title":"Sayings of the Century","price":8.95},{"title":"Sword of Honour","price":12.99}]}}'''
+print(path(data, '$.store.book[*].title'))
+# Output: ["Sayings of the Century", "Sword of Honour"]
 ```
-
-### `try_path(data, path) tuple`
-
-The try_path function is a variant of path that handles errors gracefully.
-It accepts the same parameters as path, but returns a tuple of (result, error).
-If successful, error will be None. If an error occurs, result will be None and error will contain the error message.
-
-#### Examples
-
-**Basic**
-
-Try to query JSON data using JSONPath and handle potential errors.
 
 ```python
 load('json', 'try_path')
-data = '''{"store":{"book":[{"title":"Moby Dick","price":8.99},{"title":"War and Peace","price":12.99}]}}'''
-result, error = try_path(data, '$..price')
-print("Result:", result)
-print("Error:", error)
-# Output:
-# Result: [8.99, 12.99]
-# Error: None
+data = {'items': [{'value': 5}, {'value': 10}, {'value': 15}]}
+result, error = try_path(data, '$.items[?(@.value > 7)].value')
+print(result, error)
+# Output: [10, 15] None
 ```
 
-### `eval(data, expr) value`
+### `eval` / `try_eval`
 
-The eval function evaluates a JSONPath expression on the given JSON data and returns the evaluation result.
-It accepts two positional arguments:
-- data: JSON data as a string, bytes, or Starlark value (dict, list, etc.)
-- expr: A JSONPath expression string to evaluate
-  It returns the result of the evaluation, which can be a number, string, boolean, list, dict, or None.
-  If the expression is invalid, an error is raised.
-
-#### Examples
-
-**Basic**
-
-Evaluate JSONPath expressions on JSON data.
+`eval(data, expr) -> value` evaluates a JSONPath *expression* — aggregates (`sum`, `avg`, `size`), arithmetic, comparisons, string concatenation, and built-in constants (`pi`) — and returns a single `value` (number, string, bool, list, dict, or `None`). It **errors** on an unknown function (`'invalid' is not a function`), bad syntax, division by zero, invalid `data`, or an unencodable value. `try_eval(data, expr)` returns `(value, error)`.
 
 ```python
 load('json', 'eval')
-data = '''{"store":{"book":[{"price":8.99},{"price":12.99},{"price":5.99}]}}'''
-avg_price = eval(data, 'avg($..price)')
-print(avg_price)
-# Output: 9.323333333333334
-sum_price = eval(data, 'sum($..price)')
-print(sum_price)
-# Output: 27.97
+data = '''{"store":{"book":[{"price":8.95},{"price":12.99},{"price":8.99},{"price":22.99}],"bicycle":{"price":19.95}}}'''
+print(eval(data, 'avg($..price)'))
+# Output: 14.774000000000001
 ```
-
-### `try_eval(data, expr) tuple`
-
-The try_eval function is a variant of eval that handles errors gracefully.
-It accepts the same parameters as eval, but returns a tuple of (result, error).
-If successful, error will be None. If an error occurs, result will be None and error will contain the error message.
-
-#### Examples
-
-**Basic**
-
-Try to evaluate JSONPath expressions on JSON data and handle potential errors.
 
 ```python
 load('json', 'try_eval')
-data = '''{"store":{"book":[{"price":8.99},{"price":12.99},{"price":5.99}]}}'''
-result, error = try_eval(data, 'avg($..price)')
-print("Result:", result)
-print("Error:", error)
-# Output:
-# Result: 9.323333333333334
-# Error: None
+result, error = try_eval({'value': 10}, '$.value > 5')
+print(result, error)
+# Output: True None
 ```
 
-### `repair(text) string`
+### `repair` / `try_repair`
 
-The repair function recovers valid JSON **text** from the messy output that language models often produce, so the result can then be passed to `decode`. It accepts one required positional parameter, the text, and returns a JSON string.
+`repair(text) -> string` recovers valid JSON **text** from messy model output so it can then be `decode`d — the idiom is `decode(repair(x))`. It strips code fences (```` ```json … ``` ````), surrounding prose, fixes single quotes, trailing commas, comments, Python literals (`True`/`False`/`None`), and completes truncated JSON.
 
-It fixes the common breakages: code fences (` ```json … ``` `), surrounding prose, single-quoted keys/strings, trailing commas, comments, Python literals (`True`/`False`/`None`), unquoted keys, and truncated (cut-off) JSON.
-
-It returns **text, not a value** — the idiom is `decode(repair(x))`, which keeps repair composable with `decode`'s `default` and the `try_*` variants. Because repair returns text, a recovered bare scalar (e.g. the input `The answer is 42` yields `42`) is honest output; scripts that require a structured result should check the type of the decoded value.
-
-**Already-valid JSON is returned byte-for-byte unchanged** (repair is idempotent on good input), so it is safe to call defensively.
-
-#### Examples
-
-**Basic**
-
-Repair a fenced, single-quoted, trailing-comma response and decode it.
+- **Idempotent on good input**: already-valid JSON is returned byte-for-byte unchanged (so it never mangles valid escapes — calling it defensively is safe).
+- Because it returns *text*, a recovered bare scalar is honest output (`repair('The answer is 42')` decodes to `42`, not a dict); scripts needing structure should check the decoded type.
+- It **errors** on truly unrepairable input (e.g. `{,,,}`). `try_repair(text)` returns `(text, error)` — including on a non-string argument.
 
 ```python
 load('json', 'repair', 'decode')
@@ -307,44 +158,27 @@ messy = '''Here is the result:
 ```
 '''
 print(decode(repair(messy)))
-# Output: {'name': 'Ann', 'tags': ['a', 'b']}
+# Output: {"name": "Ann", "tags": ["a", "b"]}
 ```
-
-### `try_repair(text) tuple`
-
-The try_repair function is a variant of repair that handles errors gracefully.
-It accepts the same parameter as repair, but returns a tuple of (result, error).
-If successful, error will be None. If an error occurs, result will be None and error will contain the error message.
-
-#### Examples
-
-**Basic**
 
 ```python
 load('json', 'try_repair')
 result, error = try_repair('{"a": 1,}')
-print("Result:", result)
-print("Error:", error)
-# Output:
-# Result: {"a": 1}
-# Error: None
+print(result, error)
+# Output: {"a": 1} None
 ```
 
-### `validate(data, schema) None`
+### `validate` / `try_validate`
 
-The validate function checks a JSON document against a [JSON Schema](https://json-schema.org) (drafts 4, 6, 7, 2019-09 and 2020-12, detected from the `$schema` keyword; 2020-12 by default). It accepts two positional arguments — both may be a JSON string, bytes, or a Starlark value (dict, list, etc.):
-- data: the document to check
-- schema: the JSON Schema
+`validate(data, schema) -> None` checks a JSON document against a [JSON Schema](https://json-schema.org) (drafts 4, 6, 7, 2019-09, 2020-12 — detected from `$schema`, default 2020-12). It returns `None` when the data conforms; otherwise it **errors** with one line per violation, each prefixed by its [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901) location (e.g. `at /age: must be >= 0 but found -3`; long lists are capped with `... and N more`).
 
-It returns None when the data conforms. When the data is invalid, it fails with a message listing each violation prefixed by its [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901) location, e.g. `at /age: must be >= 0 but found -3`.
+Schemas must be **self-contained**: an external `$ref` (`file://`, `http://`) is rejected (`not allowed`) — this is what keeps the module pure. A bad schema or malformed data text reports `invalid schema` / `invalid data`. Compiled schemas are cached (bounded), so repeated validation against the same schema text avoids recompilation.
 
-Schemas must be **self-contained**: a `$ref` to an external resource (a file or the network) is an error. Compiled schemas are cached, so repeated validation against the same schema text has no recompilation cost.
+`try_validate(data, schema)` distinguishes three outcomes:
 
-#### Examples
-
-**Basic**
-
-Validate a decoded value against a schema written as a Starlark dict.
+- `(True, None)` — the data conforms.
+- `(False, details)` — the data was checked and is invalid; `details` lists the violations.
+- `(None, error)` — validation could not run (invalid schema, malformed JSON text, or bad arguments).
 
 ```python
 load('json', 'validate')
@@ -353,23 +187,18 @@ print(validate({'name': 'Ann', 'age': 3}, schema))
 # Output: None
 ```
 
-### `try_validate(data, schema) tuple`
-
-The try_validate function is a variant of validate that distinguishes three outcomes instead of aborting:
-- `(True, None)` — the data conforms to the schema.
-- `(False, details)` — the data was checked and is invalid; details lists the violations with their JSON Pointer locations.
-- `(None, error)` — validation could not run at all (invalid schema, malformed JSON text, or bad arguments).
-
-#### Examples
-
-**Basic**
-
 ```python
 load('json', 'try_validate')
-ok, err = try_validate('{"age": -3}', '{"type":"object","properties":{"age":{"type":"integer","minimum":0}}}')
-print("OK:", ok)
-print("Error:", err)
-# Output:
-# OK: False
-# Error: at /age: must be >= 0 but found -3
+ok, err = try_validate('{"age":-3}', '{"type":"object","properties":{"age":{"type":"integer","minimum":0}}}')
+print(ok, err)
+# Output: False at /age: must be >= 0 but found -3
 ```
+
+## Notes & boundaries
+
+- **Engines.** `encode`/`decode`/`indent` are go.starlark.net's stdlib `json`; `dumps` uses starlet's internal marshaler (handles host structs/modules); `path`/`eval` use [ajson](https://github.com/spyzhov/ajson) JSONPath; `repair` uses a vendored, frozen [jsonrepair](https://github.com/RealAlexandreAI/json-repair) (golden-locked); `validate` uses [santhosh-tekuri/jsonschema](https://github.com/santhosh-tekuri/jsonschema).
+- **Purity.** No file or network access. JSON Schema `$ref` to external resources is blocked by design.
+- **Number shaping.** `path`/`eval` return integral numbers as `int` and non-integral as `float`; JSON `null` becomes `None`.
+- **`repair` vs `validate`.** `repair` fixes *text* and is idempotent on valid input; `validate` never mutates — it only reports conformance.
+- All function names are snake_case; `try_*` variants mirror their base function and never abort the script.
+- There is **no** `encode_indent` function: indentation is a parameter, not a separate call — use `dumps(obj, indent=N)` for indented encoding, or `indent(...)` to re-format existing JSON text.
