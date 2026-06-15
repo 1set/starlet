@@ -89,6 +89,62 @@ jobs:
           revive -config revive.toml -formatter friendly ./... >> $GITHUB_STEP_SUMMARY
           printf '```\n\n' >> $GITHUB_STEP_SUMMARY
 
+  wasm:
+    name: Cross-build ${{ matrix.goos }}/${{ matrix.goarch }} with ${{ matrix.go-version }} on ${{ matrix.vm-os }}
+    runs-on: ${{ matrix.vm-os }}
+    strategy:
+      max-parallel: 10
+      fail-fast: false
+      matrix:
+        vm-os: [
+          ubuntu-22.04,
+          macos-14,
+          windows-2022
+        ]
+        go-version: [
+          1.19.x,
+          1.25.x,
+        ]
+        goos: [
+          js,
+          wasip1
+        ]
+        goarch: [
+          wasm
+        ]
+        exclude:
+          # WASI support starts after Go 1.19; keep the compatibility floor
+          # on browser js/wasm and verify WASI on the current toolchain.
+          - go-version: 1.19.x
+            goos: wasip1
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: true
+      - name: Cross-build package
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          go version
+          go tool dist list | grep -Fx "${GOOS}/${GOARCH}"
+          go mod download
+          go build .
+      - name: Guard REPL terminal dependencies
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          if go list -deps . | grep -E '^(go\.starlark\.net/repl|github\.com/chzyer/readline)$'; then
+            echo "terminal-only REPL dependency leaked into ${GOOS}/${GOARCH}"
+            exit 1
+          fi
+
   # cmd/starlet is a separate Go module with its own (older) pins and extra
   # third-party dependencies; build it as a non-gating signal so a CLI-side
   # breakage is visible without blocking library PRs.
