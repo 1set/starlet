@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -2138,6 +2140,53 @@ func TestMachine_REPL_Error(t *testing.T) {
 	m := starlet.NewDefault()
 	m.SetGlobals(starlet.StringAnyMap{"x": make(chan int, 1)})
 	m.REPL()
+}
+
+// TestBuildsForWASM guards the wasm portability of the library core.
+// The interactive REPL pulls go.starlark.net/repl -> github.com/chzyer/readline,
+// a terminal library that does not compile for no-terminal wasm targets; it is
+// therefore isolated behind build tags (run_repl.go for terminal targets,
+// run_repl_stub.go for js/wasm and WASI). Re-importing a terminal dependency
+// into an always-compiled file would silently break wasm consumers (e.g. a
+// browser playground).
+func TestBuildsForWASM(t *testing.T) {
+	goBin, err := exec.LookPath("go")
+	if err != nil {
+		t.Skip("go toolchain not found; skipping wasm build check")
+	}
+
+	targets := []struct {
+		goos   string
+		goarch string
+	}{
+		{goos: "js", goarch: "wasm"},
+		{goos: "wasip1", goarch: "wasm"},
+	}
+	for _, target := range targets {
+		target := target
+		t.Run(target.goos+"/"+target.goarch, func(t *testing.T) {
+			if !goTargetSupported(t, goBin, target.goos, target.goarch) {
+				t.Skipf("go toolchain does not support %s/%s", target.goos, target.goarch)
+			}
+			cmd := exec.Command(goBin, "build", ".")
+			cmd.Env = append(os.Environ(), "GOOS="+target.goos, "GOARCH="+target.goarch)
+			if out, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("starlet must compile for GOOS=%s GOARCH=%s — did a terminal "+
+					"dependency (e.g. chzyer/readline via go.starlark.net/repl) leak into "+
+					"an always-compiled file?\n%s\n%v", target.goos, target.goarch, out, err)
+			}
+		})
+	}
+}
+
+func goTargetSupported(t *testing.T, goBin, goos, goarch string) bool {
+	t.Helper()
+	out, err := exec.Command(goBin, "tool", "dist", "list").Output()
+	if err != nil {
+		t.Logf("warning: failed to list go targets: %v", err)
+		return false
+	}
+	return strings.Contains(string(out), goos+"/"+goarch+"\n")
 }
 
 func Test_Machine_Run_LoadTypedErrors(t *testing.T) {

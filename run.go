@@ -11,20 +11,16 @@ import (
 
 	"github.com/1set/starlet/lib/goidiomatic"
 	"github.com/1set/starlight/convert"
-	"go.starlark.net/repl"
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 )
 
-// REPL is a Read-Eval-Print-Loop for Starlark.
-// It loads the predeclared symbols and modules into the global environment,
-func (m *Machine) REPL() {
-	if err := m.prepareThread(nil); err != nil {
-		repl.PrintError(err)
-		return
-	}
-	repl.REPLOptions(m.getFileOptions(), m.thread, m.predeclared)
-}
+// REPL is defined in run_repl.go (terminal targets) / run_repl_stub.go
+// (non-terminal targets): the
+// interactive REPL pulls go.starlark.net/repl -> chzyer/readline, a terminal
+// library that does not compile for browser js/wasm or WASI. Isolating it
+// behind a build tag keeps the library core (and every consumer, e.g. a WASM
+// playground) free of that terminal dependency.
 
 // RunScript initiates a Machine, executes a script with extra variables, and returns the Machine and the execution result.
 func RunScript(content []byte, extras StringAnyMap) (*Machine, StringAnyMap, error) {
