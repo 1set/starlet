@@ -33,10 +33,6 @@ func TestLoadModule_Atom(t *testing.T) {
 				assert.eq(str(x), '<atom_int:0>')
 				assert.eq(dir(x), ["add", "cas", "dec", "get", "inc", "set", "sub"])
 				assert.true(not bool(x))
-				
-				m = {}
-				m[x] = 1
-				# assert.eq(m[x], 1)
 			`),
 		},
 		{
@@ -189,10 +185,6 @@ func TestLoadModule_Atom(t *testing.T) {
 				assert.eq(str(x), '<atom_float:0>')
 				assert.eq(dir(x), ["add", "cas", "get", "set", "sub"])
 				assert.true(not bool(x))
-				
-				m = {}
-				m[x] = 1
-				# assert.eq(m[x], 1)
 			`),
 		},
 		{
@@ -327,10 +319,6 @@ func TestLoadModule_Atom(t *testing.T) {
 				assert.eq(str(x), '<atom_string:"">')
 				assert.eq(dir(x), ["cas", "get", "set"])
 				assert.true(not bool(x))
-				
-				m = {}
-				m[x] = 1
-				# assert.eq(m[x], 1)
 			`),
 		},
 		{
@@ -421,6 +409,197 @@ func TestLoadModule_Atom(t *testing.T) {
 					x.set(s + "!")
 				[work() for _ in range(10)]
 				assert.eq(x.get(), "!!!!!!!!!!")
+			`),
+		},
+		// unhashable: a mutable cell must not be usable as a dict/set key —
+		// its live-value hash goes stale on mutation and the entry is lost
+		{
+			name: `int: unhashable as dict key`,
+			script: itn.HereDoc(`
+				load('atom', 'new_int')
+				x = new_int(1)
+				d = {x: 'a'}
+			`),
+			wantErr: "unhashable type: atom_int",
+		},
+		{
+			name: `float: unhashable as dict key`,
+			script: itn.HereDoc(`
+				load('atom', 'new_float')
+				x = new_float(1.5)
+				d = {x: 'a'}
+			`),
+			wantErr: "unhashable type: atom_float",
+		},
+		{
+			name: `string: unhashable as dict key`,
+			script: itn.HereDoc(`
+				load('atom', 'new_string')
+				x = new_string("k")
+				d = {x: 'a'}
+			`),
+			wantErr: "unhashable type: atom_string",
+		},
+		{
+			name: `int: unhashable as set element`,
+			script: itn.HereDoc(`
+				load('atom', 'new_int')
+				s = set([new_int(1)])
+			`),
+			wantErr: "unhashable type: atom_int",
+		},
+		// frozen: every mutating method must reject a frozen cell
+		{
+			name: `int: frozen set fails`,
+			script: itn.HereDoc(`
+				load('atom', 'new_int')
+				load('freeze.star', 'freeze')
+				x = new_int(1)
+				freeze(x)
+				x.set(2)
+			`),
+			wantErr: "cannot set frozen atom_int",
+		},
+		{
+			name: `int: frozen cas fails`,
+			script: itn.HereDoc(`
+				load('atom', 'new_int')
+				load('freeze.star', 'freeze')
+				x = new_int(1)
+				freeze(x)
+				x.cas(1, 2)
+			`),
+			wantErr: "cannot cas frozen atom_int",
+		},
+		{
+			name: `int: frozen add fails`,
+			script: itn.HereDoc(`
+				load('atom', 'new_int')
+				load('freeze.star', 'freeze')
+				x = new_int(1)
+				freeze(x)
+				x.add(1)
+			`),
+			wantErr: "cannot add frozen atom_int",
+		},
+		{
+			name: `int: frozen sub fails`,
+			script: itn.HereDoc(`
+				load('atom', 'new_int')
+				load('freeze.star', 'freeze')
+				x = new_int(1)
+				freeze(x)
+				x.sub(1)
+			`),
+			wantErr: "cannot sub frozen atom_int",
+		},
+		{
+			name: `int: frozen inc fails`,
+			script: itn.HereDoc(`
+				load('atom', 'new_int')
+				load('freeze.star', 'freeze')
+				x = new_int(1)
+				freeze(x)
+				x.inc()
+			`),
+			wantErr: "cannot inc frozen atom_int",
+		},
+		{
+			name: `int: frozen dec fails`,
+			script: itn.HereDoc(`
+				load('atom', 'new_int')
+				load('freeze.star', 'freeze')
+				x = new_int(1)
+				freeze(x)
+				x.dec()
+			`),
+			wantErr: "cannot dec frozen atom_int",
+		},
+		{
+			name: `float: frozen set fails`,
+			script: itn.HereDoc(`
+				load('atom', 'new_float')
+				load('freeze.star', 'freeze')
+				x = new_float(1.5)
+				freeze(x)
+				x.set(2.5)
+			`),
+			wantErr: "cannot set frozen atom_float",
+		},
+		{
+			name: `float: frozen cas fails`,
+			script: itn.HereDoc(`
+				load('atom', 'new_float')
+				load('freeze.star', 'freeze')
+				x = new_float(1.5)
+				freeze(x)
+				x.cas(1.5, 2.5)
+			`),
+			wantErr: "cannot cas frozen atom_float",
+		},
+		{
+			name: `float: frozen add fails`,
+			script: itn.HereDoc(`
+				load('atom', 'new_float')
+				load('freeze.star', 'freeze')
+				x = new_float(1.5)
+				freeze(x)
+				x.add(1.0)
+			`),
+			wantErr: "cannot add frozen atom_float",
+		},
+		{
+			name: `float: frozen sub fails`,
+			script: itn.HereDoc(`
+				load('atom', 'new_float')
+				load('freeze.star', 'freeze')
+				x = new_float(1.5)
+				freeze(x)
+				x.sub(1.0)
+			`),
+			wantErr: "cannot sub frozen atom_float",
+		},
+		{
+			name: `string: frozen set fails`,
+			script: itn.HereDoc(`
+				load('atom', 'new_string')
+				load('freeze.star', 'freeze')
+				x = new_string("a")
+				freeze(x)
+				x.set("b")
+			`),
+			wantErr: "cannot set frozen atom_string",
+		},
+		{
+			name: `string: frozen cas fails`,
+			script: itn.HereDoc(`
+				load('atom', 'new_string')
+				load('freeze.star', 'freeze')
+				x = new_string("a")
+				freeze(x)
+				x.cas("a", "b")
+			`),
+			wantErr: "cannot cas frozen atom_string",
+		},
+		// frozen cells stay readable and comparable
+		{
+			name: `frozen cells still read and compare`,
+			script: itn.HereDoc(`
+				load('atom', 'new_int', 'new_float', 'new_string')
+				load('freeze.star', 'freeze')
+				i = new_int(7)
+				f = new_float(2.5)
+				s = new_string("hi")
+				freeze(i)
+				freeze(f)
+				freeze(s)
+				assert.eq(i.get(), 7)
+				assert.eq(f.get(), 2.5)
+				assert.eq(s.get(), "hi")
+				assert.true(i == new_int(7))
+				assert.true(f < new_float(3.0))
+				assert.true(s != new_string("yo"))
+				assert.true(bool(i))
 			`),
 		},
 	}

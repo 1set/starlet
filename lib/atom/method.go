@@ -1,9 +1,21 @@
 package atom
 
 import (
+	"fmt"
+
 	tps "github.com/1set/starlet/dataconv/types"
 	"go.starlark.net/starlark"
 )
+
+// checkFrozen guards every mutating method: Freeze() must actually pin the
+// cell, so a frozen cell rejects set/cas/add/... with an error instead of
+// silently updating (get and comparisons stay allowed).
+func checkFrozen(b *starlark.Builtin, frozen bool, typeName string) error {
+	if frozen {
+		return fmt.Errorf("cannot %s frozen %s", b.Name(), typeName)
+	}
+	return nil
+}
 
 // for integer
 
@@ -33,6 +45,9 @@ func intSet(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		return nil, err
 	}
 	recv := b.Receiver().(*AtomicInt)
+	if err := checkFrozen(b, recv.frozen.Load(), recv.Type()); err != nil {
+		return nil, err
+	}
 	recv.val.Store(value)
 	return starlark.None, nil
 }
@@ -43,6 +58,9 @@ func intCAS(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		return nil, err
 	}
 	recv := b.Receiver().(*AtomicInt)
+	if err := checkFrozen(b, recv.frozen.Load(), recv.Type()); err != nil {
+		return nil, err
+	}
 	return starlark.Bool(recv.val.CAS(oldVal, newVal)), nil
 }
 
@@ -52,6 +70,9 @@ func intAdd(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		return nil, err
 	}
 	recv := b.Receiver().(*AtomicInt)
+	if err := checkFrozen(b, recv.frozen.Load(), recv.Type()); err != nil {
+		return nil, err
+	}
 	return starlark.MakeInt64(recv.val.Add(delta)), nil
 }
 
@@ -61,6 +82,9 @@ func intSub(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		return nil, err
 	}
 	recv := b.Receiver().(*AtomicInt)
+	if err := checkFrozen(b, recv.frozen.Load(), recv.Type()); err != nil {
+		return nil, err
+	}
 	return starlark.MakeInt64(recv.val.Sub(delta)), nil
 }
 
@@ -69,6 +93,9 @@ func intInc(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		return nil, err
 	}
 	recv := b.Receiver().(*AtomicInt)
+	if err := checkFrozen(b, recv.frozen.Load(), recv.Type()); err != nil {
+		return nil, err
+	}
 	return starlark.MakeInt64(recv.val.Inc()), nil
 }
 
@@ -77,6 +104,9 @@ func intDec(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 		return nil, err
 	}
 	recv := b.Receiver().(*AtomicInt)
+	if err := checkFrozen(b, recv.frozen.Load(), recv.Type()); err != nil {
+		return nil, err
+	}
 	return starlark.MakeInt64(recv.val.Dec()), nil
 }
 
@@ -106,6 +136,9 @@ func floatSet(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple,
 		return nil, err
 	}
 	recv := b.Receiver().(*AtomicFloat)
+	if err := checkFrozen(b, recv.frozen.Load(), recv.Type()); err != nil {
+		return nil, err
+	}
 	recv.val.Store(value.GoFloat())
 	return starlark.None, nil
 }
@@ -116,6 +149,9 @@ func floatCAS(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple,
 		return nil, err
 	}
 	recv := b.Receiver().(*AtomicFloat)
+	if err := checkFrozen(b, recv.frozen.Load(), recv.Type()); err != nil {
+		return nil, err
+	}
 	return starlark.Bool(recv.val.CAS(oldVal.GoFloat(), newVal.GoFloat())), nil
 }
 
@@ -125,6 +161,9 @@ func floatAdd(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple,
 		return nil, err
 	}
 	recv := b.Receiver().(*AtomicFloat)
+	if err := checkFrozen(b, recv.frozen.Load(), recv.Type()); err != nil {
+		return nil, err
+	}
 	return starlark.Float(recv.val.Add(delta.GoFloat())), nil
 }
 
@@ -134,6 +173,9 @@ func floatSub(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple,
 		return nil, err
 	}
 	recv := b.Receiver().(*AtomicFloat)
+	if err := checkFrozen(b, recv.frozen.Load(), recv.Type()); err != nil {
+		return nil, err
+	}
 	return starlark.Float(recv.val.Sub(delta.GoFloat())), nil
 }
 
@@ -161,6 +203,9 @@ func stringSet(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple
 		return nil, err
 	}
 	recv := b.Receiver().(*AtomicString)
+	if err := checkFrozen(b, recv.frozen.Load(), recv.Type()); err != nil {
+		return nil, err
+	}
 	recv.val.Store(value)
 	return starlark.None, nil
 }
@@ -171,5 +216,8 @@ func stringCAS(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple
 		return nil, err
 	}
 	recv := b.Receiver().(*AtomicString)
+	if err := checkFrozen(b, recv.frozen.Load(), recv.Type()); err != nil {
+		return nil, err
+	}
 	return starlark.Bool(recv.val.CompareAndSwap(oldVal, newVal)), nil
 }
