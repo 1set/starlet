@@ -274,7 +274,8 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 			readFile: func(name string) ([]byte, error) {
 				return readScriptFile(name, m.scriptFS)
 			},
-			globals: m.predeclared,
+			globals:   m.predeclared,
+			newThread: m.newLoadThread,
 		}
 		m.thread = &starlark.Thread{
 			Name:  "starlet",
@@ -303,6 +304,38 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 	// arm the per-run step budget
 	m.applyStepBudget()
 	return nil
+}
+
+// newLoadThread builds the thread that runs a module executed by load(),
+// mirroring the main thread's execution context: the same print func, an
+// independent copy of the step budget (so a loaded module's work is bounded
+// by the DoS guard instead of escaping it), and the current run's context
+// local. The step budget is per-thread, not a shared aggregate counter, so a
+// loaded module gets its own MaxSteps allowance — enough to stop a runaway
+// loop, which is the DoS the bare thread let through.
+func (m *Machine) newLoadThread(load func(*starlark.Thread, string) (starlark.StringDict, error)) *starlark.Thread {
+	t := &starlark.Thread{
+		Name:  "starlet:load",
+		Print: m.printFunc,
+		Load:  load,
+	}
+	limit := m.maxSteps
+	if limit == 0 {
+		limit = math.MaxUint64
+	}
+	t.SetMaxExecutionSteps(limit)
+	if lim := m.maxSteps; lim > 0 {
+		t.OnMaxSteps = func(*starlark.Thread) {
+			// recovered by the run/call recover and mapped to a typed error
+			panic(MaxStepsExceededError{Limit: lim})
+		}
+	}
+	if m.thread != nil {
+		if ctx := m.thread.Local("context"); ctx != nil {
+			t.SetLocal("context", ctx)
+		}
+	}
+	return t
 }
 
 // applyStepBudget arms the thread with the configured step budget; it must
