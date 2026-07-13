@@ -92,7 +92,7 @@ print(data['num'], data['bool'], data['arr'])
 # Output: 42 True [1, 2, 3]
 ```
 
-`head_lines(name, n)` and `tail_lines(name, n)` return at most `n` lines from the start or end of the file. `n` must be a positive integer, otherwise they error (`expected positive integer, got -7`); a missing file errors as `open no-such-file:`. `count_lines(name)` returns the line count (0 for an empty file).
+`head_lines(name, n)` and `tail_lines(name, n)` return at most `n` lines from the start or end of the file. `n` must be a positive integer, otherwise they error (`expected positive integer, got -7`), and a value beyond `int64` errors (`n is too large`); neither allocates ahead of the lines actually read, so an `n` far larger than the file simply returns every line. A missing file errors as `open no-such-file:`. `count_lines(name)` returns the line count (0 for an empty file).
 
 ```python
 load('file', 'head_lines', 'tail_lines', 'count_lines')

@@ -15,6 +15,11 @@ import (
 // in starlark's load() function, eg: load('file', 'trim_bom')
 const ModuleName = "file"
 
+// maxInt is the largest value of the platform int (2^31-1 on 32-bit,
+// 2^63-1 on 64-bit); used to clamp a script-provided count before it is
+// narrowed from int64 to int.
+const maxInt = int64(^uint(0) >> 1)
+
 var (
 	once       sync.Once
 	fileModule starlark.StringDict
@@ -97,9 +102,21 @@ func readTopOrBottomLines(funcName string, workLoad func(name string, n int) ([]
 		if err := starlark.UnpackArgs(b.Name(), args, kwargs, "name", &fp, "n", &n); err != nil {
 			return starlark.None, err
 		}
-		nInt, _ := n.Int64()
+		// a value that does not fit an int64 makes Int64() undefined; reject it
+		// by name rather than letting the zero it yields masquerade as "n <= 0"
+		nInt, ok := n.Int64()
+		if !ok {
+			return starlark.None, fmt.Errorf(`%s: n is too large: %s`, b.Name(), n.String())
+		}
 		if nInt <= 0 {
 			return starlark.None, fmt.Errorf(`%s: expected positive integer, got %d`, b.Name(), n)
+		}
+		// clamp to the platform int max before narrowing: on a 32-bit int a huge
+		// n would wrap to a small value and silently return the wrong count.
+		// The readers grow to the file's actual line count, so an oversized n
+		// just means "every line" — maxInt stands in for "unbounded".
+		if nInt > maxInt {
+			nInt = maxInt
 		}
 
 		// read lines
