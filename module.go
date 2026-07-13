@@ -180,6 +180,13 @@ func MakeModuleLoaderFromMap(m StringAnyMap) ModuleLoader {
 }
 
 // MakeModuleLoaderFromString creates a module loader from the given source code.
+//
+// The returned loader executes the source on its own bare thread, so the module
+// body does NOT inherit a Machine's step budget or run-context cancellation. The
+// source is host-supplied (not script input), so this is a robustness caveat,
+// not a script-reachable DoS; but for a module whose body must be bounded by the
+// Machine's guards, load it through the file path instead (SetScript's scriptFS
+// plus a load(name) of the file), which runs on the guarded load thread.
 func MakeModuleLoaderFromString(name, source string, predeclared starlark.StringDict) ModuleLoader {
 	return func() (starlark.StringDict, error) {
 		if name == "" {
@@ -190,6 +197,11 @@ func MakeModuleLoaderFromString(name, source string, predeclared starlark.String
 }
 
 // MakeModuleLoaderFromReader creates a module loader from the given IO reader.
+//
+// Like MakeModuleLoaderFromString, the returned loader executes the source on a
+// bare thread and does NOT inherit a Machine's step budget or run-context
+// cancellation; load host-supplied source through the file path when it must be
+// bounded by the Machine's guards.
 func MakeModuleLoaderFromReader(name string, rd io.Reader, predeclared starlark.StringDict) ModuleLoader {
 	return func() (starlark.StringDict, error) {
 		if name == "" {
@@ -200,6 +212,12 @@ func MakeModuleLoaderFromReader(name string, rd io.Reader, predeclared starlark.
 }
 
 // MakeModuleLoaderFromFile creates a module loader from the given file.
+//
+// Like MakeModuleLoaderFromString, the returned loader executes the file on a
+// bare thread and does NOT inherit a Machine's step budget or run-context
+// cancellation. To have a Machine bound a loaded file with its guards, register
+// the filesystem via SetScript and load(name) the file so it runs on the guarded
+// load thread instead of registering it through this constructor.
 func MakeModuleLoaderFromFile(name string, fileSys fs.FS, predeclared starlark.StringDict) ModuleLoader {
 	return func() (starlark.StringDict, error) {
 		// read file content

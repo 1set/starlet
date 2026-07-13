@@ -1,6 +1,7 @@
 package starlet
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -33,6 +34,11 @@ type cache struct {
 	// nil the load path falls back to a bare thread — a module loaded that way
 	// would inherit none of the Machine's guards.
 	newThread func(load func(*starlark.Thread, string) (starlark.StringDict, error)) *starlark.Thread
+	// watchCancel, when set, arms cancellation of the load thread from the run's
+	// context and returns a stop func to disarm it once loading finishes, so a
+	// module executed by load() honours the run timeout instead of running past
+	// it on its own thread. When nil the load thread is not cancelled by context.
+	watchCancel func(thread *starlark.Thread) (stop func())
 }
 
 type entry struct {
@@ -108,17 +114,31 @@ func (c *cache) get(cc *cycleChecker, module string) (starlark.StringDict, error
 			c.remove(module)
 			panic(r)
 		}()
-		e.globals, e.err = c.doLoad(cc, module)
+		var loadThread *starlark.Thread
+		e.globals, e.err = c.doLoad(cc, module, &loadThread)
 		loaded = true
 		e.setOwner(nil)
 
 		// Broadcast that the entry is now ready.
 		close(e.ready)
+
+		// A load aborted because the run's context was cancelled is transient
+		// (run-scoped), not a property of the module: evict it so a later run
+		// reusing this machine without Reset re-executes instead of replaying
+		// the stale cancellation error. Mirrors the step-budget panic eviction.
+		// Waiters already blocked on e.ready still observe this run's error; only
+		// fresh loads after eviction re-execute.
+		if e.err != nil && loadContextCancelled(loadThread) {
+			c.remove(module)
+		}
 	}
 	return e.globals, e.err
 }
 
-func (c *cache) doLoad(cc *cycleChecker, module string) (starlark.StringDict, error) {
+// doLoad loads module. It publishes the thread the module executes on through
+// *loadThread so the caller can tell whether a failure was a transient
+// run-context cancellation (see get) without re-indenting the load body.
+func (c *cache) doLoad(cc *cycleChecker, module string, loadThread **starlark.Thread) (starlark.StringDict, error) {
 	// Tunnel the cycle-checker state for this "thread of loading".
 	loadFn := func(_ *starlark.Thread, module string) (starlark.StringDict, error) {
 		return c.get(cc, module)
@@ -134,6 +154,14 @@ func (c *cache) doLoad(cc *cycleChecker, module string) (starlark.StringDict, er
 			Print: func(_ *starlark.Thread, msg string) { fmt.Println(msg) },
 			Load:  loadFn,
 		}
+	}
+	*loadThread = thread
+
+	// Cancel this load thread when the run's context fires, so a long
+	// computation inside a loaded module honours the run timeout rather than
+	// running to completion on its own thread. Disarmed once loading finishes.
+	if c.watchCancel != nil {
+		defer c.watchCancel(thread)()
 	}
 
 	// 1: load from built-in module, the first field returns nil if not found
@@ -170,6 +198,14 @@ func (c *cache) doLoad(cc *cycleChecker, module string) (starlark.StringDict, er
 		return starlark.ExecFile(thread, module, b, c.globals)
 	}
 	return starlark.ExecFileOptions(c.execOpts, thread, module, b, c.globals)
+}
+
+// loadContextCancelled reports whether the given load thread's run context
+// (carried as the "context" thread-local by newLoadThread) has been cancelled.
+// A single expression so it is fully covered by any load, cancelled or not.
+func loadContextCancelled(thread *starlark.Thread) bool {
+	ctx, ok := thread.Local("context").(context.Context)
+	return ok && ctx != nil && ctx.Err() != nil
 }
 
 // -- concurrent cycle checking --
