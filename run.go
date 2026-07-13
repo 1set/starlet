@@ -362,7 +362,14 @@ func (m *Machine) applyStepBudget() {
 
 // Reset resets the machine to initial state before the first run.
 // Attention: It does not reset the compiled program cache.
+//
+// It takes the write lock like the other mutators: it clears the very fields
+// (thread, runTimes, predeclared) that Run and the accessors read, so an
+// unlocked Reset would race with them however carefully the readers lock.
 func (m *Machine) Reset() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	m.runTimes = 0
 	m.thread = nil
 	m.loadCache = nil
