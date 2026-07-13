@@ -28,6 +28,11 @@ type cache struct {
 	execOpts *syntax.FileOptions
 	loadMod  func(s string) (starlark.StringDict, error) // load from built-in module first
 	readFile func(s string) ([]byte, error)              // and then from file system
+	// newThread builds the thread that executes a loaded module, carrying the
+	// Machine's execution context (print func, step budget, run context). When
+	// nil the load path falls back to a bare thread — a module loaded that way
+	// would inherit none of the Machine's guards.
+	newThread func(load func(*starlark.Thread, string) (starlark.StringDict, error)) *starlark.Thread
 }
 
 type entry struct {
@@ -77,7 +82,34 @@ func (c *cache) get(cc *cycleChecker, module string) (starlark.StringDict, error
 		c.cacheMu.Unlock()
 
 		e.setOwner(cc)
+		// doLoad can panic: a loaded module can exhaust the step budget, which
+		// OnMaxSteps raises as a panic. Without recovery the half-built entry
+		// would never be readied or removed, so every later load of the same
+		// module blocks forever on <-e.ready. Ready the entry (with the error),
+		// drop it so a retry re-executes, then re-raise so runInternal maps it
+		// to a typed error. A `loaded` sentinel — not `recover() != nil` —
+		// decides whether doLoad panicked, because under the go 1.19 floor
+		// recover() returns nil for panic(nil), which would skip the cleanup.
+		loaded := false
+		defer func() {
+			if loaded {
+				return
+			}
+			r := recover()
+			if e.err == nil {
+				if err, ok := r.(error); ok {
+					e.err = err
+				} else {
+					e.err = fmt.Errorf("panic loading module %q: %v", module, r)
+				}
+			}
+			e.setOwner(nil)
+			close(e.ready)
+			c.remove(module)
+			panic(r)
+		}()
 		e.globals, e.err = c.doLoad(cc, module)
+		loaded = true
 		e.setOwner(nil)
 
 		// Broadcast that the entry is now ready.
@@ -87,12 +119,21 @@ func (c *cache) get(cc *cycleChecker, module string) (starlark.StringDict, error
 }
 
 func (c *cache) doLoad(cc *cycleChecker, module string) (starlark.StringDict, error) {
-	thread := &starlark.Thread{
-		Print: func(_ *starlark.Thread, msg string) { fmt.Println(msg) },
-		Load: func(_ *starlark.Thread, module string) (starlark.StringDict, error) {
-			// Tunnel the cycle-checker state for this "thread of loading".
-			return c.get(cc, module)
-		},
+	// Tunnel the cycle-checker state for this "thread of loading".
+	loadFn := func(_ *starlark.Thread, module string) (starlark.StringDict, error) {
+		return c.get(cc, module)
+	}
+	var thread *starlark.Thread
+	if c.newThread != nil {
+		// inherit the Machine's print func, step budget, and run context so a
+		// loaded module cannot bypass them (e.g. a top-level loop escaping the
+		// DoS guard, or print() going to stdout instead of the print func)
+		thread = c.newThread(loadFn)
+	} else {
+		thread = &starlark.Thread{
+			Print: func(_ *starlark.Thread, msg string) { fmt.Println(msg) },
+			Load:  loadFn,
+		}
 	}
 
 	// 1: load from built-in module, the first field returns nil if not found

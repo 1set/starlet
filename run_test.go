@@ -10,12 +10,101 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/1set/starlet"
 	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
 )
+
+// TestMachine_LoadInheritsMachineContext: a module executed by load() ran in a
+// bare thread that inherited none of the Machine's execution context, so the
+// step budget did not apply (a top-level loop in a loaded module bypassed the
+// whole DoS guard) and print() in a loaded module went to stdout instead of
+// the Machine's print function. The load path now builds its child thread from
+// the Machine's settings.
+func TestMachine_LoadInheritsMachineContext(t *testing.T) {
+	t.Run("step budget applies to a loaded module", func(t *testing.T) {
+		sfs := fstest.MapFS{
+			// a top-level comprehension that burns far more than the budget
+			"heavy.star": &fstest.MapFile{Data: []byte(`x = len([i for i in range(1000000)])`)},
+		}
+		m := starlet.NewDefault()
+		m.SetScript("main.star", []byte(`load("heavy.star", "x"); y = x`), sfs)
+		m.SetMaxExecutionSteps(1000)
+		_, err := m.Run()
+		var me starlet.MaxStepsExceededError
+		if !errors.As(err, &me) {
+			t.Fatalf("expected the loaded module to hit the step budget, got: %v", err)
+		}
+	})
+
+	t.Run("print in a loaded module uses the Machine print func", func(t *testing.T) {
+		sfs := fstest.MapFS{
+			"greet.star": &fstest.MapFile{Data: []byte(`print("hi from loaded")` + "\n" + `msg = 1`)},
+		}
+		m := starlet.NewDefault()
+		m.SetScript("main.star", []byte(`load("greet.star", "msg"); z = msg`), sfs)
+		pf, cmp := getPrintCompareFunc(t)
+		m.SetPrintFunc(pf)
+		if _, err := m.Run(); err != nil {
+			t.Fatalf("run: %v", err)
+		}
+		cmp("hi from loaded\n")
+	})
+
+	t.Run("a budget panic in a loaded module does not poison the cache", func(t *testing.T) {
+		// The step-budget panic unwinds through the load cache; the abandoned
+		// entry must not leave a later load of the same module blocked on its
+		// ready channel forever. A second Run must return promptly, not hang.
+		sfs := fstest.MapFS{
+			"heavy.star": &fstest.MapFile{Data: []byte(`x = len([i for i in range(1000000)])`)},
+		}
+		m := starlet.NewDefault()
+		m.SetScript("main.star", []byte(`load("heavy.star", "x"); y = x`), sfs)
+		m.SetMaxExecutionSteps(1000)
+
+		var me starlet.MaxStepsExceededError
+		if _, err := m.Run(); !errors.As(err, &me) {
+			t.Fatalf("first run: expected MaxStepsExceededError, got: %v", err)
+		}
+		done := make(chan error, 1)
+		go func() { _, err := m.Run(); done <- err }()
+		select {
+		case err := <-done:
+			if !errors.As(err, &me) {
+				t.Fatalf("second run: expected MaxStepsExceededError, got: %v", err)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("second run deadlocked: the load cache entry was poisoned by the budget panic")
+		}
+	})
+
+	t.Run("a panic(nil) loader does not poison the cache", func(t *testing.T) {
+		// The cache cleanup keys on a completion sentinel, not recover() != nil,
+		// so it survives panic(nil) too (recover() is nil for it under go 1.19).
+		// A second Run must not deadlock on the abandoned entry.
+		mods := starlet.ModuleLoaderMap{
+			"boom": func() (starlark.StringDict, error) { panic(nil) },
+		}
+		m := starlet.NewWithLoaders(nil, nil, mods)
+		m.SetScript("main.star", []byte(`load("boom", "x")`), nil)
+
+		runOnce := func() {
+			defer func() { _ = recover() }() // the panic propagates back out; swallow it
+			_, _ = m.Run()
+		}
+		runOnce()
+		done := make(chan struct{})
+		go func() { runOnce(); close(done) }()
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			t.Fatal("second run deadlocked after a panic(nil) loader")
+		}
+	})
+}
 
 func Test_DefaultMachine_Run_NoCode(t *testing.T) {
 	m := starlet.NewDefault()
