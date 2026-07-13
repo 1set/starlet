@@ -89,12 +89,22 @@ func extractIOBottomLines(rd io.Reader, n int) ([]string, error) {
 	if n <= 0 {
 		return nil, errors.New("n should be greater than 0")
 	}
+	// Grow the ring buffer to the lines actually read instead of allocating n
+	// entries up front: n comes from the script, so tail_lines(path, 10**12)
+	// asked for a 10**12-entry slice — an OOM fatal (not a recoverable panic)
+	// before a single line was read, however small the file. The buffer never
+	// exceeds the file's line count, and the ring semantics are unchanged
+	// (the first n lines land at their own index, later ones overwrite).
 	var (
-		result = make([]string, n, n)
+		result []string
 		cnt    int
 	)
 	if err := readIOByLine(rd, func(line string) error {
-		result[cnt%n] = line
+		if len(result) < n {
+			result = append(result, line)
+		} else {
+			result[cnt%n] = line
+		}
 		cnt++
 		return nil
 	}); err != nil {

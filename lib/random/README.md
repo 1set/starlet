@@ -23,7 +23,7 @@ This module exposes no constants and no custom types — every member is a funct
 
 ### `randbytes(n=10) -> bytes`
 
-Returns a random byte string of length `n`. If `n` is non-positive or omitted, the default length `10` is used. Errors only if the underlying RNG read fails.
+Returns a random byte string of length `n`. If `n` is non-positive or omitted, the default length `10` is used. `n` is capped at **1 MiB (1048576)** — a larger value errors (`n is too large: … (max 1048576)`) rather than letting a script drive an unbounded allocation. Also errors if the underlying RNG read fails.
 
 ```python
 load("random", "randbytes")
@@ -34,7 +34,7 @@ print(len(b))
 
 ### `randstr(chars, n=10) -> str`
 
-Returns a random string of `n` characters, each drawn uniformly from the characters in `chars`. `chars` is split into Unicode runes, so multi-byte characters are selected as whole code points (length is measured in bytes, e.g. each Chinese character contributes 3). If `n` is non-positive or omitted, the default length `10` is used. Errors when `chars` is empty (`chars must not be empty`).
+Returns a random string of `n` characters, each drawn uniformly from the characters in `chars`. `chars` is split into Unicode runes, so multi-byte characters are selected as whole code points (length is measured in bytes, e.g. each Chinese character contributes 3). If `n` is non-positive or omitted, the default length `10` is used; `n` is capped at **1 MiB (1048576)** and a larger value errors (`n is too large`). Errors when `chars` is empty (`chars must not be empty`).
 
 ```python
 load("random", "randstr")
@@ -45,7 +45,7 @@ print(x)
 
 ### `randb32(n=10, sep=0) -> str`
 
-Returns a random base32 string of `n` characters using the standard RFC 4648 alphabet (`A-Z`, `2-7`). If `sep` is positive and smaller than the string length, a dash is inserted every `sep` characters (this adds separator characters to the total length). If `n` is non-positive or omitted, the default length `10` is used; if `sep` is non-positive or omitted, no separator is inserted.
+Returns a random base32 string of `n` characters using the standard RFC 4648 alphabet (`A-Z`, `2-7`). If `sep` is positive and smaller than the string length, a dash is inserted every `sep` characters (this adds separator characters to the total length). If `n` is non-positive or omitted, the default length `10` is used; `n` is capped at **1 MiB (1048576)** and a larger value errors (`n is too large`). If `sep` is non-positive or omitted, no separator is inserted.
 
 ```python
 load("random", "randb32")

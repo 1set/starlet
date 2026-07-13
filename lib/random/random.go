@@ -4,6 +4,7 @@ package random
 import (
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"math"
 	"math/big"
 	"sort"
@@ -54,6 +55,30 @@ var (
 	defaultLenN = big.NewInt(10)
 )
 
+// maxRandLen caps the script-controlled length of randbytes/randstr/randb32.
+// The length went straight from the script into make(), and big.Int.Int64() is
+// undefined for a value that does not fit an int64, so a script could:
+//   - randbytes(2**40) — ask for ~1 TiB and OOM-kill the host (a runtime fatal
+//     the run/call recover cannot catch);
+//   - randbytes(2**63) — get a negative length and panic make();
+//   - randbytes(2**64) — wrap to zero and silently receive nothing.
+//
+// 1 MiB of randomness is orders of magnitude past any realistic token/key/id.
+const maxRandLen = 1 << 20
+
+// randLen validates a script-provided length before it reaches make(): it must
+// fit an int64 (so Int64() is defined) and stay within maxRandLen.
+func randLen(name string, n *big.Int) (int64, error) {
+	if !n.IsInt64() {
+		return 0, fmt.Errorf("%s: n is too large: %s (max %d)", name, n.String(), maxRandLen)
+	}
+	v := n.Int64()
+	if v > maxRandLen {
+		return 0, fmt.Errorf("%s: n is too large: %d (max %d)", name, v, maxRandLen)
+	}
+	return v, nil
+}
+
 // randbytes(n) returns a random byte string of length n.
 func randbytes(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// precondition checks
@@ -66,8 +91,12 @@ func randbytes(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tupl
 	if nInt.Sign() <= 0 {
 		nInt = defaultLenN
 	}
+	ln, err := randLen(bn.Name(), nInt)
+	if err != nil {
+		return nil, err
+	}
 	// get random bytes
-	buf := make([]byte, nInt.Int64())
+	buf := make([]byte, ln)
 	if _, err := rand.Read(buf); err != nil {
 		return nil, err
 	}
@@ -89,8 +118,12 @@ func randstr(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 	if nInt.Sign() <= 0 {
 		nInt = defaultLenN
 	}
+	ln, err := randLen(bn.Name(), nInt)
+	if err != nil {
+		return nil, err
+	}
 	// get random strings
-	s, err := getRandStr(ab.GoString(), nInt.Int64())
+	s, err := getRandStr(ab.GoString(), ln)
 	if err != nil {
 		return nil, err
 	}
@@ -109,18 +142,27 @@ func randb32(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 	if nInt.Sign() <= 0 {
 		nInt = defaultLenN
 	}
+	ln, err := randLen(bn.Name(), nInt)
+	if err != nil {
+		return nil, err
+	}
 	nSep := sep.BigInt()
-	if nSep.Sign() <= 0 {
+	if nSep.Sign() <= 0 || !nSep.IsInt64() {
+		// an out-of-int64 separator would make Int64() undefined; no separator
 		nSep = big.NewInt(0)
 	}
 	// get random strings
 	const ab = `ABCDEFGHIJKLMNOPQRSTUVWXYZ234567` // standard base32 encoding chars, as defined in RFC 4648.
-	s, err := getRandStr(ab, nInt.Int64())
+	s, err := getRandStr(ab, ln)
 	if err != nil {
 		return nil, err
 	}
-	// add separator
-	if n := int(nSep.Int64()); n > 0 && n < len(s) {
+	// add separator; compare as int64 before narrowing to int, so a separator
+	// past a 32-bit int (but under int64) does not wrap on 32-bit platforms.
+	// A separator >= len(s) means no separator anyway, and len(s) <= maxRandLen
+	// fits an int, so the int() below is safe.
+	if sep64 := nSep.Int64(); sep64 > 0 && sep64 < int64(len(s)) {
+		n := int(sep64)
 		// add separator every n chars
 		var buf []rune
 		for i, r := range s {
@@ -209,6 +251,12 @@ func choices(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 		l := starlark.NewList([]starlark.Value{})
 		return l, nil
 	}
+	// k sizes the result slice, so cap it like the other length-driven funcs:
+	// choices([1], k=2**40) would otherwise request a multi-terabyte slice and
+	// OOM-kill the host before the step budget could interrupt it.
+	if numOfResult > maxRandLen {
+		return nil, fmt.Errorf("%s: k is too large: %d (max %d)", bn.Name(), numOfResult, maxRandLen)
+	}
 
 	// get or calculate cumulative weights
 	var (
@@ -219,12 +267,15 @@ func choices(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 		if weights != nil {
 			return nil, errors.New("cannot specify both weights and cumulative weights")
 		}
+		// check the length against the (small) population before materializing
+		// a float per weight, so a mismatched huge weights list is rejected
+		// without first allocating a same-sized []float64
+		if cumWeights.Len() != n {
+			return nil, errors.New("the number of weights does not match the population")
+		}
 		cumulativeWeights, err = listToFloat64Slice(cumWeights)
 		if err != nil {
 			return nil, err
-		}
-		if len(cumulativeWeights) != n {
-			return nil, errors.New("the number of weights does not match the population")
 		}
 		lastWeight := cumulativeWeights[0]
 		for i := 1; i < n; i++ {
@@ -234,12 +285,12 @@ func choices(thread *starlark.Thread, bn *starlark.Builtin, args starlark.Tuple,
 			lastWeight = cumulativeWeights[i]
 		}
 	} else if weights != nil {
+		if weights.Len() != n {
+			return nil, errors.New("the number of weights does not match the population")
+		}
 		relativeWeights, err := listToFloat64Slice(weights)
 		if err != nil {
 			return nil, err
-		}
-		if len(relativeWeights) != n {
-			return nil, errors.New("the number of weights does not match the population")
 		}
 		cumulativeWeights = make([]float64, n)
 		sum := 0.0

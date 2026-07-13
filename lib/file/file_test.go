@@ -678,6 +678,26 @@ func TestLoadModule_File(t *testing.T) {
 			`),
 		},
 		{
+			// n sized the ring buffer up front, so a huge n allocated a huge
+			// slice and OOM-killed the host before reading a line. The buffer
+			// now grows to the file's actual line count, so a huge n simply
+			// means "every line".
+			name: `read tail lines: huge n does not preallocate`,
+			script: itn.HereDoc(`
+				load('file', 'tail_lines')
+				l = tail_lines('testdata/line_mac.txt', 1000000000000)
+				assert.eq(l, ['Line 1', 'Line 2', 'Line 3'])
+			`),
+		},
+		{
+			name: `read tail lines: n beyond int64`,
+			script: itn.HereDoc(`
+				load('file', 'tail_lines')
+				l = tail_lines('testdata/line_mac.txt', 18446744073709551616)
+			`),
+			wantErr: `file.tail_lines: n is too large`,
+		},
+		{
 			name: `read head lines: invalid args`,
 			script: itn.HereDoc(`
 				load('file', 'head_lines')

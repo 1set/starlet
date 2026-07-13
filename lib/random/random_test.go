@@ -239,6 +239,15 @@ func TestLoadModule_Random(t *testing.T) {
 			`),
 		},
 		{
+			// k sizes the result slice; a huge k would OOM the host
+			name: "choices with k over the cap",
+			script: itn.HereDoc(`
+				load('random', 'choices')
+				a = choices([1, 2, 3], k=1099511627776)
+			`),
+			wantErr: `random.choices: k is too large`,
+		},
+		{
 			name: "choices weights has 0",
 			script: itn.HereDoc(`
 				load('random', 'choices')
@@ -413,6 +422,49 @@ func TestLoadModule_Random(t *testing.T) {
 				assert.eq(len(x), 10)
 				y = randbytes(0)
 				assert.eq(len(y), 10)
+			`),
+		},
+		// n went straight into make(): a huge-but-int64 n OOM-killed the host,
+		// and a value past int64 made Int64() undefined (negative -> make panic,
+		// wrapped -> silently empty). All three are now bounded errors.
+		{
+			name: "randbytes with n over the cap",
+			script: itn.HereDoc(`
+				load('random', 'randbytes')
+				x = randbytes(1099511627776)
+			`),
+			wantErr: `random.randbytes: n is too large`,
+		},
+		{
+			name: "randbytes with n beyond int64",
+			script: itn.HereDoc(`
+				load('random', 'randbytes')
+				x = randbytes(18446744073709551616)
+			`),
+			wantErr: `random.randbytes: n is too large`,
+		},
+		{
+			name: "randstr with n over the cap",
+			script: itn.HereDoc(`
+				load('random', 'randstr')
+				x = randstr('abc', 1099511627776)
+			`),
+			wantErr: `random.randstr: n is too large`,
+		},
+		{
+			name: "randb32 with n over the cap",
+			script: itn.HereDoc(`
+				load('random', 'randb32')
+				x = randb32(1099511627776)
+			`),
+			wantErr: `random.randb32: n is too large`,
+		},
+		{
+			name: "randbytes at the cap still works",
+			script: itn.HereDoc(`
+				load('random', 'randbytes')
+				x = randbytes(1048576)
+				assert.eq(len(x), 1048576)
 			`),
 		},
 		{
