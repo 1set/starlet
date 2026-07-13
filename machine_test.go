@@ -74,6 +74,50 @@ func TestMachine_StringInCallbackDoesNotDeadlock(t *testing.T) {
 	}
 }
 
+// TestMachine_REPLIsRaceFree: REPL() drove prepareThread and repl.REPLOptions
+// against m.thread/m.predeclared with NO lock, while every other execution path
+// (Run/RunFile/RunWithTimeout/...) holds m.mu for the whole run and Reset holds
+// it to swap the thread. So a REPL session concurrent with a Run or Reset on the
+// same Machine was a data race on m.thread. REPL now takes the write lock for its
+// whole session, matching runInternal. This bites only under -race.
+func TestMachine_REPLIsRaceFree(t *testing.T) {
+	// Drive the REPL non-interactively: point stdin at an always-EOF reader so
+	// repl.REPLOptions returns promptly instead of blocking on a terminal.
+	devnull, err := os.Open(os.DevNull)
+	if err != nil {
+		t.Fatalf("open %s: %v", os.DevNull, err)
+	}
+	defer devnull.Close()
+	oldStdin := os.Stdin
+	os.Stdin = devnull
+	defer func() { os.Stdin = oldStdin }()
+
+	m := starlet.NewDefault()
+	m.SetScript("main.star", []byte(`x = len([i for i in range(100)])`), nil)
+
+	var wg sync.WaitGroup
+	wg.Add(3)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 30; i++ {
+			m.REPL() // stdin is EOF, so each session returns immediately
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 30; i++ {
+			_, _ = m.Run()
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 30; i++ {
+			m.Reset()
+		}
+	}()
+	wg.Wait()
+}
+
 func TestNewDefault(t *testing.T) {
 	m := starlet.NewDefault()
 	if m == nil {
