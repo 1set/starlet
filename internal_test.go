@@ -1,12 +1,36 @@
 package starlet
 
 import (
+	"context"
 	"reflect"
 	"strings"
 	"testing"
 
 	"go.starlark.net/starlark"
 )
+
+// TestWatchLoadThread covers the load-thread cancel watcher's two arms. A load
+// thread with no run context (e.g. a load during a REPL, which sets none) must
+// get a harmless no-op stop rather than watch a nil context; a thread carrying a
+// live, cancellable context gets a real watcher, and cancelling then stopping it
+// must be safe. The firing-on-timeout behaviour itself is covered end to end by
+// TestMachine_LoadInheritsMachineContext.
+func TestWatchLoadThread(t *testing.T) {
+	m := NewDefault()
+
+	// no context on the thread -> no-op stop.
+	stop := m.watchLoadThread(&starlark.Thread{})
+	stop() // must not panic
+
+	// a live context -> a real watcher; cancel then stop must be safe/idempotent.
+	ctx, cancel := context.WithCancel(context.Background())
+	th := &starlark.Thread{}
+	th.SetLocal("context", ctx)
+	stop = m.watchLoadThread(th)
+	cancel()
+	stop()
+	stop()
+}
 
 func TestCastStringDictToAnyMap(t *testing.T) {
 	// Create a starlark.StringDict

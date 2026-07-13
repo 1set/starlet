@@ -100,11 +100,11 @@ func (m *Machine) RunWithContext(ctx context.Context, extras StringAnyMap) (Stri
 	return m.runInternal(ctx, extras, true)
 }
 
-// watchContextCancel cancels the machine's thread when ctx fires, until the
-// returned stop function is called. stop is idempotent and waits for the
-// watcher goroutine to exit, so callers can both defer it (panic safety)
-// and invoke it right after execution finishes.
-func (m *Machine) watchContextCancel(ctx context.Context) (stop func()) {
+// watchThreadCancelCtx cancels thread when ctx fires, until the returned stop
+// function is called. stop is idempotent and waits for the watcher goroutine to
+// exit, so callers can both defer it (panic safety) and invoke it right after
+// execution finishes.
+func watchThreadCancelCtx(ctx context.Context, thread *starlark.Thread) (stop func()) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	done := make(chan struct{})
@@ -112,7 +112,7 @@ func (m *Machine) watchContextCancel(ctx context.Context) (stop func()) {
 		defer wg.Done()
 		select {
 		case <-ctx.Done():
-			m.thread.Cancel("context cancelled")
+			thread.Cancel("context cancelled")
 		case <-done:
 			// no action if execution has finished
 		}
@@ -124,6 +124,27 @@ func (m *Machine) watchContextCancel(ctx context.Context) (stop func()) {
 			wg.Wait()
 		})
 	}
+}
+
+// watchContextCancel cancels the machine's main thread when ctx fires, until
+// the returned stop function is called.
+func (m *Machine) watchContextCancel(ctx context.Context) (stop func()) {
+	return watchThreadCancelCtx(ctx, m.thread)
+}
+
+// watchLoadThread cancels a load thread when the run's context (carried as the
+// "context" thread-local by newLoadThread) fires, until the returned stop is
+// called. A module executed by load() runs on its own thread, so without this
+// the run's timeout/cancellation would interrupt only the main thread and a
+// long computation inside a loaded module would run past the deadline (bounded
+// only by its step budget, or unbounded when none is set). Returns a no-op stop
+// when the thread carries no cancellable context.
+func (m *Machine) watchLoadThread(thread *starlark.Thread) (stop func()) {
+	ctx, ok := thread.Local("context").(context.Context)
+	if !ok || ctx == nil {
+		return func() {}
+	}
+	return watchThreadCancelCtx(ctx, thread)
 }
 
 func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap, allowCache bool) (out StringAnyMap, err error) {
@@ -274,8 +295,9 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 			readFile: func(name string) ([]byte, error) {
 				return readScriptFile(name, m.scriptFS)
 			},
-			globals:   m.predeclared,
-			newThread: m.newLoadThread,
+			globals:     m.predeclared,
+			newThread:   m.newLoadThread,
+			watchCancel: m.watchLoadThread,
 		}
 		m.thread = &starlark.Thread{
 			Name:  "starlet",

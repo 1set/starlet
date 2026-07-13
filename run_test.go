@@ -81,6 +81,87 @@ func TestMachine_LoadInheritsMachineContext(t *testing.T) {
 		}
 	})
 
+	t.Run("a run timeout cancels a loaded module's long computation", func(t *testing.T) {
+		// A module executed by load() runs on its own thread. The run's timeout
+		// cancelled only the main thread; the load thread had the run context as
+		// a thread-local but no cancel watcher, so a long computation inside a
+		// loaded module ran to completion and defeated the timeout (bounded only
+		// by the step budget, or unbounded with none). The load thread is now
+		// cancelled too, so the run returns at the deadline instead of hanging.
+		sfs := fstest.MapFS{
+			// a long, non-allocating spin that runs THROUGH the interpreter (so
+			// cancellation is checked between iterations, unlike a single builtin
+			// like max()) while the always-false filter keeps the list empty, so
+			// it far outlasts the timeout without OOM when it is not cancelled.
+			"spin.star": &fstest.MapFile{Data: []byte(`x = len([i for i in range(2000000000) if i < 0])`)},
+		}
+		m := starlet.NewDefault()
+		m.SetScript("main.star", []byte(`load("spin.star", "x"); y = x`), sfs)
+		// No step budget: the timeout is the only guard, which is the case a
+		// host relying on RunWithTimeout (e.g. starbox RunTimeout) hits.
+
+		done := make(chan error, 1)
+		start := time.Now()
+		go func() {
+			_, err := m.RunWithTimeout(200*time.Millisecond, nil)
+			done <- err
+		}()
+		select {
+		case err := <-done:
+			if err == nil {
+				t.Fatal("expected a timeout error, got nil (the loaded loop was not interrupted)")
+			}
+			// generous margin: the timeout is 200ms; a runaway (uncancelled) loop
+			// of 2e9 interpreter iterations takes many seconds even on a fast
+			// machine, so this cleanly separates "cancelled" from "ran to the end"
+			// without flaking on a slow/contended CI runner under -race.
+			if elapsed := time.Since(start); elapsed > 4*time.Second {
+				t.Fatalf("run returned only after %v; the loaded module's loop was not cancelled by the timeout", elapsed)
+			}
+		case <-time.After(6 * time.Second):
+			t.Fatal("run did not return: the loaded module's loop ignored the timeout")
+		}
+	})
+
+	t.Run("a cancelled load does not poison the cache", func(t *testing.T) {
+		// Cancelling a load makes it return an error. That failure is transient
+		// (run-scoped), not a property of the module, so it must not stay cached:
+		// a second run reusing the same machine (without Reset) must re-execute
+		// the module and succeed instead of replaying the stale cancellation.
+		// Mirrors the step-budget panic eviction. The cancellation is driven
+		// deterministically here (a builtin cancels the run's context and its own
+		// load thread on the first run only) so the test does not depend on race
+		// timing between a wall-clock timeout and a loop.
+		firstRun := true
+		var cancelRun1 context.CancelFunc
+		cancelPoint := starlark.NewBuiltin("cancel_point", func(th *starlark.Thread, _ *starlark.Builtin, _ starlark.Tuple, _ []starlark.Tuple) (starlark.Value, error) {
+			if firstRun {
+				firstRun = false
+				cancelRun1()              // cancel run 1's context: the load is context-cancelled
+				th.Cancel("cancel_point") // stop this load thread now, deterministically
+			}
+			return starlark.None, nil
+		})
+		sfs := fstest.MapFS{
+			"work.star": &fstest.MapFile{Data: []byte("cancel_point()\nx = 1")},
+		}
+		m := starlet.NewDefault()
+		m.SetGlobals(starlet.StringAnyMap{"cancel_point": cancelPoint})
+		m.SetScript("main.star", []byte(`load("work.star", "x"); y = x`), sfs)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancelRun1 = cancel
+		if _, err := m.RunWithContext(ctx, nil); err == nil {
+			t.Fatal("first run: expected the cancelled load to fail, got nil")
+		}
+
+		// Second run on the SAME machine, no Reset, uncancelled: the load must
+		// re-execute (cancel_point is now a no-op) and succeed.
+		if _, err := m.Run(); err != nil {
+			t.Fatalf("second run: the cancelled load poisoned the cache: %v", err)
+		}
+	})
+
 	t.Run("a panic(nil) loader does not poison the cache", func(t *testing.T) {
 		// The cache cleanup keys on a completion sentinel, not recover() != nil,
 		// so it survives panic(nil) too (recover() is nil for it under go 1.19).
