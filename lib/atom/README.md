@@ -14,7 +14,7 @@ The constructors are the module's only top-level members; all mutation happens t
 
 ## Types
 
-The cells created above are custom Starlark values. Each is truthy when its value is non-zero / non-empty, hashable (usable as a dict key), and ordered (`==`, `!=`, `<`, `<=`, `>`, `>=` compare by current value against another cell of the same type). `str()` renders as `<atom_int:N>`, `<atom_float:N>`, `<atom_string:"S">`.
+The cells created above are custom Starlark values. Each is truthy when its value is non-zero / non-empty, and ordered (`==`, `!=`, `<`, `<=`, `>`, `>=` compare by current value against another cell of the same type). Cells are **not hashable** — a mutable cell cannot be a dict/set key (a live-value hash would go stale on mutation and strand the entry); key by `x.get()` when a snapshot key is what you mean. `str()` renders as `<atom_int:N>`, `<atom_float:N>`, `<atom_string:"S">`.
 
 ### `atom_int`
 
@@ -112,6 +112,7 @@ print(x.get())
 
 - **Type names.** Script-visible type names are `atom_int`, `atom_float`, `atom_string` (as returned by `type()`); the underlying Go types are `AtomicInt`, `AtomicFloat`, `AtomicString`.
 - **Truthiness.** A cell is falsy when its value is `0` / `0.0` / `""` and truthy otherwise (`bool(new_int(0))` is `False`).
-- **Comparison and hashing.** Cells are comparable only against the same cell type and are hashable by current value, so they work as dict keys. Mutating a cell after using it as a key leaves the existing entry under the old hash — treat keyed cells as you would any mutable key.
+- **Comparison and hashing.** Cells are comparable only against the same cell type. They are **not hashable**: using a cell as a dict/set key errors with `unhashable type: atom_int` (or `atom_float` / `atom_string`) — a live-value hash goes stale when the cell mutates and the keyed entry becomes unreachable. Key by `x.get()` instead.
+- **Freezing.** Once a cell is frozen (Starlark freezes values that cross a module boundary), every mutating method — `set`, `cas`, `add`, `sub`, `inc`, `dec` — errors with `cannot <method> frozen atom_int` (or `atom_float` / `atom_string`); `get`, truthiness, and comparisons still work.
 - **Range.** `atom_int` is a 64-bit signed integer; `atom_float` is IEEE-754 `float64`. `add`/`sub` wrap or lose precision exactly as the underlying 64-bit types do.
 - **Float widening.** `atom_float` accepts ints for `set`/`cas`/`add`/`sub` and stores them as floats; `cas` compares with float equality, so seed `old` with the exact stored float.

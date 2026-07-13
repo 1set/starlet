@@ -57,7 +57,7 @@ func newInt(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, k
 
 type AtomicInt struct {
 	val    *atomic.Int64
-	frozen bool
+	frozen atomic.Bool
 }
 
 func (a *AtomicInt) String() string {
@@ -69,16 +69,18 @@ func (a *AtomicInt) Type() string {
 }
 
 func (a *AtomicInt) Freeze() {
-	a.frozen = true
+	a.frozen.Store(true)
 }
 
 func (a *AtomicInt) Truth() starlark.Bool {
 	return a.val.Load() != 0
 }
 
+// Hash rejects using a cell as a dict/set key: a cell is mutable and its
+// hash tracked the live value, so mutating a keyed cell silently stranded
+// the entry under the stale hash (a in d became False after a.set).
 func (a *AtomicInt) Hash() (uint32, error) {
-	//return 0, fmt.Errorf("unhashable: %s", a.Type())
-	return hashInt64(a.val.Load()), nil
+	return 0, fmt.Errorf("unhashable type: %s", a.Type())
 }
 
 func (a *AtomicInt) Attr(name string) (starlark.Value, error) {
@@ -115,7 +117,7 @@ var (
 
 type AtomicFloat struct {
 	val    *atomic.Float64
-	frozen bool
+	frozen atomic.Bool
 }
 
 func newFloat(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -135,15 +137,16 @@ func (a *AtomicFloat) Type() string {
 }
 
 func (a *AtomicFloat) Freeze() {
-	a.frozen = true
+	a.frozen.Store(true)
 }
 
 func (a *AtomicFloat) Truth() starlark.Bool {
 	return a.val.Load() != 0
 }
 
+// Hash rejects keying; see AtomicInt.Hash.
 func (a *AtomicFloat) Hash() (uint32, error) {
-	return hashFloat64(a.val.Load()), nil
+	return 0, fmt.Errorf("unhashable type: %s", a.Type())
 }
 
 func (a *AtomicFloat) Attr(name string) (starlark.Value, error) {
@@ -180,7 +183,7 @@ var (
 
 type AtomicString struct {
 	val    *atomic.String
-	frozen bool
+	frozen atomic.Bool
 }
 
 func newString(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -200,15 +203,16 @@ func (a *AtomicString) Type() string {
 }
 
 func (a *AtomicString) Freeze() {
-	a.frozen = true
+	a.frozen.Store(true)
 }
 
 func (a *AtomicString) Truth() starlark.Bool {
 	return a.val.Load() != ""
 }
 
+// Hash rejects keying; see AtomicInt.Hash.
 func (a *AtomicString) Hash() (uint32, error) {
-	return hashString(a.val.Load()), nil
+	return 0, fmt.Errorf("unhashable type: %s", a.Type())
 }
 
 func (a *AtomicString) Attr(name string) (starlark.Value, error) {
