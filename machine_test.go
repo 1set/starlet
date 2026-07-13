@@ -5,11 +5,74 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/1set/starlet"
 	"go.starlark.net/starlark"
 )
+
+// TestMachine_StringIsRaceFree: String() read m.thread/runTimes/scriptName
+// with no lock while Run and Reset wrote them, so printing a Machine from one
+// goroutine while another ran or reset it was a data race — and the separate
+// nil-check-then-deref of m.thread let a concurrent Reset null it in between
+// and panic the host. Both String and Reset now take the mutex. This test only
+// bites under -race, which the repo's bar runs.
+func TestMachine_StringIsRaceFree(t *testing.T) {
+	m := starlet.NewDefault()
+	m.SetScript("main.star", []byte(`x = len([i for i in range(1000)])`), nil)
+
+	var wg sync.WaitGroup
+	wg.Add(3)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 30; i++ {
+			_, _ = m.Run()
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 30; i++ {
+			m.Reset()
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 200; i++ {
+			_ = m.String()
+		}
+	}()
+	wg.Wait()
+}
+
+// TestMachine_StringInCallbackDoesNotDeadlock: Run holds the write lock for the
+// whole execution, so String() reaching for the lock from inside a callback of
+// the same run (e.g. logging the machine in its print func) would self-deadlock
+// on the non-reentrant mutex. String() uses TryRLock, so it returns the running
+// snapshot instead of blocking.
+func TestMachine_StringInCallbackDoesNotDeadlock(t *testing.T) {
+	m := starlet.NewDefault()
+	var got string
+	m.SetPrintFunc(func(_ *starlark.Thread, msg string) {
+		got = m.String() // reentrant: Run holds the lock here
+	})
+	m.SetScript("main.star", []byte(`print("x")`), nil)
+
+	done := make(chan error, 1)
+	go func() { _, err := m.Run(); done <- err }()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("run: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Run deadlocked: String() blocked on the write lock held by Run")
+	}
+	if got != "🌠Machine{running}" {
+		t.Fatalf("expected the running snapshot from the reentrant String(), got %q", got)
+	}
+}
 
 func TestNewDefault(t *testing.T) {
 	m := starlet.NewDefault()

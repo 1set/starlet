@@ -57,10 +57,27 @@ type Machine struct {
 	predeclared starlark.StringDict
 }
 
+// String renders a snapshot of the machine's state. Every field it reads is
+// written by Run/Reset under the write lock, so an unlocked read races with
+// them (and the thread was nil-checked and then dereferenced separately, so a
+// concurrent Reset could null it between and panic the host).
+//
+// It uses TryRLock rather than RLock so it never blocks: a plain RLock would
+// deadlock when String is reached while the write lock is held — most sharply
+// when a host prints the machine from within its own print/callback while Run
+// holds the lock (fmt logging the machine is an easy way to hit this). When the
+// lock is unavailable another goroutine (or this one, reentrantly) holds the
+// write lock — a run, a reset, or any setter — so it reports the machine as
+// running instead of reading the fields under mutation.
 func (m *Machine) String() string {
+	if !m.mu.TryRLock() {
+		return "🌠Machine{running}"
+	}
+	defer m.mu.RUnlock()
+
 	steps := uint64(0)
-	if m.thread != nil {
-		steps = m.thread.Steps
+	if t := m.thread; t != nil {
+		steps = t.Steps
 	}
 	return fmt.Sprintf("🌠Machine{run:%d,step:%d,script:%q,len:%d,fs:%v}",
 		m.runTimes, steps, m.scriptName, len(m.scriptContent), m.scriptFS)
