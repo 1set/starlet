@@ -162,29 +162,31 @@ func TestMachine_LoadInheritsMachineContext(t *testing.T) {
 		}
 	})
 
-	t.Run("a panic(nil) loader does not poison the cache", func(t *testing.T) {
-		// The cache cleanup keys on a completion sentinel, not recover() != nil,
-		// so it survives panic(nil) too (recover() is nil for it under go 1.19).
-		// A second Run must not deadlock on the abandoned entry.
-		mods := starlet.ModuleLoaderMap{
-			"boom": func() (starlark.StringDict, error) { panic(nil) },
-		}
-		m := starlet.NewWithLoaders(nil, nil, mods)
-		m.SetScript("main.star", []byte(`load("boom", "x")`), nil)
+	for _, panicValue := range []interface{}{nil, "loader failure", errors.New("loader failure")} {
+		t.Run(fmt.Sprintf("a %T panic loader does not poison the cache", panicValue), func(t *testing.T) {
+			// The cache cleanup keys on a completion sentinel, not recover() != nil,
+			// so it survives panic(nil) too (recover() is nil for it under go 1.19).
+			// A second Run must not deadlock on the abandoned entry.
+			mods := starlet.ModuleLoaderMap{
+				"boom": func() (starlark.StringDict, error) { panic(panicValue) },
+			}
+			m := starlet.NewWithLoaders(nil, nil, mods)
+			m.SetScript("main.star", []byte(`load("boom", "x")`), nil)
 
-		runOnce := func() {
-			defer func() { _ = recover() }() // the panic propagates back out; swallow it
-			_, _ = m.Run()
-		}
-		runOnce()
-		done := make(chan struct{})
-		go func() { runOnce(); close(done) }()
-		select {
-		case <-done:
-		case <-time.After(5 * time.Second):
-			t.Fatal("second run deadlocked after a panic(nil) loader")
-		}
-	})
+			runOnce := func() {
+				defer func() { _ = recover() }() // the panic propagates back out; swallow it
+				_, _ = m.Run()
+			}
+			runOnce()
+			done := make(chan struct{})
+			go func() { runOnce(); close(done) }()
+			select {
+			case <-done:
+			case <-time.After(5 * time.Second):
+				t.Fatal("second run deadlocked after a panic loader")
+			}
+		})
+	}
 }
 
 func Test_DefaultMachine_Run_NoCode(t *testing.T) {
