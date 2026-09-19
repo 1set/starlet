@@ -150,7 +150,7 @@ We appreciate the work done by the creators and contributors of these projects. 
 
 ### Security baseline and Go compatibility
 
-This patch requires Go 1.25.14.0 or newer for the pinned Starlark parser security
+This patch requires Go 1.25.14 or newer for the pinned Starlark parser security
 fix (5395d018f003). Build production applications with a supported patched Go
 release (validated with Go 1.27.1). Excessively nested source now returns a
 parse error through script/file execution, load(), and source module loaders.
