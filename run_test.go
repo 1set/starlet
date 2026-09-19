@@ -2419,3 +2419,39 @@ type permErrFS struct{}
 func (permErrFS) Open(name string) (fs.File, error) {
 	return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrPermission}
 }
+
+// Parser security covers execution and host-authored loader compilation, even
+// when no execution-step budget has been configured.
+func TestParserDepthAcrossSourceEntrypoints(t *testing.T) {
+	for _, depth := range []int{8, 1100} {
+		source := "value = " + strings.Repeat("(", depth) + "1" + strings.Repeat(")", depth)
+		fsys := fstest.MapFS{"nested.star": &fstest.MapFile{Data: []byte(source)}}
+		entries := map[string]func() error{
+			"RunScript": func() error { _, _, err := starlet.RunScript([]byte(source), nil); return err },
+			"RunFile":   func() error { _, _, err := starlet.RunFile("nested.star", fsys, nil); return err },
+			"load": func() error {
+				m := starlet.NewDefault()
+				m.SetScript("main.star", []byte(`load("nested.star", "value")`), fsys)
+				_, err := m.Run()
+				return err
+			},
+			"String loader": func() error { _, err := starlet.MakeModuleLoaderFromString("nested", source, nil)(); return err },
+			"Reader loader": func() error {
+				_, err := starlet.MakeModuleLoaderFromReader("nested", strings.NewReader(source), nil)()
+				return err
+			},
+			"File loader": func() error { _, err := starlet.MakeModuleLoaderFromFile("nested.star", fsys, nil)(); return err },
+		}
+		for name, run := range entries {
+			t.Run(fmt.Sprintf("%s/depth=%d", name, depth), func(t *testing.T) {
+				err := run()
+				if depth == 8 && err != nil {
+					t.Fatal(err)
+				}
+				if depth > 1000 && (err == nil || !strings.Contains(err.Error(), "excessive nesting")) {
+					t.Fatalf("expected bounded parse error, got %v", err)
+				}
+			})
+		}
+	}
+}

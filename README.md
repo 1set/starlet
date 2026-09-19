@@ -147,3 +147,13 @@ Contributions to *Starlet* are all welcomed. If you encounter any issues or have
 2. [Starlib](https://github.com/qri-io/starlib): A collection of third-party libraries for Starlark.
 
 We appreciate the work done by the creators and contributors of these projects. Their efforts have paved the way for the development of *Starlet*. Special thanks to the authors and contributors of these projects! 🎉
+
+### Security baseline and Go compatibility
+
+This patch requires Go 1.25.0 or newer for the pinned Starlark parser security
+fix (5395d018f003). Build production applications with a supported patched Go
+release (validated with Go 1.27.1). Excessively nested source now returns a
+parse error through script/file execution, load(), and source module loaders.
+The interpreter pin deliberately includes the minimal security change; later
+language features are outside this upgrade. Earlier Go 1.19-compatible tags
+lack this parser protection. Review the minimum Go version before upgrading.
