@@ -1764,48 +1764,80 @@ func Test_Machine_Run_With_Context(t *testing.T) {
 	// first run with no context
 	m.SetScript("timer.star", []byte(`
 x = 1
-sleep(1)
+sleep(0.001)
 y = 2
 `), nil)
-	ts := time.Now()
 	out, err := m.RunWithContext(nil, nil)
-	expectSameDuration(t, time.Since(ts), 1*time.Second)
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
 		return
 	}
-	t.Logf("got result after run #1: %v", out)
+	if out["y"] != int64(2) {
+		t.Fatalf("nil-context run did not finish: %v", out)
+	}
 
-	// second run with timeout
+	// Cancellation must interrupt a long-running builtin, independent of
+	// platform scheduling jitter. The outer deadline detects a lost context.
 	m.SetScript("timer.star", []byte(`
 z = y << 5
-sleep(1)
+blocking_sleep()
 t = 4
 `), nil)
-	ts = time.Now()
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	out, err = m.RunWithContext(ctx, nil)
-	expectSameDuration(t, time.Since(ts), 500*time.Millisecond)
-	expectErr(t, err, "starlark: exec: context deadline exceeded")
-	t.Logf("got result after run #2: %v", out)
+	type runResult struct {
+		out starlet.StringAnyMap
+		err error
+	}
+	idiomatic, loadErr := starlet.GetBuiltinModule("go_idiomatic")()
+	if loadErr != nil {
+		t.Fatal(loadErr)
+	}
+	sleepBuiltin := idiomatic["sleep"].(*starlark.Builtin)
+	entered := make(chan struct{})
+	done := make(chan runResult, 1)
+	go func() {
+		values, runErr := m.RunWithContext(ctx, starlet.StringAnyMap{
+			"blocking_sleep": starlark.NewBuiltin("blocking_sleep", func(thread *starlark.Thread, _ *starlark.Builtin, _ starlark.Tuple, _ []starlark.Tuple) (starlark.Value, error) {
+				close(entered)
+				return sleepBuiltin.CallInternal(thread, starlark.Tuple{starlark.MakeInt(60)}, nil)
+			}),
+		})
+		done <- runResult{out: values, err: runErr}
+	}()
+	select {
+	case <-entered:
+		cancel()
+	case <-time.After(5 * time.Second):
+		t.Fatal("script did not start")
+	}
+	select {
+	case result := <-done:
+		out, err = result.out, result.err
+	case <-time.After(5 * time.Second):
+		t.Fatal("RunWithContext did not interrupt sleep after cancellation")
+	}
+	expectErr(t, err, "starlark: exec: context canceled")
+	if _, ok := out["t"]; ok {
+		t.Fatalf("cancelled run executed the statement after sleep: %v", out)
+	}
 
 	// third run without timeout
 	m.SetScript("timer.star", []byte(`
 z = y << 5
-sleep(0.5)
+sleep(0.001)
 t = 4
 `), nil)
-	ts = time.Now()
-	ctx, cancel2 := context.WithTimeout(context.Background(), 800*time.Millisecond) // TODO! occasionally, this test fails with 500ms timeout
+	ctx, cancel2 := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel2()
 	out, err = m.RunWithContext(ctx, nil)
-	expectSameDuration(t, time.Since(ts), 500*time.Millisecond)
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
 		return
 	}
-	t.Logf("got result after run #3: %v", out)
+	if out["t"] != int64(4) {
+		t.Fatalf("live-context run did not finish: %v", out)
+	}
 
 	// fourth run with old values
 	m.SetScript("timer.star", []byte(`

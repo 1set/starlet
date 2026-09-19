@@ -658,7 +658,7 @@ func TestConvertStruct(t *testing.T) {
 		t.Errorf("MarshalStarlarkJSON() error = %v", err)
 		return
 	}
-	t.Logf(j1)
+	t.Log(j1)
 }
 
 func TestConvertStructPanic(t *testing.T) {
@@ -685,7 +685,7 @@ func TestConvertJSONStruct(t *testing.T) {
 		t.Errorf("MarshalStarlarkJSON() error = %v", err)
 		return
 	}
-	t.Logf(j2)
+	t.Log(j2)
 }
 
 func TestConvertJSONStructPanic(t *testing.T) {
