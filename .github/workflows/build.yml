@@ -17,7 +17,7 @@ jobs:
     name: Test with ${{ matrix.go-version }} on ${{ matrix.vm-os }}
     runs-on: ${{ matrix.vm-os }}
     env:
-      CI_REPORT: ${{ matrix.vm-os == 'ubuntu-22.04' && matrix.go-version == '1.19.x' }}
+      CI_REPORT: ${{ matrix.vm-os == 'ubuntu-22.04' && matrix.go-version == '1.25.x' }}
     strategy:
       max-parallel: 10
       fail-fast: false
@@ -28,7 +28,7 @@ jobs:
           windows-2022
         ]
         go-version: [
-          1.19.x,
+          1.25.x,
           1.27.x,
         ]
     permissions:
@@ -102,7 +102,7 @@ jobs:
           windows-2022
         ]
         go-version: [
-          1.19.x,
+          1.25.x,
           1.27.x,
         ]
         goos: [
@@ -112,11 +112,6 @@ jobs:
         goarch: [
           wasm
         ]
-        exclude:
-          # WASI support starts after Go 1.19; keep the compatibility floor
-          # on browser js/wasm and verify WASI on the current toolchain.
-          - go-version: 1.19.x
-            goos: wasip1
     permissions:
       contents: read
     steps:
