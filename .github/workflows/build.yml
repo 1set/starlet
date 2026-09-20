@@ -17,7 +17,7 @@ jobs:
     name: Test with ${{ matrix.go-version }} on ${{ matrix.vm-os }}
     runs-on: ${{ matrix.vm-os }}
     env:
-      CI_REPORT: ${{ matrix.vm-os == 'ubuntu-22.04' && matrix.go-version == '1.25.x' }}
+      CI_REPORT: ${{ matrix.vm-os == 'ubuntu-22.04' && matrix.go-version == '1.19.x' }}
     strategy:
       max-parallel: 10
       fail-fast: false
@@ -28,7 +28,7 @@ jobs:
           windows-2022
         ]
         go-version: [
-          1.25.x,
+          1.19.x,
           1.27.x,
         ]
     permissions:
@@ -45,6 +45,8 @@ jobs:
         run: |
           go version
           go mod download
+      - name: Verify the pinned interpreter
+        run: test "$(go list -m -f '{{.Version}}' go.starlark.net)" = "v0.0.0-20260324133313-ffb3f39dd27a"
       - name: Test
         run: |
           make ci
@@ -102,7 +104,7 @@ jobs:
           windows-2022
         ]
         go-version: [
-          1.25.x,
+          1.19.x,
           1.27.x,
         ]
         goos: [
@@ -112,6 +114,14 @@ jobs:
         goarch: [
           wasm
         ]
+        exclude:
+          - go-version: 1.19.x
+            goos: wasip1
+        # WASI first shipped with Go 1.21; the library still supports Go 1.19.
+        include:
+          - {vm-os: ubuntu-22.04, go-version: 1.21.x, goos: wasip1, goarch: wasm}
+          - {vm-os: macos-14, go-version: 1.21.x, goos: wasip1, goarch: wasm}
+          - {vm-os: windows-2022, go-version: 1.21.x, goos: wasip1, goarch: wasm}
     permissions:
       contents: read
     steps:

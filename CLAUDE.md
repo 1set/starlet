@@ -4,7 +4,7 @@ Guidance for Claude Code (claude.ai/code) working in this repository.
 
 ## What this is
 
-`starlet` is the L2 layer of the Star* stack: stdlib-style [Starlark](https://github.com/google/starlark-go) modules (`lib/*`) plus the `Machine` runner that wires them into an embeddable scripting environment. It sits on `starlight` (L1, the Go⇄Starlark bridge — `dataconv` wraps it) and under `starbox`/`starpkg`/`starcli`. Pure library plus a nested `cmd/starlet` CLI module. Module floor is **Go 1.25.14** after the parser security update.
+`starlet` is the L2 layer of the Star* stack: stdlib-style [Starlark](https://github.com/google/starlark-go) modules (`lib/*`) plus the `Machine` runner that wires them into an embeddable scripting environment. It sits on `starlight` (L1, the Go⇄Starlark bridge — `dataconv` wraps it) and under `starbox`/`starpkg`/`starcli`. Pure library plus a nested `cmd/starlet` CLI module. Module floor is **Go 1.19** with the fixed interpreter baseline `ffb3f39dd27a`; see SECURITY.md for the known parser limitation.
 
 ## Commands
 
@@ -15,12 +15,12 @@ go test ./lib/json/ -run TestJSONRepair    # a single test
 make test_integration                      # real-network smoke (//go:build integration); default suite is hermetic
 go vet ./... && gofmt -l .                 # must be clean before commit
 
-# Verify on the Go floor — local toolchains are newer than go 1.25.14 and differ
+# Verify on the Go floor — local toolchains are newer than go 1.19 and differ
 # in stdlib behavior and binary size; trust only the container:
-docker run --rm --platform linux/amd64 -v "$PWD":/src -v "$HOME/go/pkg/mod":/go/pkg/mod -w /src golang:1.25.14 go test -race -count=1 ./...
+docker run --rm --platform linux/amd64 -v "$PWD":/src -v "$HOME/go/pkg/mod":/go/pkg/mod -w /src golang:1.19 go test -race -count=1 ./...
 ```
 
-CI (`.github/workflows/build.yml`): Go `1.25.x`/`1.27.x` × ubuntu-22.04 / macos-14 / windows-2022. The coverage gate is the `codecov/project` + `codecov/patch` commit statuses (not the upload step). `cmd/starlet` has its own go.mod and builds in a separate **non-gating** job. Merge only when `gh pr checks <n> --watch` exits 0, and read the bot comments (Codacy/Codecov) — they have caught real issues here.
+CI (`.github/workflows/build.yml`): Go `1.19.x`/`1.27.x` × ubuntu-22.04 / macos-14 / windows-2022. The coverage gate is the `codecov/project` + `codecov/patch` commit statuses (not the upload step). `cmd/starlet` has its own go.mod and builds in a separate **non-gating** job. Merge only when `gh pr checks <n> --watch` exits 0, and read the bot comments (Codacy/Codecov) — they have caught real issues here.
 
 ## Architecture
 

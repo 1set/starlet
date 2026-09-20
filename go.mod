@@ -1,6 +1,6 @@
 module github.com/1set/starlet
 
-go 1.25.14
+go 1.19
 
 require (
 	github.com/1set/starlight v0.2.1
@@ -9,13 +9,13 @@ require (
 	github.com/montanaflynn/stats v0.7.1
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
 	github.com/spyzhov/ajson v0.9.6
-	go.starlark.net v0.0.0-20260708150628-5395d018f003
+	go.starlark.net v0.0.0-20260324133313-ffb3f39dd27a
 	go.uber.org/atomic v1.11.0
 	go.uber.org/zap v1.24.0
 )
 
 require (
-	github.com/chzyer/readline v1.5.1 // indirect
+	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e // indirect
 	go.uber.org/multierr v1.9.0 // indirect
-	golang.org/x/sys v0.42.0 // indirect
+	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
 )
