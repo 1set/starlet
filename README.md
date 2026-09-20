@@ -150,10 +150,11 @@ We appreciate the work done by the creators and contributors of these projects. 
 
 ### Security baseline and Go compatibility
 
-This patch requires Go 1.25.14 or newer for the pinned Starlark parser security
-fix (5395d018f003). Build production applications with a supported patched Go
-release (validated with Go 1.27.1). Excessively nested source now returns a
-parse error through script/file execution, load(), and source module loaders.
-The interpreter pin deliberately includes the minimal security change; later
-language features are outside this upgrade. Earlier Go 1.19-compatible tags
-lack this parser protection. Review the minimum Go version before upgrading.
+Go **1.19 or newer** is supported. The interpreter remains pinned to
+`go.starlark.net v0.0.0-20260324133313-ffb3f39dd27a`. The compatibility
+floor is separate from the toolchain used to build production applications;
+use a currently supported Go release with security fixes.
+
+This interpreter baseline does **not** include the upstream parser recursion
+limit. Only parse host-selected, reviewed source and modules in the host
+process. See [SECURITY.md](SECURITY.md) for the known risk and deployment boundary.

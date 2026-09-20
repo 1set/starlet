@@ -2422,11 +2422,14 @@ func (permErrFS) Open(name string) (fs.File, error) {
 	return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrPermission}
 }
 
-// Parser security covers execution and host-authored loader compilation, even
-// when no execution-step budget has been configured.
-func TestParserDepthAcrossSourceEntrypoints(t *testing.T) {
-	for _, depth := range []int{8, 1100} {
-		source := "value = " + strings.Repeat("(", depth) + "1" + strings.Repeat(")", depth)
+// Source parsing must report malformed input through execution and each loader.
+// Parser resource isolation is a host responsibility; see SECURITY.md.
+func TestParsingAcrossSourceEntrypoints(t *testing.T) {
+	for _, malformed := range []bool{false, true} {
+		source := "value = " + strings.Repeat("(", 8) + "1" + strings.Repeat(")", 8)
+		if malformed {
+			source += "\nbroken = (\n"
+		}
 		fsys := fstest.MapFS{"nested.star": &fstest.MapFile{Data: []byte(source)}}
 		entries := map[string]func() error{
 			"RunScript": func() error { _, _, err := starlet.RunScript([]byte(source), nil); return err },
@@ -2445,13 +2448,13 @@ func TestParserDepthAcrossSourceEntrypoints(t *testing.T) {
 			"File loader": func() error { _, err := starlet.MakeModuleLoaderFromFile("nested.star", fsys, nil)(); return err },
 		}
 		for name, run := range entries {
-			t.Run(fmt.Sprintf("%s/depth=%d", name, depth), func(t *testing.T) {
+			t.Run(fmt.Sprintf("%s/malformed=%t", name, malformed), func(t *testing.T) {
 				err := run()
-				if depth == 8 && err != nil {
+				if !malformed && err != nil {
 					t.Fatal(err)
 				}
-				if depth > 1000 && (err == nil || !strings.Contains(err.Error(), "excessive nesting")) {
-					t.Fatalf("expected bounded parse error, got %v", err)
+				if malformed && err == nil {
+					t.Fatal("expected parse error")
 				}
 			})
 		}
