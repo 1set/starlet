@@ -109,6 +109,30 @@ Go: Hello, Starlet!
 Modules: [atom base64 csv file go_idiomatic hashlib http json log math net path random re regex runtime serial stats string struct time]
 ```
 
+### Print byte budget
+
+Hosts can limit messages delivered through the Machine's print handler:
+
+```go
+mac.SetMaxPrintBytes(64 * 1024) // fresh allowance for every Run or Call
+```
+
+The default is zero (unlimited). A positive limit counts UTF-8 message bytes
+across `print()` and other code using the same handler, including `pprint()`
+and source modules loaded by the Machine. Loaded modules share the caller's
+allowance. A message that would exceed the allowance is withheld in full;
+`Run`/`Call` stop with a `PrintLimitExceededError`, detectable with `errors.As`.
+`Reset` preserves the configured limit. A REPL session shares one allowance
+and ends with an error if it is exceeded.
+
+The count excludes newlines and formatting added by a host handler. This
+budget does not limit loggers, direct stderr writes such as `eprint()`,
+returned values, trusted source-loader helpers using their own threads, or
+allocations made while constructing a message. Those channels need separate
+host limits; this setting is not a process memory limit.
+
+### Interactive REPL
+
 Use CLI to interact with the read-eval-print loop (REPL):
 
 ```python

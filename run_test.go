@@ -18,6 +18,187 @@ import (
 	"go.starlark.net/starlark"
 )
 
+// Print budget sections: message byte accounting, execution reuse, loaded
+// module aggregation/retry, default stderr, and terminal REPL recovery.
+func TestMachine_PrintByteBudget(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		limit uint64
+		code  string
+		want  string
+		fail  bool
+	}{
+		{"default unlimited", 0, `print("x" * 1048576)`, strings.Repeat("x", 1048576), false},
+		{"exact UTF8 boundary", 5, `print("界"); print("é")`, "界é", false},
+		{"UTF8 is bytes", 4, `print("界"); print("é")`, "界", true},
+		{"cumulative messages", 4, `print("ab"); print("cd"); print("e")`, "abcd", true},
+		{"oversized message withheld", 8, `print("x" * 1048576)`, "", true},
+		{"empty message costs zero", 1, `print(""); print("x"); print("")`, "x", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := starlet.NewDefault()
+			var got strings.Builder
+			m.SetPrintFunc(func(_ *starlark.Thread, msg string) { got.WriteString(msg) })
+			m.SetMaxPrintBytes(tc.limit)
+			out, err := m.RunScript([]byte(tc.code), nil)
+			var limitErr starlet.PrintLimitExceededError
+			if tc.fail {
+				if !errors.As(err, &limitErr) || limitErr.Limit != tc.limit {
+					t.Fatalf("want typed print limit %d, got %v", tc.limit, err)
+				}
+				if !strings.Contains(err.Error(), "print byte limit") {
+					t.Fatalf("missing print-limit diagnostic: %v", err)
+				}
+				if out != nil {
+					t.Fatal("failed execution returned output")
+				}
+			} else if err != nil {
+				t.Fatal(err)
+			}
+			if got.String() != tc.want {
+				t.Fatalf("delivered %d bytes, want %d", got.Len(), len(tc.want))
+			}
+		})
+	}
+
+	t.Run("execution stops after rejected print", func(t *testing.T) {
+		marked := false
+		m := starlet.NewWithGlobals(starlet.StringAnyMap{"mark": func() { marked = true }})
+		m.SetMaxPrintBytes(1)
+		m.SetPrintFunc(starlet.NoopPrintFunc)
+		_, err := m.RunScript([]byte(`print("too long"); mark()`), nil)
+		var limitErr starlet.PrintLimitExceededError
+		if !errors.As(err, &limitErr) || marked {
+			t.Fatalf("execution continued: marked=%v err=%v", marked, err)
+		}
+	})
+
+	t.Run("pretty printing shares the handler allowance", func(t *testing.T) {
+		m := starlet.NewWithNames(nil, []string{"go_idiomatic"}, nil)
+		m.SetPrintFunc(starlet.NoopPrintFunc)
+		m.SetMaxPrintBytes(2)
+		_, err := m.RunScript([]byte(`pprint([1, 2, 3])`), nil)
+		var limitErr starlet.PrintLimitExceededError
+		if !errors.As(err, &limitErr) {
+			t.Fatalf("pprint escaped the handler allowance: %v", err)
+		}
+	})
+
+	t.Run("budget resets and configuration survives Reset", func(t *testing.T) {
+		m := starlet.NewDefault()
+		m.SetPrintFunc(starlet.NoopPrintFunc)
+		m.SetMaxPrintBytes(2)
+		for i := 0; i < 2; i++ {
+			if _, err := m.RunScript([]byte(`print("ok")`), nil); err != nil {
+				t.Fatalf("run %d: %v", i, err)
+			}
+		}
+		m.Reset()
+		var limitErr starlet.PrintLimitExceededError
+		if _, err := m.RunScript([]byte(`print("bad")`), nil); !errors.As(err, &limitErr) {
+			t.Fatalf("Reset lost configured budget: %v", err)
+		}
+		m.SetMaxPrintBytes(0)
+		if _, err := m.RunScript([]byte(`print("now unlimited")`), nil); err != nil {
+			t.Fatalf("clearing limit on reused thread: %v", err)
+		}
+	})
+}
+
+func TestMachine_LoadPrintByteBudget(t *testing.T) {
+	t.Run("all loaded modules share the run allowance", func(t *testing.T) {
+		m := starlet.NewDefault()
+		m.SetPrintFunc(starlet.NoopPrintFunc)
+		m.SetMaxPrintBytes(5)
+		m.SetScript("main.star", []byte("load(\"a.star\", \"a\")\nload(\"b.star\", \"b\")"), fstest.MapFS{
+			"a.star": &fstest.MapFile{Data: []byte("print(\"abc\")\na = 1")},
+			"b.star": &fstest.MapFile{Data: []byte("print(\"def\")\nb = 2")},
+		})
+		var limitErr starlet.PrintLimitExceededError
+		if _, err := m.Run(); !errors.As(err, &limitErr) {
+			t.Fatalf("loaded module escaped shared allowance: %v", err)
+		}
+	})
+
+	t.Run("loaded and main source share the run allowance", func(t *testing.T) {
+		m := starlet.NewDefault()
+		m.SetPrintFunc(starlet.NoopPrintFunc)
+		m.SetMaxPrintBytes(4)
+		m.SetScript("main.star", []byte("load(\"a.star\", \"a\")\nprint(\"de\")"), fstest.MapFS{
+			"a.star": &fstest.MapFile{Data: []byte("print(\"abc\")\na = 1")},
+		})
+		var limitErr starlet.PrintLimitExceededError
+		if _, err := m.Run(); !errors.As(err, &limitErr) {
+			t.Fatalf("main source escaped module allowance: %v", err)
+		}
+	})
+
+	t.Run("a rejected loaded module can be retried", func(t *testing.T) {
+		m := starlet.NewDefault()
+		m.SetPrintFunc(starlet.NoopPrintFunc)
+		m.SetMaxPrintBytes(2)
+		m.SetScript("main.star", []byte(`load("a.star", "a")`), fstest.MapFS{
+			"a.star": &fstest.MapFile{Data: []byte("print(\"abc\")\na = 1")},
+		})
+		var limitErr starlet.PrintLimitExceededError
+		if _, err := m.Run(); !errors.As(err, &limitErr) {
+			t.Fatalf("first run: %v", err)
+		}
+		m.SetMaxPrintBytes(3)
+		if _, err := m.Run(); err != nil {
+			t.Fatalf("retry replayed failed load: %v", err)
+		}
+	})
+}
+
+func TestMachine_PrintByteBudgetDefaultStderr(t *testing.T) {
+	f, err := os.CreateTemp(t.TempDir(), "stderr-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	previous := os.Stderr
+	os.Stderr = f
+	defer func() { os.Stderr = previous; _ = f.Close() }()
+	m := starlet.NewDefault()
+	m.SetMaxPrintBytes(2)
+	_, runErr := m.RunScript([]byte(`print("ok"); print("withheld")`), nil)
+	os.Stderr = previous
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	var limitErr starlet.PrintLimitExceededError
+	if !errors.As(runErr, &limitErr) {
+		t.Fatalf("want typed limit, got %v", runErr)
+	}
+	got, err := os.ReadFile(f.Name())
+	if err != nil || string(got) != "ok\n" {
+		t.Fatalf("default stderr: err=%v output=%q", err, got)
+	}
+}
+
+func TestMachine_PrintByteBudgetREPL(t *testing.T) {
+	if os.Getenv("STARLET_PRINT_REPL_HELPER") == "1" {
+		m := starlet.NewDefault()
+		m.SetMaxPrintBytes(2)
+		calls := 0
+		m.SetPrintFunc(func(_ *starlark.Thread, _ string) { calls++ })
+		m.REPL()
+		if calls != 2 {
+			t.Fatalf("REPL delivered %d messages, want two", calls)
+		}
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestMachine_PrintByteBudgetREPL$")
+	cmd.Env = append(os.Environ(), "STARLET_PRINT_REPL_HELPER=1")
+	cmd.Stdin = strings.NewReader("print(\"a\")\nprint(\"b\")\nprint(\"c\")\n")
+	got, err := cmd.CombinedOutput()
+	if err != nil || !strings.Contains(string(got), "print byte limit") || strings.Contains(string(got), "panic:") {
+		t.Fatalf("REPL failed to report budget safely: err=%v output=%q", err, got)
+	}
+}
+
 // TestMachine_LoadInheritsMachineContext: a module executed by load() ran in a
 // bare thread that inherited none of the Machine's execution context, so the
 // step budget did not apply (a top-level loop in a loaded module bypassed the

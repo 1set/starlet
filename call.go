@@ -38,9 +38,12 @@ func (m *Machine) callInternal(ctx context.Context, name string, args []interfac
 
 	defer func() {
 		if r := recover(); r != nil {
-			if me, ok := r.(MaxStepsExceededError); ok {
-				err = errorStarlarkError("call", me)
-			} else {
+			switch e := r.(type) {
+			case MaxStepsExceededError:
+				err = errorStarlarkError("call", e)
+			case PrintLimitExceededError:
+				err = errorStarlarkError("call", e)
+			default:
 				err = errorStarlarkPanic("call", r)
 			}
 		}
@@ -77,6 +80,7 @@ func (m *Machine) callInternal(ctx context.Context, name string, args []interfac
 	// reset the thread, arm the step budget, and wire the context
 	m.thread.Uncancel()
 	m.applyStepBudget()
+	m.applyPrintBudget()
 	if ctx == nil {
 		// plain Call: no cancellation channel, as before
 		m.thread.SetLocal("context", context.TODO())

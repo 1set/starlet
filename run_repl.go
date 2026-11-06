@@ -20,6 +20,15 @@ func (m *Machine) REPL() {
 	// races on m.thread.
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	defer func() {
+		if r := recover(); r != nil {
+			if limit, ok := r.(PrintLimitExceededError); ok {
+				repl.PrintError(errorStarlarkError("repl", limit))
+				return
+			}
+			panic(r)
+		}
+	}()
 
 	if err := m.prepareThread(nil); err != nil {
 		repl.PrintError(err)

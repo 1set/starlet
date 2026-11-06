@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/fs"
 	"math"
+	"os"
 	"sync"
 	"time"
 
@@ -150,9 +151,12 @@ func (m *Machine) watchLoadThread(thread *starlark.Thread) (stop func()) {
 func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap, allowCache bool) (out StringAnyMap, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			if me, ok := r.(MaxStepsExceededError); ok {
-				err = errorStarlarkError("exec", me)
-			} else {
+			switch e := r.(type) {
+			case MaxStepsExceededError:
+				err = errorStarlarkError("exec", e)
+			case PrintLimitExceededError:
+				err = errorStarlarkError("exec", e)
+			default:
 				err = errorStarlarkPanic("exec", r)
 			}
 		}
@@ -300,8 +304,7 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 			watchCancel: m.watchLoadThread,
 		}
 		m.thread = &starlark.Thread{
-			Name:  "starlet",
-			Print: m.printFunc,
+			Name: "starlet",
 			Load: func(thread *starlark.Thread, module string) (starlark.StringDict, error) {
 				return m.loadCache.Load(module)
 			},
@@ -319,13 +322,47 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 		m.loadCache.globals = m.predeclared
 
 		// reset for each run
-		m.thread.Print = m.printFunc
 		m.thread.Uncancel()
 	}
 
 	// arm the per-run step budget
 	m.applyStepBudget()
+	m.applyPrintBudget()
 	return nil
+}
+
+// applyPrintBudget installs one allowance shared by the main and load threads.
+// The Machine serializes executions; the separate mutex protects the shared
+// accounting without holding a lock while the host print handler runs.
+func (m *Machine) applyPrintBudget() {
+	print := m.printFunc
+	limit := m.maxPrintBytes
+	if limit == 0 {
+		m.thread.Print = print
+		return
+	}
+	var mu sync.Mutex
+	var used uint64
+	m.thread.Print = func(thread *starlark.Thread, msg string) {
+		mu.Lock()
+		n := uint64(len(msg))
+		exceeded := n > limit-used
+		if !exceeded {
+			used += n
+		}
+		mu.Unlock()
+		if exceeded {
+			// Like the step guard, unwind immediately even when this print is
+			// the last statement. Run/Call preserve the typed error, and the
+			// load cache evicts the interrupted entry before re-raising it.
+			panic(PrintLimitExceededError{Limit: limit})
+		}
+		if print != nil {
+			print(thread, msg)
+		} else {
+			fmt.Fprintln(os.Stderr, msg)
+		}
+	}
 }
 
 // newLoadThread builds the thread that runs a module executed by load(),
@@ -353,6 +390,8 @@ func (m *Machine) newLoadThread(load func(*starlark.Thread, string) (starlark.St
 		}
 	}
 	if m.thread != nil {
+		// Reuse the exact handler so loads consume the same print allowance.
+		t.Print = m.thread.Print
 		if ctx := m.thread.Local("context"); ctx != nil {
 			t.SetLocal("context", ctx)
 		}

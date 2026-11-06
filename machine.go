@@ -45,6 +45,7 @@ type Machine struct {
 	enableOutConv       bool
 	customTag           string
 	maxSteps            uint64
+	maxPrintBytes       uint64
 	// source code
 	scriptName    string
 	scriptContent []byte
@@ -246,6 +247,22 @@ func (m *Machine) SetPrintFunc(printFunc PrintFunc) {
 	defer m.mu.Unlock()
 
 	m.printFunc = printFunc
+}
+
+// SetMaxPrintBytes limits the total bytes of messages delivered to the print
+// handler during each Run or Call, including messages from modules loaded by
+// the Machine. Zero, the default, means unlimited. It counts UTF-8 message bytes,
+// excluding any newline or formatting added by the host handler. An oversized
+// message is withheld in full and execution fails with PrintLimitExceededError.
+// A REPL session shares one budget; exceeding it ends the session.
+//
+// This limits the print channel, not loggers, direct stderr writes such as
+// eprint, returned values, or memory allocated while constructing a message.
+func (m *Machine) SetMaxPrintBytes(limit uint64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.maxPrintBytes = limit
 }
 
 // SetScript sets the script related things of the Starlark runtime environment.

@@ -7,11 +7,67 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/1set/starlet"
 	"go.starlark.net/starlark"
 )
+
+// Print budget sections: per-call reset, overflow termination, and updating the
+// handler/limit on a reused thread.
+func TestMachine_CallPrintByteBudget(t *testing.T) {
+	m := starlet.NewDefault()
+	if _, err := m.RunScript([]byte("def emit(s):\n    print(s)\n    return 7"), nil); err != nil {
+		t.Fatal(err)
+	}
+	m.SetMaxPrintBytes(2)
+	delivered := 0
+	m.SetPrintFunc(func(_ *starlark.Thread, msg string) { delivered += len(msg) })
+	for i := 0; i < 2; i++ {
+		if _, err := m.CallWithTimeout(time.Second, "emit", "ok"); err != nil {
+			t.Fatalf("call %d did not get a fresh allowance: %v", i, err)
+		}
+	}
+	var limitErr starlet.PrintLimitExceededError
+	if out, err := m.Call("emit", "too long"); !errors.As(err, &limitErr) || out != nil {
+		t.Fatalf("want withheld result and typed limit: out=%v err=%v", out, err)
+	}
+	if delivered != 4 {
+		t.Fatalf("delivered %d bytes, want 4", delivered)
+	}
+	m.SetMaxPrintBytes(0)
+	m.SetPrintFunc(starlet.NoopPrintFunc)
+	if _, err := m.CallWithContext(context.Background(), "emit", "unlimited again"); err != nil {
+		t.Fatalf("clearing the limit after a rejected call: %v", err)
+	}
+}
+
+func TestMachine_CallLoadedFunctionPrintByteBudget(t *testing.T) {
+	for _, cached := range []bool{false, true} {
+		t.Run(fmt.Sprintf("compiled cache=%v", cached), func(t *testing.T) {
+			m := starlet.NewDefault()
+			m.SetScriptCacheEnabled(cached)
+			m.SetPrintFunc(starlet.NoopPrintFunc)
+			m.SetMaxPrintBytes(3)
+			m.SetScript("main.star", []byte("load(\"emit.star\", \"emit\")\nexported = emit"), fstest.MapFS{
+				"emit.star": &fstest.MapFile{Data: []byte("print(\"abc\")\ndef emit(s):\n    print(s)")},
+			})
+			for run := 0; run < 2; run++ {
+				if _, err := m.Run(); err != nil {
+					t.Fatalf("run %d: %v", run, err)
+				}
+				if _, err := m.Call("exported", "abc"); err != nil {
+					t.Fatalf("loaded function retained the previous allowance: %v", err)
+				}
+				var limitErr starlet.PrintLimitExceededError
+				if _, err := m.CallWithContext(context.Background(), "exported", "abcd"); !errors.As(err, &limitErr) {
+					t.Fatalf("loaded function bypassed the current allowance: %v", err)
+				}
+			}
+		})
+	}
+}
 
 func TestMachine_Call_Preconditions(t *testing.T) {
 	m := starlet.NewDefault()
