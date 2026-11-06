@@ -19,7 +19,8 @@ import (
 )
 
 // Print budget sections: message byte accounting, execution reuse, loaded
-// module aggregation/retry, default stderr, and terminal REPL recovery.
+// module aggregation/retry and default stderr. REPL budget execution is
+// exercised through the shared driver in internal_test.go.
 func TestMachine_PrintByteBudget(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
@@ -173,29 +174,6 @@ func TestMachine_PrintByteBudgetDefaultStderr(t *testing.T) {
 	got, err := os.ReadFile(f.Name())
 	if err != nil || string(got) != "ok\n" {
 		t.Fatalf("default stderr: err=%v output=%q", err, got)
-	}
-}
-
-func TestMachine_PrintByteBudgetREPL(t *testing.T) {
-	if os.Getenv("STARLET_PRINT_REPL_HELPER") == "1" {
-		m := starlet.NewDefault()
-		m.SetMaxPrintBytes(2)
-		calls := 0
-		m.SetPrintFunc(func(_ *starlark.Thread, _ string) { calls++ })
-		m.REPL()
-		if calls != 2 {
-			t.Fatalf("REPL delivered %d messages, want two", calls)
-		}
-		return
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestMachine_PrintByteBudgetREPL$")
-	cmd.Env = append(os.Environ(), "STARLET_PRINT_REPL_HELPER=1")
-	cmd.Stdin = strings.NewReader("print(\"a\")\nprint(\"b\")\nprint(\"c\")\n")
-	got, err := cmd.CombinedOutput()
-	if err != nil || !strings.Contains(string(got), "print byte limit") || strings.Contains(string(got), "panic:") {
-		t.Fatalf("REPL failed to report budget safely: err=%v output=%q", err, got)
 	}
 }
 

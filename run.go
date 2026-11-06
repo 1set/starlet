@@ -365,6 +365,36 @@ func (m *Machine) applyPrintBudget() {
 	}
 }
 
+// replInternal owns the Machine for a complete REPL session. The native
+// frontend supplies terminal input and error reporting; keeping execution here
+// lets the same budget boundary be exercised with a scripted driver, without
+// depending on platform-specific console readers or importing them on wasm.
+func (m *Machine) replInternal(driver func(*syntax.FileOptions, *starlark.Thread, starlark.StringDict), report func(error)) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	completed := false
+	defer func() {
+		if completed {
+			return
+		}
+		r := recover()
+		if limit, ok := r.(PrintLimitExceededError); ok {
+			report(errorStarlarkError("repl", limit))
+			return
+		}
+		// A completion marker also preserves panic(nil) on the Go 1.19
+		// floor, where recover() cannot distinguish it from normal return.
+		panic(r)
+	}()
+	if err := m.prepareThread(nil); err != nil {
+		completed = true
+		report(err)
+		return
+	}
+	driver(m.getFileOptions(), m.thread, m.predeclared)
+	completed = true
+}
+
 // newLoadThread builds the thread that runs a module executed by load(),
 // mirroring the main thread's execution context: the same print func, an
 // independent copy of the step budget (so a loaded module's work is bounded
