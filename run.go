@@ -337,12 +337,17 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 // The Machine serializes executions; the separate mutex protects the shared
 // accounting without holding a lock while the host print handler runs.
 func (m *Machine) applyPrintBudget() {
-	print := m.printFunc
 	limit := m.state.maxPrintBytes
 	if limit == 0 {
-		m.thread.Print = print
+		m.thread.Print = m.printFunc
 		return
 	}
+	m.installPrintBudget(limit)
+}
+
+// installPrintBudget keeps the limited-handler allocation off the unlimited path.
+func (m *Machine) installPrintBudget(limit uint64) {
+	print := m.printFunc
 	var mu sync.Mutex
 	var used uint64
 	m.thread.Print = func(thread *starlark.Thread, msg string) {
