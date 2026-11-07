@@ -40,6 +40,15 @@ actual selection with `go list -m go.starlark.net` and review any change. An
 application's `replace` directive is local to that application and does not
 provide a backport to consumers of this library.
 
+## Print output limits
+
+`Machine.SetMaxPrintBytes` limits message bytes delivered through the Machine's
+print handler, with one allowance per Run/Call (or REPL session), shared with
+Machine-loaded source modules. It does not bound temporary message allocations,
+loggers, direct stderr output, returned values, or trusted loader helpers that
+execute on their own threads. It does not supply the external process resource
+limits described above.
+
 ## Reporting
 
 Report vulnerabilities privately through
