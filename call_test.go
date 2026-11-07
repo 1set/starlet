@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -41,6 +42,96 @@ func TestMachine_CallPrintByteBudget(t *testing.T) {
 	if _, err := m.CallWithContext(context.Background(), "emit", "unlimited again"); err != nil {
 		t.Fatalf("clearing the limit after a rejected call: %v", err)
 	}
+}
+
+// Call print configuration changes take effect on the next execution, including
+// replacing handlers on an existing thread and clearing an exhausted allowance.
+func TestMachine_CallPrintConfigurationChanges(t *testing.T) {
+	const script = "def emit(s):\n    print(s)\n    return 7"
+	t.Run("replace unlimited handler after Run", func(t *testing.T) {
+		m := starlet.NewDefault()
+		var original, replacement strings.Builder
+		m.SetPrintFunc(func(_ *starlark.Thread, msg string) { original.WriteString(msg) })
+		if _, err := m.RunScript([]byte(script), nil); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := m.Call("emit", "first"); err != nil {
+			t.Fatal(err)
+		}
+		m.SetPrintFunc(func(_ *starlark.Thread, msg string) { replacement.WriteString(msg) })
+		if out, err := m.Call("emit", "second"); err != nil || out != int64(7) {
+			t.Fatalf("replacement call: out=%v err=%v", out, err)
+		}
+		if original.String() != "first" || replacement.String() != "second" {
+			t.Fatalf("handlers: original=%q replacement=%q", original.String(), replacement.String())
+		}
+	})
+	t.Run("disable limit after replacing handler", func(t *testing.T) {
+		m := starlet.NewDefault()
+		var original, replacement strings.Builder
+		m.SetMaxPrintBytes(2)
+		m.SetPrintFunc(func(_ *starlark.Thread, msg string) { original.WriteString(msg) })
+		if _, err := m.RunScript([]byte(script), nil); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := m.Call("emit", "ok"); err != nil {
+			t.Fatal(err)
+		}
+		m.SetPrintFunc(func(_ *starlark.Thread, msg string) { replacement.WriteString(msg) })
+		if _, err := m.Call("emit", "hi"); err != nil {
+			t.Fatalf("limited replacement handler: %v", err)
+		}
+		var limitErr starlet.PrintLimitExceededError
+		if _, err := m.Call("emit", "rejected"); !errors.As(err, &limitErr) {
+			t.Fatalf("want rejected message before clearing allowance: %v", err)
+		}
+		m.SetMaxPrintBytes(0)
+		if _, err := m.Call("emit", "unlimited"); err != nil {
+			t.Fatalf("clearing limit: %v", err)
+		}
+		if original.String() != "ok" || replacement.String() != "hiunlimited" {
+			t.Fatalf("handlers: original=%q replacement=%q", original.String(), replacement.String())
+		}
+	})
+	t.Run("nil handler restores default stderr", func(t *testing.T) {
+		f, err := os.CreateTemp(t.TempDir(), "call-stderr-")
+		if err != nil {
+			t.Fatal(err)
+		}
+		previous := os.Stderr
+		os.Stderr = f
+		defer func() { os.Stderr = previous; _ = f.Close() }()
+		for _, limit := range []uint64{0, 2} {
+			m := starlet.NewDefault()
+			var original strings.Builder
+			m.SetPrintFunc(func(_ *starlark.Thread, msg string) { original.WriteString(msg) })
+			m.SetMaxPrintBytes(limit)
+			if _, err := m.RunScript([]byte(script), nil); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := m.Call("emit", "ok"); err != nil {
+				t.Fatal(err)
+			}
+			m.SetPrintFunc(nil)
+			if limit != 0 {
+				m.SetMaxPrintBytes(0)
+			}
+			if _, err := m.Call("emit", "default handler"); err != nil {
+				t.Fatalf("limit=%d default handler: %v", limit, err)
+			}
+			if original.String() != "ok" {
+				t.Fatalf("limit=%d retained previous handler: %q", limit, original.String())
+			}
+		}
+		os.Stderr = previous
+		if err := f.Close(); err != nil {
+			t.Fatal(err)
+		}
+		got, err := os.ReadFile(f.Name())
+		if err != nil || string(got) != "default handler\ndefault handler\n" {
+			t.Fatalf("default stderr: err=%v output=%q", err, got)
+		}
+	})
 }
 
 func TestMachine_CallLoadedFunctionPrintByteBudget(t *testing.T) {

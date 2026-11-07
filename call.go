@@ -80,7 +80,9 @@ func (m *Machine) callInternal(ctx context.Context, name string, args []interfac
 	// reset the thread, arm the step budget, and wire the context
 	m.thread.Uncancel()
 	m.applyStepBudget()
-	m.applyPrintBudget()
+	if limit := m.state.maxPrintBytes; limit != 0 {
+		m.installPrintBudget(limit)
+	}
 	if ctx == nil {
 		// plain Call: no cancellation channel, as before
 		m.thread.SetLocal("context", context.TODO())

@@ -241,11 +241,16 @@ var (
 
 // SetPrintFunc sets the print function of the Starlark runtime environment.
 // To disable printing, you can set it to NoopPrintFunc. Setting it to nil will invoke the default `fmt.Fprintln(os.Stderr, msg)` instead.
+// The handler applies to subsequent Machine executions. When printing is
+// unlimited, an initialized main thread is also updated immediately.
 func (m *Machine) SetPrintFunc(printFunc PrintFunc) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	m.printFunc = printFunc
+	if m.thread != nil && m.state.maxPrintBytes == 0 {
+		m.thread.Print = printFunc
+	}
 }
 
 // SetMaxPrintBytes limits the total bytes of messages delivered to the print
@@ -253,7 +258,9 @@ func (m *Machine) SetPrintFunc(printFunc PrintFunc) {
 // the Machine. Zero, the default, means unlimited. It counts UTF-8 message bytes,
 // excluding any newline or formatting added by the host handler. An oversized
 // message is withheld in full and execution fails with PrintLimitExceededError.
-// A REPL session shares one budget; exceeding it ends the session.
+// A REPL session shares one budget; exceeding it ends the session. Changes apply
+// to the next Machine execution. Setting zero also restores the configured
+// handler on an initialized main thread.
 //
 // This limits the print channel, not loggers, direct stderr writes such as
 // eprint, returned values, or memory allocated while constructing a message.
@@ -268,6 +275,9 @@ func (m *Machine) SetMaxPrintBytes(limit uint64) {
 		m.state = &machineState{}
 	}
 	m.state.maxPrintBytes = limit
+	if limit == 0 && m.thread != nil {
+		m.thread.Print = m.printFunc
+	}
 }
 
 // SetScript sets the script related things of the Starlark runtime environment.
