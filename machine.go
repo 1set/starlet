@@ -45,7 +45,6 @@ type Machine struct {
 	enableOutConv       bool
 	customTag           string
 	maxSteps            uint64
-	maxPrintBytes       uint64
 	// source code
 	scriptName    string
 	scriptContent []byte
@@ -53,7 +52,7 @@ type Machine struct {
 	// runtime core
 	progCache   ByteCache
 	runTimes    uint
-	loadCache   *cache
+	state       *machineState
 	thread      *starlark.Thread
 	predeclared starlark.StringDict
 }
@@ -262,7 +261,13 @@ func (m *Machine) SetMaxPrintBytes(limit uint64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.maxPrintBytes = limit
+	if m.state == nil {
+		if limit == 0 {
+			return
+		}
+		m.state = &machineState{}
+	}
+	m.state.maxPrintBytes = limit
 }
 
 // SetScript sets the script related things of the Starlark runtime environment.

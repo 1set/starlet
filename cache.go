@@ -18,6 +18,14 @@ import (
 // with a BSD 3-clause license (see the LICENSE file in that repo).
 // Original source code: https://github.com/google/starlark-go/blob/master/starlark/example_test.go#L211
 
+// machineState keeps optional print configuration with the runtime load state.
+// Runtime initialization reuses state created by SetMaxPrintBytes, keeping
+// optional configuration out of the Machine value.
+type machineState struct {
+	loads         cache
+	maxPrintBytes uint64
+}
+
 // cache is a concurrency-safe, duplicate-suppressing,
 // non-blocking cache of the doLoad function.
 // See Section 9.7 of gopl.io for an explanation of this structure.
@@ -29,16 +37,10 @@ type cache struct {
 	execOpts *syntax.FileOptions
 	loadMod  func(s string) (starlark.StringDict, error) // load from built-in module first
 	readFile func(s string) ([]byte, error)              // and then from file system
-	// newThread builds the thread that executes a loaded module, carrying the
-	// Machine's execution context (print func, step budget, run context). When
-	// nil the load path falls back to a bare thread — a module loaded that way
-	// would inherit none of the Machine's guards.
-	newThread func(load func(*starlark.Thread, string) (starlark.StringDict, error)) *starlark.Thread
-	// watchCancel, when set, arms cancellation of the load thread from the run's
-	// context and returns a stop func to disarm it once loading finishes, so a
-	// module executed by load() honours the run timeout instead of running past
-	// it on its own thread. When nil the load thread is not cancelled by context.
-	watchCancel func(thread *starlark.Thread) (stop func())
+	// Both load-thread construction and cancellation belong to the same Machine.
+	// Keep one owner instead of allocating two bound method values. A standalone
+	// cache with no owner retains its bare-thread, uncancelled fallback.
+	machine *Machine
 }
 
 type entry struct {
@@ -144,11 +146,11 @@ func (c *cache) doLoad(cc *cycleChecker, module string, loadThread **starlark.Th
 		return c.get(cc, module)
 	}
 	var thread *starlark.Thread
-	if c.newThread != nil {
+	if c.machine != nil {
 		// inherit the Machine's print func, step budget, and run context so a
 		// loaded module cannot bypass them (e.g. a top-level loop escaping the
 		// DoS guard, or print() going to stdout instead of the print func)
-		thread = c.newThread(loadFn)
+		thread = c.machine.newLoadThread(loadFn)
 	} else {
 		thread = &starlark.Thread{
 			Print: func(_ *starlark.Thread, msg string) { fmt.Println(msg) },
@@ -160,8 +162,8 @@ func (c *cache) doLoad(cc *cycleChecker, module string, loadThread **starlark.Th
 	// Cancel this load thread when the run's context fires, so a long
 	// computation inside a loaded module honours the run timeout rather than
 	// running to completion on its own thread. Disarmed once loading finishes.
-	if c.watchCancel != nil {
-		defer c.watchCancel(thread)()
+	if c.machine != nil {
+		defer c.machine.watchLoadThread(thread)()
 	}
 
 	// 1: load from built-in module, the first field returns nil if not found

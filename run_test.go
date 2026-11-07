@@ -104,9 +104,85 @@ func TestMachine_PrintByteBudget(t *testing.T) {
 			t.Fatalf("clearing limit on reused thread: %v", err)
 		}
 	})
+
+	t.Run("configuration survives Reset before the first execution", func(t *testing.T) {
+		m := starlet.NewDefault()
+		m.SetPrintFunc(starlet.NoopPrintFunc)
+		m.SetMaxPrintBytes(2)
+		m.Reset()
+		m.Reset()
+		var limitErr starlet.PrintLimitExceededError
+		if _, err := m.RunScript([]byte(`print("bad")`), nil); !errors.As(err, &limitErr) {
+			t.Fatalf("Reset before execution lost the allowance: %v", err)
+		}
+		m.Reset()
+		m.SetMaxPrintBytes(0)
+		m.Reset()
+		if _, err := m.RunScript([]byte(`print("unlimited again")`), nil); err != nil {
+			t.Fatalf("clearing the allowance after Reset: %v", err)
+		}
+	})
+
+	t.Run("initialization failure does not lose configuration", func(t *testing.T) {
+		m := starlet.NewDefault()
+		m.SetPrintFunc(starlet.NoopPrintFunc)
+		m.SetMaxPrintBytes(2)
+		bootstrapErr := errors.New("preload unavailable")
+		m.SetPreloadModules(starlet.ModuleLoaderList{func() (starlark.StringDict, error) {
+			return nil, bootstrapErr
+		}})
+		if _, err := m.RunScript([]byte(`print("ok")`), nil); !errors.Is(err, bootstrapErr) {
+			t.Fatalf("initialization control: %v", err)
+		}
+		m.SetPreloadModules(nil)
+		m.Reset()
+		var limitErr starlet.PrintLimitExceededError
+		if _, err := m.RunScript([]byte(`print("bad")`), nil); !errors.As(err, &limitErr) {
+			t.Fatalf("failed initialization lost the allowance: %v", err)
+		}
+	})
 }
 
 func TestMachine_LoadPrintByteBudget(t *testing.T) {
+	t.Run("Reset separates loaded state while retaining the allowance", func(t *testing.T) {
+		m := starlet.NewDefault()
+		var previousLoad starlet.LoadFunc
+		m.SetPrintFunc(func(thread *starlark.Thread, message string) {
+			if previousLoad == nil && message == "capture" {
+				previousLoad = thread.Load
+			}
+		})
+		m.SetMaxPrintBytes(7)
+		files := fstest.MapFS{
+			"a.star": &fstest.MapFile{Data: []byte("load(\"b.star\", \"value\")\nprint(\"capture\")\na = value")},
+			"b.star": &fstest.MapFile{Data: []byte("value = 1")},
+		}
+		m.SetScript("main.star", []byte(`load("a.star", "a"); result = a`), files)
+		if out, err := m.Run(); err != nil || out["result"] != int64(1) {
+			t.Fatalf("first load: %v, %v", out, err)
+		}
+		if previousLoad == nil {
+			t.Fatal("loaded print did not publish its load callback")
+		}
+		m.Reset()
+		files["b.star"].Data = []byte("value = 2")
+		if out, err := m.Run(); err != nil || out["result"] != int64(2) {
+			t.Fatalf("Reset retained the old module globals: %v, %v", out, err)
+		}
+		// A callback already exposed by the old loaded thread still refers to
+		// that completed cache; Reset must not rewrite a live cache in place.
+		old, err := previousLoad(nil, "b.star")
+		if err != nil || old["value"] != starlark.MakeInt(1) {
+			t.Fatalf("Reset rewrote an earlier load callback's cache: %v, %v", old, err)
+		}
+		m.Reset()
+		files["a.star"].Data = []byte("print(\"too long\")\na = 3")
+		var limitErr starlet.PrintLimitExceededError
+		if _, err := m.Run(); !errors.As(err, &limitErr) {
+			t.Fatalf("Reset discarded the loaded-module allowance: %v", err)
+		}
+	})
+
 	t.Run("all loaded modules share the run allowance", func(t *testing.T) {
 		m := starlet.NewDefault()
 		m.SetPrintFunc(starlet.NoopPrintFunc)

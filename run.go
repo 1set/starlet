@@ -292,21 +292,23 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 		}
 
 		// cache load&read + printf -> thread
-		m.loadCache = &cache{
+		if m.state == nil {
+			m.state = &machineState{}
+		}
+		m.state.loads = cache{
 			cache:    make(map[string]*entry),
 			execOpts: m.getFileOptions(),
 			loadMod:  m.lazyloadMods.GetLazyLoader(),
 			readFile: func(name string) ([]byte, error) {
 				return readScriptFile(name, m.scriptFS)
 			},
-			globals:     m.predeclared,
-			newThread:   m.newLoadThread,
-			watchCancel: m.watchLoadThread,
+			globals: m.predeclared,
+			machine: m,
 		}
 		m.thread = &starlark.Thread{
 			Name: "starlet",
 			Load: func(thread *starlark.Thread, module string) (starlark.StringDict, error) {
-				return m.loadCache.Load(module)
+				return m.state.loads.Load(module)
 			},
 		}
 	} else {
@@ -318,8 +320,8 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 		}
 
 		// set globals for cache
-		m.loadCache.loadMod = m.lazyloadMods.GetLazyLoader()
-		m.loadCache.globals = m.predeclared
+		m.state.loads.loadMod = m.lazyloadMods.GetLazyLoader()
+		m.state.loads.globals = m.predeclared
 
 		// reset for each run
 		m.thread.Uncancel()
@@ -336,7 +338,7 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 // accounting without holding a lock while the host print handler runs.
 func (m *Machine) applyPrintBudget() {
 	print := m.printFunc
-	limit := m.maxPrintBytes
+	limit := m.state.maxPrintBytes
 	if limit == 0 {
 		m.thread.Print = print
 		return
@@ -463,7 +465,17 @@ func (m *Machine) Reset() {
 
 	m.runTimes = 0
 	m.thread = nil
-	m.loadCache = nil
+	if m.state != nil {
+		limit := m.state.maxPrintBytes
+		if limit == 0 {
+			m.state = nil
+		} else if m.state.loads.machine != nil {
+			// A loaded thread may have exposed a Load closure that still owns
+			// the completed cache. Replace it instead of rewriting its mutex,
+			// entries or globals in place; only the configuration survives.
+			m.state = &machineState{maxPrintBytes: limit}
+		}
+	}
 	m.predeclared = nil
 }
 
