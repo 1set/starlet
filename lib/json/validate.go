@@ -84,7 +84,8 @@ func formatValidationError(ve *jsonschema.ValidationError) string {
 // pointer-per-violation message otherwise. try_validate distinguishes the
 // three outcomes: (True, None) valid, (False, details) invalid, and
 // (None, error) when validation could not run (bad schema, bad arguments,
-// malformed JSON text).
+// malformed JSON text). Known limitation: malformed trailing closing delimiters
+// can be accepted in data or schema text; this is not strict syntax validation.
 func generateValidate(try bool) func(*starlark.Thread, *starlark.Builtin, starlark.Tuple, []starlark.Tuple) (starlark.Value, error) {
 	return func(_ *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var data, schema starlark.Value

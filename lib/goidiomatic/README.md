@@ -230,15 +230,15 @@ provide the workloads, sample results and reproduction commands.
 
 ### `shared_dict`
 
-A thread-safe, mutable dictionary returned by `shared_dict()` and `make_shared_dict()`. Every read and write is locked, so multiple Starlark threads may share and mutate one instance without races. Its `type()` is `shared_dict` by default, or the custom name passed to `make_shared_dict`. It supports indexing (`sd["k"] = v`, `sd["k"]`), membership (`in`), the `.len()` method, and `==`/`!=` comparison with another `shared_dict`. It is **not** iterable, and the builtin `len()` does not apply — use the `.len()` method.
+A mutable dictionary returned by `shared_dict()` and `make_shared_dict()`. Indexing and dictionary methods lock the top-level mapping; this does not protect mutable nested values or make every operation safe during concurrent writes. In particular, format/print the dictionary only while writers are stopped or externally synchronized. Its `type()` is `shared_dict` by default, or the custom name passed to `make_shared_dict`. It supports indexing (`sd["k"] = v`, `sd["k"]`), membership (`in`), the `.len()` method, and `==`/`!=` comparison with another `shared_dict`. It is **not** iterable, and the builtin `len()` does not apply — use the `.len()` method.
 
 Beyond the standard dict methods it inherits (`clear`, `get`, `items`, `keys`, `pop`, `popitem`, `setdefault`, `update`, `values`), it adds the methods below.
 
 | method | description |
 |--------|-------------|
 | `len() -> int` | Number of items in the dictionary. |
-| `perform(fn)` | Call `fn(self)` while holding the lock, for atomic compound updates. |
-| `to_dict() -> dict` | Shallow clone into a plain dict; mutating the clone never affects the original. |
+| `perform(fn)` | Call `fn(dict)` with the underlying plain dict while holding the lock, for atomic compound updates. Do not retain that dict or reenter this `shared_dict` from the callback. |
+| `to_dict() -> dict` | Copy top-level entries into a plain dict. Inserting/removing clone entries is independent; nested values remain shared. |
 | `to_json() -> str` | Serialize the contents to a JSON string. |
 | `from_json(json_str)` | Decode a JSON object string and merge its pairs into the dictionary. |
 
@@ -261,15 +261,16 @@ print(sd)
 # Output: shared_dict({"cnt": 2})
 ```
 
-`to_dict` clones; mutating the clone leaves the source empty:
+`to_dict` copies the top-level mapping; nested values remain shared:
 
 ```python
 load("go_idiomatic", "make_shared_dict")
-sd = make_shared_dict()
+sd = make_shared_dict("", {"items": [1]})
 clone = sd.to_dict()
-clone["k"] = "v"
-print(sd, clone)
-# Output: shared_dict({}) {"k": "v"}
+clone["new"] = 3
+clone["items"].append(2)
+print("new" in sd, sd["items"])
+# Output: False [1, 2]
 ```
 
 `to_json` serializes and `from_json` merges:

@@ -495,6 +495,18 @@ func TestSharedDict_Functions(t *testing.T) {
 			`),
 		},
 		{
+			name: `attr: custom to_dict -- shallow nested aliases`,
+			script: itn.HereDoc(`
+				load('share', 'sd')
+				sd["items"] = [1]
+				d = sd.to_dict()
+				d["new"] = 3
+				d["items"].append(2)
+				assert.eq("new" in sd, False)
+				assert.eq(sd["items"], [1, 2])
+			`),
+		},
+		{
 			name: `attr: custom to_dict -- two`,
 			script: itn.HereDoc(`
 				load('share', 'sd')

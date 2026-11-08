@@ -75,6 +75,8 @@ func MarshalStarlarkJSON(data starlark.Value, indent int) (string, error) {
 // It decodes through json.Decoder.UseNumber to preserve integer precision,
 // applies TypeConvert (including time-string recognition), then calls Marshal.
 // DecodeStarlarkJSON instead uses the upstream native-value JSON decoder.
+// Known limitation: malformed trailing closing delimiters can be accepted;
+// callers requiring strict JSON syntax should check encoding/json.Valid first.
 func UnmarshalStarlarkJSON(data []byte) (starlark.Value, error) {
 	var m interface{}
 	// decode with UseNumber so integers keep their exact value: a plain
@@ -85,8 +87,8 @@ func UnmarshalStarlarkJSON(data []byte) (starlark.Value, error) {
 	if err := dec.Decode(&m); err != nil {
 		return starlark.None, err
 	}
-	// json.Unmarshal rejected trailing content; the decoder does not, so
-	// re-impose single-document strictness (trailing whitespace still passes).
+	// Check for further input, allowing trailing whitespace. More does not
+	// reject every malformed suffix, including stray closing delimiters.
 	if dec.More() {
 		return starlark.None, fmt.Errorf("unexpected trailing data after JSON value")
 	}
