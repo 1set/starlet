@@ -72,10 +72,9 @@ func MarshalStarlarkJSON(data starlark.Value, indent int) (string, error) {
 }
 
 // UnmarshalStarlarkJSON unmarshals JSON bytes into a starlark.Value.
-// It first unmarshals the JSON bytes into a Go value using the standard JSON Unmarshal function,
-// then converts the Go value into a starlark.Value using the Marshal function.
-// Time strings are parsed as starlark Time objects.
-// In comparison with DecodeStarlarkJSON, it gives you more control over type conversion but may be less efficient due to intermediate steps.
+// It decodes through json.Decoder.UseNumber to preserve integer precision,
+// applies TypeConvert (including time-string recognition), then calls Marshal.
+// DecodeStarlarkJSON instead uses the upstream native-value JSON decoder.
 func UnmarshalStarlarkJSON(data []byte) (starlark.Value, error) {
 	var m interface{}
 	// decode with UseNumber so integers keep their exact value: a plain

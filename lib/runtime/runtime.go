@@ -13,7 +13,7 @@ import (
 	"go.starlark.net/starlarkstruct"
 )
 
-// ModuleName defines the expected name for this Module when used in starlark's load() function, eg: load('base64', 'encode')
+// ModuleName is the name used by load(), for example load("runtime", "getenv").
 const ModuleName = "runtime"
 
 var (
