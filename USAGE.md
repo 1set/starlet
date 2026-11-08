@@ -179,6 +179,15 @@ outside callbacks from operations that hold it, such as key `Hash`/`Equal` or
 value `Freeze`. This Go method does not add a Starlark builtin or change default
 printing. See [shared_dict methods and callback rules](lib/goidiomatic/README.md#shared_dict).
 
+Snapshot formatting copies entries into temporary memory. Larger or nested
+dictionaries can use more bytes than direct formatting; avoiding intermediate
+strings and repeated path allocations can offset some work. The net cost depends
+on the values, Go version and machine. Run the included comparisons with:
+
+```bash
+go test ./dataconv -run '^$' -bench '^BenchmarkSharedDictReadPaths$' -benchmem
+```
+
 ## Terminal REPL
 
 Call `starlet.NewDefault().REPL()` from a terminal Go program for an embedded read-eval-print loop. Configure modules first if needed. It owns the Machine for the session and returns no Go error; errors are printed by the REPL. On `js` and `wasip1` targets it is a no-op; use `Run` / `RunScript` there. The examples above do not establish an interactive-session or legacy-command runtime result. For command-line use, see [StarCLI](https://github.com/1set/starcli) or the [separate legacy command guide](cmd/starlet/README.md).
