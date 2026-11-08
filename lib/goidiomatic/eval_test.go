@@ -593,3 +593,72 @@ func BenchmarkEvalComparison(b *testing.B) {
 		})
 	}
 }
+
+// BenchmarkEvalWorkload keeps source, input shape and scalar output shape fixed
+// while increasing work inside the expression. Normal and EvalReusedVars use
+// identical arguments and the same two-argument Starlark call shape. Every eval
+// includes parsing, compilation and data isolation; setup and result checks are
+// outside timing. Differences estimate the incremental cost of this expression
+// on the measured system, not a universal constant or a before/after regression.
+func BenchmarkEvalWorkload(b *testing.B) {
+	const source = "len([(i * 3 + 7) % 97 for i in range(n)])"
+	module, err := mod.LoadModule()
+	if err != nil {
+		b.Fatal(err)
+	}
+	script := "def normal(n, vars):\n    return " + source + "\n\n" +
+		"def eval_reused(n, vars):\n    return eval(" + std.String(source).String() + ", vars=vars)\n"
+	functions, err := std.ExecFileOptions(&syntax.FileOptions{Set: true}, &std.Thread{}, "eval_workload.star", script, module)
+	if err != nil {
+		b.Fatal(err)
+	}
+	for _, workload := range []struct {
+		name string
+		n    int
+	}{
+		{"N0", 0},
+		{"N10", 10},
+		{"N100", 100},
+		{"N1000", 1000},
+		{"N10000", 10000},
+		{"N100000", 100000},
+	} {
+		b.Run(workload.name, func(b *testing.B) {
+			want := std.MakeInt(workload.n)
+			vars := std.NewDict(1)
+			if err := vars.SetKey(std.String("n"), want); err != nil {
+				b.Fatal(err)
+			}
+			vars.Freeze()
+			args := std.Tuple{want, vars}
+			for _, path := range []struct{ name, function string }{
+				{"Normal", "normal"},
+				{"EvalReusedVars", "eval_reused"},
+			} {
+				b.Run(path.name, func(b *testing.B) {
+					thread := &std.Thread{Name: "eval-workload"}
+					function := functions[path.function]
+					result, err := std.Call(thread, function, args, nil)
+					if err != nil {
+						b.Fatal(err)
+					}
+					if equal, err := std.Equal(result, want); err != nil || !equal {
+						b.Fatalf("wrong result: %v, want %v (error %v)", result, want, err)
+					}
+					b.ReportAllocs()
+					b.ResetTimer()
+					for i := 0; i < b.N; i++ {
+						result, err = std.Call(thread, function, args, nil)
+						if err != nil {
+							b.Fatal(err)
+						}
+					}
+					b.StopTimer()
+					if equal, err := std.Equal(result, want); err != nil || !equal {
+						b.Fatalf("wrong final result: %v, want %v (error %v)", result, want, err)
+					}
+				})
+			}
+		})
+	}
+}
