@@ -1,6 +1,6 @@
 # go_idiomatic
 
-`go_idiomatic` provides Go-flavored helpers, constants, and constructors for Starlark scripts — base conversions, `length`/`sum`/`distinct` utilities, struct and shared-dict factories, and `print`-style output. It is **not** a mirror of any single Python module; it borrows the spirit of several Python builtins (`hex`/`oct`/`bin`/`sum`/`bytes.hex`) while adding Star\* idioms.
+`go_idiomatic` provides Go-flavored helpers, values and constructors for Starlark, including `true`/`false`/`nil`, structs and shared dictionaries. It also adds collection, output and read-only expression-evaluation helpers.
 
 Capability profile: **Log + Process**. `eprint`/`pprint` write to stderr or the thread's `Print` handler (Log); `sleep` blocks the thread and `exit`/`quit` halt the program (Process). Everything else is pure.
 
@@ -10,6 +10,8 @@ Load name for `load()`: `go_idiomatic`.
 
 | function | description |
 |----------|-------------|
+| `eval(source, vars={}) -> value` | Evaluate a Starlark expression. [Parameters and examples](#expression-evaluation). |
+| `try_eval(source, vars={}) -> (value, error_info)` | Go-style value/error results. [Return values and errors](#returns-and-errors). |
 | `length(obj) -> int` | Length of a string (in Unicode code points), bytes, or any sequence. |
 | `sum(iterable, start=0) -> number` | Sum of `start` plus the items of `iterable`, left to right. |
 | `distinct(iterable) -> iterable` | Iterable with duplicates removed; shape follows the input type. |
@@ -42,6 +44,187 @@ load("go_idiomatic", "true", "false", "nil")
 print(true, false, nil)
 # Output: True False None
 ```
+
+## Expression evaluation
+
+Evaluate one **Starlark expression** with `eval`. Use `try_eval` for Go-style
+`(value, error)` results: `error_info == None` means success.
+
+```python
+load("go_idiomatic", "eval", "try_eval")
+
+total = eval("price * qty", vars={"price": 12, "qty": 3})
+print(total)  # 36
+
+value, error = try_eval("price")  # No implicit caller variables.
+print(value, error["phase"])  # None resolve
+```
+
+### Parameters
+
+```text
+eval(source, vars={}) -> value
+try_eval(source, vars={}) -> (value, error_info)
+```
+
+Both parameters accept positional or keyword arguments.
+
+| Parameter | Type | Required / default | Meaning |
+| --- | --- | --- | --- |
+| `source` | Native `string` | Required | A single expression, such as `"price * qty"`. Statements are not accepted. |
+| `vars` | Native `dict` with string keys | Optional; `{}` | Variables visible to the expression. Keys must be valid Starlark identifiers, at most 512 bytes each. `None` is not accepted. |
+
+`vars` supports nested native `None`, bool, int, float, string, bytes, list,
+tuple, dict and set values. Functions, methods, modules, iterators, cycles and
+Go-backed/custom values (including `shared_dict`) are rejected.
+
+Input snapshots and returned containers are frozen; originals are untouched.
+Native reads such as `.upper()`, `.get()` and `.index()` work; input writes fail.
+New temporary containers inside an expression may be mutated.
+
+```python
+items = [1, 2]
+value, error = try_eval("items.append(9)", vars={"items": items})
+print(error["phase"])  # runtime
+items.append(3)         # Original list remains writable: [1, 2, 3].
+```
+
+Expressions see only `vars` and these standard computation names:
+
+```text
+None True False abs any all bool bytes chr dict dir enumerate fail float
+getattr hasattr hash int len list max min ord range repr reversed set
+sorted str tuple type zip
+```
+
+Caller locals, other helpers (`sum`, `sleep`, `exit`) and modules such as
+`runtime` are not inherited. `print()` is disabled.
+
+### Returns and errors
+
+| Outcome | `eval` | `try_eval` |
+| --- | --- | --- |
+| Success | Frozen native value | `(value, None)` |
+| Successful expression `None` | `None` | `(None, None)` |
+| Argument, input or evaluation failure | Raises an error | `(None, error_info)` |
+| Caller cancellation or total step limit reached | Raises an execution error | Raises an execution error |
+
+Test `error != None` for failure; valid results include `None`, `False`, `0` and
+empty containers. Cancellation and cumulative steps remain in force.
+`try_eval` does not catch caller panics or errors computing its arguments:
+`try_eval("1 // 0")` catches division by zero; `try_eval(1 // 0)` does not.
+
+### `error_info` structure
+
+`error_info` is a **frozen dict** with six fields. Use `error["phase"]` to read
+fields; nested dicts and frames are frozen too.
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `phase` | `string` | Failing stage, listed below. |
+| `kind` | `string` | Same as `phase`, except `policy` uses `"capability"`. |
+| `message` | `string` | Human-readable diagnostic, at most 4096 bytes. Do not match its exact wording in program logic. |
+| `position` | `None` or `dict` | Best available source location: `{"file": string, "line": int, "column": int}`. Lines and Unicode character (rune) columns are 1-based; 0 means unknown. |
+| `frames` | `tuple` of `dict` | Frames from outermost to innermost, retaining the most recent 32. Each has the location fields above plus `name: string`. Builtin frames can use `"<builtin>"`, 0, 0. |
+| `truncated` | `bool` | Whether message/location/frame text or the frame count was truncated. File names are capped at 512 bytes, frame names at 256. |
+
+| `phase` | Typical cause |
+| --- | --- |
+| `arguments` | Missing/extra arguments, duplicate or unknown keywords. |
+| `input` | Wrong parameter type, invalid variable name or unsupported/oversized input data. |
+| `source` | Source length or AST complexity limit exceeded. |
+| `parse` | Invalid expression syntax. |
+| `resolve` | Undefined name, such as an omitted variable or caller-only helper. |
+| `policy` | Denied builtin, such as `print`; `kind` is `"capability"`. |
+| `runtime` | Division by zero, invalid operation or attempted input mutation. |
+| `output` | Result contains a callable/unsupported value or exceeds data limits. |
+
+For `try_eval("price")` with no variables:
+
+```python
+{
+    "phase": "resolve",
+    "kind": "resolve",
+    "message": "eval: resolve: <eval>:1:1: undefined: price",
+    "position": {"file": "<eval>", "line": 1, "column": 1},
+    "frames": (),
+    "truncated": False,
+}
+```
+
+Argument/input/source errors usually have `position=None` and `frames=()`.
+Runtime/policy errors can include caller frames; `position` uses the innermost
+available non-builtin location. Cancellation/budget errors are raised, never
+returned with `phase="execution"`.
+
+### Loading and limits
+
+Preload `go_idiomatic` for bare calls, or enable lazy loading for `load(...)`.
+`NewDefault()` enables neither. Name precedence is host globals < preloads <
+per-run extras < explicit `load`. Avoid clashes with an alias:
+`load("go_idiomatic", evaluate="eval")`.
+
+| Limit | Value |
+| --- | --- |
+| Source | 4096 bytes; 512 non-whitespace bytes, including literals/comments |
+| AST | Depth 64; 512 nodes |
+| Each copied input/output graph | Depth 64; 4096 visited edges, including repeated references |
+| Each graph's scalar/name payload | 1 MiB |
+| Integer magnitude | 4096 bits |
+
+Only ASCII space, tab, CR and LF are excluded from the source count. Put large
+data in `vars`. These quotas do not cap native intermediate allocations, total
+CPU or process memory; configure caller execution limits for your workload.
+
+### Go callers
+
+The Go helper returns `(starlark.Value, error)`, not an `error_info` dict:
+
+```go
+import (
+    "github.com/1set/starlet/lib/goidiomatic"
+    "go.starlark.net/starlark"
+)
+
+func evaluateQuantity(qty int) (starlark.Value, error) {
+    thread := &starlark.Thread{Name: "expression"}
+    thread.SetMaxExecutionSteps(10000)
+    return goidiomatic.Eval(thread, "qty * 2", starlark.StringDict{
+        "qty": starlark.MakeInt(qty),
+    })
+}
+```
+
+Own the Thread and own/synchronize input data, or deeply freeze it first.
+Bridge direct Go cancellation to `Thread.Cancel`; Machine does this already.
+Use `errors.As` with `*goidiomatic.Error` to inspect `Phase` and `Kind`; error
+causes remain available through `errors.As`/`errors.Is`. Results are not converted
+to Go/JSON. Keep upstream Universe standard at startup and never mutate it
+concurrently. See [`Eval`](eval.go) for the host contract.
+
+The module remains Log + Process and is already in Starbox Safe/Network.
+Use host module policy for opt-in; hard CPU/memory isolation requires a separately
+validated process boundary.
+
+### Performance
+
+`eval` reuses the caller's Thread and builds a private environment from explicit
+variables. Every call parses and compiles the expression, copies and validates
+input/output data, and checks the caller's execution limits. Reusing `vars`
+does not cache the compiled expression or remove this preparation work.
+
+Benchmarks against the same expression in a compiled Starlark function found
+that this preparation has a noticeable cost for small calculations. With fixed
+source and small input/output graphs, more computation can reduce the relative
+cost. The total time difference is not a single constant: longer source, larger
+data graphs, allocation and GC also affect it. Large-workload variation does not
+establish that dynamic evaluation is faster or has no overhead.
+
+Use direct script code for fixed calculations and hot loops; use `eval` when the
+expression itself is supplied at runtime. Timings depend on CPU, OS,
+architecture, Go/compiler and system load. Measure on your target system with
+`BenchmarkEvalComparison` and `BenchmarkEvalWorkload`; [benchmark notes](BENCHMARKS.md)
+provide the workloads, sample results and reproduction commands.
 
 ## Types
 
@@ -277,7 +460,6 @@ pprint({"key": "value", "list": [1, 2, 3]})
 
 ## Notes / boundaries
 
-- **Not a Python module clone.** Names echo Python builtins, but this is a Star\* utility grab-bag, not a 1:1 API mirror — there is no module-level namespace; members load individually.
 - **`length` vs `len`.** `length` counts Unicode code points for strings; the builtin `len` counts UTF-8 bytes. They agree for sequences.
 - **`distinct` ordering.** First-seen order is preserved for list/tuple/custom inputs; dict-key order from `.keys()` is **not** guaranteed (sort it if you need stability). Sets are returned unchanged.
 - **Process effects.** `sleep` blocks (and respects context cancellation); `exit`/`quit` do not stop the goroutine themselves — they return `ErrSystemExit` for the host runner to act on, and set the thread-local `exit_code`.

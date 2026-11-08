@@ -1446,3 +1446,88 @@ func TestDocCoverage(t *testing.T) {
 		t.Errorf("%d module member(s) are not documented in their README — see the report above", len(missing))
 	}
 }
+
+// Evaluation helpers extend the existing flat go_idiomatic module.
+func TestBuiltinEvaluationLoading(t *testing.T) {
+	capability, ok := starlet.GetBuiltinModuleCapability("go_idiomatic")
+	if !ok || capability != starlet.CapLog|starlet.CapProcess {
+		t.Fatalf("changed module capabilities: %v, %v", capability, ok)
+	}
+	for _, tc := range []struct {
+		name          string
+		globals       starlet.StringAnyMap
+		preload, lazy []string
+		extras        starlet.StringAnyMap
+		source        string
+		want          int64
+	}{
+		{name: "explicit_load", lazy: []string{"go_idiomatic"}, source: `load("go_idiomatic", "eval", "try_eval")
+result = eval("2 + 3")
+_, problem = try_eval("1 // 0")
+check = fail("missing ordinary error") if problem == None else None`, want: 5},
+		{name: "preload_overrides_host_globals", globals: starlet.StringAnyMap{"eval": "host value", "try_eval": "host value"}, preload: []string{"go_idiomatic"}, source: `result = eval("2 + 3")
+value, problem = try_eval("None")
+check = fail("valid None failed") if value != None or problem != None else None`, want: 5},
+		{name: "extras_override_preload", preload: []string{"go_idiomatic"}, extras: starlet.StringAnyMap{"eval": int64(7), "try_eval": int64(8)}, source: "result = eval + try_eval", want: 15},
+		{name: "load_overrides_extras", preload: []string{"go_idiomatic"}, lazy: []string{"go_idiomatic"}, extras: starlet.StringAnyMap{"eval": int64(7), "try_eval": int64(8)}, source: `load("go_idiomatic", "eval", "try_eval")
+result = eval("2 + 3")`, want: 5},
+		{name: "load_alias_preserves_existing_name", lazy: []string{"go_idiomatic"}, extras: starlet.StringAnyMap{"eval": int64(7)}, source: `load("go_idiomatic", run_expression="eval")
+result = run_expression("2 + 3") + eval`, want: 12},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			mac := starlet.NewWithNames(tc.globals, tc.preload, tc.lazy)
+			mac.SetMaxExecutionSteps(10000)
+			out, err := mac.RunScript([]byte(tc.source), tc.extras)
+			if err != nil || out["result"] != tc.want {
+				t.Fatalf("output=%#v error=%v", out, err)
+			}
+		})
+	}
+	empty := starlet.NewDefault()
+	if _, err := empty.RunScript([]byte(`result = eval("1")`), nil); err == nil || !strings.Contains(err.Error(), "undefined: eval") {
+		t.Fatalf("unconfigured Machine exposed eval: %v", err)
+	}
+}
+
+func TestBuiltinEvaluationOuterCapabilities(t *testing.T) {
+	touches, prints := 0, 0
+	mac := starlet.NewWithNames(starlet.StringAnyMap{
+		"getenv":      func(string) string { touches++; return "host value" },
+		"callback":    func() int { touches++; return 9 },
+		"outer_value": 17,
+	}, []string{"go_idiomatic", "runtime"}, nil)
+	mac.SetMaxExecutionSteps(100000)
+	mac.SetPrintFunc(func(*starlark.Thread, string) { prints++ })
+	out, err := mac.RunScript([]byte(`
+def check_capabilities():
+    # Helpers exist outside, while expressions receive only selected data.
+    sleep(0)
+    if exit == None or quit == None or pprint == None or eprint == None: fail("missing outer helper")
+    if runtime.getenv == None or getenv == None or callback == None: fail("missing host capability")
+    for source in ["sleep(0)", "exit(0)", "quit(0)", "pprint('hidden')", "eprint('hidden')", "print('hidden')", "runtime.getenv('PATH')", "getenv('PATH')", "callback()", "outer_value", "eval('1')", "try_eval('1')"]:
+        value, problem = try_eval(source)
+        if value != None or problem == None: fail("inherited outer capability: " + source)
+    _, callback_problem = try_eval("fn()", vars={"fn": callback})
+    if callback_problem == None or callback_problem["phase"] != "input": fail("callable crossed data boundary")
+    items = [1, 2]
+    result = eval('{"n": len(items), "text": text.upper()}', vars={"items": items, "text": "ok"})
+    _, mutation_problem = try_eval("items.append(3)", vars={"items": items})
+    if mutation_problem == None: fail("input mutation accepted")
+    items.append(4)
+    return result, items
+result, items = check_capabilities()
+`), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if touches != 0 || prints != 0 {
+		t.Fatalf("host side effects: touches=%d prints=%d", touches, prints)
+	}
+	result, ok := out["result"].(map[interface{}]interface{})
+	if !ok || result["n"] != int64(2) || result["text"] != "OK" {
+		t.Fatalf("unexpected result: %#v", out["result"])
+	}
+	if !reflect.DeepEqual(out["items"], []interface{}{int64(1), int64(2), int64(4)}) {
+		t.Fatalf("parent items = %#v", out["items"])
+	}
+}

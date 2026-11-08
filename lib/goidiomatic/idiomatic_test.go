@@ -1,5 +1,7 @@
 package goidiomatic_test
 
+// Sections: helper behavior; data constructors; flat expression builtins.
+
 import (
 	"fmt"
 	"testing"
@@ -1117,5 +1119,35 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				return
 			}
 		})
+	}
+}
+
+// TestLoadModuleEvaluationFunctions pins the existing module's flat surface.
+func TestLoadModuleEvaluationFunctions(t *testing.T) {
+	exports, err := goidiomatic.LoadModule()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, exists := exports["starlark"]; exists {
+		t.Fatal("unexpected language-named wrapper")
+	}
+	for _, name := range []string{"eval", "try_eval"} {
+		function, ok := exports[name].(*starlark.Builtin)
+		if !ok {
+			t.Fatalf("missing flat builtin %q: %T", name, exports[name])
+		}
+		if function.Name() != name {
+			t.Fatalf("builtin name = %q; want %q", function.Name(), name)
+		}
+		value, err := starlark.Call(&starlark.Thread{}, function, starlark.Tuple{starlark.String("2 + 3")}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if name == "eval" && value != starlark.MakeInt(5) {
+			t.Fatalf("eval = %v", value)
+		}
+		if name == "try_eval" && value.String() != "(5, None)" {
+			t.Fatalf("try_eval = %v", value)
+		}
 	}
 }
