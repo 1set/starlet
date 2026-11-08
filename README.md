@@ -1,4 +1,4 @@
-# :sparkles: Starlet - Supercharging Starlark, Simply
+# :sparkles: Starlet - Starlark scripts and libraries for Go
 
 [![godoc](https://pkg.go.dev/badge/github.com/1set/starlet.svg)](https://pkg.go.dev/github.com/1set/starlet)
 [![codecov](https://codecov.io/github/1set/starlet/branch/master/graph/badge.svg?token=M1tauam4Hw)](https://codecov.io/github/1set/starlet)
@@ -6,31 +6,87 @@
 [![codeclimate](https://api.codeclimate.com/v1/badges/290ec0cc3261d16c423f/maintainability)](https://codeclimate.com/github/1set/starlet/maintainability)
 [![goreportcard](https://goreportcard.com/badge/github.com/1set/starlet)](https://goreportcard.com/report/github.com/1set/starlet)
 
-> Enhancing your Starlark scripting experience with powerful extensions and enriched wrappers. Start your Starlark journey with Starlet, where simplicity meets functionality.
+Starlet embeds [Starlark in Go](https://github.com/google/starlark-go) through a stateful [`Machine`](https://pkg.go.dev/github.com/1set/starlet#Machine), builtin libraries, and Go/Starlark value conversion. It uses the [Starlight bridge](https://github.com/1set/starlight) by default and also offers explicit native-value helpers in [`dataconv`](https://pkg.go.dev/github.com/1set/starlet/dataconv).
 
-*Starlet* is yet another Go wrapper for the official [*Starlark in Go*](https://github.com/google/starlark-go) project, designed to enhance the Starlark scripting experience with powerful extensions and enriched wrappers, and provide a more user-friendly and powerful interface for embedding Starlark scripting in your Go applications.
+## Installation
 
-Inspired by the [*Starlight*](https://github.com/starlight-go/starlight) and [*Starlib*](https://github.com/qri-io/starlib) projects, *Starlet* focuses on three main objectives: providing an easier-to-use **Go wrapper** for Starlark, offering flexible **data conversion** between Go and Starlark, and supplying a set of **useful libraries** for Starlark.
+From a Go module:
 
-## Key Features
+```sh
+go get github.com/1set/starlet
+```
 
-*Starlet* provides the following key features:
+This README describes the checked-out source; available APIs depend on the version selected by your application (`go list -m github.com/1set/starlet`).
 
-### Flexible Machine Abstraction
+The root library supports Go 1.19 or newer. Use a supported, security-patched toolchain for production; see [compatibility and security](#compatibility-and-security).
 
-*Starlet* introduces a streamlined interface for executing Starlark scripts, encapsulating the complexities of setting up and running the scripts: The [`Machine`](https://pkg.go.dev/github.com/1set/starlet#Machine) type serves as a comprehensive wrapper for Starlark runtime environments, offering an intuitive API for executing Starlark scripts, managing global variables, loading modules, controlling the script execution flow., and handling script outputs.
+## Quick start
 
-### Enhanced Data Conversion
+This complete program enables JSON loading, passes a Go function to the script, and reads a script result back in Go:
 
-*Starlet* offers the [`dataconv`](https://pkg.go.dev/github.com/1set/starlet/dataconv) package that simplifies the data exchange between Go and Starlark types. Unlike *Starlight*, which wraps Go values in Starlark-friendly structures, it focuses on transforming Go values into their Starlark equivalents and vice versa. This allows for a more seamless integration of Go's rich data types into Starlark scripts.
+```go
+package main
 
-### Extended Libraries & Functionalities
+import (
+    "fmt"
+    "log"
 
-*Starlet* includes a set of custom modules and libraries that extend the functionality of the Starlark language. These modules cover a wide range of use cases, such as file manipulation, HTTP client, JSON/CSV handling, and more, making Starlark scripts even more powerful and versatile.
+    "github.com/1set/starlet"
+)
+
+func main() {
+    globals := starlet.StringAnyMap{
+        "greet": func(name string) string {
+            return fmt.Sprintf("Hello, %s!", name)
+        },
+    }
+    machine := starlet.NewWithNames(globals, nil, []string{"json"})
+    result, err := machine.RunScript([]byte(`
+load("json", "decode")
+data = decode('{"name":"Starlark"}')
+message = greet(data["name"])
+`), nil)
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Println(result["message"])
+}
+// Output: Hello, Starlark!
+```
+
+## Choosing modules
+
+`NewDefault()` supplies standard Starlark builtins, with no additional Starlet modules. Select modules explicitly:
+
+| Constructor | Script access |
+| --- | --- |
+| `NewWithNames(globals, []string{"json"}, nil)` | Preload: call `json.decode(...)` directly. |
+| `NewWithNames(globals, nil, []string{"json"})` | Lazy load: `load("json", "decode")`, then call `decode(...)`. |
+| `NewWithBuiltins(globals, nil, nil)` | All builtin preloads and loaders, including filesystem, network and process effects. |
+
+Preloading and enabling `load()` are separate choices. Most preloaded modules expose a named object; [`go_idiomatic`](lib/goidiomatic) instead exposes flat helpers such as `eval`. Binding precedence is host globals < preloads < execution extras < explicit `load` bindings.
+
+Unknown builtin names make `NewWithNames` panic. For names supplied by callers, use `MakeBuiltinModuleLoaderList` / `MakeBuiltinModuleLoaderMap` and `NewWithLoaders` to handle configuration errors explicitly. Errors while initializing a module are returned by execution.
+
+## Execution and state
+
+- Configure globals, preloads and dialect options before the first execution; use `Reset()` when changing initialization configuration. Extras and script globals are retained for later executions and `Call`.
+- `Reset()` discards runtime bindings and loaded-module state, while retaining configuration and the optional compiled-program cache. It does not undo host-side effects.
+- `RunScript` executes supplied bytes without the compiled-program cache. For reusable named scripts, use `SetScript` + `Run`, or `RunFile`; enable caching with `SetScriptCacheEnabled(true)` when needed.
+- After loading function definitions, use `Call`, `CallWithContext`, or `CallWithTimeout` to invoke them from Go. Context cancellation is cooperative; it cannot preempt arbitrary Go callbacks.
+- `SetMaxExecutionSteps` bounds VM steps; `0` means unlimited. The counter resets for each Run/Call, and file-loaded module initialization receives a separate thread allowance. This is not a wall-clock or memory limit.
+
+Execution on one Machine is serialized. Host callbacks must not reenter methods on the same Machine, except the nonblocking `String` method. The lock does not synchronize externally shared Go data or raw handles returned by `GetStarlarkThread` / `GetStarlarkPredeclared`; the host must own or synchronize those values.
+
+## Value conversion
+
+Global/extra input conversion and result conversion are enabled by default. Go values use Starlight wrappers where appropriate; results are converted back to Go values. This does not promise a detached copy of host data. With input conversion disabled, globals and extras must already implement `starlark.Value`; `Call` arguments still use the Starlight bridge. Disabling output conversion retains `starlark.Value` results.
+
+Use [`dataconv.Marshal` / `Unmarshal`](https://pkg.go.dev/github.com/1set/starlet/dataconv) for explicit conversion of supported common Go/native Starlark types. These helpers are separate from the Machine's default bridge.
 
 ## Libraries
 
-*Starlet* comes with a set of libraries to extend the standard Starlark library. Here's a brief overview:
+Each module README lists its functions, parameters, results and boundaries:
 
 | Package                           | Go Doc                                                                                                                                       | Description                                                   |
 |:----------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------|:--------------------------------------------------------------|
@@ -53,108 +109,23 @@ Inspired by the [*Starlight*](https://github.com/starlight-go/starlight) and [*S
 | [`stats`](/lib/stats)             | [![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/stats.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/stats)             | Statistics: mean/median/stddev, correlation, percentiles, etc. |
 | [`string`](/lib/string)           | [![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/string.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/string)           | Constants and functions to manipulate strings                 |
 
-For extensive documentation on each library, please refer to the respective README files in the [`lib`](/lib) directory. Additionally, *Starlet* includes an array of official modules. You can explore all provided modules by using [`GetAllBuiltinModuleNames()`](https://pkg.go.dev/github.com/1set/starlet#GetAllBuiltinModuleNames) method. The `math`, `struct`, and `time` modules are re-exported from [go.starlark.net](https://pkg.go.dev/go.starlark.net) and documented upstream, so they have no `lib/` README here.
 
-## Installation
+`GetAllBuiltinModuleNames()` returns the complete sorted registry. The upstream `math`, `struct`, and `time` modules are also available; they have no `lib/` README here. [Capability metadata](https://pkg.go.dev/github.com/1set/starlet#ModuleCapability) describes builtin host effects for policy consumers; it is not process isolation or a determinism guarantee.
 
-To install *Starlet*, use the following Go command under your project directory:
+## Compatibility and security
 
-```bash
-go get github.com/1set/starlet
-```
+The root library keeps the interpreter pin at `go.starlark.net v0.0.0-20260324133313-ffb3f39dd27a`. Its Go 1.19 compatibility floor is separate from the production compiler.
 
-To explore the capabilities of the Starlet CLI tool, use the command below to install:
+This interpreter predates the upstream parser recursion limit. Only parse host-selected, reviewed source and modules in the host process. Step limits, timeouts and module selection do not make arbitrary untrusted source safe. Read [SECURITY.md](SECURITY.md) for the deployment boundary.
 
-```bash
-go install github.com/1set/starlet/cmd/starlet@latest
-```
+## Command-line tools
 
-## Usage
+For the dedicated command-line application, see [StarCLI](https://github.com/1set/starcli). The older [`cmd/starlet`](cmd/starlet) is a separate Go module with its own dependency pins; installing it does not automatically use the root library version described here.
 
-You can use *Starlet* to enhance your Starlark scripting experience. Here's a quick example:
+## Contributing and license
 
-```go
-import "github.com/1set/starlet"
-
-// Define your machine with global variables and modules
-globals := starlet.StringAnyMap{
-    "greet": func(name string) string {
-        return fmt.Sprintf("Hello, %s!", name)
-    },
-}
-mac := starlet.NewWithNames(globals, []string{"random"}, nil)
-
-// Run a Starlark script in the machine
-script := `
-target = random.choice(["World", "Starlark", "Starlet"])
-text = greet(target)
-print("Starlark:", text)
-`
-res, err := mac.RunScript([]byte(script), nil)
-
-// Check for errors and results
-if err != nil {
-    fmt.Println("Error executing script:", err)
-    return
-}
-fmt.Println("Go:", res["text"].(string))
-fmt.Println("Modules:", starlet.GetAllBuiltinModuleNames())
-```
-
-This may output:
-
-```
-Starlark: Hello, Starlet!
-Go: Hello, Starlet!
-Modules: [atom base64 csv file go_idiomatic hashlib http json log math net path random re regex runtime serial stats string struct time]
-```
-
-Use CLI to interact with the read-eval-print loop (REPL):
-
-```python
->>> resp = http.get("https://api.github.com/repos/1set/starlet")
->>> resp.status_code
-200
->>> data = resp.json()
->>> data["description"]
-"✨ Enhancing your Starlark scripting experience with powerful extensions and enriched wrappers. Start your Starlark journey with Starlet, where simplicity meets functionality."
->>> ",".join(data["topics"])
-"go,golang,script,scripting,scripting-language,starlark,starlark-go,starlark-lang,starlark-language,starlarky"
->>> pprint(data["license"])
-{
-    "key": "mit",
-    "name": "MIT License",
-    "node_id": "MDc6TGljZW5zZTEz",
-    "spdx_id": "MIT",
-    "url": "https://api.github.com/licenses/mit"
-}
->>>
-```
-
-## Contributing
-
-Contributions to *Starlet* are all welcomed. If you encounter any issues or have suggestions for improvements, please feel free to open an issue or submit a pull request. Before undertaking any significant changes, please let us know by filing an issue or claiming an existing one to ensure there is no duplication of effort.
-
-## License
-
-*Starlet* is licensed under the [MIT License](LICENSE).
+Issues and pull requests are welcome. Please discuss significant changes before implementation to avoid duplicate work. Starlet is licensed under [MIT](LICENSE).
 
 ## Credits
 
-*Starlet* is inspired by two projects:
-
-1. [Starlight](https://github.com/starlight-go/starlight): A Go wrapper and data conversion tool between Go and Starlark.
-2. [Starlib](https://github.com/qri-io/starlib): A collection of third-party libraries for Starlark.
-
-We appreciate the work done by the creators and contributors of these projects. Their efforts have paved the way for the development of *Starlet*. Special thanks to the authors and contributors of these projects! 🎉
-
-### Security baseline and Go compatibility
-
-Go **1.19 or newer** is supported. The interpreter remains pinned to
-`go.starlark.net v0.0.0-20260324133313-ffb3f39dd27a`. The compatibility
-floor is separate from the toolchain used to build production applications;
-use a currently supported Go release with security fixes.
-
-This interpreter baseline does **not** include the upstream parser recursion
-limit. Only parse host-selected, reviewed source and modules in the host
-process. See [SECURITY.md](SECURITY.md) for the known risk and deployment boundary.
+Inspired by [Starlight](https://github.com/starlight-go/starlight) and [Starlib](https://github.com/qri-io/starlib).

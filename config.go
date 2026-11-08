@@ -88,22 +88,30 @@ func GetBuiltinModule(name string) ModuleLoader {
 	return allBuiltinModules[name]
 }
 
-// EnableRecursionSupport enables recursion support in Starlark environments for loading modules.
+// EnableRecursionSupport sets the legacy upstream process-global recursion flag.
+// It does not configure Machine file options; use (*Machine).EnableRecursionSupport.
+// Do not change process-global flags concurrently with evaluation.
 func EnableRecursionSupport() {
 	resolve.AllowRecursion = true
 }
 
-// DisableRecursionSupport disables recursion support in Starlark environments for loading modules.
+// DisableRecursionSupport clears the legacy upstream process-global recursion flag.
+// It does not configure Machine file options; use (*Machine).DisableRecursionSupport.
+// Do not change process-global flags concurrently with evaluation.
 func DisableRecursionSupport() {
 	resolve.AllowRecursion = false
 }
 
-// EnableGlobalReassign enables global reassignment in Starlark environments for loading modules.
+// EnableGlobalReassign sets the legacy upstream process-global reassignment flag.
+// It does not configure Machine file options; use (*Machine).EnableGlobalReassign.
+// Do not change process-global flags concurrently with evaluation.
 func EnableGlobalReassign() {
 	resolve.AllowGlobalReassign = true
 }
 
-// DisableGlobalReassign disables global reassignment in Starlark environments for loading modules.
+// DisableGlobalReassign clears the legacy upstream process-global reassignment flag.
+// It does not configure Machine file options; use (*Machine).DisableGlobalReassign.
+// Do not change process-global flags concurrently with evaluation.
 func DisableGlobalReassign() {
 	resolve.AllowGlobalReassign = false
 }

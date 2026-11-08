@@ -38,7 +38,7 @@ It **errors** when a value cannot be encoded (e.g. a function: `cannot encode fu
 
 ```python
 load('json', 'encode')
-load("struct.star", "struct")
+load("struct", "struct")
 s = struct(a="Aloha", b=0x10, c=True, d=[1,2,3])
 print(encode(s))
 # Output: {"a":"Aloha","b":16,"c":true,"d":[1,2,3]}

@@ -28,7 +28,7 @@ func (l ModuleLoaderList) Clone() []ModuleLoader {
 }
 
 // LoadAll loads all modules in the list into the given StringDict.
-// It returns an error as second return value if any module fails to load.
+// It returns an error for a nil dictionary/loader or a failed module load.
 func (l ModuleLoaderList) LoadAll(d starlark.StringDict) error {
 	if d == nil {
 		return errorStarletErrorf(`load`, "cannot load modules into nil dict")

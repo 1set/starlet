@@ -1,8 +1,8 @@
 # regex
 
-`regex` provides regular-expression functions for Starlark — a subset of [Python's **re** module](https://docs.python.org/3/library/re.html) backed by Go's [RE2 engine](https://golang.org/s/re2syntax). **Capability profile: Pure** (no filesystem, network, process, or log side effects; deterministic for a given pattern and input).
+`regex` provides regular-expression functions for Starlark — a subset of [Python's **re** module](https://docs.python.org/3/library/re.html) backed by Go's [RE2 engine](https://golang.org/s/re2syntax). **Capability profile: Pure** — the module has no direct filesystem, network, process or log operations. Callable replacements run on the caller's Thread; their effects and determinism depend on the callback.
 
-It succeeds the legacy `re` module (which is frozen): `regex` adds `Match` objects, named-group extraction, the `IGNORECASE`/`MULTILINE`/`DOTALL` flags, `\1`/`\g<name>` and function replacements, and the full `compile`/`fullmatch`/`finditer`/`subn`/`escape` surface. RE2 matches in linear time — no catastrophic backtracking / ReDoS — which suits running untrusted or LLM-generated scripts in a sandbox. Where RE2 genuinely differs from Python — lookahead/lookbehind (`(?=...)`, `(?<=...)`) and in-pattern backreferences (`\1`) — the pattern fails to **compile** with a clear error rather than silently misbehaving.
+It succeeds the legacy `re` module (which is frozen): `regex` adds `Match` objects, named-group extraction, the `IGNORECASE`/`MULTILINE`/`DOTALL` flags, `\1`/`\g<name>` and function replacements, and the full `compile`/`fullmatch`/`finditer`/`subn`/`escape` surface. RE2 avoids catastrophic backtracking; this matching guarantee does not make arbitrary Starlark source safe to execute (see [SECURITY.md](../../SECURITY.md)). Unsupported lookahead/lookbehind (`(?=...)`, `(?<=...)`) and in-pattern backreferences (`\1`) fail to compile.
 
 ## Functions
 

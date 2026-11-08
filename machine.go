@@ -1,8 +1,5 @@
-// Package starlet provides powerful extensions and enriched wrappers for Starlark scripting.
-//
-// Its goal is to enhance the user's scripting experience by combining simplicity and functionality.
-// It offers robust, thread-safe types such as Machine, which serves as a wrapper for Starlark runtime environments.
-// With Starlet, users can easily manage global variables, load modules, and control the script execution flow.
+// Package starlet embeds Starlark scripts in Go with a stateful Machine,
+// builtin libraries, and Go/Starlark value conversion.
 package starlet
 
 import (
@@ -14,23 +11,18 @@ import (
 	"go.starlark.net/starlark"
 )
 
-// Machine is a thread-safe type that wraps Starlark runtime environments. Machine ensures thread safety by using a sync.RWMutex to control access to the environment's state.
+// Machine configures and executes a stateful Starlark environment.
+// Configure globals, preloads and dialect options before execution or after Reset.
+// Preloads inject their exported values; lazy loaders supply load() members.
+// Binding precedence is globals, preloads, execution extras, then explicit load
+// bindings. Extras and script globals remain available to later executions.
+// Reset discards runtime bindings and loaded modules, retaining configuration
+// and the optional compiled-program cache; it does not undo host-side effects.
 //
-// The Machine struct stores the state of the environment, including scripts, modules, and global variables. It provides methods for setting and getting these values, and for running the script. A Machine instance can be configured to preload modules and global variables before running a script or after resetting the environment. It can also lazyload modules right before running the script, the lazyload modules are defined in a list of module loaders and are invoked when the script is run.
-//
-// The global variables and preload modules can be set before the first run of the script or after resetting the environment. Additionally, extra variables can be set for each run of the script.
-//
-// Modules are divided into two types: preload and lazyload. Preload modules are loaded before the script is run, while lazyload modules are loaded as and when they are required during the script execution.
-//
-// The order of precedence for overriding is as follows: global variables, preload modules, and then extra variables before the run, while lazyload modules have the highest precedence during the run.
-//
-// Setting a print function allows the script to output text to the console or another output stream.
-//
-// The script to be run is defined by its name and content, and potentially a filesystem (fs.FS) if the script is to be loaded from a file.
-//
-// The result of each run is cached and written back to the environment, so that it can be used in the next run of the script.
-//
-// The environment can be reset, allowing the script to be run again with a fresh set of variables and modules.
+// Machine serializes execution and locks access to its state. A callback must
+// not reenter methods on the same Machine, except the nonblocking String method. Externally
+// shared Go data and raw handles returned by GetStarlarkThread or
+// GetStarlarkPredeclared still require host ownership or synchronization.
 type Machine struct {
 	_  itn.DoNotCompare
 	mu sync.RWMutex
@@ -57,18 +49,8 @@ type Machine struct {
 	predeclared starlark.StringDict
 }
 
-// String renders a snapshot of the machine's state. Every field it reads is
-// written by Run/Reset under the write lock, so an unlocked read races with
-// them (and the thread was nil-checked and then dereferenced separately, so a
-// concurrent Reset could null it between and panic the host).
-//
-// It uses TryRLock rather than RLock so it never blocks: a plain RLock would
-// deadlock when String is reached while the write lock is held — most sharply
-// when a host prints the machine from within its own print/callback while Run
-// holds the lock (fmt logging the machine is an easy way to hit this). When the
-// lock is unavailable another goroutine (or this one, reentrantly) holds the
-// write lock — a run, a reset, or any setter — so it reports the machine as
-// running instead of reading the fields under mutation.
+// String returns a state summary without blocking. If the Machine is locked,
+// it returns a running marker, allowing safe formatting from a host callback.
 func (m *Machine) String() string {
 	if !m.mu.TryRLock() {
 		return "🌠Machine{running}"
@@ -91,7 +73,8 @@ type PrintFunc func(thread *starlark.Thread, msg string)
 // using the load() function. If you don't use load() in your scripts, you can pass in nil.
 type LoadFunc func(thread *starlark.Thread, module string) (starlark.StringDict, error)
 
-// NewDefault creates a new Starlark runtime environment.
+// NewDefault creates a Machine with standard Starlark builtins, no additional
+// modules, and input/output conversion enabled.
 func NewDefault() *Machine {
 	return &Machine{enableInConv: true, enableOutConv: true}
 }
@@ -130,8 +113,10 @@ func NewWithBuiltins(globals StringAnyMap, additionalPreload ModuleLoaderList, a
 	}
 }
 
-// NewWithNames creates a new Starlark runtime environment with given global variables, preload and lazyload module names.
-// The modules should be built-in modules, and it panics if any of the given modules fails to load.
+// NewWithNames creates a Machine with globals and named builtin preloads/loaders.
+// It panics on unknown names; module initialization happens during execution.
+// For caller-supplied names, handle errors from MakeBuiltinModuleLoaderList and
+// MakeBuiltinModuleLoaderMap, then pass the loaders to NewWithLoaders.
 func NewWithNames(globals StringAnyMap, preloads []string, lazyloads []string) *Machine {
 	pre, err := MakeBuiltinModuleLoaderList(preloads...)
 	if err != nil {
@@ -267,7 +252,10 @@ func (m *Machine) SetScriptContent(content []byte) {
 	m.scriptContent = content
 }
 
-// SetInputConversionEnabled controls the conversion of Starlark variables from input into Starlight wrappers.
+// SetInputConversionEnabled controls Go-to-Starlark conversion of globals and
+// execution extras through Starlight. It is enabled by default; when disabled,
+// those inputs must already implement starlark.Value. Call arguments always
+// use the Starlight bridge, independently of this setting.
 func (m *Machine) SetInputConversionEnabled(enabled bool) {
 	m.mu.Lock() // Locking to avoid concurrent access
 	defer m.mu.Unlock()
@@ -275,7 +263,9 @@ func (m *Machine) SetInputConversionEnabled(enabled bool) {
 	m.enableInConv = enabled
 }
 
-// SetOutputConversionEnabled controls the conversion of Starlark variables from output into Starlight wrappers.
+// SetOutputConversionEnabled controls Starlark-to-Go conversion of execution,
+// Call and Export results. It is enabled by default; when disabled, result
+// entries retain their starlark.Value types.
 func (m *Machine) SetOutputConversionEnabled(enabled bool) {
 	m.mu.Lock() // Locking to avoid concurrent access
 	defer m.mu.Unlock()
@@ -312,8 +302,9 @@ func (m *Machine) SetCustomTag(tag string) {
 	m.customTag = tag
 }
 
-// GetStarlarkPredeclared returns the Starlark predeclared names of the Starlark runtime environment.
-// It's for advanced usage only, don't use it unless you know what you are doing.
+// GetStarlarkPredeclared returns the live runtime dictionary, not a copy, or nil
+// before initialization.
+// Advanced callers must synchronize access with all Machine operations.
 func (m *Machine) GetStarlarkPredeclared() starlark.StringDict {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -321,8 +312,8 @@ func (m *Machine) GetStarlarkPredeclared() starlark.StringDict {
 	return m.predeclared
 }
 
-// GetStarlarkThread returns the Starlark thread of the Starlark runtime environment.
-// It's for advanced usage only, don't use it unless you know what you are doing.
+// GetStarlarkThread returns the live runtime Thread, or nil before initialization.
+// Advanced callers must synchronize access with all Machine operations.
 func (m *Machine) GetStarlarkThread() *starlark.Thread {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -363,7 +354,7 @@ func (m *Machine) SetMaxExecutionSteps(steps uint64) {
 	m.maxSteps = steps
 }
 
-// EnableRecursionSupport enables recursion support in all Starlark environments.
+// EnableRecursionSupport enables recursion in this Machine's file options.
 func (m *Machine) EnableRecursionSupport() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -371,7 +362,7 @@ func (m *Machine) EnableRecursionSupport() {
 	m.allowRecursion = true
 }
 
-// DisableRecursionSupport disables recursion support in all Starlark environments.
+// DisableRecursionSupport disables recursion in this Machine's file options.
 func (m *Machine) DisableRecursionSupport() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -379,7 +370,8 @@ func (m *Machine) DisableRecursionSupport() {
 	m.allowRecursion = false
 }
 
-// EnableGlobalReassign enables global reassignment in all Starlark environments.
+// EnableGlobalReassign enables global reassignment, top-level control flow and
+// while loops in this Machine's file options.
 func (m *Machine) EnableGlobalReassign() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -387,7 +379,8 @@ func (m *Machine) EnableGlobalReassign() {
 	m.allowGlobalReassign = true
 }
 
-// DisableGlobalReassign disables global reassignment in all Starlark environments.
+// DisableGlobalReassign disables global reassignment, top-level control flow
+// and while loops in this Machine's file options.
 func (m *Machine) DisableGlobalReassign() {
 	m.mu.Lock()
 	defer m.mu.Unlock()

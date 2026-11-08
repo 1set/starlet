@@ -8,15 +8,15 @@ Capability profile: **Process**. The module reports host/process facts captured 
 
 | function | description |
 | --- | --- |
-| `uptime() -> time.duration` | Time elapsed since the application started. |
-| `getenv(key, default=None) -> string` | Value of environment variable `key`, or `default` if it is not set. |
+| `uptime() -> time.duration` | Time elapsed since `app_start` (package initialization). |
+| `getenv(key, default=None) -> value` | String value of environment variable `key`, or the supplied `default` (including `None`) if unset. |
 | `putenv(key, value) -> None` | Set environment variable `key` to `value` (coerced to a string). `setenv` is an alias. |
 | `setenv(key, value) -> None` | Alias of `putenv`. |
 | `unsetenv(key) -> None` | Unset a single environment variable. |
 
 ## Constants
 
-Constants are captured once when the module is first loaded.
+Host/process constants are captured once when the module is first loaded. `app_start` records this Go package's initialization time; `uptime()` and `getenv()` read live state.
 
 | constant | meaning |
 | --- | --- |
@@ -31,7 +31,7 @@ Constants are captured once when the module is first loaded.
 | `ppid` | `int` — the parent process ID. |
 | `uid` | `int` — the user ID of the process owner. |
 | `gid` | `int` — the group ID of the process owner. |
-| `app_start` | `time.time` — the moment the application started; used to compute `uptime`. |
+| `app_start` | `time.time` — this Go package's initialization time; used to compute `uptime`. |
 
 ## Details & examples
 
@@ -39,9 +39,9 @@ Constants are captured once when the module is first loaded.
 
 `uptime() -> time.duration`
 
-Returns the elapsed time since the application started (relative to `app_start`) as a `time.duration`. Takes no arguments; passing any argument errors with `runtime.uptime: got 1 arguments, want 0`.
+Returns the elapsed time since this Go package was initialized (`app_start`) as a `time.duration`. Takes no arguments; passing any argument errors with `runtime.uptime: got 1 arguments, want 0`.
 
-The exact value depends on how long the process has been running, so the output below is illustrative.
+The exact value depends on when it is called, so the output below is illustrative.
 
 ```python
 load("runtime", "uptime")
@@ -51,7 +51,7 @@ print(uptime())
 
 ### `getenv`
 
-`getenv(key, default=None) -> string`
+`getenv(key, default=None) -> value`
 
 Returns the value of environment variable `key` as a `string` if it is set, otherwise returns `default` (which defaults to `None` and may be any value). `key` must be a string; a missing or non-string `key` errors (`runtime.getenv: missing argument for key`, `runtime.getenv: for parameter key: got int, want string`).
 
@@ -103,7 +103,7 @@ print(getenv("STARLET_TEST"))
 
 ## Notes / boundaries
 
-- **Capture timing.** The constants (`hostname`, `workdir`, `homedir`, `tempdir`, `os`, `arch`, `gover`, `pid`, `ppid`, `uid`, `gid`, `app_start`) are read when the module is first loaded and do not refresh afterwards. `uptime` is computed live at call time against `app_start`.
+- **Capture timing.** Host/process facts are captured on first module load; `app_start` is fixed at package initialization. `uptime()` and `getenv()` read live state.
 - **No custom types.** All members are native Starlark values: strings, ints, a `time.time` (`app_start`), and a `time.duration` returned by `uptime`. The `time.*` values come from `go.starlark.net/lib/time`.
 - **Environment writes are global.** `putenv`/`setenv`/`unsetenv` mutate the host process environment, not a sandboxed copy; effects are visible to the rest of the process and to child processes.
 - **Platform differences.** `os`, `arch`, `gover`, `homedir`, and the numeric IDs reflect the underlying platform; on Windows, `uid`/`gid` follow Go's `os.Getuid()`/`os.Getgid()` semantics (which may be `-1`).
