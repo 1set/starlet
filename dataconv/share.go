@@ -12,22 +12,14 @@ import (
 	"go.starlark.net/syntax"
 )
 
-// SharedDict represents a thread-safe dictionary that can be concurrently accessed and modified by multiple Starlark threads.
-// This synchronization is crucial in concurrent environments where Starlark scripts are executed in parallel, ensuring data consistency and preventing race conditions.
-//
-// The internal state of a SharedDict includes a standard Starlark dictionary (`*starlark.Dict`), a mutex (`sync.RWMutex`) to manage concurrent access,
-// and a boolean flag indicating whether the dictionary is frozen. A frozen SharedDict cannot be modified, aligning with Starlark's immutability rules for frozen values.
-// Additionally, SharedDict supports custom naming through the 'name' field, allowing for more descriptive representations and debugging.
-//
-// Constructors:
-// - NewSharedDict: Initializes a new SharedDict with default settings.
-// - NewNamedSharedDict: Creates a new SharedDict with a specified name, providing clarity when multiple SharedDicts are used.
-// - NewSharedDictFromDict: Generates a new SharedDict based on an existing Starlark dictionary. It attempts to clone the original dictionary to preserve immutability.
-//
-// Methods like Len, CloneDict, ToJSON, LoadJSON provide additional functionalities like determining the dictionary's length, cloning, JSON serialization, and deserialization, enhancing the utility of SharedDict in various use cases.
-//
-// SharedDict integrates tightly with Starlark's concurrency model, offering a robust solution for managing shared state across threads.
-// By encapsulating thread safety mechanisms and providing a familiar dictionary interface, SharedDict facilitates the development of concurrent Starlark scripts with shared mutable state.
+// SharedDict wraps a Starlark dictionary with locks for indexing, dictionary
+// methods, Len, CloneDict, LoadJSON, Freeze and comparison.
+// Returned keys/values and shallow clones can retain mutable nested aliases;
+// the mapping's lock does not synchronize access through those aliases.
+// String and the Go ToJSON method do not lock: stop or externally synchronize
+// writers before formatting or serializing the dictionary. Configure its type
+// name before sharing it between goroutines.
+// A frozen SharedDict rejects mapping updates and freezes its contained values.
 type SharedDict struct {
 	_ itn.DoNotCompare
 	sync.RWMutex
@@ -65,7 +57,8 @@ func NewNamedSharedDict(name string) *SharedDict {
 }
 
 // NewSharedDictFromDict creates a new SharedDict instance from the given starlark.Dict.
-// It attempts to clone the dictionary, and returns the original dictionary if failed.
+// It copies top-level entries, retaining nested value aliases; if copying fails,
+// it uses the original dictionary. The caller must synchronize access to d.
 func NewSharedDictFromDict(d *starlark.Dict) *SharedDict {
 	nd, err := CloneDict(d)
 	if err != nil {
@@ -270,9 +263,9 @@ func (s *SharedDict) Len() int {
 	return 0
 }
 
-// CloneDict creates a shallow copy of the underlying Starlark dictionary contained within the SharedDict instance.
-// This method is particularly valuable when a snapshot of the current state of the dictionary is needed without affecting the original dictionary.
-// It ensures that modifications to the returned dictionary do not impact the source SharedDict, providing a mechanism for safe, concurrent read operations.
+// CloneDict copies the mapping's entries under its read lock.
+// Top-level insertions and deletions on the returned dictionary are independent;
+// nested values remain shared and require their own ownership or synchronization.
 func (s *SharedDict) CloneDict() (*starlark.Dict, error) {
 	s.RLock()
 	defer s.RUnlock()
@@ -281,6 +274,8 @@ func (s *SharedDict) CloneDict() (*starlark.Dict, error) {
 }
 
 // ToJSON serializes the SharedDict instance into a JSON string representation.
+// Direct Go callers must synchronize it with mapping writes; the Starlark
+// to_json method acquires the mapping lock through its attribute wrapper.
 // This method facilitates the conversion of complex, nested data structures stored within a SharedDict into a universally recognizable format (JSON),
 // making it easier to export or log the data contained within the SharedDict.
 //
@@ -373,7 +368,7 @@ func sharedDictPerform(thread *starlark.Thread, b *starlark.Builtin, args starla
 	}
 }
 
-// sharedDictToDict returns the shadow-clone of underlying dictionary.
+// sharedDictToDict returns a shallow copy of the underlying dictionary.
 func sharedDictToDict(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
 		return nil, err
@@ -441,7 +436,9 @@ func sharedDictFromJSON(thread *starlark.Thread, b *starlark.Builtin, args starl
 	return nd, nil
 }
 
-// CloneDict returns a shadow-clone of the given dictionary. It's safe to call it with a nil dictionary, it will return a new empty dictionary.
+// CloneDict copies the dictionary's top-level entries, retaining nested aliases.
+// A nil dictionary produces an empty dictionary. It does not synchronize access
+// to od; callers must own or lock it while copying.
 func CloneDict(od *starlark.Dict) (*starlark.Dict, error) {
 	if od == nil {
 		return starlark.NewDict(defaultSharedDictSize), nil

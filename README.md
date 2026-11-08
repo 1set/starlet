@@ -16,7 +16,7 @@ From a Go module:
 go get github.com/1set/starlet
 ```
 
-This README describes the checked-out source; available APIs depend on the version selected by your application (`go list -m github.com/1set/starlet`).
+This README describes the checked-out source; available APIs depend on the version selected by your application (`go list -m github.com/1set/starlet`). GoDoc links may show the latest tagged release. For this checkout, use `go doc Machine`, [source API comments](machine.go), and the [usage guide](USAGE.md).
 
 The root library supports Go 1.19 or newer. Use a supported, security-patched toolchain for production; see [compatibility and security](#compatibility-and-security).
 
@@ -64,7 +64,7 @@ message = greet(data["name"])
 | `NewWithNames(globals, nil, []string{"json"})` | Lazy load: `load("json", "decode")`, then call `decode(...)`. |
 | `NewWithBuiltins(globals, nil, nil)` | All builtin preloads and loaders, including filesystem, network and process effects. |
 
-Preloading and enabling `load()` are separate choices. Most preloaded modules expose a named object; [`go_idiomatic`](lib/goidiomatic) instead exposes flat helpers such as `eval`. Binding precedence is host globals < preloads < execution extras < explicit `load` bindings.
+Preloading and enabling `load()` are separate choices. Most preloaded modules expose a named object; [`go_idiomatic`](lib/goidiomatic) exposes flat helpers such as `eval`, and `struct` exposes the `struct(...)` constructor. Binding precedence is host globals < preloads < execution extras < explicit `load` bindings.
 
 Unknown builtin names make `NewWithNames` panic. For names supplied by callers, use `MakeBuiltinModuleLoaderList` / `MakeBuiltinModuleLoaderMap` and `NewWithLoaders` to handle configuration errors explicitly. Errors while initializing a module are returned by execution.
 
@@ -73,6 +73,7 @@ Unknown builtin names make `NewWithNames` panic. For names supplied by callers, 
 - Configure globals, preloads and dialect options before the first execution; use `Reset()` when changing initialization configuration. Extras and script globals are retained for later executions and `Call`.
 - `Reset()` discards runtime bindings and loaded-module state, while retaining configuration and the optional compiled-program cache. It does not undo host-side effects.
 - `RunScript` executes supplied bytes without the compiled-program cache. For reusable named scripts, use `SetScript` + `Run`, or `RunFile`; enable caching with `SetScriptCacheEnabled(true)` when needed.
+- Route script `print(...)` with `SetPrintFunc`; `nil` uses stderr and `NoopPrintFunc` discards output. See [file execution, output, and errors](USAGE.md).
 - After loading function definitions, use `Call`, `CallWithContext`, or `CallWithTimeout` to invoke them from Go. Context cancellation is cooperative; it cannot preempt arbitrary Go callbacks.
 - `SetMaxExecutionSteps` bounds VM steps; `0` means unlimited. The counter resets for each Run/Call, and file-loaded module initialization receives a separate thread allowance. This is not a wall-clock or memory limit.
 
@@ -110,7 +111,7 @@ Each module README lists its functions, parameters, results and boundaries:
 | [`string`](/lib/string)           | [![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/string.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/string)           | Constants and functions to manipulate strings                 |
 
 
-`GetAllBuiltinModuleNames()` returns the complete sorted registry. The upstream `math`, `struct`, and `time` modules are also available; they have no `lib/` README here. [Capability metadata](https://pkg.go.dev/github.com/1set/starlet#ModuleCapability) describes builtin host effects for policy consumers; it is not process isolation or a determinism guarantee.
+`GetAllBuiltinModuleNames()` returns the complete sorted registry. The upstream [`math`](https://github.com/google/starlark-go/blob/ffb3f39dd27a/lib/math/math.go), [`struct`](https://github.com/google/starlark-go/blob/ffb3f39dd27a/starlarkstruct/struct.go), and [`time`](https://github.com/google/starlark-go/blob/ffb3f39dd27a/lib/time/time.go) APIs are also available; they have no `lib/` README here. [Capability metadata](https://pkg.go.dev/github.com/1set/starlet#ModuleCapability) describes builtin host effects for policy consumers; it is not process isolation or a determinism guarantee.
 
 ## Compatibility and security
 
@@ -120,7 +121,7 @@ This interpreter predates the upstream parser recursion limit. Only parse host-s
 
 ## Command-line tools
 
-For the dedicated command-line application, see [StarCLI](https://github.com/1set/starcli). The older [`cmd/starlet`](cmd/starlet) is a separate Go module with its own dependency pins; installing it does not automatically use the root library version described here.
+For the dedicated command-line application, see [StarCLI](https://github.com/1set/starcli). The older [`cmd/starlet`](cmd/starlet/README.md) has separate dependency pins and [legacy install/REPL instructions](cmd/starlet/README.md); installing it does not automatically use the root library version described here. For an embedded terminal REPL, see [`Machine.REPL`](USAGE.md#terminal-repl).
 
 ## Contributing and license
 

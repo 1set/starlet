@@ -67,7 +67,7 @@ print(dumps({'b': 2, 'a': 1}))
 
 Reconstruct the value from a `dumps` string, interpreting the type tags. The result is a fresh, **unfrozen** value (the same as `json.decode`), so scripts can read or mutate it.
 
-**Errors on**: invalid JSON (`serial.loads: …`), trailing content after the value (`unexpected trailing data after JSON value` — a second JSON document or garbage; trailing whitespace is fine), an unknown type tag (`unknown type tag "…"`), or a malformed envelope payload whose `v` has the wrong shape (`invalid bytes payload`, `invalid bigint payload`, `invalid time payload`, `invalid tuple payload`, `invalid set payload`, `invalid mapkv payload`/`invalid mapkv entry`, `invalid object payload`). A `set` with an unhashable element or a `mapkv` with an unhashable key errors (`unhashable`). Bare JSON numbers decode without a tag: an integer (any precision) to `int`, a number with `.`/`e`/`E` to `float`.
+**Errors on**: invalid JSON (`serial.loads: …`), a detected second JSON document or trailing garbage (`unexpected trailing data after JSON value`; trailing whitespace is fine), an unknown type tag (`unknown type tag "…"`), or a malformed envelope payload whose `v` has the wrong shape (`invalid bytes payload`, `invalid bigint payload`, `invalid time payload`, `invalid tuple payload`, `invalid set payload`, `invalid mapkv payload`/`invalid mapkv entry`, `invalid object payload`). A `set` with an unhashable element or a `mapkv` with an unhashable key errors (`unhashable`). Bare JSON numbers decode without a tag: an integer (any precision) to `int`, a number with `.`/`e`/`E` to `float`.
 
 ```python
 load('serial', 'loads')
@@ -105,6 +105,8 @@ bad, e2 = try_loads('not json')
 print(val, e1, bad, e2 != None)
 # Output: [1, 2, 3] None None True
 ```
+
+**Known limit:** `loads` / `try_loads` can accept malformed trailing closing delimiters, for example `1]`. They are not strict JSON syntax validators. Validate input syntax in the host first if that guarantee is required; the [tail-check fix](https://github.com/1set/starlet/pull/185) is separate from this documentation update.
 
 ## Notes / boundaries
 

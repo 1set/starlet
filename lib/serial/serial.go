@@ -124,10 +124,9 @@ func generateLoads(try bool) func(*starlark.Thread, *starlark.Builtin, starlark.
 		if err := dec.Decode(&raw); err != nil {
 			return failResult(try, err, fn, true)
 		}
-		// loads round-trips a single value; reject a second JSON value or
-		// trailing garbage rather than silently dropping it. dec.More() is
-		// true only for a further non-whitespace token, so trailing
-		// whitespace/newlines still pass.
+		// Check for further input after the decoded value. More does not
+		// reject every malformed suffix, including stray closing delimiters;
+		// trailing whitespace/newlines still pass.
 		if dec.More() {
 			return failResult(try, fmt.Errorf("unexpected trailing data after JSON value"), fn, true)
 		}
