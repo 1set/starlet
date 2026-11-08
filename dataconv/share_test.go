@@ -1,13 +1,490 @@
 package dataconv
 
+// SharedDict tests cover constructors/names, script methods, frozen/nil values,
+// concurrent access, formatting snapshots, and JSON conversion.
+
 import (
+	"fmt"
+	"math"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	itn "github.com/1set/starlet/internal"
+	starlarktime "go.starlark.net/lib/time"
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
+	"go.starlark.net/syntax"
 )
+
+func TestSharedDict_SnapshotString(t *testing.T) {
+	globals, err := starlark.ExecFile(&starlark.Thread{}, "values.star", "def identity(x):\n    return x\nr = range(3)\ns = 'abc'.elems()\nu = '雪'.codepoints()\nb = b'abc'.elems()\n", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	set := starlark.NewSet(1)
+	if err := set.Insert(starlark.Tuple{starlark.String("item"), starlark.MakeInt(1)}); err != nil {
+		t.Fatal(err)
+	}
+	method, err := starlark.String("hello").Attr("upper")
+	if err != nil {
+		t.Fatal(err)
+	}
+	values := []starlark.Value{
+		starlark.None, starlark.True, starlark.False, starlark.MakeInt(-3),
+		starlark.MakeUint64(^uint64(0)), starlark.Float(1.25), starlark.Float(math.NaN()),
+		starlark.Float(math.Inf(1)), starlark.String("quotes\"\n雪"), starlark.Bytes("\x00\xff"),
+		starlark.Tuple{}, starlark.Tuple{starlark.MakeInt(1)},
+		starlark.Tuple{starlark.NewList([]starlark.Value{starlark.True}), starlark.String("two")},
+		starlark.NewList(nil), starlark.NewList([]starlark.Value{starlark.True, starlark.MakeInt(2)}),
+		starlark.NewList([]starlark.Value{nil}), starlark.NewDict(0), set,
+		globals["identity"], starlark.Universe["len"], method,
+		globals["r"], globals["s"], globals["u"], globals["b"],
+		starlarkstruct.FromStringDict(starlark.String("record"), starlark.StringDict{"value": starlark.True}),
+		&starlarkstruct.Module{Name: "module", Members: starlark.StringDict{"value": starlark.True}},
+		starlarktime.Time(time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)), starlarktime.Duration(time.Second),
+	}
+	for _, value := range values {
+		t.Run(value.Type()+"/"+value.String(), func(t *testing.T) {
+			sd := NewNamedSharedDict("named")
+			if err := sd.SetKey(starlark.String("value"), value); err != nil {
+				t.Fatal(err)
+			}
+			want := "named(" + sd.dict.String() + ")"
+			if got := sd.SnapshotString(); got != want {
+				t.Fatalf("String() = %q; want upstream representation %q", got, want)
+			}
+		})
+	}
+	for _, key := range []starlark.Value{
+		starlark.None, starlark.True, starlark.MakeUint64(^uint64(0)),
+		starlark.Bytes("\x00\xff"), starlark.Tuple{}, starlark.Tuple{starlark.String("one")},
+		starlark.Tuple{starlark.Tuple{starlark.MakeInt(1), starlark.True}, starlark.String("two")},
+	} {
+		t.Run("key/"+key.Type()+"/"+key.String(), func(t *testing.T) {
+			sd := NewSharedDict()
+			if err := sd.SetKey(key, starlark.String("value")); err != nil {
+				t.Fatal(err)
+			}
+			want := "shared_dict(" + sd.dict.String() + ")"
+			if got := sd.SnapshotString(); got != want {
+				t.Fatalf("key String() = %q; want %q", got, want)
+			}
+		})
+	}
+	t.Run("root_cycles", func(t *testing.T) {
+		sd := NewSharedDict()
+		list := starlark.NewList(nil)
+		other := starlark.NewDict(2)
+		if err := other.SetKey(starlark.String("self"), other); err != nil {
+			t.Fatal(err)
+		}
+		if err := other.SetKey(starlark.String("root"), sd.dict); err != nil {
+			t.Fatal(err)
+		}
+		if err := list.Append(starlark.Tuple{sd.dict, list}); err != nil {
+			t.Fatal(err)
+		}
+		for _, item := range []starlark.Tuple{
+			{starlark.String("self"), sd.dict},
+			{starlark.String("via_list_tuple"), list},
+			{starlark.String("repeated_list"), list},
+			{starlark.String("nested_dictionary"), other},
+		} {
+			if err := sd.SetKey(item[0], item[1]); err != nil {
+				t.Fatal(err)
+			}
+		}
+		want := "shared_dict(" + sd.dict.String() + ")"
+		if got := sd.SnapshotString(); got != want {
+			t.Fatalf("cyclic String() = %q; want %q", got, want)
+		}
+	})
+	t.Run("insertion_order", func(t *testing.T) {
+		sd := NewSharedDict()
+		for _, key := range []string{"z", "a", "m"} {
+			if err := sd.SetKey(starlark.String(key), starlark.MakeInt(1)); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if got, want := sd.SnapshotString(), `shared_dict({"z": 1, "a": 1, "m": 1})`; got != want {
+			t.Fatalf("String() = %q; want %q", got, want)
+		}
+	})
+	t.Run("nil_underlying_dictionary", func(t *testing.T) {
+		if got := (&SharedDict{}).String(); got != "shared_dict()" {
+			t.Fatalf("String() = %q; want shared_dict()", got)
+		}
+	})
+}
+
+func TestSharedDict_SnapshotStringLeavesNestedValuesMutable(t *testing.T) {
+	sd := NewSharedDict()
+	list, dict := starlark.NewList(nil), starlark.NewDict(0)
+	for _, item := range []starlark.Tuple{{starlark.String("list"), list}, {starlark.String("dict"), dict}} {
+		if err := sd.SetKey(item[0], item[1]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_ = sd.SnapshotString()
+	if err := list.Append(starlark.True); err != nil {
+		t.Fatalf("String froze the nested list: %v", err)
+	}
+	if err := dict.SetKey(starlark.String("new"), starlark.True); err != nil {
+		t.Fatalf("String froze the nested dictionary: %v", err)
+	}
+}
+
+func TestSharedDict_SnapshotStringSnapshot(t *testing.T) {
+	sd := NewSharedDict()
+	callback := &sharedDictFormatValue{stringFunc: func() string {
+		// A formatter must be able to use the dictionary without its lock held.
+		if !sd.TryLock() {
+			t.Error("String callback ran while the mapping lock was held")
+			return "callback"
+		}
+		sd.Unlock()
+		if sd.Len() != 1 {
+			t.Errorf("callback Len() = %d; want 1", sd.Len())
+		}
+		if _, found, err := sd.Get(starlark.String("first")); err != nil || !found {
+			t.Errorf("callback Get() found=%v, err=%v", found, err)
+		}
+		if err := sd.SetKey(starlark.String("later"), starlark.MakeInt(2)); err != nil {
+			t.Error(err)
+		}
+		return "callback"
+	}}
+	if err := sd.SetKey(starlark.String("first"), callback); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := sd.SnapshotString(), `shared_dict({"first": callback})`; got != want {
+		t.Fatalf("String() = %q; want captured entries %q", got, want)
+	}
+	if sd.Len() != 2 {
+		t.Fatal("String callback did not update the live dictionary")
+	}
+}
+
+func TestSharedDict_SnapshotStringTypeCallback(t *testing.T) {
+	sd := NewSharedDict()
+	calls := 0
+	receiver := &sharedDictFormatValue{stringFunc: func() string { return "receiver" }, typeFunc: func() string {
+		calls++
+		if !sd.TryLock() {
+			t.Error("Type callback ran while the mapping lock was held")
+			return "host"
+		}
+		sd.Unlock()
+		if sd.Len() != 1 {
+			t.Errorf("Type callback Len() = %d; want 1", sd.Len())
+		}
+		if _, found, err := sd.Get(starlark.String("first")); err != nil || !found {
+			t.Errorf("Type callback Get found=%v err=%v", found, err)
+		}
+		if err := sd.SetKey(starlark.String("later"), starlark.MakeInt(2)); err != nil {
+			t.Error(err)
+		}
+		return "host"
+	}}
+	method := starlark.NewBuiltin("method", func(*starlark.Thread, *starlark.Builtin, starlark.Tuple, []starlark.Tuple) (starlark.Value, error) {
+		return starlark.None, nil
+	}).BindReceiver(receiver)
+	if err := sd.SetKey(starlark.String("first"), method); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := sd.SnapshotString(), `shared_dict({"first": <built-in method method of host value>})`; got != want {
+		t.Fatalf("SnapshotString() = %q; want %q", got, want)
+	}
+	if calls != 1 || sd.Len() != 2 {
+		t.Fatalf("Type callback count=%d, mapping length=%d; want 1 and 2", calls, sd.Len())
+	}
+}
+
+func TestSharedDict_SnapshotStringDoesNotRehash(t *testing.T) {
+	var hashes, comparisons int
+	hash := func() (uint32, error) {
+		hashes++
+		return 1, nil
+	}
+	key := &sharedDictFormatValue{stringFunc: func() string { return "host_key" }, hashFunc: hash, comparisons: &comparisons}
+	other := &sharedDictFormatValue{stringFunc: func() string { return "other_key" }, hashFunc: hash, comparisons: &comparisons}
+	sd := NewSharedDict()
+	if err := sd.SetKey(key, starlark.MakeInt(1)); err != nil {
+		t.Fatal(err)
+	}
+	if err := sd.SetKey(other, starlark.MakeInt(2)); err != nil {
+		t.Fatal(err)
+	}
+	beforeHashes, beforeComparisons := hashes, comparisons
+	if got, want := sd.SnapshotString(), "shared_dict({host_key: 1, other_key: 2})"; got != want {
+		t.Fatalf("String() = %q; want %q", got, want)
+	}
+	if hashes != beforeHashes || comparisons != beforeComparisons {
+		t.Fatalf("String invoked key Hash/Equal: hashes %d -> %d, comparisons %d -> %d", beforeHashes, hashes, beforeComparisons, comparisons)
+	}
+}
+
+func TestSharedDict_SnapshotStringCallbackPanic(t *testing.T) {
+	sd := NewSharedDict()
+	if err := sd.SetKey(starlark.String("value"), &sharedDictFormatValue{stringFunc: func() string { panic("format panic") }}); err != nil {
+		t.Fatal(err)
+	}
+	func() {
+		defer func() {
+			if got := recover(); got != "format panic" {
+				t.Errorf("String panic = %v; want format panic", got)
+			}
+		}()
+		_ = sd.SnapshotString()
+	}()
+	if !sd.TryLock() {
+		t.Fatal("mapping lock remained held after a formatting panic")
+	}
+	sd.Unlock()
+}
+
+func TestSharedDict_SnapshotStringConcurrent(t *testing.T) {
+	sd := NewSharedDict()
+	key := starlark.String("counter")
+	if err := sd.SetKey(key, starlark.MakeInt(0)); err != nil {
+		t.Fatal(err)
+	}
+	start := make(chan struct{})
+	var workers sync.WaitGroup
+	workers.Add(2)
+	go func() {
+		defer workers.Done()
+		<-start
+		for i := 0; i < 1000; i++ {
+			if err := sd.SetKey(key, starlark.MakeInt(i)); err != nil {
+				t.Error(err)
+				return
+			}
+		}
+	}()
+	go func() {
+		defer workers.Done()
+		<-start
+		for i := 0; i < 1000; i++ {
+			got := sd.SnapshotString()
+			if !strings.HasPrefix(got, `shared_dict({"counter": `) || !strings.HasSuffix(got, "})") {
+				t.Errorf("malformed concurrent String: %q", got)
+				return
+			}
+		}
+	}()
+	close(start)
+	workers.Wait()
+}
+
+type sharedDictFormatValue struct {
+	stringFunc  func() string
+	hashFunc    func() (uint32, error)
+	comparisons *int
+	compareFunc func()
+	freezeFunc  func()
+	typeFunc    func() string
+}
+
+func (v *sharedDictFormatValue) String() string { return v.stringFunc() }
+func (v *sharedDictFormatValue) Type() string {
+	if v.typeFunc != nil {
+		return v.typeFunc()
+	}
+	return "format_value"
+}
+func (v *sharedDictFormatValue) Freeze() {
+	if v.freezeFunc != nil {
+		v.freezeFunc()
+	}
+}
+func (*sharedDictFormatValue) Truth() starlark.Bool { return true }
+func (v *sharedDictFormatValue) Hash() (uint32, error) {
+	if v.hashFunc != nil {
+		return v.hashFunc()
+	}
+	return 1, nil
+}
+func (v *sharedDictFormatValue) CompareSameType(op syntax.Token, other starlark.Value, _ int) (bool, error) {
+	if v.compareFunc != nil {
+		v.compareFunc()
+	}
+	if v.comparisons != nil {
+		*v.comparisons++
+	}
+	equal := v == other.(*sharedDictFormatValue)
+	return equal == (op == syntax.EQL), nil
+}
+
+func TestSharedDict_StringLegacyReentry(t *testing.T) {
+	for _, test := range []string{"external_lock", "Hash", "Equal", "Freeze"} {
+		t.Run(test, func(t *testing.T) {
+			sd := NewNamedSharedDict("named")
+			var pending []chan string
+			checks := 0
+			checkString := func(want string) {
+				checks++
+				done := make(chan string, 1)
+				go func() { done <- sd.String() }()
+				select {
+				case got := <-done:
+					if got != want {
+						t.Errorf("String while locked = %q; want %q", got, want)
+					}
+				case <-time.After(2 * time.Second):
+					t.Error("legacy String unexpectedly waited for the mapping lock")
+					// Return from the callback so the operation unlocks, then
+					// drain the worker below even if a regression blocks it.
+					pending = append(pending, done)
+				}
+			}
+			key := &sharedDictFormatValue{stringFunc: func() string { return "key" }}
+			switch test {
+			case "external_lock":
+				sd.Lock()
+				checkString("named({})")
+				sd.Unlock()
+			case "Hash":
+				key.hashFunc = func() (uint32, error) { checkString("named({})"); return 1, nil }
+				if err := sd.SetKey(key, starlark.True); err != nil {
+					t.Fatal(err)
+				}
+			case "Equal":
+				if err := sd.SetKey(key, starlark.True); err != nil {
+					t.Fatal(err)
+				}
+				other := &sharedDictFormatValue{stringFunc: func() string { return "other" }}
+				other.compareFunc = func() { checkString("named({key: True})") }
+				if err := sd.SetKey(other, starlark.False); err != nil {
+					t.Fatal(err)
+				}
+			case "Freeze":
+				key.freezeFunc = func() { checkString(`named({"value": key})`) }
+				if err := sd.SetKey(starlark.String("value"), key); err != nil {
+					t.Fatal(err)
+				}
+				sd.Freeze()
+			}
+			for _, done := range pending {
+				select {
+				case <-done:
+				case <-time.After(2 * time.Second):
+					t.Fatal("formatting worker remained blocked after the operation unlocked")
+				}
+			}
+			if checks != 1 {
+				t.Fatalf("String compatibility callback count = %d; want 1", checks)
+			}
+		})
+	}
+}
+
+func TestSharedDict_SnapshotStringGoOnly(t *testing.T) {
+	sd := NewSharedDict()
+	for _, name := range sd.AttrNames() {
+		if name == "SnapshotString" || name == "snapshot_string" {
+			t.Fatalf("Go snapshot method was added to the Starlark surface: %s", name)
+		}
+	}
+	if value, _ := sd.Attr("SnapshotString"); value != nil {
+		t.Fatal("Go SnapshotString unexpectedly exposed as a Starlark attribute")
+	}
+}
+
+func ExampleSharedDict_SnapshotString() {
+	shared := NewSharedDict()
+	if err := shared.SetKey(starlark.String("count"), starlark.MakeInt(1)); err != nil {
+		panic(err)
+	}
+	fmt.Println(shared.SnapshotString())
+	// Output: shared_dict({"count": 1})
+}
+
+var sharedDictStringBenchmarkResult string
+
+func BenchmarkSharedDictReadPaths(b *testing.B) {
+	makeFlat := func(n int) *SharedDict {
+		dict := NewSharedDict()
+		for i := 0; i < n; i++ {
+			if err := dict.SetKey(starlark.String(fmt.Sprintf("key_%03d", i)), starlark.MakeInt(i)); err != nil {
+				b.Fatal(err)
+			}
+		}
+		return dict
+	}
+	flat8 := makeFlat(8)
+	nested := NewSharedDict()
+	if err := nested.SetKey(starlark.String("nested"), flat8.dict); err != nil {
+		b.Fatal(err)
+	}
+	cycle := NewSharedDict()
+	if err := cycle.SetKey(starlark.String("self"), cycle.dict); err != nil {
+		b.Fatal(err)
+	}
+	for _, test := range []struct {
+		name string
+		dict *SharedDict
+	}{
+		{"Flat0", makeFlat(0)}, {"Flat1", makeFlat(1)}, {"Flat8", flat8},
+		{"Flat128", makeFlat(128)}, {"Nested8", nested}, {"Cycle", cycle},
+	} {
+		b.Run("Snapshot/"+test.name, func(b *testing.B) {
+			format := test.dict.String
+			if snapshot, ok := interface{}(test.dict).(interface{ SnapshotString() string }); ok {
+				format = snapshot.SnapshotString
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				sharedDictStringBenchmarkResult = format()
+			}
+		})
+	}
+	b.Run("ControlLegacyString8", func(b *testing.B) {
+		format := flat8.String
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			sharedDictStringBenchmarkResult = format()
+		}
+	})
+	_, program, err := starlark.SourceProgram("print.star", "print(shared)", func(name string) bool { return name == "shared" })
+	if err != nil {
+		b.Fatal(err)
+	}
+	thread := &starlark.Thread{Print: func(_ *starlark.Thread, text string) { sharedDictStringBenchmarkResult = text }}
+	globals := starlark.StringDict{"shared": flat8}
+	b.Run("ControlLegacyPrintFlat8", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			if _, err := program.Init(thread, globals); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+	b.Run("ControlPlainDictString8", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			sharedDictStringBenchmarkResult = flat8.dict.String()
+		}
+	})
+	b.Run("ControlToJSONFlat8", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			got, err := flat8.ToJSON()
+			if err != nil {
+				b.Fatal(err)
+			}
+			sharedDictStringBenchmarkResult = got
+		}
+	})
+}
 
 func TestSharedDict_Clone(t *testing.T) {
 	sd1 := NewSharedDictFromDict(nil)
