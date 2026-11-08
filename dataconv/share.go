@@ -3,6 +3,7 @@ package dataconv
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 
 	tps "github.com/1set/starlet/dataconv/types"
@@ -19,6 +20,8 @@ import (
 // String and the Go ToJSON method do not lock: stop or externally synchronize
 // writers before formatting or serializing the dictionary. Configure its type
 // name before sharing it between goroutines.
+// SnapshotString provides explicit snapshot formatting from Go without holding
+// the mapping lock while formatting values.
 // A frozen SharedDict rejects mapping updates and freezes its contained values.
 type SharedDict struct {
 	_ itn.DoNotCompare
@@ -75,6 +78,103 @@ func (s *SharedDict) String() string {
 		v = s.dict.String()
 	}
 	return fmt.Sprintf("%s(%s)", s.getTypeName(), v)
+}
+
+// SnapshotString formats a shallow snapshot of the mapping in insertion order.
+// It releases the mapping lock before invoking formatting callbacks. Mutable
+// nested values remain shared and require their own synchronization.
+// Call it without holding this dictionary's mutex, and outside callbacks from
+// operations that hold it (for example a key's Hash/Equal or a value's Freeze).
+func (s *SharedDict) SnapshotString() string {
+	s.RLock()
+	dict, name := s.dict, s.getTypeName()
+	var items []starlark.Tuple
+	if dict != nil {
+		items = dict.Items()
+	}
+	s.RUnlock()
+
+	f := sharedDictFormatter{root: dict, items: items}
+	f.WriteString(name)
+	f.WriteByte('(')
+	if dict != nil {
+		f.write(dict, nil)
+	}
+	f.WriteByte(')')
+	return f.String()
+}
+
+// Preserve the interpreter's container-cycle notation while using the captured
+// root entries. Other values keep their own String behavior, without rehashing
+// keys or invoking host callbacks under the mapping lock.
+type sharedDictFormatter struct {
+	strings.Builder
+	root  *starlark.Dict
+	items []starlark.Tuple
+}
+
+func (f *sharedDictFormatter) write(value starlark.Value, path []starlark.Value) {
+	switch value := value.(type) {
+	case nil:
+		f.WriteString("<nil>")
+	case *starlark.List:
+		f.WriteByte('[')
+		if sharedDictPathContains(path, value) {
+			f.WriteString("...")
+		} else {
+			path = append(path, value)
+			for i := 0; i < value.Len(); i++ {
+				if i > 0 {
+					f.WriteString(", ")
+				}
+				f.write(value.Index(i), path)
+			}
+		}
+		f.WriteByte(']')
+	case starlark.Tuple:
+		f.WriteByte('(')
+		for i, element := range value {
+			if i > 0 {
+				f.WriteString(", ")
+			}
+			f.write(element, path)
+		}
+		if len(value) == 1 {
+			f.WriteByte(',')
+		}
+		f.WriteByte(')')
+	case *starlark.Dict:
+		f.WriteByte('{')
+		if sharedDictPathContains(path, value) {
+			f.WriteString("...")
+		} else {
+			items := f.items
+			if value != f.root {
+				items = value.Items()
+			}
+			valuePath := append(path, value)
+			for i, item := range items {
+				if i > 0 {
+					f.WriteString(", ")
+				}
+				f.write(item[0], path)
+				f.WriteString(": ")
+				f.write(item[1], valuePath)
+			}
+		}
+		f.WriteByte('}')
+	default:
+		f.WriteString(value.String())
+	}
+}
+
+func sharedDictPathContains(path []starlark.Value, value starlark.Value) bool {
+	for _, ancestor := range path {
+		if ancestor == value {
+			return true
+		}
+	}
+	return false
 }
 
 // SetTypeName sets the type name of the SharedDict.
