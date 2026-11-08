@@ -23,6 +23,8 @@ const ModuleName = "go_idiomatic"
 // LoadModule loads the Go idiomatic module.
 func LoadModule() (starlark.StringDict, error) {
 	return starlark.StringDict{
+		"eval":             evalBuiltin,
+		"try_eval":         tryEvalBuiltin,
 		"true":             starlark.True,
 		"false":            starlark.False,
 		"nil":              starlark.None,

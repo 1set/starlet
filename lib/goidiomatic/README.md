@@ -1,6 +1,6 @@
 # go_idiomatic
 
-`go_idiomatic` provides Go-flavored helpers, constants, and constructors for Starlark scripts — base conversions, `length`/`sum`/`distinct` utilities, struct and shared-dict factories, and `print`-style output. It is **not** a mirror of any single Python module; it borrows the spirit of several Python builtins (`hex`/`oct`/`bin`/`sum`/`bytes.hex`) while adding Star\* idioms.
+`go_idiomatic` provides Go-flavored helpers, constants, and constructors for Starlark scripts — base conversions, `length`/`sum`/`distinct` utilities, struct and shared-dict factories, data-only expression evaluation, and `print`-style output. It is **not** a mirror of any single Python module; it borrows the spirit of several Python builtins (`hex`/`oct`/`bin`/`sum`/`bytes.hex`) while adding Star\* idioms.
 
 Capability profile: **Log + Process**. `eprint`/`pprint` write to stderr or the thread's `Print` handler (Log); `sleep` blocks the thread and `exit`/`quit` halt the program (Process). Everything else is pure.
 
@@ -10,6 +10,8 @@ Load name for `load()`: `go_idiomatic`.
 
 | function | description |
 |----------|-------------|
+| `eval(source, vars={}) -> value` | Evaluate one Starlark expression against copied, read-only native data. |
+| `try_eval(source, vars={}) -> (value, error_info)` | Return ordinary evaluation errors as frozen data; preserve caller cancellation and total step limits. |
 | `length(obj) -> int` | Length of a string (in Unicode code points), bytes, or any sequence. |
 | `sum(iterable, start=0) -> number` | Sum of `start` plus the items of `iterable`, left to right. |
 | `distinct(iterable) -> iterable` | Iterable with duplicates removed; shape follows the input type. |
@@ -283,3 +285,154 @@ pprint({"key": "value", "list": [1, 2, 3]})
 - **Process effects.** `sleep` blocks (and respects context cancellation); `exit`/`quit` do not stop the goroutine themselves — they return `ErrSystemExit` for the host runner to act on, and set the thread-local `exit_code`.
 - **Determinism.** `struct`/`make_struct`/`module` print fields in sorted order; `to_dict` of a `GoStruct` keeps the Go field names verbatim.
 - **`shared_dict` scope.** Locking protects a single instance across threads; it does not make the values it holds deeply immutable or persist anything beyond the process.
+
+## Expression evaluation
+
+`eval` and `try_eval` evaluate one **Starlark expression**, using only explicit
+variables and approved computational builtins. They do not execute Go or
+[Expr-language](https://github.com/expr-lang/expr) syntax, guess the language, or
+retry failures with another engine. The `expr` module name remains available
+for a separate future Expr-language adapter.
+
+`source` must be a string. `vars` must be a native dict whose keys are valid
+Starlark identifiers. Omitting `vars` supplies an empty environment. The module
+does not inspect caller locals or copy a Machine's implicit globals.
+
+```python
+load("go_idiomatic", "eval", "try_eval")
+
+items = [2, 3]
+result = eval(
+    '{"title": title.upper(), "values": [x * 2 for x in items]}',
+    vars={"title": "example", "items": items},
+)
+# {"title": "EXAMPLE", "values": [4, 6]}
+
+value, error = try_eval("items.append(9)", vars={"items": items})
+# value == None; error["phase"] == "runtime"
+items.append(4)  # The original input was neither changed nor frozen.
+
+value, error = try_eval("None")
+# (None, None): a valid None result is distinct from failure.
+```
+
+Preloading `go_idiomatic` makes `eval(...)` and `try_eval(...)` available as
+bare functions, like its existing `sum` and `hex` helpers. A `NewDefault()`
+Machine does not preload modules; configure this module explicitly. Neither a
+`starlark` module nor a `go_idiomatic.eval` attribute wrapper is registered.
+When importing `json.eval` or a future Expr-language evaluator too, use explicit
+load aliases to distinguish the engines.
+
+The existing Machine precedence also applies to these two new names: preload
+functions override same-named host globals; per-run extras override preloads;
+explicit `load` bindings take precedence in the script. Use lazy loading with
+an alias, such as `load("go_idiomatic", evaluate="eval")`, when keeping a host's
+existing `eval` name matters.
+
+### Data and method boundaries
+
+Inputs and results preserve native `None`, bool, int (including big integers),
+float, string, bytes, list, dict, tuple and set values. Nested data is supported;
+aliases are preserved within a copied graph. Reference cycles, nil values,
+functions, bound methods, modules, iterators and custom or Go-backed values are
+rejected with a data path. Convert a host object into an explicit native data
+projection first; wrapping it with Starlight does not create a snapshot.
+
+Only private input copies are frozen. Native read methods such as `upper`,
+`lower`, `get` and `index`, comprehensions and approved computational builtins
+remain usable. Mutating a frozen input fails. Expressions may create and modify
+their own temporary containers; results are checked, copied and frozen before
+publication. Even a frozen lambda or bound method remains callable, so callable
+results are rejected recursively.
+
+Caller functions and external modules are not inherited. Unapproved Universe
+builtins, including `print`, are blocked without changing the global Universe or
+calling the parent's Print handler. The standard computational builtin instances
+are captured during package initialization; the embedding application's startup
+must retain the standard definitions then. As upstream requires, do not modify
+Universe concurrently with execution. Other `go_idiomatic` helpers retain their existing Log/Process capabilities;
+they are not inherited by an expression. Random and clock sources are not
+automatically exposed either.
+
+The source graph must be exclusively owned/synchronized during evaluation, or
+already deeply frozen native data. A lack of writers alone is insufficient:
+iterating an unfrozen native set can change its iterator bookkeeping. The helper
+does not acquire a Machine or application data lock for the caller.
+
+### Errors and execution state
+
+`error_info` is a frozen dict with these fields:
+
+- `phase` and `kind`: the failing stage or policy category;
+- `message`: a diagnostic string;
+- `position`: `None` or `{file, line, column}`;
+- `frames`: a tuple of `{file, line, column, name}` dicts;
+- `truncated`: whether diagnostic text or frames were shortened.
+
+Stages distinguish arguments, input, source admission, parsing, name resolution,
+runtime, policy and output checks. Messages are limited to 4096 bytes, the most
+recent 32 frames are retained, and frame file/name text is bounded.
+
+Both functions execute on the caller's existing Thread. Its cancellation,
+OnMaxSteps behavior and cumulative VM step count remain in force; no new step
+allowance is installed or reset. Execution checkpoints also consume VM steps.
+`try_eval` does **not** turn caller cancellation, exhausted total steps or a caller
+panic into a successful tuple. It only handles errors occurring inside the call;
+errors while evaluating the call's arguments still belong to the outer script.
+
+There is no rollback of host callback effects. Such callbacks are excluded from
+the data boundary. Errors discard the private evaluation data.
+
+### Admission limits
+
+| Limit | Value |
+| --- | --- |
+| Source bytes | 4096 |
+| Non-whitespace source bytes | 512 |
+| AST depth / nodes | 64 / 512 |
+| Each copied data graph's depth / visited edges | 64 / 4096 |
+| Each copied graph's scalar/name payload | 1 MiB |
+| Integer magnitude | At most 4096 bits |
+
+The pre-parser complexity count includes non-whitespace bytes in strings and
+comments; only ASCII space, tab, CR and LF are excluded. Put large data in `vars`.
+Input and output copying have separate graph quotas. Every visited edge counts,
+including memo hits; payload accounting follows the copied graph rather than an
+expanded JSON serialization.
+
+These are admission and result limits, **not hard RSS or CPU limits**. The pinned
+parser's general recursion issue is not repaired here. VM steps do not account for
+every operation inside a native builtin; an intermediate allocation can occur
+before output admission. Configure the caller's execution limits, and use a
+separately validated process boundary when stronger isolation is required.
+
+### Go usage
+
+```go
+import (
+    "github.com/1set/starlet/lib/goidiomatic"
+    "go.starlark.net/starlark"
+)
+
+thread := &starlark.Thread{Name: "expression"}
+thread.SetMaxExecutionSteps(10000)
+result, err := goidiomatic.Eval(thread, "qty * 2", starlark.StringDict{
+    "qty": starlark.MakeInt(3),
+})
+```
+
+The caller owns the Thread and source graph. Direct Go callers must wire
+cancellation to `Thread.Cancel` when cancellation during VM execution is needed;
+a context stored in Thread.Local is checked at helper checkpoints, not a new
+cancellation goroutine. Machine calls retain their existing cancellation bridge.
+The Go helper returns `starlark.Value` and an error preserving parser, resolver and
+EvalError causes through `errors.As`/`errors.Is`. It does not implicitly convert
+the result to Go or JSON.
+
+The existing `go_idiomatic` capability classification remains Log + Process.
+Adding these data-only helpers does not reduce that classification or expose the
+module's other helpers inside an expression. Consumers that already allow or
+preload `go_idiomatic` receive the new names with it; in particular, Starbox's
+Safe and Network module sets already contain this module. Hosts needing a
+separate explicit opt-in can instead pass `goidiomatic.Eval` through their own
+loader or builtin policy. None of these policies establishes a hard sandbox.
