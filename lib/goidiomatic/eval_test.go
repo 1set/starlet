@@ -1,6 +1,7 @@
 package goidiomatic_test
 
-// Sections: data isolation; result boundaries; errors; caller execution state.
+// Sections: data isolation; result boundaries; errors; caller execution state;
+// evaluation benchmarks.
 
 import (
 	"context"
@@ -478,6 +479,116 @@ func BenchmarkEval(b *testing.B) {
 				if err != nil {
 					b.Fatal(err)
 				}
+			}
+		})
+	}
+}
+
+// BenchmarkEvalComparison compares ordinary compiled Starlark with the same
+// expression passed to eval. Each path reuses one caller Thread with identical
+// argument values and a three-argument Starlark call shape. Normal uses its first
+// two parameters; EvalReusedVars and TryEvalReusedVars use the equivalent prebuilt
+// vars dict; EvalNewVars builds that dict from the parameters on each call.
+//
+// Input creation, wrapper compilation, initialization and result checks are not
+// timed. The eval paths include source parsing/compilation and data isolation on
+// every call; there is no expression cache. This is a feature-cost comparison,
+// not a before/after regression benchmark.
+func BenchmarkEvalComparison(b *testing.B) {
+	items := make([]std.Value, 32)
+	products := make([]std.Value, len(items))
+	for i := range items {
+		items[i] = std.MakeInt(i)
+		products[i] = std.MakeInt(i * 3)
+	}
+	nestedResult := std.NewDict(1)
+	if err := nestedResult.SetKey(std.String("values"), std.NewList(products)); err != nil {
+		b.Fatal(err)
+	}
+	cases := []struct {
+		name, source, newVars string
+		names                 []string
+		values                std.Tuple
+		want                  std.Value
+	}{
+		{
+			name: "Scalar", source: "price * qty",
+			newVars: `{"price": price, "qty": qty}`,
+			names:   []string{"price", "qty"},
+			values:  std.Tuple{std.MakeInt(12), std.MakeInt(3)},
+			want:    std.MakeInt(36),
+		},
+		{
+			name: "Nested32", source: `{"values": [x * qty for x in items]}`,
+			newVars: `{"items": items, "qty": qty}`,
+			names:   []string{"items", "qty"},
+			values:  std.Tuple{std.NewList(items), std.MakeInt(3)},
+			want:    nestedResult,
+		},
+	}
+	for _, tc := range cases {
+		b.Run(tc.name, func(b *testing.B) {
+			vars := std.NewDict(len(tc.names))
+			for i, name := range tc.names {
+				if err := vars.SetKey(std.String(name), tc.values[i]); err != nil {
+					b.Fatal(err)
+				}
+			}
+			vars.Freeze()
+			args := append(append(std.Tuple(nil), tc.values...), vars)
+			module, err := mod.LoadModule()
+			if err != nil {
+				b.Fatal(err)
+			}
+			parameters := strings.Join(tc.names, ", ") + ", vars"
+			quotedSource := std.String(tc.source).String()
+			script := "def normal(" + parameters + "):\n    return " + tc.source + "\n\n" +
+				"def eval_reused(" + parameters + "):\n    return eval(" + quotedSource + ", vars=vars)\n\n" +
+				"def eval_new(" + parameters + "):\n    return eval(" + quotedSource + ", vars=" + tc.newVars + ")\n\n" +
+				"def try_reused(" + parameters + "):\n    value, error = try_eval(" + quotedSource + ", vars=vars)\n    return value\n"
+			functions, err := std.ExecFileOptions(&syntax.FileOptions{Set: true}, &std.Thread{}, "eval_comparison.star", script, module)
+			if err != nil {
+				b.Fatal(err)
+			}
+			for _, path := range []struct{ name, function string }{
+				{"Normal", "normal"},
+				{"EvalReusedVars", "eval_reused"},
+				{"EvalNewVars", "eval_new"},
+				{"TryEvalReusedVars", "try_reused"},
+			} {
+				b.Run(path.name, func(b *testing.B) {
+					thread := &std.Thread{Name: "eval-comparison"}
+					function := functions[path.function]
+					if path.function == "try_reused" {
+						value, err := std.Call(thread, module["try_eval"], std.Tuple{std.String(tc.source), vars}, nil)
+						if err != nil {
+							b.Fatal(err)
+						}
+						pair, ok := value.(std.Tuple)
+						if !ok || len(pair) != 2 || pair[1] != std.None {
+							b.Fatalf("try_eval did not succeed: %v", value)
+						}
+					}
+					result, err := std.Call(thread, function, args, nil)
+					if err != nil {
+						b.Fatal(err)
+					}
+					if equal, err := std.Equal(result, tc.want); err != nil || !equal {
+						b.Fatalf("wrong result: %v, want %v (error %v)", result, tc.want, err)
+					}
+					b.ReportAllocs()
+					b.ResetTimer()
+					for i := 0; i < b.N; i++ {
+						result, err = std.Call(thread, function, args, nil)
+						if err != nil {
+							b.Fatal(err)
+						}
+					}
+					b.StopTimer()
+					if equal, err := std.Equal(result, tc.want); err != nil || !equal {
+						b.Fatalf("wrong final result: %v, want %v (error %v)", result, tc.want, err)
+					}
+				})
 			}
 		})
 	}

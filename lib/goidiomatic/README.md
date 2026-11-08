@@ -206,6 +206,37 @@ The module remains Log + Process and is already in Starbox Safe/Network.
 Use host module policy for opt-in; hard CPU/memory isolation requires a separately
 validated process boundary.
 
+### Performance
+
+Local measurements on an Apple M4 Pro, Go 1.27.3, darwin/arm64, `-cpu=1`:
+medians of six 500 ms runs, in **microseconds per call** (1000 µs = 1 ms).
+Both cases use `qty=3`; the scalar case uses `price=12`, and the nested case
+evaluates `{"values": [x * qty for x in items]}` with `items=list(range(32))`.
+
+| Path | `price * qty` | 32-item nested result |
+| --- | ---: | ---: |
+| Normal compiled Starlark function | 0.062 µs | 1.821 µs |
+| `eval`, reused `vars` dict | 4.504 µs (72.4×) | 19.709 µs (10.8×) |
+| `eval`, new `vars` dict per call | 4.657 µs (75.2×) | 20.022 µs (11.0×) |
+| `try_eval`, reused `vars`, success | 4.630 µs (74.6×) | 19.896 µs (11.0×) |
+
+The normal/reused-`eval` allocation costs were 80/6976 B and 1/111 allocations
+for the scalar case, and 1760/25025 B and 11/682 allocations for the nested case.
+Every path calls a compiled Starlark function with identical inputs. Outer
+compilation, input preparation and warmup are excluded; per-call `eval` parsing,
+compilation, copying, validation and freezing are included. Normal execution
+does not provide this isolation. Ratios are medians of the six run-wise ratios;
+these are local examples, not application-wide latency or throughput guarantees.
+
+Use direct script code for fixed calculations and hot loops. `eval` is intended
+for dynamic expressions: it does not cache compiled expressions, even when
+`vars` is reused. Run the same workloads with:
+
+```sh
+go test ./lib/goidiomatic -run '^$' -bench '^BenchmarkEvalComparison$' \
+  -benchmem -benchtime=500ms -cpu=1 -count=6
+```
+
 ## Types
 
 ### `shared_dict`
