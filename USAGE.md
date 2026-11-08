@@ -10,31 +10,31 @@ These examples use the checked-out root library. Confirm the version selected by
 package main
 
 import (
-	"fmt"
-	"log"
-	"testing/fstest"
+    "fmt"
+    "log"
+    "testing/fstest"
 
-	"github.com/1set/starlet"
+    "github.com/1set/starlet"
 )
 
 func main() {
-	files := fstest.MapFS{
-		"main.star":     &fstest.MapFile{Data: []byte("load(\"lib/data\", \"value\")\nanswer = value")},
-		"lib/data.star": &fstest.MapFile{Data: []byte("value = 1")},
-	}
-	m := starlet.NewDefault()
-	run := func() {
-		result, err := m.RunFile("main.star", files, nil)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println(result["answer"])
-	}
-	run()
-	files["lib/data.star"] = &fstest.MapFile{Data: []byte("value = 2")}
-	run() // Loaded modules are retained by this Machine.
-	m.Reset()
-	run() // Reset discards loaded-module state.
+    files := fstest.MapFS{
+        "main.star":     &fstest.MapFile{Data: []byte("load(\"lib/data\", \"value\")\nanswer = value")},
+        "lib/data.star": &fstest.MapFile{Data: []byte("value = 1")},
+    }
+    m := starlet.NewDefault()
+    run := func() {
+        result, err := m.RunFile("main.star", files, nil)
+        if err != nil {
+            log.Fatal(err)
+        }
+        fmt.Println(result["answer"])
+    }
+    run()
+    files["lib/data.star"] = &fstest.MapFile{Data: []byte("value = 2")}
+    run() // Loaded modules are retained by this Machine.
+    m.Reset()
+    run() // Reset discards loaded-module state.
 }
 
 // Output:
@@ -53,25 +53,25 @@ func main() {
 package main
 
 import (
-	"fmt"
-	"log"
+    "fmt"
+    "log"
 
-	"github.com/1set/starlet"
-	"go.starlark.net/starlark"
+    "github.com/1set/starlet"
+    "go.starlark.net/starlark"
 )
 
 func main() {
-	m := starlet.NewDefault()
-	m.SetPrintFunc(func(_ *starlark.Thread, msg string) {
-		fmt.Println("script:", msg)
-	})
-	if _, err := m.RunScript([]byte(`print("hello")`), nil); err != nil {
-		log.Fatal(err)
-	}
-	m.SetPrintFunc(starlet.NoopPrintFunc)
-	if _, err := m.RunScript([]byte(`print("hidden")`), nil); err != nil {
-		log.Fatal(err)
-	}
+    m := starlet.NewDefault()
+    m.SetPrintFunc(func(_ *starlark.Thread, msg string) {
+        fmt.Println("script:", msg)
+    })
+    if _, err := m.RunScript([]byte(`print("hello")`), nil); err != nil {
+        log.Fatal(err)
+    }
+    m.SetPrintFunc(starlet.NoopPrintFunc)
+    if _, err := m.RunScript([]byte(`print("hidden")`), nil); err != nil {
+        log.Fatal(err)
+    }
 }
 
 // Output: script: hello
@@ -85,37 +85,37 @@ Machine execution returns Go errors. `ExecError` unwraps its cause; use `errors.
 package main
 
 import (
-	"errors"
-	"fmt"
+    "errors"
+    "fmt"
 
-	"github.com/1set/starlet"
+    "github.com/1set/starlet"
 )
 
 func describe(err error) {
-	var missing starlet.ModuleNotFoundError
-	var withheld starlet.ModuleWithheldError
-	var steps starlet.MaxStepsExceededError
-	switch {
-	case errors.As(err, &missing):
-		fmt.Println("missing:", missing.Name)
-	case errors.As(err, &withheld):
-		fmt.Println("withheld:", withheld.Name)
-	case errors.As(err, &steps):
-		fmt.Println("step limit:", steps.Limit)
-	default:
-		fmt.Println(err)
-	}
+    var missing starlet.ModuleNotFoundError
+    var withheld starlet.ModuleWithheldError
+    var steps starlet.MaxStepsExceededError
+    switch {
+    case errors.As(err, &missing):
+        fmt.Println("missing:", missing.Name)
+    case errors.As(err, &withheld):
+        fmt.Println("withheld:", withheld.Name)
+    case errors.As(err, &steps):
+        fmt.Println("step limit:", steps.Limit)
+    default:
+        fmt.Println(err)
+    }
 }
 
 func main() {
-	m := starlet.NewDefault()
-	_, err := m.RunScript([]byte(`load("json", "decode")`), nil)
-	describe(err) // Known builtin, not enabled on this Machine.
-	_, err = m.RunScript([]byte(`load("missing_module", "value")`), nil)
-	describe(err)
-	m.SetMaxExecutionSteps(1)
-	_, err = m.RunScript([]byte(`answer = [i * i for i in range(10)]`), nil)
-	describe(err)
+    m := starlet.NewDefault()
+    _, err := m.RunScript([]byte(`load("json", "decode")`), nil)
+    describe(err) // Known builtin, not enabled on this Machine.
+    _, err = m.RunScript([]byte(`load("missing_module", "value")`), nil)
+    describe(err)
+    m.SetMaxExecutionSteps(1)
+    _, err = m.RunScript([]byte(`answer = [i * i for i in range(10)]`), nil)
+    describe(err)
 }
 
 // Output:
@@ -132,20 +132,20 @@ Use `errors.As(err, &evalErr)` with `var evalErr *starlark.EvalError` to obtain 
 package main
 
 import (
-	"context"
-	"errors"
-	"fmt"
+    "context"
+    "errors"
+    "fmt"
 
-	"github.com/1set/starlet"
+    "github.com/1set/starlet"
 )
 
 func main() {
-	m := starlet.NewDefault()
-	m.SetScript("calc.star", []byte("answer = 1 + 2"), nil)
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	_, err := m.RunWithContext(ctx, nil)
-	fmt.Println(errors.Is(err, context.Canceled))
+    m := starlet.NewDefault()
+    m.SetScript("calc.star", []byte("answer = 1 + 2"), nil)
+    ctx, cancel := context.WithCancel(context.Background())
+    cancel()
+    _, err := m.RunWithContext(ctx, nil)
+    fmt.Println(errors.Is(err, context.Canceled))
 }
 
 // Output: true

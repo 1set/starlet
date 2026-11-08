@@ -262,5 +262,3 @@ print(get_timeout())
 - **Body kinds are mutually exclusive.** Pass at most one of `body`, `json_body`, `form_body`; supplying more than one is an error rather than a silent drop.
 - **Determinism.** Response `headers` and `encoding` join multiple values with `,`. `body()`/`json()` reset the body reader so they may be called repeatedly.
 - **Difference from `requests`.** `postForm` is a non-Pythonic convenience name; `params`/`headers` values must be strings; `json()` returns `None` (not raising) on parse failure — use `try_json()` for an explicit error.
-</content>
-</invoke>
