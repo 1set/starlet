@@ -20,6 +20,7 @@ import (
 	libregex "github.com/1set/starlet/lib/regex"
 	librt "github.com/1set/starlet/lib/runtime"
 	libserial "github.com/1set/starlet/lib/serial"
+	libsl "github.com/1set/starlet/lib/starlark"
 	libstat "github.com/1set/starlet/lib/stats"
 	libstr "github.com/1set/starlet/lib/string"
 	stdmath "go.starlark.net/lib/math"
@@ -65,6 +66,7 @@ var allBuiltinModules = ModuleLoaderMap{
 	librt.ModuleName:     librt.LoadModule,
 	libserial.ModuleName: libserial.LoadModule,
 	libstr.ModuleName:    libstr.LoadModule,
+	libsl.ModuleName:     libsl.LoadModule,
 	libstat.ModuleName:   libstat.LoadModule,
 }
 
@@ -190,6 +192,7 @@ var builtinModuleCapabilities = map[string]ModuleCapability{
 	"regex":        CapPure,
 	"runtime":      CapProcess, // exposes host identity, directories, process info
 	"serial":       CapPure,
+	"starlark":     CapPure, // explicit data-only evaluation; no caller capabilities inherited
 	"stats":        CapPure,
 	"string":       CapPure,
 	"struct":       CapPure,

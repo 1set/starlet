@@ -50,6 +50,7 @@ Inspired by the [*Starlight*](https://github.com/starlight-go/starlight) and [*S
 | [`regex`](/lib/regex)             | [![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/regex.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/regex)             | Python-style regex (RE2) with Match objects, flags, named groups |
 | [`runtime`](/lib/runtime)         | [![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/runtime.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/runtime)         | Provides Go and app runtime information                       |
 | [`serial`](/lib/serial)           | [![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/serial.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/serial)           | Lossless data-value serialization (bytes/set/tuple/bigint/time) |
+| [`starlark`](/lib/starlark)       | [![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/starlark.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/starlark)       | Read-only data snapshots for Starlark expressions and structured try errors |
 | [`stats`](/lib/stats)             | [![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/stats.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/stats)             | Statistics: mean/median/stddev, correlation, percentiles, etc. |
 | [`string`](/lib/string)           | [![godoc](https://pkg.go.dev/badge/github.com/1set/starlet/lib/string.svg)](https://pkg.go.dev/github.com/1set/starlet/lib/string)           | Constants and functions to manipulate strings                 |
 
@@ -106,7 +107,7 @@ This may output:
 ```
 Starlark: Hello, Starlet!
 Go: Hello, Starlet!
-Modules: [atom base64 csv file go_idiomatic hashlib http json log math net path random re regex runtime serial stats string struct time]
+Modules: [atom base64 csv file go_idiomatic hashlib http json log math net path random re regex runtime serial starlark stats string struct time]
 ```
 
 Use CLI to interact with the read-eval-print loop (REPL):

@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	builtinModules = []string{"atom", "base64", "csv", "file", "go_idiomatic", "hashlib", "http", "json", "log", "math", "net", "path", "random", "re", "regex", "runtime", "serial", "stats", "string", "struct", "time"}
+	builtinModules = []string{"atom", "base64", "csv", "file", "go_idiomatic", "hashlib", "http", "json", "log", "math", "net", "path", "random", "re", "regex", "runtime", "serial", "starlark", "stats", "string", "struct", "time"}
 )
 
 func TestListBuiltinModules(t *testing.T) {
@@ -1444,5 +1444,40 @@ func TestDocCoverage(t *testing.T) {
 
 	if missing, ok := out["missing"].([]interface{}); ok && len(missing) > 0 {
 		t.Errorf("%d module member(s) are not documented in their README — see the report above", len(missing))
+	}
+}
+
+// Starlark expression evaluation is an explicitly registered builtin module.
+func TestBuiltinStarlarkEvaluation(t *testing.T) {
+	loader := starlet.GetBuiltinModule("starlark")
+	if loader == nil {
+		t.Fatal("starlark module is not registered")
+	}
+	cap, ok := starlet.GetBuiltinModuleCapability("starlark")
+	if !ok || cap != starlet.CapPure {
+		t.Fatalf("starlark capability = %v, %v; want CapPure", cap, ok)
+	}
+	mac := starlet.NewWithNames(nil, nil, []string{"starlark"})
+	mac.SetMaxExecutionSteps(10000)
+	out, err := mac.RunScript([]byte(`
+load("starlark", "eval", "try_eval")
+items = [1, 2]
+result = eval("{\"n\": len(items), \"text\": text.upper()}", vars={"items": items, "text": "ok"})
+_, failure = try_eval("items.append(3)", vars={"items": items})
+items.append(4)
+value, success = try_eval("None")
+`), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, ok := out["result"].(map[interface{}]interface{})
+	if !ok || result["n"] != int64(2) || result["text"] != "OK" {
+		t.Fatalf("unexpected expression result: %#v", out["result"])
+	}
+	if out["failure"] == nil || out["success"] != nil || out["value"] != nil {
+		t.Fatalf("unexpected try results: %#v", out)
+	}
+	if !reflect.DeepEqual(out["items"], []interface{}{int64(1), int64(2), int64(4)}) {
+		t.Fatalf("parent items = %#v", out["items"])
 	}
 }
