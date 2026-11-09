@@ -2,6 +2,7 @@ package path_test
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -12,6 +13,7 @@ import (
 	itn "github.com/1set/starlet/internal"
 	lpath "github.com/1set/starlet/lib/path"
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 )
 
 func TestLoadModule_Path(t *testing.T) {
@@ -839,5 +841,76 @@ func TestLoadModule_PathListdirFilterDepth(t *testing.T) {
 	for _, path := range []string{filepath.Join(base, "empty"), filepath.Join(root, "top.txt")} {
 		globals := starlark.StringDict{"list_root": starlark.String(path)}
 		itn.ExecModuleWithErrorTest(t, lpath.ModuleName, lpath.LoadModule, "load('path', 'listdir')\nassert.eq(listdir(list_root, filter=lambda p: fail('must not run')), [])", "", globals)
+	}
+}
+
+// BenchmarkListdirFilterDepth uses unchanged-result paths on both the baseline
+// and candidate. The rejected-directory nonrecursive regression is a functional
+// test, not a timing comparison of different traversal workloads.
+func BenchmarkListdirFilterDepth(b *testing.B) {
+	root := b.TempDir()
+	var directories, nested []starlark.Value
+	for i := 0; i < 8; i++ {
+		dir := filepath.Join(root, fmt.Sprintf("child%d", i))
+		if err := os.Mkdir(dir, 0700); err != nil {
+			b.Fatal(err)
+		}
+		directories = append(directories, starlark.String(dir))
+		for j := 0; j < 4; j++ {
+			file := filepath.Join(dir, fmt.Sprintf("nested%d.txt", j))
+			if err := os.WriteFile(file, []byte("fixture"), 0600); err != nil {
+				b.Fatal(err)
+			}
+			nested = append(nested, starlark.String(file))
+		}
+	}
+	for _, name := range []string{"skip.bin", "top.txt"} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte("fixture"), 0600); err != nil {
+			b.Fatal(err)
+		}
+	}
+	bindings, err := lpath.LoadModule()
+	if err != nil {
+		b.Fatal(err)
+	}
+	listdir := bindings[lpath.ModuleName].(*starlarkstruct.Module).Members["listdir"]
+	thread := &starlark.Thread{Name: "listdir-bench"}
+	filters, err := starlark.ExecFile(thread, "listdir-bench.star", `
+accept_all = lambda p: True
+without_bin = lambda p: not p.endswith(".bin")
+only_txt = lambda p: p.endswith(".txt")
+`, nil)
+	if err != nil {
+		b.Fatal(err)
+	}
+	top := starlark.String(filepath.Join(root, "top.txt"))
+	shallow := append(append([]starlark.Value{}, directories...), starlark.String(filepath.Join(root, "skip.bin")), top)
+	for _, tc := range []struct {
+		name   string
+		kwargs []starlark.Tuple
+		want   []starlark.Value
+	}{
+		{name: "ShallowNone", want: shallow},
+		{name: "ShallowAll", kwargs: []starlark.Tuple{{starlark.String("filter"), filters["accept_all"]}}, want: shallow},
+		{name: "ShallowFileFilter", kwargs: []starlark.Tuple{{starlark.String("filter"), filters["without_bin"]}}, want: append(append([]starlark.Value{}, directories...), top)},
+		{name: "RecursiveFileFilter", kwargs: []starlark.Tuple{{starlark.String("recursive"), starlark.True}, {starlark.String("filter"), filters["only_txt"]}}, want: append(append([]starlark.Value{}, nested...), top)},
+	} {
+		b.Run(tc.name, func(b *testing.B) {
+			args := starlark.Tuple{starlark.String(root)}
+			got, err := starlark.Call(thread, listdir, args, tc.kwargs)
+			if err != nil {
+				b.Fatal(err)
+			}
+			if want := starlark.NewList(tc.want).String(); got.String() != want {
+				b.Fatalf("result = %s, want %s", got, want)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				if _, err := starlark.Call(thread, listdir, args, tc.kwargs); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
 	}
 }
