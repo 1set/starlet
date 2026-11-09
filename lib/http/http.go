@@ -229,11 +229,8 @@ func (m *Module) callMethod(thread *starlark.Thread, b *starlark.Builtin, args s
 	}
 	// call the method with the given name
 	method := strings.ToLower(fv.GoString())
-	if method == "postform" {
-		method = "postForm"
-	}
 	for _, name := range supportedMethods {
-		if method == name {
+		if method == name || method == "postform" && name == "postForm" {
 			return m.reqMethod(name)(thread, b, args[1:], kwargs)
 		}
 	}
