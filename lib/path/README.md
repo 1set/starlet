@@ -287,9 +287,7 @@ print(is_link("."))            # False
 
 ### `listdir(path, recursive=False, filter=None) -> list[string]`
 
-Returns a list of directory contents. Listing a non-directory (e.g. a file) returns an empty list. With `recursive=True` the walk descends into subdirectories. `filter` is a callable taking one path argument and returning a bool; paths for which it returns `False` are excluded.
-
-Current limitation: if `filter` rejects a directory, `recursive=False` can still visit its descendants. For a strictly shallow selection, call `listdir(path)` without a filter, then filter the returned paths in the script.
+Returns a list of directory contents. Listing a non-directory (e.g. a file) returns an empty list. The default `recursive=False` visits only direct children; `recursive=True` also visits descendants. `filter` receives each visited path and must return a bool: `False` omits that path from the result, without changing traversal depth or pruning a recursive walk.
 
 Errors on: a missing or non-string `path`; a non-existent path (`lstat ...`); an unreadable directory (`open ...`); a `filter` that is neither callable nor `None` (`expected <nil> or None, got int`); a filter returning a non-bool (`got int, want bool`); or a filter that itself fails (the inner error propagates).
 

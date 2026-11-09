@@ -1,8 +1,12 @@
 package path_test
 
 import (
+	"errors"
 	"os"
+	"path/filepath"
+	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 
 	itn "github.com/1set/starlet/internal"
@@ -715,5 +719,125 @@ relpath(1)`,
 				t.Errorf("path(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
 			}
 		})
+	}
+}
+
+func TestLoadModule_PathListdirFilterDepth(t *testing.T) {
+	// Keep the fixture on the working directory's volume so both relative and
+	// absolute paths work on Windows without changing the process-wide CWD.
+	base, err := os.MkdirTemp(".", ".listdir-filter-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.RemoveAll(base); err != nil {
+			t.Error(err)
+		}
+	})
+	root := filepath.Join(base, "root")
+	for _, dir := range []string{filepath.Join(root, "child", "deeper"), filepath.Join(base, "empty")} {
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, name := range []string{"top.txt", "skip.bin", "child/nested.txt", "child/deeper/deep.txt"} {
+		if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(name)), []byte("fixture"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	abs, err := filepath.Abs(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	shallow := []string{"child", "skip.bin", "top.txt"}
+	deep := []string{"child", "child/deeper", "child/deeper/deep.txt", "child/nested.txt", "skip.bin", "top.txt"}
+	for _, prefix := range []struct{ name, path string }{
+		{"relative", root},
+		{"absolute", abs},
+		{"trailing_separator", root + string(filepath.Separator)},
+	} {
+		t.Run(prefix.name, func(t *testing.T) {
+			for _, tc := range []struct {
+				name, call string
+				accept     func(string) bool
+				want       []string
+				visits     []string
+				filterErr  bool
+				nonBool    bool
+				wantErr    string
+			}{
+				{name: "default", call: "list_root", want: shallow},
+				{name: "none_filter", call: "list_root, filter=None", want: shallow},
+				{name: "accept_all", call: "list_root, filter=filter_func", accept: func(string) bool { return true }, want: shallow, visits: shallow},
+				{name: "reject_directories_default", call: "list_root, filter=filter_func", accept: func(p string) bool { return strings.HasSuffix(p, ".txt") }, want: []string{"top.txt"}, visits: shallow},
+				{name: "reject_directories_nonrecursive", call: "list_root, recursive=False, filter=filter_func", accept: func(p string) bool { return strings.HasSuffix(p, ".txt") }, want: []string{"top.txt"}, visits: shallow},
+				{name: "reject_all", call: "list_root, filter=filter_func", accept: func(string) bool { return false }, visits: shallow},
+				{name: "reject_file", call: "list_root, filter=filter_func", accept: func(p string) bool { return !strings.HasSuffix(p, ".bin") }, want: []string{"child", "top.txt"}, visits: shallow},
+				{name: "recursive_none", call: "list_root, recursive=True, filter=None", want: deep},
+				{name: "recursive_rejected_directories", call: "list_root, True, filter_func", accept: func(p string) bool { return strings.HasSuffix(p, ".txt") }, want: []string{"child/deeper/deep.txt", "child/nested.txt", "top.txt"}, visits: deep},
+				{name: "filter_error", call: "list_root, filter=filter_func", filterErr: true, visits: []string{"child"}, wantErr: "filter stopped"},
+				{name: "filter_non_bool", call: "list_root, filter=filter_func", nonBool: true, visits: []string{"child"}, wantErr: "got int, want bool"},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					var visits []string
+					filter := starlark.NewBuiltin("listdir_filter", func(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+						if len(args) != 1 || len(kwargs) != 0 {
+							return nil, errors.New("filter must receive one positional path")
+						}
+						p, ok := starlark.AsString(args[0])
+						if !ok {
+							return nil, errors.New("filter path must be a string")
+						}
+						visits = append(visits, p)
+						if tc.filterErr {
+							return nil, errors.New("filter stopped")
+						}
+						if tc.nonBool {
+							return starlark.MakeInt(1), nil
+						}
+						return starlark.Bool(tc.accept(p)), nil
+					})
+					script := "load('path', 'listdir')\nresult = listdir(" + tc.call + ")\n"
+					out, err := itn.ExecModuleWithErrorTest(t, lpath.ModuleName, lpath.LoadModule, script, tc.wantErr, starlark.StringDict{
+						"list_root":   starlark.String(prefix.path),
+						"filter_func": filter,
+					})
+					if (err != nil) != (tc.wantErr != "") {
+						t.Fatalf("error = %v, want %q", err, tc.wantErr)
+					}
+					paths := func(relative []string) []string {
+						out := make([]string, len(relative))
+						for i, p := range relative {
+							out[i] = filepath.Join(prefix.path, filepath.FromSlash(p))
+						}
+						return out
+					}
+					if !reflect.DeepEqual(append([]string{}, visits...), paths(tc.visits)) {
+						t.Errorf("filter visited %q, want %q", visits, paths(tc.visits))
+					}
+					if err != nil {
+						return
+					}
+					list, ok := out["result"].(*starlark.List)
+					if !ok {
+						t.Fatalf("result type = %T, want *starlark.List", out["result"])
+					}
+					got := make([]string, list.Len())
+					for i := range got {
+						got[i], ok = starlark.AsString(list.Index(i))
+						if !ok {
+							t.Fatalf("result[%d] type = %T, want string", i, list.Index(i))
+						}
+					}
+					if !reflect.DeepEqual(got, paths(tc.want)) {
+						t.Errorf("result = %q, want %q", got, paths(tc.want))
+					}
+				})
+			}
+		})
+	}
+	for _, path := range []string{filepath.Join(base, "empty"), filepath.Join(root, "top.txt")} {
+		globals := starlark.StringDict{"list_root": starlark.String(path)}
+		itn.ExecModuleWithErrorTest(t, lpath.ModuleName, lpath.LoadModule, "load('path', 'listdir')\nassert.eq(listdir(list_root, filter=lambda p: fail('must not run')), [])", "", globals)
 	}
 }
