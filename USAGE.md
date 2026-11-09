@@ -171,9 +171,10 @@ Own or synchronize mutable nested values separately. Default Starlark
 formatting/printing and the Go `String`/`ToJSON` methods still require external
 synchronization with mapping writers.
 
-From Go, use `text := shared.SnapshotString()` to format a snapshot of the
-mapping's entries without racing with mapping updates. Formatting callbacks run
-after the mapping lock is released; mutable nested values remain shared.
+For on-demand debugging and diagnostics in Go, use
+`text := shared.SnapshotString()` to capture and format the mapping's entries
+without racing with mapping updates. Formatting callbacks run after the mapping
+lock is released; mutable nested values remain shared.
 Call `SnapshotString` without already holding that dictionary's mutex, and
 outside callbacks from operations that hold it, such as key `Hash`/`Equal` or
 value `Freeze`. This Go method does not add a Starlark builtin or change default
@@ -187,10 +188,12 @@ duplicate field names keep their own `String` behavior. Go-created cycles
 consisting only of tuples are not detected. There is no general depth or output
 limit.
 
-Snapshot formatting copies entries into temporary memory. Larger or nested
-dictionaries can use more bytes than direct formatting; avoiding intermediate
-strings and repeated path allocations can offset some work. The net cost depends
-on the values, Go version and machine. Run the included comparisons with:
+Snapshot formatting copies entries and tracks container paths, adding temporary
+memory and work. Large sets and nested containers can take longer and use more
+bytes than direct formatting. Call it only when diagnostic output is needed;
+avoid high-frequency business loops. Normal execution and default printing do
+not call it automatically. Costs depend on the values, Go version and machine.
+Run the included comparisons with:
 
 ```bash
 go test ./dataconv -run '^$' -bench '^BenchmarkSharedDictReadPaths$' -benchmem
