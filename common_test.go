@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"math"
 	"reflect"
 	"runtime"
 	"strings"
@@ -183,17 +182,6 @@ func getCoconutModuleLoader() (string, starlet.ModuleLoader) {
 			}),
 		}, nil
 	}
-}
-
-// expectSameDuration checks if the actual duration is within 15% of the expected duration.
-func expectSameDuration(t *testing.T, act, exp time.Duration) bool {
-	r := float64(act) / float64(exp)
-	d := math.Abs(r - 1)
-	same := d <= 0.15
-	if !same {
-		t.Errorf("expected same duration, got diff: actual = %v, expected = %v", act, exp)
-	}
-	return same
 }
 
 // errorReader is a reader that reads that fails at the given point.
