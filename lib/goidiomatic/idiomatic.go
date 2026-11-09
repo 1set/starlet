@@ -103,6 +103,7 @@ func distinct(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple,
 		x    starlark.Value
 		iter = itr.Iterate()
 	)
+	defer iter.Done()
 	// loop through the list/tuple and add distinct elements
 	for iter.Next(&x) {
 		h, e := x.Hash()

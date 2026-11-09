@@ -4,6 +4,7 @@ package goidiomatic_test
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	itn "github.com/1set/starlet/internal"
@@ -84,6 +85,97 @@ func (it *customIntRangeIterator) Done() {}
 // newCustomIntRange creates a new customIntRange value.
 func newCustomIntRange(start, end int) *customIntRange {
 	return &customIntRange{start: start, end: end}
+}
+
+type trackedDistinctIterable struct {
+	starlark.Tuple
+	iterateCalls, nextCalls, doneCalls int
+}
+
+func (v *trackedDistinctIterable) Iterate() starlark.Iterator {
+	v.iterateCalls++
+	return &trackedDistinctIterator{owner: v}
+}
+
+type trackedDistinctIterator struct {
+	owner *trackedDistinctIterable
+	index int
+}
+
+func (it *trackedDistinctIterator) Next(value *starlark.Value) bool {
+	it.owner.nextCalls++
+	if it.index == len(it.owner.Tuple) {
+		return false
+	}
+	*value = it.owner.Tuple[it.index]
+	it.index++
+	return true
+}
+
+func (it *trackedDistinctIterator) Done() {
+	it.owner.doneCalls++
+}
+
+func TestDistinctReleasesIterator(t *testing.T) {
+	exports, err := goidiomatic.LoadModule()
+	if err != nil {
+		t.Fatal(err)
+	}
+	unhashable := starlark.NewList(nil)
+	tests := []struct {
+		name      string
+		values    starlark.Tuple
+		want      string
+		wantError bool
+		wantNext  int
+	}{
+		{name: "empty", want: "[]", wantNext: 1},
+		{name: "duplicates", values: starlark.Tuple{starlark.MakeInt(2), starlark.MakeInt(1), starlark.MakeInt(2)}, want: "[2, 1]", wantNext: 4},
+		{name: "first_hash_error", values: starlark.Tuple{unhashable}, want: "None", wantError: true, wantNext: 1},
+		{name: "later_hash_error", values: starlark.Tuple{starlark.MakeInt(1), unhashable, starlark.MakeInt(2)}, want: "None", wantError: true, wantNext: 2},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, native := range []bool{true, false} {
+				name := "custom"
+				if native {
+					name = "list"
+				}
+				t.Run(name, func(t *testing.T) {
+					list := starlark.NewList(append([]starlark.Value(nil), tt.values...))
+					tracked := &trackedDistinctIterable{Tuple: tt.values}
+					var input starlark.Value = tracked
+					if native {
+						input = list
+					}
+					before := input.String()
+					result, err := starlark.Call(&starlark.Thread{}, exports["distinct"], starlark.Tuple{input}, nil)
+					if (err != nil) != tt.wantError {
+						t.Fatalf("distinct error = %v; want error %v", err, tt.wantError)
+					}
+					if err != nil && !strings.Contains(err.Error(), "distinct: unhashable type: list") {
+						t.Fatalf("distinct error = %v", err)
+					}
+					if result.String() != tt.want {
+						t.Errorf("distinct = %s; want %s", result, tt.want)
+					}
+					if input.String() != before {
+						t.Error("distinct changed its input")
+					}
+					if native {
+						if err := list.Append(starlark.MakeInt(9)); err != nil {
+							t.Errorf("append after distinct: %v", err)
+						}
+						if result.String() != tt.want {
+							t.Error("appending to input changed distinct result")
+						}
+					} else if tracked.iterateCalls != 1 || tracked.doneCalls != 1 || tracked.nextCalls != tt.wantNext {
+						t.Errorf("iterator calls = Iterate:%d Next:%d Done:%d; want 1/%d/1", tracked.iterateCalls, tracked.nextCalls, tracked.doneCalls, tt.wantNext)
+					}
+				})
+			}
+		})
+	}
 }
 
 func TestLoadModule_GoIdiomatic(t *testing.T) {
@@ -1149,5 +1241,68 @@ func TestLoadModuleEvaluationFunctions(t *testing.T) {
 		if name == "try_eval" && value.String() != "(5, None)" {
 			t.Fatalf("try_eval = %v", value)
 		}
+	}
+}
+
+var distinctBenchmarkResult starlark.Value
+
+func BenchmarkDistinctIterator(b *testing.B) {
+	exports, err := goidiomatic.LoadModule()
+	if err != nil {
+		b.Fatal(err)
+	}
+	values := starlark.Tuple{
+		starlark.MakeInt(2), starlark.MakeInt(1), starlark.MakeInt(2), starlark.MakeInt(3),
+		starlark.MakeInt(1), starlark.MakeInt(4), starlark.MakeInt(4), starlark.MakeInt(2),
+	}
+	large := make(starlark.Tuple, 128)
+	for i := range large {
+		large[i] = starlark.MakeInt(i % 16)
+	}
+	dict, set := starlark.NewDict(8), starlark.NewSet(8)
+	for i := 0; i < 8; i++ {
+		value := starlark.MakeInt(i)
+		if err := dict.SetKey(value, starlark.None); err != nil {
+			b.Fatal(err)
+		}
+		if err := set.Insert(value); err != nil {
+			b.Fatal(err)
+		}
+	}
+	hashError := starlark.Tuple{starlark.MakeInt(1), starlark.NewList(nil)}
+	tests := []struct {
+		name      string
+		input     func() starlark.Value
+		want      string
+		wantError bool
+	}{
+		{"List0", func() starlark.Value { return starlark.NewList(nil) }, "[]", false},
+		{"List8", func() starlark.Value { return starlark.NewList(values) }, "[2, 1, 3, 4]", false},
+		{"List128", func() starlark.Value { return starlark.NewList(large) }, "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]", false},
+		{"Tuple8", func() starlark.Value { return values }, "(2, 1, 3, 4)", false},
+		{"Custom8", func() starlark.Value { return newCustomIntRange(0, 8) }, "[0, 1, 2, 3, 4, 5, 6, 7]", false},
+		{"HashError", func() starlark.Value { return starlark.NewList(hashError) }, "None", true},
+		{"Dict8Control", func() starlark.Value { return dict }, "[0, 1, 2, 3, 4, 5, 6, 7]", false},
+		{"Set8Control", func() starlark.Value { return set }, "set([0, 1, 2, 3, 4, 5, 6, 7])", false},
+	}
+	for _, tt := range tests {
+		b.Run(tt.name, func(b *testing.B) {
+			thread := &starlark.Thread{}
+			result, err := starlark.Call(thread, exports["distinct"], starlark.Tuple{tt.input()}, nil)
+			if (err != nil) != tt.wantError || result == nil || result.String() != tt.want {
+				b.Fatalf("distinct = %v, %v; want %s, error %v", result, err, tt.want, tt.wantError)
+			}
+			if err != nil && !strings.Contains(err.Error(), "distinct: unhashable type: list") {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				distinctBenchmarkResult, err = starlark.Call(thread, exports["distinct"], starlark.Tuple{tt.input()}, nil)
+				if (err != nil) != tt.wantError {
+					b.Fatal(err)
+				}
+			}
+		})
 	}
 }
