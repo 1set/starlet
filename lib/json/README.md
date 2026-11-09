@@ -151,7 +151,7 @@ print(result, error)
 - Because it returns *text*, a recovered bare scalar is honest output (`repair('The answer is 42')` decodes to `42`, not a dict); scripts needing structure should check the decoded type.
 - It **errors** on truly unrepairable input (e.g. `{,,,}`). `try_repair(text)` returns `(text, error)` — including on a non-string argument.
 
-```python
+````python
 load('json', 'repair', 'decode')
 messy = '''Here is the result:
 ```json
@@ -160,7 +160,7 @@ messy = '''Here is the result:
 '''
 print(decode(repair(messy)))
 # Output: {"name": "Ann", "tags": ["a", "b"]}
-```
+````
 
 ```python
 load('json', 'try_repair')
