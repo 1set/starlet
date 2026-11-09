@@ -121,6 +121,19 @@ func TestSharedDict_SnapshotString(t *testing.T) {
 		if got := (&SharedDict{}).String(); got != "shared_dict()" {
 			t.Fatalf("String() = %q; want shared_dict()", got)
 		}
+		if got := (&SharedDict{}).SnapshotString(); got != "shared_dict()" {
+			t.Fatalf("SnapshotString() = %q; want shared_dict()", got)
+		}
+	})
+	t.Run("empty_root", func(t *testing.T) {
+		for _, test := range []struct {
+			dict *SharedDict
+			want string
+		}{{NewSharedDict(), "shared_dict({})"}, {NewNamedSharedDict("named"), "named({})"}, {&SharedDict{name: "zero"}, "zero()"}} {
+			if got := test.dict.SnapshotString(); got != test.want {
+				t.Fatalf("SnapshotString() = %q; want %q", got, test.want)
+			}
+		}
 	})
 }
 
@@ -570,6 +583,43 @@ func TestSharedDict_SnapshotStringFormattingGraph(t *testing.T) {
 				put(t, root, "items", set)
 				check(t, root, "shared_dict("+root.dict.String()+")")
 			}
+			for _, size := range []int{8, 9, 32} {
+				t.Run(fmt.Sprintf("size=%d", size), func(t *testing.T) {
+					root, set := NewSharedDict(), starlark.NewSet(size)
+					for i := 0; i < size; i++ {
+						if err := set.Insert(starlark.MakeInt(i)); err != nil {
+							t.Fatal(err)
+						}
+					}
+					put(t, root, "items", set)
+					check(t, root, "shared_dict("+root.dict.String()+")")
+				})
+			}
+		})
+		t.Run("deep_path", func(t *testing.T) {
+			root, set := NewSharedDict(), starlark.NewSet(1)
+			if err := set.Insert(starlark.MakeInt(1)); err != nil {
+				t.Fatal(err)
+			}
+			var value starlark.Value = set
+			for i := 0; i < 9; i++ {
+				value = starlark.NewList([]starlark.Value{value})
+			}
+			put(t, root, "items", value)
+			check(t, root, "shared_dict("+root.dict.String()+")")
+		})
+		t.Run("deep_ancestor_cycle", func(t *testing.T) {
+			root, set := NewSharedDict(), starlark.NewSet(1)
+			var value starlark.Value = set
+			for i := 0; i < 9; i++ {
+				value = starlark.NewList([]starlark.Value{value})
+			}
+			record := starlarkstruct.FromStringDict(value, nil)
+			if err := set.Insert(record); err != nil {
+				t.Fatal(err)
+			}
+			put(t, root, "items", value)
+			check(t, root, `shared_dict({"items": `+strings.Repeat("[", 9)+`set([[...]()])`+strings.Repeat("]", 9)+`})`)
 		})
 		t.Run("callback_insert", func(t *testing.T) {
 			root, set := NewSharedDict(), starlark.NewSet(1)
@@ -764,23 +814,21 @@ func BenchmarkSharedDictReadPaths(b *testing.B) {
 	if err := record.SetKey(starlark.String("record"), starlarkstruct.FromStringDict(starlark.String("record"), starlark.StringDict{"entries": flat8.dict})); err != nil {
 		b.Fatal(err)
 	}
-	plainSet := NewSharedDict()
-	setValues, structValues := starlark.NewSet(8), starlark.NewSet(8)
-	for i := 0; i < 8; i++ {
-		if err := setValues.Insert(starlark.MakeInt(i)); err != nil {
+	makeSet := func(n int, records bool) *SharedDict {
+		dict, set := NewSharedDict(), starlark.NewSet(n)
+		for i := 0; i < n; i++ {
+			var value starlark.Value = starlark.MakeInt(i)
+			if records {
+				value = starlarkstruct.FromStringDict(starlark.String("key"), starlark.StringDict{"id": value})
+			}
+			if err := set.Insert(value); err != nil {
+				b.Fatal(err)
+			}
+		}
+		if err := dict.SetKey(starlark.String("set"), set); err != nil {
 			b.Fatal(err)
 		}
-		key := starlarkstruct.FromStringDict(starlark.String("key"), starlark.StringDict{"id": starlark.MakeInt(i)})
-		if err := structValues.Insert(key); err != nil {
-			b.Fatal(err)
-		}
-	}
-	if err := plainSet.SetKey(starlark.String("set"), setValues); err != nil {
-		b.Fatal(err)
-	}
-	structSet := NewSharedDict()
-	if err := structSet.SetKey(starlark.String("set"), structValues); err != nil {
-		b.Fatal(err)
+		return dict
 	}
 	cycle := NewSharedDict()
 	if err := cycle.SetKey(starlark.String("self"), cycle.dict); err != nil {
@@ -793,7 +841,8 @@ func BenchmarkSharedDictReadPaths(b *testing.B) {
 		{"Flat0", makeFlat(0)}, {"Flat1", makeFlat(1)}, {"Flat8", flat8},
 		{"Flat128", makeFlat(128)}, {"Nested8", nested}, {"Cycle", cycle},
 		{"NestedShared8", nestedShared}, {"RepeatedShared8", repeatedShared}, {"Struct8", record},
-		{"Set8", plainSet}, {"SetStruct8", structSet},
+		{"Set8", makeSet(8, false)}, {"SetStruct8", makeSet(8, true)},
+		{"Set32", makeSet(32, false)}, {"SetStruct32", makeSet(32, true)},
 	} {
 		b.Run("Snapshot/"+test.name, func(b *testing.B) {
 			format := test.dict.SnapshotString
