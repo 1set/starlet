@@ -389,9 +389,9 @@ func prettyPrint(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tup
 	return starlark.None, nil
 }
 
-// convertToDict creates a Starlark dict from a Starlark dict, module, struct, GoStruct, or SharedDict.
+// convertToDict converts supported values to native Starlark values, usually a dict.
 // It works as a complement to the builtin dict() function of Starlark, not a replacement or alternative.
-// For GoStruct, it converts the underlying Go struct to JSON string using Go standard JSON encoder, and then decodes it to a Starlark dict with Starlark JSON decoder.
+// For GoStruct, it decodes Go's JSON representation to a native Starlark value; custom JSON marshaling may produce a non-dict result.
 // Errors are returned if the conversion fails.
 func convertToDict(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var v starlark.Value

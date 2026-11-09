@@ -45,6 +45,37 @@ func main() {
 
 `SetScript(name, content, fileSys)` + `Run()` supports supplied source with the same file-load root. `RunScript` clears that filesystem and bypasses the compiled-program cache. `Reset` retains configuration and the optional compiled-program cache; it does not undo host writes or detach shared values. [Custom source-loader constructors](module.go) use bare threads and do not inherit the Machine's execution guards.
 
+## Calling script functions
+
+First execute the function definitions successfully, then use `Call(name, args...)` to pass positional Go arguments and receive `(result, error)`:
+
+```go
+package main
+
+import (
+    "fmt"
+    "log"
+
+    "github.com/1set/starlet"
+)
+
+func main() {
+    m := starlet.NewDefault()
+    if _, err := m.RunScript([]byte("def add(x, y):\n    return x + y\n"), nil); err != nil {
+        log.Fatal(err)
+    }
+    result, err := m.Call("add", 20, 22)
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Println(result)
+}
+
+// Output: 42
+```
+
+`Call` takes positional arguments only, converting them through Starlight even when global/extra input conversion is disabled. Results use the configured output conversion. Calling before execution, using a missing name, or selecting a value other than a script function or builtin returns an error. Use `CallWithContext(ctx, name, args...)` or `CallWithTimeout(timeout, name, args...)` for cooperative cancellation; plain `Call` has no context or deadline. See [errors and cancellation](#errors-and-cancellation).
+
 ## Script output
 
 `print(...)` goes to stderr by default. Install a `PrintFunc` to route it, use `NoopPrintFunc` to discard it, or pass `nil` to restore the default. Host callbacks must not reenter the same Machine's locking methods.

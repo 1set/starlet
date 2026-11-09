@@ -12,7 +12,7 @@ The server-side helpers (`ExportedServerRequest`, `ServerResponse`) are Go types
 
 | function | description |
 |----------|-------------|
-| `call(method, url, *, params=None, headers=None, body=None, json_body=None, form_body=None, form_encoding="", auth=(), timeout=30, allow_redirects=True, verify=True, raise_for_status=False) -> response` / `try_call(...) -> (response, error)` | Perform a request with the HTTP method named by `method` (case-insensitive), dispatching to one of the verb functions below. |
+| `call(method, url, params=None, headers=None, body=None, json_body=None, form_body=None, form_encoding="", auth=(), timeout=30, allow_redirects=True, verify=True, raise_for_status=False) -> response` / `try_call(...) -> (response, error)` | Perform a request with the HTTP method named by `method` (case-insensitive). See the `postForm` exception below. |
 | `get(url, ...) -> response` / `try_get(...) -> (response, error)` | Perform an HTTP GET request. |
 | `put(url, ...) -> response` / `try_put(...) -> (response, error)` | Perform an HTTP PUT request. |
 | `post(url, ...) -> response` / `try_post(...) -> (response, error)` | Perform an HTTP POST request. |
@@ -47,7 +47,7 @@ The result of performing an HTTP request (a struct).
 | method | description |
 |--------|-------------|
 | `body() -> string` | Read and return the whole response body as a string. Re-readable. |
-| `json() -> object` | Parse the body as JSON; returns `None` when the body is empty or not valid JSON (a parse failure and a JSON `null` are indistinguishable — use `try_json` to tell them apart). |
+| `json() -> object` | Parse the body as JSON; returns `None` for empty/invalid JSON or JSON `null`. Read failures raise an error; use `try_json` to capture both kinds of failure. |
 | `try_body() -> (string, error)` | Like `body()` but returns a `(value, error)` pair instead of aborting (e.g. when the response-size limit is exceeded). |
 | `try_json() -> (object, error)` | Like `json()` but a parse or read failure lands in the error slot instead of folding into `None`. |
 
@@ -91,7 +91,7 @@ Go-side helper (constructed via `NewServerResponse`) that lets a script build an
 
 ### Request parameters
 
-All verb functions and `call` accept the same parameters (for `call`, `method` is an extra first positional argument). Only `url` is required.
+All verb functions and `call` accept the same parameters, by position or keyword (for `call`, `method` is an extra first positional argument). Only `url` is required for a verb function.
 
 | name | type | description |
 |------|------|-------------|
@@ -165,9 +165,9 @@ print('filename="better.txt"' in rb)
 
 ### `call` / `try_call`
 
-`call(method, url, ...)` dispatches to the verb function named by `method` (case-insensitive). The supported methods are `get`, `put`, `post`, `postForm`, `delete`, `head`, `patch`, `options`.
+`call(method, url, ...)` dispatches to `get`, `put`, `post`, `delete`, `head`, `patch`, or `options` (case-insensitive). In this version `call('postForm', ...)` is not accepted; use the directly loaded `postForm(...)`, or `call('POST', ..., form_encoding='application/x-www-form-urlencoded', form_body=...)`.
 
-**Errors on:** a missing method name (`http.call: missing method name`); a non-string method name; or an unsupported method (`unsupported method: <name>`).
+**Errors on:** a missing method name (`http.call: missing method name`); a method name other than string/bytes; or an unsupported method (`unsupported method: <name>`).
 
 ```python
 load('http', 'call')
@@ -225,7 +225,7 @@ get(nf_url, raise_for_status=True)
 
 ### `try_json` vs `json`
 
-`json()` folds a read/parse failure into `None`; `try_json()` surfaces it in the error slot, so a parse failure is distinguishable from a JSON `null`.
+`json()` folds a parse failure into `None`, but raises on a read failure. `try_json()` captures either failure in the error slot; valid JSON `null` returns `(None, None)`.
 
 ```python
 load('http', 'get')
@@ -257,7 +257,7 @@ print(get_timeout())
 ## Notes / boundaries
 
 - **Engine.** A thin wrapper over Go `net/http`; request/response semantics follow that package. JSON is handled by starlet's `dataconv` (Starlark-aware), so structs, `module`, `time`, and starlight-wrapped Go values marshal correctly.
-- **Instance vs package state.** `set_timeout` and the host-configurable knobs (`SetClient`, `SetGuard`, `SetMaxResponseBodyBytes`, `SetForceTLSVerify`) live on the module instance; the package-level `TimeoutSecond`, `UserAgent`, `SkipInsecureVerify`, `DisableRedirect`, `MaxResponseBodyBytes`, `ForceTLSVerify`, `Client`, and `Guard` only *seed* new instances at `LoadModule` time.
+- **Instance vs package state.** `set_timeout` and the host setters (`SetClient`, `SetGuard`, `SetMaxResponseBodyBytes`, `SetForceTLSVerify`) affect one instance. `TimeoutSecond`, `MaxResponseBodyBytes`, `ForceTLSVerify`, `Client`, and `Guard` seed `NewModule`. `UserAgent`, `SkipInsecureVerify`, and `DisableRedirect` are read for each request under `ConfigLock`; hosts changing these package globals must use that lock.
 - **Security knobs.** A host may force TLS verification (`verify=False` is then rejected), cap the response body size (over-limit `body()`/`json()` error with `response body exceeds the N-byte limit`), and install a `RequestGuard` to allow/deny requests by URL. When the host injects its own `*http.Client`, the per-request `timeout`/`allow_redirects`/`verify` options are rejected rather than silently ignored.
 - **Body kinds are mutually exclusive.** Pass at most one of `body`, `json_body`, `form_body`; supplying more than one is an error rather than a silent drop.
 - **Determinism.** Response `headers` and `encoding` join multiple values with `,`. `body()`/`json()` reset the body reader so they may be called repeatedly.

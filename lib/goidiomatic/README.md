@@ -27,7 +27,7 @@ Load name for `load()`: `go_idiomatic`.
 | `make_struct(name, **kv) -> struct` | Build a struct whose constructor name is `name`. |
 | `shared_dict() -> shared_dict` | Create an empty thread-safe shared dictionary. |
 | `make_shared_dict(name="", data=None) -> shared_dict` | Create a shared dictionary with an optional type name and initial data. |
-| `to_dict(v) -> dict` | Convert a dict, `module`, `struct`, `GoStruct`, or `shared_dict` into a plain dict. |
+| `to_dict(v) -> value` | Convert a dict, `module`, `struct`, `GoStruct`, or `shared_dict`; usually returns a dict. |
 | `eprint(*args, sep=" ")` | `print`-style output to stderr. |
 | `pprint(*args, sep=" ")` | `print`-style output formatted as indented JSON. |
 
@@ -315,6 +315,8 @@ print(sum([1, 2, 3]), sum([1, 2, 4], start=8), sum([1, 2, None]))
 
 Removes duplicates, preserving first-seen order. Returns a **list** for a list or custom iterable, a **tuple** for a tuple, the result of `.keys()` (a list) for a dict, and the original **set** unchanged for a set. Errors with `unhashable type: <type>` if an element cannot be hashed, and `got <type>, want iterable` for a non-iterable argument.
 
+Current limitation: a list input retains an active iterator after `distinct` returns, so later mutation can fail with `cannot append to list during iteration`. Avoid mutating that input list afterward.
+
 ```python
 load("go_idiomatic", "distinct")
 print(distinct([1, 2, 2, 3, 3, 3]), distinct((1, 2, 2, 3)))
@@ -418,9 +420,9 @@ print(make_shared_dict("manaʻo", {"abc": 123}))
 # Output: manaʻo({"abc": 123})
 ```
 
-### `to_dict(v) -> dict`
+### `to_dict(v) -> value`
 
-Converts a value into a plain Starlark `dict`. Accepts a native `dict` (cloned), a `module` or `struct` (members become entries), a `GoStruct` (marshalled to JSON via Go's encoder then decoded to a dict — Go field names are preserved, nil fields become `None`), and a `shared_dict` (clone of its contents). Any other type errors with `unsupported type: <type>`; a Go struct holding a JSON-unencodable field (e.g. a channel) surfaces the encoder error (`json: unsupported type: chan int`).
+Converts a supported value to a plain Starlark value, usually a `dict`. Accepts a native `dict` (cloned), a `module` or `struct` (members become entries), a `GoStruct` (encoded with Go's `encoding/json` then decoded), and a `shared_dict` (clone of its contents). For Go structs, exported fields, `json` tags, `omitempty`, and custom JSON marshaling follow Go's encoder; field names are not necessarily the Go names. Custom JSON marshaling can produce a non-dict result. Any other input type errors with `unsupported type: <type>`; a JSON-unencodable field (e.g. a channel) surfaces the encoder error (`json: unsupported type: chan int`).
 
 ```python
 load("go_idiomatic", "to_dict", "struct", "module")
@@ -444,7 +446,7 @@ eprint("Path", "/home/user/docs", sep=" -> ")
 
 ### `pprint(*args, sep=" ")`
 
-Like `print()` but renders each argument as **indented JSON** (4-space indent) before writing through the thread's `Print` handler (falling back to stderr). Values that cannot be JSON-encoded — including self-referential structures — fall back to their string form, so `pprint` never fails on cyclic input. A non-string `sep` errors with `got <type>, want string`.
+Like `print()` but renders each argument as **indented JSON** (4-space indent) before writing through the thread's `Print` handler (falling back to stderr). Values that cannot be JSON-encoded fall back to their string form, retaining that value's formatting and synchronization constraints. A non-string `sep` errors with `got <type>, want string`.
 
 ```python
 load("go_idiomatic", "pprint")
@@ -462,7 +464,7 @@ pprint({"key": "value", "list": [1, 2, 3]})
 ## Notes / boundaries
 
 - **`length` vs `len`.** `length` counts Unicode code points for strings; the builtin `len` counts UTF-8 bytes. They agree for sequences.
-- **`distinct` ordering.** First-seen order is preserved for list/tuple/custom inputs; dict-key order from `.keys()` is **not** guaranteed (sort it if you need stability). Sets are returned unchanged.
+- **`distinct` ordering.** First-seen order is preserved for list/tuple/custom inputs; a native dict returns its keys in insertion order. Sets are returned unchanged.
 - **Process effects.** `sleep` blocks (and respects context cancellation); `exit`/`quit` do not stop the goroutine themselves — they return `ErrSystemExit` for the host runner to act on, and set the thread-local `exit_code`.
-- **Determinism.** `struct`/`make_struct`/`module` print fields in sorted order; `to_dict` of a `GoStruct` keeps the Go field names verbatim.
+- **Determinism.** `struct`/`make_struct`/`module` print fields in sorted order; `to_dict` of a `GoStruct` follows Go's JSON field naming rules.
 - **`shared_dict` scope.** Locking protects a single instance across threads; it does not make the values it holds deeply immutable or persist anything beyond the process.

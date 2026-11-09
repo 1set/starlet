@@ -1,14 +1,15 @@
 # json
 
-`json` converts Starlark values to and from JSON text and offers a small toolkit around it: pretty-printing, JSONPath query/evaluation, LLM-output repair, and JSON Schema validation. It extends Go Starlark's stdlib `json` (`encode`/`decode`/`indent`) with `dumps`-style and `try_*` helpers. **Capability profile: pure** — no filesystem, network, or process side effects (external schema `$ref` is deliberately blocked to keep it so).
+`json` converts Starlark values to and from JSON text and offers a small toolkit around it: pretty-printing, JSONPath query/evaluation, LLM-output repair, and JSON Schema validation. It extends Go Starlark's stdlib `json` (`encode`/`encode_indent`/`decode`/`indent`) with `dumps`-style and `try_*` helpers. **Capability profile: pure** — no filesystem, network, or process side effects (external schema `$ref` is deliberately blocked to keep it so).
 
-Every host-error function ships a `try_*` twin that, instead of aborting the script, returns a `(result, error)` tuple — `error` is `None` on success, and `result` is `None` on failure. `try_validate` is the one exception, distinguishing three outcomes (see below).
+The `try_*` helpers return a `(result, error)` tuple instead of aborting the script — `error` is `None` on success, and `result` is `None` on failure. `try_validate` distinguishes three outcomes (see below). The stdlib `encode_indent` has no `try_encode_indent` twin.
 
 ## Functions
 
 | function | description |
 | --- | --- |
 | `encode(x) -> string` | Encode a Starlark value to compact JSON text (go.starlark.net stdlib). |
+| `encode_indent(x, *, prefix="", indent="\t") -> string` | Encode a value using stdlib `encode` rules, then indent the JSON text. |
 | `decode(x[, default]) -> value` | Decode a JSON string to a Starlark value; on bad input returns `default` if given, else errors. |
 | `indent(str, *, prefix="", indent="\t") -> string` | Pretty-print valid JSON text with the given prefix/indent unit (stdlib). |
 | `dumps(obj, indent=0) -> string` / `try_dumps(obj, indent=0) -> tuple` | Encode a Starlark value (incl. struct/module) to JSON text, optionally indented by `indent` spaces. `try_dumps` returns `(text, error)`. |
@@ -32,7 +33,7 @@ This module exposes no custom Starlark types — every result is a standard Star
 
 - `None`, `True`, `False` → `null`, `true`, `false`.
 - Starlark ints (any size) → decimal integers; floats → decimal-point notation. Non-finite floats are an error.
-- Strings → JSON strings (UTF-16 escapes); `dict`/IterableMapping → object (non-string keys error); other Iterable (`list`, `tuple`) → array; `HasAttrs` (`struct`) → object.
+- Strings → JSON strings with JSON escaping; `dict`/IterableMapping → object (non-string keys error); other Iterable (`list`, `tuple`) → array; `HasAttrs` (`struct`) → object.
 
 It **errors** when a value cannot be encoded (e.g. a function: `cannot encode function as JSON`). `try_encode(x)` returns `(text, None)` on success or `(None, message)` on failure.
 
@@ -53,7 +54,7 @@ print(result, error)
 
 ### `decode` / `try_decode`
 
-`decode(x[, default]) -> value` parses a JSON string into a Starlark value: numbers become `int` or `float` (by presence of a decimal point), objects become unfrozen `dict`s, arrays become unfrozen `list`s. On invalid input it returns `default` if supplied, otherwise it **errors**. `try_decode(x)` (no `default`) returns `(value, None)` or `(None, message)`.
+`decode(x[, default]) -> value` parses a JSON string into a Starlark value: integer literals become arbitrary-precision `int`; numbers containing `.` or an exponent (`e`/`E`) become `float`. Objects become unfrozen `dict`s, arrays become unfrozen `list`s. On invalid input it returns `default` if supplied, otherwise it **errors**. `try_decode(x)` (no `default`) returns `(value, None)` or `(None, message)`.
 
 ```python
 load('json', 'decode')
@@ -150,7 +151,7 @@ print(result, error)
 - Because it returns *text*, a recovered bare scalar is honest output (`repair('The answer is 42')` decodes to `42`, not a dict); scripts needing structure should check the decoded type.
 - It **errors** on truly unrepairable input (e.g. `{,,,}`). `try_repair(text)` returns `(text, error)` — including on a non-string argument.
 
-```python
+````python
 load('json', 'repair', 'decode')
 messy = '''Here is the result:
 ```json
@@ -159,7 +160,7 @@ messy = '''Here is the result:
 '''
 print(decode(repair(messy)))
 # Output: {"name": "Ann", "tags": ["a", "b"]}
-```
+````
 
 ```python
 load('json', 'try_repair')
@@ -203,4 +204,4 @@ print(ok, err)
 - **Number shaping.** `path`/`eval` return integral numbers as `int` and non-integral as `float`; JSON `null` becomes `None`.
 - **`repair` vs `validate`.** `repair` fixes *text* and is idempotent on valid input; `validate` never mutates — it only reports conformance.
 - All function names are snake_case; `try_*` variants mirror their base function and never abort the script.
-- There is **no** `encode_indent` function: indentation is a parameter, not a separate call — use `dumps(obj, indent=N)` for indented encoding, or `indent(...)` to re-format existing JSON text.
+- **Indentation choices.** `encode_indent(obj, indent="  ")` encodes with stdlib rules; `dumps(obj, indent=2)` uses the internal marshaler. `indent(text, indent="  ")` re-formats existing JSON text.

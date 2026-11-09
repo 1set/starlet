@@ -24,7 +24,7 @@
 | `write_bytes(name, data) -> None` | Create or truncate the file and write `data` (string or bytes). |
 | `write_string(name, data) -> None` | Create or truncate the file and write `data` (string or bytes) as text. |
 | `write_lines(name, data) -> None` | Create or truncate the file and write each item of `data` as a line. |
-| `write_json(name, data) -> None` | Create or truncate the file and write `data` as a JSON document. |
+| `write_json(name, data) -> None` | Create or truncate the file; JSON-encode a value, or write string/bytes data verbatim. |
 | `write_jsonl(name, data) -> None` | Create or truncate the file and write each item of `data` as a JSON line. |
 
 ### Append
@@ -34,7 +34,7 @@
 | `append_bytes(name, data) -> None` | Append `data` (string or bytes) to the file, creating it if absent. |
 | `append_string(name, data) -> None` | Append `data` (string or bytes) as text to the file, creating it if absent. |
 | `append_lines(name, data) -> None` | Append each item of `data` as a line, creating the file if absent. |
-| `append_json(name, data) -> None` | Append `data` as a JSON document, creating the file if absent. |
+| `append_json(name, data) -> None` | Append JSON-encoded data or raw string/bytes, without adding a separator. |
 | `append_jsonl(name, data) -> None` | Append each item of `data` as a JSON line, creating the file if absent. |
 
 ### Inspect & copy & utility
@@ -114,8 +114,10 @@ The `write_*` functions create the file if absent and truncate it if present; th
 - `write_json` / `append_json` write a string or bytes value verbatim; any other value is JSON-encoded. Values that cannot be encoded error (e.g. a lambda: `json.encode: cannot encode function as JSON`).
 - `write_jsonl` / `append_jsonl` write a string or bytes value as one line; for a `list`/`tuple`/`set` each item is JSON-encoded onto its own line; any other value is encoded onto a single line.
 
+Raw string/bytes JSON input is not validated. `append_json` adds no newline or comma, so appending multiple values usually does not produce one valid JSON document; use `append_jsonl` for multiple records.
+
 ```python
-load('file', 'write_lines', 'append_lines')
+load('file', 'write_lines', 'append_lines', 'read_string')
 fp = 'out.txt'
 write_lines(fp, ['Hello', 'World'])
 append_lines(fp, ['Great', 'Job'])
@@ -178,6 +180,6 @@ print(trim_bom('hello'))               # no BOM, returned unchanged
 
 - **Side effects.** All functions except `trim_bom` perform real file system I/O; this is a FileSystem-capability module and must be gated as such by the host.
 - **Line endings.** Readers strip line endings and accept both `\n` and `\r\n`; the line writers always emit `\n`.
-- **JSON engine.** JSON encoding/decoding goes through `dataconv` (the same engine as the `json` module); only JSON-encodable Starlark values can be written, and decode errors surface the offset.
+- **JSON engine.** JSON values use the stdlib-backed `dataconv.EncodeStarlarkJSON` / `DecodeStarlarkJSON`, like `json.encode` / `decode`. String/bytes writes bypass encoding; decode errors surface the offset.
 - **Atomicity.** Writes are not atomic — a truncating write that fails partway can leave a partially written file. Appends use `O_APPEND`.
 - All exported names are `snake_case`; the `FileStat` hashing methods (`get_md5`, `get_sha1`, `get_sha256`, `get_sha512`) follow the same convention.
