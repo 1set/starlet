@@ -393,6 +393,9 @@ func listDirContents(thread *starlark.Thread, b *starlark.Builtin, args starlark
 			if fb, ok := filtered.(starlark.Bool); !ok {
 				return fmt.Errorf("filter %q: got %s, want bool", p, filtered.Type())
 			} else if fb == false {
+				if !recursive && info.IsDir() {
+					return filepath.SkipDir
+				}
 				return nil // skip path
 			}
 		}
