@@ -12,7 +12,7 @@ The server-side helpers (`ExportedServerRequest`, `ServerResponse`) are Go types
 
 | function | description |
 |----------|-------------|
-| `call(method, url, params=None, headers=None, body=None, json_body=None, form_body=None, form_encoding="", auth=(), timeout=30, allow_redirects=True, verify=True, raise_for_status=False) -> response` / `try_call(...) -> (response, error)` | Perform a request with the HTTP method named by `method` (case-insensitive). See the `postForm` exception below. |
+| `call(method, url, params=None, headers=None, body=None, json_body=None, form_body=None, form_encoding="", auth=(), timeout=30, allow_redirects=True, verify=True, raise_for_status=False) -> response` / `try_call(...) -> (response, error)` | Perform a request with the HTTP method named by `method` (case-insensitive), including `postForm`. |
 | `get(url, ...) -> response` / `try_get(...) -> (response, error)` | Perform an HTTP GET request. |
 | `put(url, ...) -> response` / `try_put(...) -> (response, error)` | Perform an HTTP PUT request. |
 | `post(url, ...) -> response` / `try_post(...) -> (response, error)` | Perform an HTTP POST request. |
@@ -165,7 +165,7 @@ print('filename="better.txt"' in rb)
 
 ### `call` / `try_call`
 
-`call(method, url, ...)` dispatches to `get`, `put`, `post`, `delete`, `head`, `patch`, or `options` (case-insensitive). In this version `call('postForm', ...)` is not accepted; use the directly loaded `postForm(...)`, or `call('POST', ..., form_encoding='application/x-www-form-urlencoded', form_body=...)`.
+`call(method, url, ...)` dispatches to `get`, `put`, `post`, `postForm`, `delete`, `head`, `patch`, or `options` (case-insensitive). `call('postForm', ...)` forces URL-encoded form data on every call, just like the directly loaded `postForm(...)`.
 
 **Errors on:** a missing method name (`http.call: missing method name`); a method name other than string/bytes; or an unsupported method (`unsupported method: <name>`).
 
