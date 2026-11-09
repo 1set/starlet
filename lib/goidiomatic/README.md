@@ -317,6 +317,15 @@ Removes duplicates, preserving first-seen order. Returns a **list** for a list o
 
 A mutable list input remains mutable after the call, including when an element cannot be hashed.
 
+**Known limitation:** `distinct` currently compares hashes alone, so unequal values with the same hash can be dropped: `distinct([1, 4294967297])` returns `[1]`. The equality fix in [#198](https://github.com/1set/starlet/pull/198) is not merged. For native integers, a Starlark dict compares keys and preserves first-seen order:
+
+```python
+values = [1, 4294967297, 1]
+unique = {value: None for value in values}.keys()
+print(unique)
+# Output: [1, 4294967297]
+```
+
 ```python
 load("go_idiomatic", "distinct")
 print(distinct([1, 2, 2, 3, 3, 3]), distinct((1, 2, 2, 3)))
