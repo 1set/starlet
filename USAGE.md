@@ -179,6 +179,14 @@ outside callbacks from operations that hold it, such as key `Hash`/`Equal` or
 value `Freeze`. This Go method does not add a Starlark builtin or change default
 printing. See [shared_dict methods and callback rules](lib/goidiomatic/README.md#shared_dict).
 
+Cycle detection follows list/dict/set references through tuples, nested
+`SharedDict` values and structs with unique field names. Nested `SharedDict`
+values are not locked; synchronize them separately. Sets capture their elements
+before formatting callbacks run. Custom values and Go-created structs with
+duplicate field names keep their own `String` behavior. Go-created cycles
+consisting only of tuples are not detected. There is no general depth or output
+limit.
+
 Snapshot formatting copies entries into temporary memory. Larger or nested
 dictionaries can use more bytes than direct formatting; avoiding intermediate
 strings and repeated path allocations can offset some work. The net cost depends
