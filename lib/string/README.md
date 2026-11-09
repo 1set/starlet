@@ -7,7 +7,7 @@
 | function | description |
 |----------|-------------|
 | `length(obj) -> int` | Number of Unicode code points in a string (bytes for `bytes`, element count for any sequence) |
-| `reverse(s) -> string` | The value reversed (by rune for strings, by byte for `bytes`) |
+| `reverse(s) -> string \| bytes` | The value reversed (by rune for strings, by byte for `bytes`), preserving its type |
 | `index(s, sub) -> int` | Rune index of the first occurrence of `sub`; errors if not found |
 | `rindex(s, sub) -> int` | Rune index of the last occurrence of `sub`; errors if not found |
 | `find(s, sub) -> int` | Rune index of the first occurrence of `sub`, or `-1` if not found |
@@ -19,10 +19,10 @@
 | `head_lines(s, n) -> string` | First `n` lines of `s` (split on `\n`), clamped to the line count |
 | `tail_lines(s, n) -> string` | Last `n` lines of `s` (split on `\n`), clamped to the line count |
 | `truncate(s, length, suffix="...") -> string` | Shorten `s` to at most `length` runes, appending `suffix` when cut |
-| `escape(s) -> string` | HTML-escape `&`, `<`, `>`, `"`, `'` |
-| `unescape(s) -> string` | Reverse of `escape`: HTML entities back to characters |
-| `quote(s) -> string` | Go-syntax double-quoted string literal (like `strconv.Quote`) |
-| `unquote(s) -> string` | Reverse of `quote`; returns the input unchanged if it is not a valid quoted literal |
+| `escape(s) -> string \| bytes` | HTML-escape `&`, `<`, `>`, `"`, `'` |
+| `unescape(s) -> string \| bytes` | Reverse of `escape`: HTML entities back to characters |
+| `quote(s) -> string \| bytes` | Go-syntax double-quoted string literal (like `strconv.Quote`) |
+| `unquote(s) -> string \| bytes` | Decode Go-style escapes, with or without enclosing double quotes; preserve the input on invalid escapes |
 
 ## Constants
 
@@ -54,7 +54,7 @@ print(length("我爱你"), length(b"☕"), length([1, 2, "#", True, None]))
 # Output: 3 3 5
 ```
 
-### `reverse(s) -> string`
+### `reverse(s) -> string | bytes`
 
 Reverses a `string` by rune (so multi-byte characters stay intact) or a `bytes` value by byte. Same single-argument and type errors as `length`.
 
@@ -160,7 +160,7 @@ print(unescape("我&amp;你"))
 
 ### `quote(s) -> string` / `unquote(s) -> string`
 
-`quote` returns a Go-syntax double-quoted string literal for `s`, escaping control characters and non-printable runes (like Go's `strconv.Quote`). NOTE: this is **not** shell escaping — do not use it to build shell command lines. `unquote` reverses it: it unquotes a Go double-quoted literal, and robustly returns the input unchanged if it is not a valid quoted literal (e.g. shorter than 2 characters, or only one side quoted). Both accept a `string` or `bytes`.
+`quote` returns a Go-syntax double-quoted string literal for `s`, escaping control characters and non-printable runes (like Go's `strconv.Quote`). NOTE: this is **not** shell escaping — do not use it to build shell command lines. `unquote` decodes a Go double-quoted literal; when outer quotes are absent, it first adds them, so `unquote(r'\n')` returns a newline. Input shorter than two bytes or with invalid escapes/unbalanced quotes is returned unchanged. Both accept a `string` or `bytes` and preserve its type.
 
 ```python
 load("string", "quote", "unquote")
@@ -174,6 +174,6 @@ print(unquote('"我爱你"'), unquote('"我爱你'))
 ## Notes / boundaries
 
 - **Rune-based indexing.** `length`, `index`/`rindex`/`find`/`rfind`, `substring`, `codepoint`, `head`/`tail`, and `truncate` all operate on Unicode code points, not bytes — counts and slices never split a multi-byte character. This differs from the built-in `len()` and the `s[a:b]` slice operator, which work on bytes.
-- **`bytes` support.** Only `length`, `reverse`, `escape`, `unescape`, `quote`, and `unquote` accept `bytes` (and preserve the type). The index/slice/line helpers take `string` only.
+- **`bytes` support.** `length` accepts `bytes` and returns their byte count. `reverse`, `escape`, `unescape`, `quote`, and `unquote` also accept `bytes` and preserve that type. The index/slice/line helpers take `string` only.
 - **Pure module.** No I/O, no global state, deterministic output for a given input.
 - **Python parity.** The constants mirror Python's `string` module; `index`/`rindex`/`find`/`rfind` mirror the `str` methods of the same names. `quote`/`unquote`/`escape`/`unescape` and the `head`/`tail`/`*_lines`/`truncate`/`substring`/`codepoint` helpers are starlet extensions, not part of Python's `string` module.

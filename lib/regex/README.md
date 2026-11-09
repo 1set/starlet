@@ -20,7 +20,7 @@ It succeeds the legacy `re` module (which is frozen): `regex` adds `Match` objec
 | `escape(pattern) -> str` | escape regex metacharacters in `pattern` |
 | `try_compile(...) -> (value, error)`, `try_search(...) -> (value, error)` | non-raising variants of `compile` / `search`: return a `(value, error)` pair (error is `None` on success) instead of aborting the script — the same shape as the `json`/`csv`/`http` modules |
 
-**findall shaping** (matches Python): the result is always a **list**; no capture group → the full match text; one group → that group's text; two or more groups → a **tuple** of the group texts per match. `split` likewise returns a **list** (same as Python's `re` and starlet's legacy `re`).
+**findall shaping** (matches Python): the result is always a **list**; no capture group → the full match text; one group → that group's text; two or more groups → a **tuple** of the group texts per match. `split` likewise returns a **list**, matching Python; starlet's legacy `re.split` returns a tuple and drops capture-group text.
 
 ## Constants
 
@@ -260,5 +260,5 @@ print(res, err3)
 
 - **Engine: Go RE2** — linear-time matching, no catastrophic backtracking / ReDoS. RE2-unsupported Python constructs (lookahead/lookbehind, in-pattern backreferences) **fail to compile** with `cannot compile pattern`; they are never silently approximated.
 - **Indices are byte offsets**, not rune offsets — `start`/`end`/`span` report positions into the UTF-8 bytes of the subject string.
-- **Determinism & purity** — no host effects; the same pattern and input always yield the same result. Suitable for sandboxed/untrusted scripts.
+- **Callbacks.** Matching and string-template replacement have no direct host effects. A replacement function runs on the caller's Thread and may have its own effects or errors; this module alone does not isolate a script.
 - **Python-parity carve-outs** — `findall` and `split` return **lists** (not tuples), matching CPython; `Match` is unhashable like CPython, while `Pattern` is hashable here so it can serve as a dict key. A negative `count` to `sub`/`subn` replaces nothing.
