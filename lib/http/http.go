@@ -230,7 +230,7 @@ func (m *Module) callMethod(thread *starlark.Thread, b *starlark.Builtin, args s
 	// call the method with the given name
 	method := strings.ToLower(fv.GoString())
 	for _, name := range supportedMethods {
-		if method == name {
+		if method == name || method == "postform" && name == "postForm" {
 			return m.reqMethod(name)(thread, b, args[1:], kwargs)
 		}
 	}
@@ -295,13 +295,14 @@ func (m *Module) reqMethod(method string) func(thread *starlark.Thread, b *starl
 			return nil, err
 		}
 
-		// hack for postForm
+		// Keep the captured method unchanged when reusing this builtin.
+		requestMethod := method
 		if method == "postForm" {
-			method = "post"
+			requestMethod = "post"
 			formEncoding = formEncodingURL
 		}
 
-		req, err := http.NewRequest(strings.ToUpper(method), rawURL, nil)
+		req, err := http.NewRequest(strings.ToUpper(requestMethod), rawURL, nil)
 		if err != nil {
 			return nil, err
 		}
