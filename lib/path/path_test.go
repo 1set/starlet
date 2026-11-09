@@ -848,7 +848,24 @@ func TestLoadModule_PathListdirFilterDepth(t *testing.T) {
 // and candidate. The rejected-directory nonrecursive regression is a functional
 // test, not a timing comparison of different traversal workloads.
 func BenchmarkListdirFilterDepth(b *testing.B) {
-	root := b.TempDir()
+	previousDir, err := os.Getwd()
+	if err != nil {
+		b.Fatal(err)
+	}
+	base := b.TempDir()
+	if err := os.Chdir(base); err != nil {
+		b.Fatal(err)
+	}
+	// Restore CWD before TempDir cleanup; benchmarks here run serially.
+	defer func() {
+		if err := os.Chdir(previousDir); err != nil {
+			b.Error(err)
+		}
+	}()
+	const root = "fixture"
+	if err := os.Mkdir(root, 0700); err != nil {
+		b.Fatal(err)
+	}
 	var directories, nested []starlark.Value
 	for i := 0; i < 8; i++ {
 		dir := filepath.Join(root, fmt.Sprintf("child%d", i))
@@ -885,15 +902,24 @@ only_txt = lambda p: p.endswith(".txt")
 	}
 	top := starlark.String(filepath.Join(root, "top.txt"))
 	shallow := append(append([]starlark.Value{}, directories...), starlark.String(filepath.Join(root, "skip.bin")), top)
+	// These byte lengths are independent of TempDir's random absolute name.
+	pathLengths := func(count, size int, tail ...int) []int {
+		lengths := make([]int, count)
+		for i := range lengths {
+			lengths[i] = size
+		}
+		return append(lengths, tail...)
+	}
 	for _, tc := range []struct {
-		name   string
-		kwargs []starlark.Tuple
-		want   []starlark.Value
+		name        string
+		kwargs      []starlark.Tuple
+		want        []starlark.Value
+		wantLengths []int
 	}{
-		{name: "ShallowNone", want: shallow},
-		{name: "ShallowAll", kwargs: []starlark.Tuple{{starlark.String("filter"), filters["accept_all"]}}, want: shallow},
-		{name: "ShallowFileFilter", kwargs: []starlark.Tuple{{starlark.String("filter"), filters["without_bin"]}}, want: append(append([]starlark.Value{}, directories...), top)},
-		{name: "RecursiveFileFilter", kwargs: []starlark.Tuple{{starlark.String("recursive"), starlark.True}, {starlark.String("filter"), filters["only_txt"]}}, want: append(append([]starlark.Value{}, nested...), top)},
+		{name: "ShallowNone", want: shallow, wantLengths: pathLengths(8, 14, 16, 15)},
+		{name: "ShallowAll", kwargs: []starlark.Tuple{{starlark.String("filter"), filters["accept_all"]}}, want: shallow, wantLengths: pathLengths(8, 14, 16, 15)},
+		{name: "ShallowFileFilter", kwargs: []starlark.Tuple{{starlark.String("filter"), filters["without_bin"]}}, want: append(append([]starlark.Value{}, directories...), top), wantLengths: pathLengths(8, 14, 15)},
+		{name: "RecursiveFileFilter", kwargs: []starlark.Tuple{{starlark.String("recursive"), starlark.True}, {starlark.String("filter"), filters["only_txt"]}}, want: append(append([]starlark.Value{}, nested...), top), wantLengths: pathLengths(32, 26, 15)},
 	} {
 		b.Run(tc.name, func(b *testing.B) {
 			args := starlark.Tuple{starlark.String(root)}
@@ -903,6 +929,16 @@ only_txt = lambda p: p.endswith(".txt")
 			}
 			if want := starlark.NewList(tc.want).String(); got.String() != want {
 				b.Fatalf("result = %s, want %s", got, want)
+			}
+			list, ok := got.(*starlark.List)
+			if !ok || list.Len() != len(tc.wantLengths) {
+				b.Fatalf("result = %v; want %d paths", got, len(tc.wantLengths))
+			}
+			for i, size := range tc.wantLengths {
+				path, ok := starlark.AsString(list.Index(i))
+				if !ok || filepath.IsAbs(path) || !strings.HasPrefix(path, "fixture"+string(filepath.Separator)) || len(path) != size {
+					b.Fatalf("path[%d] = %q; want fixed relative fixture path with %d bytes", i, path, size)
+				}
 			}
 			b.ReportAllocs()
 			b.ResetTimer()
