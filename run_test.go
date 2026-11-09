@@ -1688,55 +1688,102 @@ print(type(sleep))
 
 func Test_Machine_Run_With_Timeout(t *testing.T) {
 	interval := 1000 * time.Millisecond
+	type runResult struct {
+		out            starlet.StringAnyMap
+		err            error
+		elapsed        time.Duration
+		nativeReturned bool
+	}
+	run := func(name string, minimum time.Duration, nativeDone <-chan struct{}, call func() (starlet.StringAnyMap, error)) (starlet.StringAnyMap, error) {
+		t.Helper()
+		done := make(chan runResult, 1)
+		go func() {
+			started := time.Now()
+			out, err := call()
+			result := runResult{out: out, err: err, elapsed: time.Since(started)}
+			if nativeDone != nil {
+				// Capture this at Run's return, rather than after the test's
+				// goroutine is scheduled: cancellation cannot preempt Go code.
+				select {
+				case <-nativeDone:
+					result.nativeReturned = true
+				default:
+				}
+			}
+			done <- result
+		}()
+		select {
+		case result := <-done:
+			if result.elapsed < minimum {
+				t.Errorf("%s returned before its sleep/deadline: %v < %v", name, result.elapsed, minimum)
+			}
+			if nativeDone != nil && !result.nativeReturned {
+				t.Errorf("%s returned while the native callback was still running", name)
+			}
+			return result.out, result.err
+		case <-time.After(5 * time.Second):
+			// This independent bound detects a stuck run, not slow scheduling
+			// relative to a requested sleep. It is not a performance gate.
+			t.Fatalf("%s did not finish within the liveness bound", name)
+			return nil, nil
+		}
+	}
 
 	// prepare machine
 	m := starlet.NewDefault()
 	m.SetPrintFunc(getLogPrintFunc(t))
+	nativeDone := make(chan struct{}, 2)
 	m.SetGlobals(map[string]interface{}{
-		"sleep_go": time.Sleep,
-		"itn":      interval,
+		"sleep_go": func(d time.Duration) {
+			time.Sleep(d)
+			nativeDone <- struct{}{}
+		},
+		"itn": interval,
 	})
 	m.SetLazyloadModules(starlet.ModuleLoaderMap{"go": starlet.GetBuiltinModule("go_idiomatic")})
 
 	// first run with no timeout
 	m.SetScript("time.star", []byte(`a = 1; sleep_go(itn); b = 2`), nil)
-	ts := time.Now()
-	out, err := m.RunWithContext(nil, nil)
-	expectSameDuration(t, time.Since(ts), interval)
+	out, err := run("native sleep without context", interval, nativeDone, func() (starlet.StringAnyMap, error) {
+		return m.RunWithContext(nil, nil)
+	})
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
 		return
 	}
-	t.Logf("got result after run #1: %v", out)
+	expectEqualStringAnyMap(t, out, starlet.StringAnyMap{"a": int64(1), "b": int64(2)})
 
 	// second run with timeout, but context is not handled in builtin sleep
 	m.SetScript("time.star", []byte(`c = 3; sleep_go(itn); d = 4`), nil)
-	ts = time.Now()
-	ctx, cancel := context.WithTimeout(context.Background(), interval/2)
-	defer cancel()
-	out, err = m.RunWithContext(ctx, nil)
-	expectSameDuration(t, time.Since(ts), interval)
+	out, err = run("native sleep with deadline", interval, nativeDone, func() (starlet.StringAnyMap, error) {
+		ctx, cancel := context.WithTimeout(context.Background(), interval/2)
+		defer cancel()
+		return m.RunWithContext(ctx, nil)
+	})
 	expectErr(t, err, "starlark: exec: Starlark computation cancelled: context cancelled")
-	t.Logf("got result after run #2: %v", out)
+	expectEqualStringAnyMap(t, out, starlet.StringAnyMap{"c": int64(3)})
 
 	// third run with timeout helper -- it's not timeout
 	m.SetScript("time.star", []byte(`load("go", "sleep"); e = 5; sleep(0.5); f = 6`), nil)
-	ts = time.Now()
-	out, err = m.RunWithTimeout(interval, nil)
-	expectSameDuration(t, time.Since(ts), interval/2)
+	out, err = run("context-aware sleep completes", interval/2, nil, func() (starlet.StringAnyMap, error) {
+		return m.RunWithTimeout(interval, nil)
+	})
 	if err != nil {
 		t.Errorf("Expected no errors, got error: %v", err)
 		return
 	}
-	t.Logf("got result after run #3: %v", out)
+	expectEqualStringAnyMap(t, out, starlet.StringAnyMap{"e": int64(5), "f": int64(6)})
 
 	// fourth run with timeout helper -- it's timeout indeed
 	m.SetScript("time.star", []byte(`load("go", "sleep"); g = 7; sleep(1.5); h = 8`), nil)
-	ts = time.Now()
-	out, err = m.RunWithTimeout(interval, nil)
-	expectSameDuration(t, time.Since(ts), interval)
+	out, err = run("context-aware sleep times out", interval, nil, func() (starlet.StringAnyMap, error) {
+		return m.RunWithTimeout(interval, nil)
+	})
 	expectErr(t, err, "starlark: exec: context deadline exceeded")
-	t.Logf("got result after run #4: %v", out)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("deadline cause was not preserved: %v", err)
+	}
+	expectEqualStringAnyMap(t, out, starlet.StringAnyMap{"g": int64(7)})
 }
 
 func Test_Machine_Run_With_CancelledContext(t *testing.T) {
