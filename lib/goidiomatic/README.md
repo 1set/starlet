@@ -315,6 +315,8 @@ print(sum([1, 2, 3]), sum([1, 2, 4], start=8), sum([1, 2, None]))
 
 Removes duplicates, preserving first-seen order. Returns a **list** for a list or custom iterable, a **tuple** for a tuple, the result of `.keys()` (a list) for a dict, and the original **set** unchanged for a set. Errors with `unhashable type: <type>` if an element cannot be hashed, and `got <type>, want iterable` for a non-iterable argument.
 
+Current limitation: a list input retains an active iterator after `distinct` returns, so later mutation can fail with `cannot append to list during iteration`. Avoid mutating that input list afterward.
+
 ```python
 load("go_idiomatic", "distinct")
 print(distinct([1, 2, 2, 3, 3, 3]), distinct((1, 2, 2, 3)))
