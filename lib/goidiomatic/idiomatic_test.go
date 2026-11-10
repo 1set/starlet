@@ -3,6 +3,7 @@ package goidiomatic_test
 // Sections: helper behavior; data constructors; flat expression builtins.
 
 import (
+	"encoding/hex"
 	"fmt"
 	"strings"
 	"testing"
@@ -173,6 +174,98 @@ func TestDistinctReleasesIterator(t *testing.T) {
 						t.Errorf("iterator calls = Iterate:%d Next:%d Done:%d; want 1/%d/1", tracked.iterateCalls, tracked.nextCalls, tracked.doneCalls, tt.wantNext)
 					}
 				})
+			}
+		})
+	}
+}
+
+func TestBytesHexGroupingBounds(t *testing.T) {
+	exports, err := goidiomatic.LoadModule()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tests := []struct {
+		name  string
+		bytes string
+		group int64
+		want  string
+	}{
+		{name: "min_int64", bytes: "ab", group: -1 << 63, want: "6162"},
+		{name: "max_int64", bytes: "ab", group: 1<<63 - 1, want: "6162"},
+		{name: "min_int32", bytes: "ab", group: -1 << 31, want: "6162"},
+		{name: "above_max_int32", bytes: "ab", group: 1 << 31, want: "6162"},
+		{name: "int32_wrap_positive", bytes: "ab", group: 1<<32 + 1, want: "6162"},
+		{name: "int32_wrap_negative", bytes: "ab", group: -(1<<32 + 1), want: "6162"},
+		{name: "empty_min", group: -1 << 63, want: ""},
+		{name: "empty_max", group: 1<<63 - 1, want: ""},
+		{name: "single_min", bytes: "a", group: -1 << 63, want: "61"},
+		{name: "single_max", bytes: "a", group: 1<<63 - 1, want: "61"},
+		{name: "positive_length", bytes: "ab", group: 2, want: "6162"},
+		{name: "negative_length", bytes: "ab", group: -2, want: "6162"},
+		{name: "above_length", bytes: "ab", group: 3, want: "6162"},
+		{name: "below_negative_length", bytes: "ab", group: -3, want: "6162"},
+		{name: "zero", bytes: "ab", want: "6162"},
+		{name: "positive_one", bytes: "ab", group: 1, want: "61:62"},
+		{name: "negative_one", bytes: "ab", group: -1, want: "61:62"},
+		{name: "positive_groups", bytes: "abcde", group: 2, want: "61:6263:6465"},
+		{name: "negative_groups", bytes: "abcde", group: -2, want: "6162:6364:65"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				if p := recover(); p != nil {
+					t.Errorf("bytes_hex panicked for group %d: %v", tt.group, p)
+				}
+			}()
+			result, err := starlark.Call(&starlark.Thread{}, exports["bytes_hex"], starlark.Tuple{
+				starlark.Bytes(tt.bytes), starlark.String(":"), starlark.MakeInt64(tt.group),
+			}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result != starlark.String(tt.want) {
+				t.Errorf("bytes_hex = %s; want %q", result, tt.want)
+			}
+		})
+	}
+}
+
+func TestBytesHexBinaryData(t *testing.T) {
+	exports, err := goidiomatic.LoadModule()
+	if err != nil {
+		t.Fatal(err)
+	}
+	allBytes := make([]byte, 256)
+	for i := range allBytes {
+		allBytes[i] = byte(i)
+	}
+	tests := []struct {
+		name  string
+		bytes string
+		sep   string
+		group int64
+		want  string
+	}{
+		{name: "all_byte_values", bytes: string(allBytes), want: hex.EncodeToString(allBytes)},
+		{name: "valid_utf8", bytes: "\xc3\xa9", want: "c3a9"},
+		{name: "invalid_utf8", bytes: "\xff\xc3", want: "ffc3"},
+		{name: "nul", bytes: "\x00a\x00", want: "006100"},
+		{name: "positive_groups", bytes: "\xff\x00\xc3\xa9\x80", sep: ":", group: 2, want: "ff:00c3:a980"},
+		{name: "negative_groups", bytes: "\xff\x00\xc3\xa9\x80", sep: ":", group: -2, want: "ff00:c3a9:80"},
+		{name: "single_byte_groups", bytes: "\xff\x00\xc3\xa9", sep: ":", group: 1, want: "ff:00:c3:a9"},
+		{name: "multi_character_separator", bytes: "\xff\x00\xc3\xa9", sep: "::", group: 1, want: "ff::00::c3::a9"},
+		{name: "empty_separator", bytes: "\xff\x00\xc3\xa9", group: 1, want: "ff00c3a9"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := starlark.Call(&starlark.Thread{}, exports["bytes_hex"], starlark.Tuple{
+				starlark.Bytes(tt.bytes), starlark.String(tt.sep), starlark.MakeInt64(tt.group),
+			}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result != starlark.String(tt.want) {
+				t.Errorf("bytes_hex = %s; want %q", result, tt.want)
 			}
 		})
 	}
@@ -604,6 +697,29 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'bytes_hex')
 				assert.eq('313233343536', bytes_hex(b'123456'))
 			`),
+		},
+		{
+			name: `bytes_hex raw bytes`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'bytes_hex')
+				assert.eq('ffc3a900', bytes_hex(b'\xff\xc3\xa9\x00'))
+			`),
+		},
+		{
+			name: `bytes_hex group above int64`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'bytes_hex')
+				bytes_hex(b'ab', ':', 9223372036854775808)
+			`),
+			wantErr: `invalid bytes_per_sep: 9223372036854775808`,
+		},
+		{
+			name: `bytes_hex group below int64`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'bytes_hex')
+				bytes_hex(b'ab', ':', -9223372036854775809)
+			`),
+			wantErr: `invalid bytes_per_sep: -9223372036854775809`,
 		},
 		{
 			name: `bytes_hex(b'123456', "_")`,
@@ -1304,5 +1420,61 @@ func BenchmarkDistinctIterator(b *testing.B) {
 				}
 			}
 		})
+	}
+}
+
+var bytesHexBenchmarkResult starlark.Value
+
+func BenchmarkBytesToHex(b *testing.B) {
+	exports, err := goidiomatic.LoadModule()
+	if err != nil {
+		b.Fatal(err)
+	}
+	cases := []struct {
+		name        string
+		bps         int64
+		defaultArgs bool
+	}{
+		{"Plus1", 1, false}, {"Minus1", -1, false},
+		{"Plus4", 4, false}, {"Minus4", -4, false},
+		{"Zero", 0, false}, {"MaxInt64", 1<<63 - 1, false},
+		{"DefaultEmptySep", 1, true},
+	}
+	for _, size := range []int{32, 4096} {
+		data := []byte(strings.Repeat("a", size))
+		plain := hex.EncodeToString(data)
+		for _, tc := range cases {
+			b.Run(fmt.Sprintf("Bytes%d/%s", size, tc.name), func(b *testing.B) {
+				args := starlark.Tuple{starlark.Bytes(string(data)), starlark.String(":"), starlark.MakeInt64(tc.bps)}
+				want := plain
+				if tc.defaultArgs {
+					args = args[:1]
+				} else if tc.bps == 1 || tc.bps == -1 || tc.bps == 4 || tc.bps == -4 {
+					width := int(tc.bps)
+					if width < 0 {
+						width = -width
+					}
+					parts := make([]string, size/width)
+					for i := range parts {
+						parts[i] = plain[2*i*width : 2*(i+1)*width]
+					}
+					want = strings.Join(parts, ":")
+				}
+				thread := &starlark.Thread{}
+				value, err := starlark.Call(thread, exports["bytes_hex"], args, nil)
+				text, ok := starlark.AsString(value)
+				if err != nil || !ok || text != want {
+					b.Fatalf("bytes_hex returned %v, %v; want %q", value, err, want)
+				}
+				b.ReportAllocs()
+				b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					bytesHexBenchmarkResult, err = starlark.Call(thread, exports["bytes_hex"], args, nil)
+					if err != nil {
+						b.Fatal(err)
+					}
+				}
+			})
+		}
 	}
 }
