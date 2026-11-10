@@ -1,7 +1,9 @@
 package json_test
 
 import (
+	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/1set/starlet/dataconv"
@@ -1056,6 +1058,103 @@ func TestJSONValidate(t *testing.T) {
 			`),
 		},
 		{
+			name: `validate: schema trailing closing bracket is rejected`,
+			script: itn.HereDoc(`
+				load('json', 'validate')
+				validate('1', '{"type":"integer","title":"LET34 bracket"}]')
+			`),
+			wantErr: `invalid schema`,
+		},
+		{
+			name: `validate: schema trailing closing brace is rejected`,
+			script: itn.HereDoc(`
+				load('json', 'validate')
+				validate('1', '{"type":"integer","title":"LET34 brace"}}')
+			`),
+			wantErr: `invalid schema`,
+		},
+		{
+			name: `try_validate: malformed schema tails cannot run`,
+			script: itn.HereDoc(`
+				load('json', 'try_validate')
+				def check():
+					for schema in ['{}', 'true', 'false']:
+						for tail in [' null', ']', '}', ' \t\r\n]', '{}', ' false', ' garbage', '/* comment */', '\x0b', '\x0c', '\x00', '\u00a0']:
+							result, err = try_validate('1', schema + tail)
+							assert.eq(result, None)
+							assert.true(err != None and 'invalid schema' in err)
+				check()
+			`),
+		},
+		{
+			name: `validate: schema accepts only JSON whitespace around one value`,
+			script: itn.HereDoc(`
+				load('json', 'validate', 'try_validate')
+				def check():
+					for ws in ['', ' ', '\t', '\r', '\n', ' \t\r\n']:
+						assert.eq(validate('1', ws + '{"type":"integer"}' + ws), None)
+						assert.eq(validate('1', ws + 'true' + ws), None)
+						result, err = try_validate('1', ws + 'false' + ws)
+						assert.eq(result, False)
+						assert.true(err != None)
+				check()
+			`),
+		},
+		{
+			name: `try_validate: schema bytes have the same strict boundary`,
+			script: itn.HereDoc(`
+				load('json', 'try_validate')
+				ok, err = try_validate('1', b'{"type":"integer"}\n')
+				assert.eq((ok, err), (True, None))
+				bad, tail = try_validate('1', b'{"type":"integer"}]')
+				assert.eq(bad, None)
+				assert.true(tail != None and 'invalid schema' in tail)
+			`),
+		},
+		{
+			name: `try_validate: rejected schema cannot become a cached success`,
+			script: itn.HereDoc(`
+				load('json', 'try_validate')
+				def check():
+					schema = '{"type":"integer","title":"LET34 cache isolation"}'
+					for data in ['1', '"not an integer"', '2']:
+						result, err = try_validate(data, schema + ']')
+						assert.eq(result, None)
+						assert.true(err != None and 'invalid schema' in err)
+					assert.eq(try_validate('1', schema), (True, None))
+					invalid, details = try_validate('"not an integer"', schema)
+					assert.eq(invalid, False)
+					assert.true(details != None)
+					result, err = try_validate('2', schema + ']')
+					assert.eq(result, None)
+					assert.true(err != None and 'invalid schema' in err)
+				check()
+			`),
+		},
+		{
+			name: `validate: schema and native boolean values remain supported`,
+			script: itn.HereDoc(`
+				load('json', 'validate', 'try_validate')
+				assert.eq(validate(1, {'type': 'integer'}), None)
+				assert.eq(validate(1, True), None)
+				result, err = try_validate(1, False)
+				assert.eq(result, False)
+				assert.true(err != None)
+			`),
+		},
+		{
+			name: `try_validate: malformed and non-schema JSON cannot run`,
+			script: itn.HereDoc(`
+				load('json', 'try_validate')
+				def check():
+					for schema in ['', ' ', '{"type":', 'true false', '{} {}', 'null', '[]', '1']:
+						result, err = try_validate('1', schema)
+						assert.eq(result, None)
+						assert.true(err != None and 'invalid schema' in err)
+				check()
+			`),
+		},
+		{
 			name: `validate: draft-7 schema via $schema`,
 			script: itn.HereDoc(`
 				load('json', 'validate')
@@ -1256,6 +1355,55 @@ func TestValidateSingleDocument(t *testing.T) {
 							t.Fatalf("try_validate(%q) = %v, want (True, None)", input, got)
 						}
 					}
+				}
+			}
+		})
+	}
+}
+
+var jsonSchemaBenchmarkEpoch uint64
+
+// BenchmarkJSONSchemaValidation separates cache hits from compilation of new
+// schema texts. Cold cases include constructing each distinct input string.
+func BenchmarkJSONSchemaValidation(b *testing.B) {
+	mod, err := json.LoadModule()
+	if err != nil {
+		b.Fatal(err)
+	}
+	validate, err := mod[json.ModuleName].(starlark.HasAttrs).Attr("validate")
+	if err != nil {
+		b.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		cold bool
+		pad  string
+	}{
+		{name: "CachedSmall"},
+		{name: "CachedLarge", pad: strings.Repeat("schema description ", 128)},
+		{name: "ColdSmall", cold: true},
+		{name: "ColdLarge", cold: true, pad: strings.Repeat("schema description ", 128)},
+	} {
+		b.Run(tc.name, func(b *testing.B) {
+			// Each calibration uses a fresh namespace, so cold cases never hit
+			// schema entries left by an earlier benchmark invocation.
+			epoch := atomic.AddUint64(&jsonSchemaBenchmarkEpoch, 1)
+			prefix := `{"type":"integer","$comment":"` + tc.pad + strconv.FormatUint(epoch, 10) + ":"
+			args := starlark.Tuple{starlark.String("1"), starlark.String(prefix + `cached"}`)}
+			thread := &starlark.Thread{Name: "schema-benchmark"}
+			if !tc.cold {
+				if _, err := starlark.Call(thread, validate.(starlark.Callable), args, nil); err != nil {
+					b.Fatal(err)
+				}
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				if tc.cold {
+					args[1] = starlark.String(prefix + strconv.Itoa(i) + `"}`)
+				}
+				if _, err := starlark.Call(thread, validate.(starlark.Callable), args, nil); err != nil {
+					b.Fatal(err)
 				}
 			}
 		})
