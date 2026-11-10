@@ -350,12 +350,14 @@ print(hex(-15), oct(-56), bin(-255))
 
 ### `bytes_hex(bytes, sep="", bytes_per_sep=1) -> str`
 
-Two lowercase hex digits per byte. With a one-character `sep`, the separator is inserted between groups of `bytes_per_sep` bytes — a positive count groups from the right, a negative count from the left. Errors with `missing argument for bytes` if `bytes` is omitted.
+Two lowercase hex digits per raw byte, without UTF-8 decoding. `sep` may be any string. A positive `bytes_per_sep` groups from the right, a negative count from the left; zero or a group magnitude at least the input length inserts no separator. The count must fit a signed 64-bit integer, otherwise `invalid bytes_per_sep` is returned. Errors with `missing argument for bytes` if `bytes` is omitted.
 
 ```python
 load("go_idiomatic", "bytes_hex")
 print(bytes_hex(b"123456"))
 # Output: 313233343536
+print(bytes_hex(b"\xff\xc3\xa9"))
+# Output: ffc3a9
 ```
 
 ```python
