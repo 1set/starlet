@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -375,6 +376,39 @@ func TestUnmarshalStarlarkJSON(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("UnmarshalStarlarkJSON() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// JSON document boundaries: closing delimiters are trailing data too, and
+// only the four JSON whitespace bytes may follow a complete value.
+func TestUnmarshalStarlarkJSONSingleDocument(t *testing.T) {
+	for _, input := range []string{
+		`1]`, `1}`, `null]`, `null }`, `1] false`, " \t1 \r\n]", `{"a":1}]`, `{"a":1}}`, `[1]]`, `[1]}`,
+		`1 2`, `{} {}`, `1 junk`, `1 [`,
+		"1\v", "1\f", "1\u00a0", "1\ufeff",
+		"1 [" + strings.Repeat("0,", 8192) + "0]",
+	} {
+		name := input
+		if len(name) > 80 {
+			name = "large second document"
+		}
+		t.Run(name, func(t *testing.T) {
+			got, err := UnmarshalStarlarkJSON([]byte(input))
+			if err == nil || !strings.Contains(err.Error(), "unexpected trailing data") {
+				t.Fatalf("UnmarshalStarlarkJSON(%q) = %v, %v; want trailing-data error", input, got, err)
+			}
+			if got != starlark.None {
+				t.Fatalf("on error got %v, want None", got)
+			}
+		})
+	}
+	for _, input := range []string{"123456789012345678901234567890", " \t\r\n123456789012345678901234567890 \t\r\n"} {
+		t.Run(input, func(t *testing.T) {
+			got, err := UnmarshalStarlarkJSON([]byte(input))
+			if err != nil || got.String() != "123456789012345678901234567890" || got.Type() != "int" {
+				t.Fatalf("UnmarshalStarlarkJSON(%q) = %v, %v; want exact integer", input, got, err)
 			}
 		})
 	}

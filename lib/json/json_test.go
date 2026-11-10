@@ -1,6 +1,7 @@
 package json_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/1set/starlet/dataconv"
@@ -1189,6 +1190,73 @@ func TestJSONValidate(t *testing.T) {
 			res, err := itn.ExecModuleWithErrorTest(t, json.ModuleName, json.LoadModule, tt.script, tt.wantErr, nil)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("json(%q) expects error = '%v', actual error = '%v', result = %v", tt.name, tt.wantErr, err, res)
+			}
+		})
+	}
+}
+
+// JSON document boundaries are cannot-run failures, not schema violations.
+func TestValidateSingleDocument(t *testing.T) {
+	members, err := itn.NewAssertLoader(json.ModuleName, json.LoadModule)(&starlark.Thread{}, json.ModuleName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, input := range []string{
+		`1]`, `1}`, `null]`, `null }`, `1] false`, " \t1 \r\n]", `{"a":1}]`, `{"a":1}}`, `[1]]`, `[1]}`,
+		`1 2`, `{} {}`, `1 junk`, `1 [`,
+		"1\v", "1\f", "1\u00a0", "1\ufeff",
+		"1 [" + strings.Repeat("0,", 8192) + "0]",
+	} {
+		name := input
+		if len(name) > 80 {
+			name = "large second document"
+		}
+		t.Run(name, func(t *testing.T) {
+			for _, source := range []starlark.Value{starlark.String(input), starlark.Bytes(input)} {
+				for _, name := range []string{"validate", "try_validate"} {
+					t.Run(name+"/"+source.Type(), func(t *testing.T) {
+						got, err := starlark.Call(&starlark.Thread{}, members[name], starlark.Tuple{source, starlark.String(`{}`)}, nil)
+						if name == "validate" {
+							if err == nil || !strings.Contains(err.Error(), "json.validate: invalid data: unexpected trailing content") {
+								t.Fatalf("validate(%q) = %v, %v; want invalid-data error", input, got, err)
+							}
+							return
+						}
+						if err != nil {
+							t.Fatalf("try_validate(%q): %v", input, err)
+						}
+						pair, ok := got.(starlark.Tuple)
+						if !ok || len(pair) != 2 || pair[0] != starlark.None || !strings.Contains(pair[1].String(), "invalid data: unexpected trailing content") {
+							t.Fatalf("try_validate(%q) = %v; want (None, invalid-data message)", input, got)
+						}
+					})
+				}
+			}
+		})
+	}
+	for _, input := range []string{"123456789012345678901234567890", " \t\r\n123456789012345678901234567890 \t\r\n"} {
+		t.Run(input, func(t *testing.T) {
+			for _, source := range []starlark.Value{starlark.String(input), starlark.Bytes(input)} {
+				for _, name := range []string{"validate", "try_validate"} {
+					got, err := starlark.Call(&starlark.Thread{}, members[name], starlark.Tuple{
+						source, starlark.String(`{"const":123456789012345678901234567890}`),
+					}, nil)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if name == "validate" && got != starlark.None {
+						t.Fatalf("validate(%q) = %v, want None", input, got)
+					}
+					if name == "try_validate" {
+						pair, ok := got.(starlark.Tuple)
+						if !ok || len(pair) != 2 {
+							t.Fatalf("try_validate(%q) = %v; want result/error tuple", input, got)
+						}
+						if pair[0] != starlark.True || pair[1] != starlark.None {
+							t.Fatalf("try_validate(%q) = %v, want (True, None)", input, got)
+						}
+					}
+				}
 			}
 		})
 	}

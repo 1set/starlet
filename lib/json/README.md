@@ -173,7 +173,9 @@ print(result, error)
 
 `validate(data, schema) -> None` checks a JSON document against a [JSON Schema](https://json-schema.org) (drafts 4, 6, 7, 2019-09, 2020-12 — detected from `$schema`, default 2020-12). It returns `None` when the data conforms; otherwise it **errors** with one line per violation, each prefixed by its [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901) location (e.g. `at /age: must be >= 0 but found -3`; long lists are capped with `... and N more`).
 
-**Known limit:** `validate` / `try_validate` do not reliably reject malformed trailing closing delimiters in data or schema text (for example `1]` or `{"type":"integer"}]`). Check each text with `decode(data_text)` / `decode(schema_text)` first, then pass the **original texts** to `validate(data_text, schema_text)`. Passing decoded top-level strings would reinterpret them as JSON text. The [data-tail fix](https://github.com/1set/starlet/pull/185) is separate; schema parsing currently uses [`jsonschema/v5 v5.3.1`](https://github.com/santhosh-tekuri/jsonschema/blob/v5.3.1/resource.go#L269). This limitation does not describe `decode` / `try_decode`.
+Data text must contain exactly one complete JSON value; surrounding JSON whitespace (space, tab, carriage return, newline) is allowed.
+
+**Known schema limit:** `validate` / `try_validate` can still accept malformed trailing closing delimiters in schema text (for example `{"type":"integer"}]`). Check schema text with `decode(schema_text)` first, then pass the **original text** to `validate(data, schema_text)`. Schema parsing currently uses [`jsonschema/v5 v5.3.1`](https://github.com/santhosh-tekuri/jsonschema/blob/v5.3.1/resource.go#L269). This limitation does not describe `decode` / `try_decode`.
 
 Schemas must be **self-contained**: an external `$ref` (`file://`, `http://`) is rejected (`not allowed`) — this is what keeps the module pure. A bad schema or malformed data text reports `invalid schema` / `invalid data`. Compiled schemas are cached (bounded), so repeated validation against the same schema text avoids recompilation.
 

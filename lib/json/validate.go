@@ -84,8 +84,9 @@ func formatValidationError(ve *jsonschema.ValidationError) string {
 // pointer-per-violation message otherwise. try_validate distinguishes the
 // three outcomes: (True, None) valid, (False, details) invalid, and
 // (None, error) when validation could not run (bad schema, bad arguments,
-// malformed JSON text). Known limitation: malformed trailing closing delimiters
-// can be accepted in data or schema text; this is not strict syntax validation.
+// malformed JSON text). Data text must contain exactly one complete JSON value.
+// Known limitation: malformed trailing closing delimiters can still be accepted
+// in schema text.
 func generateValidate(try bool) func(*starlark.Thread, *starlark.Builtin, starlark.Tuple, []starlark.Tuple) (starlark.Value, error) {
 	return func(_ *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var data, schema starlark.Value
@@ -137,11 +138,9 @@ func prepareValidation(data, schema starlark.Value) (*jsonschema.Schema, interfa
 	if err := dec.Decode(&doc); err != nil {
 		return nil, nil, fmt.Errorf("invalid data: %w", err)
 	}
-	// Validate a single JSON document. Trailing content (a second document
-	// or garbage) means the whole input was never checked, so reject it
-	// rather than silently validating only the first value. dec.More()
-	// stays false for trailing whitespace.
-	if dec.More() {
+	// Only JSON whitespace may follow the first value. Inspect the suffix
+	// directly so rejected input does not decode a second document.
+	if len(bytes.TrimLeft(dataBytes[dec.InputOffset():], " \t\r\n")) != 0 {
 		return nil, nil, fmt.Errorf("invalid data: unexpected trailing content after JSON document")
 	}
 	return compiled, doc, nil

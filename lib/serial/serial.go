@@ -124,10 +124,9 @@ func generateLoads(try bool) func(*starlark.Thread, *starlark.Builtin, starlark.
 		if err := dec.Decode(&raw); err != nil {
 			return failResult(try, err, fn, true)
 		}
-		// Check for further input after the decoded value. More does not
-		// reject every malformed suffix, including stray closing delimiters;
-		// trailing whitespace/newlines still pass.
-		if dec.More() {
+		// Only JSON whitespace may follow the first value. Inspect the suffix
+		// directly so rejected input does not decode a second document.
+		if len(strings.TrimLeft(s[dec.InputOffset():], " \t\r\n")) != 0 {
 			return failResult(try, fmt.Errorf("unexpected trailing data after JSON value"), fn, true)
 		}
 		val, err := decode(raw)
