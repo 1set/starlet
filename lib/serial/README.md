@@ -106,7 +106,7 @@ print(val, e1, bad, e2 != None)
 # Output: [1, 2, 3] None None True
 ```
 
-**Known limit:** `loads` / `try_loads` can accept malformed trailing closing delimiters, for example `1]`. They are not strict JSON syntax validators. Validate input syntax in the host first if that guarantee is required; the [tail-check fix](https://github.com/1set/starlet/pull/185) is separate from this documentation update.
+`loads` / `try_loads` require one complete JSON value; only JSON whitespace (space, tab, carriage return, newline) may follow it.
 
 ## Notes / boundaries
 
