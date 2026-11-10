@@ -98,21 +98,41 @@ func distinct(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple,
 	}
 	// get the list elements for list or tuple
 	var (
-		lsv  []starlark.Value
-		hm   = make(map[uint32]struct{})
-		x    starlark.Value
-		iter = itr.Iterate()
+		lsv      []starlark.Value
+		seen     = make(map[uint32]int)
+		previous map[int]int
+		x        starlark.Value
+		iter     = itr.Iterate()
 	)
 	defer iter.Done()
 	// loop through the list/tuple and add distinct elements
 	for iter.Next(&x) {
-		h, e := x.Hash()
-		if e != nil {
-			return none, fmt.Errorf("%s: %w", b.Name(), e)
+		h, err := x.Hash()
+		if err != nil {
+			return none, fmt.Errorf("%s: %w", b.Name(), err)
 		}
-		if _, ok := hm[h]; !ok {
-			hm[h] = struct{}{}
+		// Indices are stored plus one, so zero ends a hash's collision chain.
+		head := seen[h]
+		index := head
+		for index != 0 {
+			equal, err := starlark.Equal(x, lsv[index-1])
+			if err != nil {
+				return none, fmt.Errorf("%s: %w", b.Name(), err)
+			}
+			if equal {
+				break
+			}
+			index = previous[index]
+		}
+		if index == 0 {
+			if head != 0 {
+				if previous == nil {
+					previous = make(map[int]int)
+				}
+				previous[len(lsv)+1] = head
+			}
 			lsv = append(lsv, x)
+			seen[h] = len(lsv)
 		}
 	}
 	// return the new iterable as per the input type
