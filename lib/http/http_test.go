@@ -123,6 +123,20 @@ func TestLoadModule_HTTP(t *testing.T) {
 	defer ts.Close()
 	starlark.Universe["test_server_url"] = starlark.String(ts.URL)
 
+	// Timeout cases must wait for cancellation rather than race a delayed response.
+	// The guard only bounds a broken timeout so the fixture cannot hang the suite.
+	timeoutServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		guard := time.NewTimer(3 * time.Second)
+		defer guard.Stop()
+		select {
+		case <-r.Context().Done():
+		case <-guard.C:
+			http.Error(w, "request was not cancelled", http.StatusGatewayTimeout)
+		}
+	}))
+	defer timeoutServer.Close()
+	starlark.Universe["test_timeout_server_url"] = starlark.String(timeoutServer.URL)
+
 	ts2 := httptest.NewTLSServer(httpHand)
 	defer ts2.Close()
 	starlark.Universe["test_server_url_ssl"] = starlark.String(ts2.URL)
@@ -405,7 +419,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 			name: `GET Timeout`,
 			script: itn.HereDoc(`
 				load('http', 'get')
-				res = get(test_server_url, timeout=0.01)
+				res = get(test_timeout_server_url, timeout=0.01)
 			`),
 			wantErr: `context deadline exceeded (Client.Timeout exceeded while awaiting headers)`,
 		},
@@ -414,7 +428,7 @@ func TestLoadModule_HTTP(t *testing.T) {
 			script: itn.HereDoc(`
 				load('http', 'get', 'set_timeout')
 				set_timeout(0.01)
-				res = get(test_server_url)
+				res = get(test_timeout_server_url)
 			`),
 			wantErr: `context deadline exceeded (Client.Timeout exceeded while awaiting headers)`,
 		},
