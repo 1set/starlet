@@ -175,7 +175,7 @@ print(result, error)
 
 Data text must contain exactly one complete JSON value; surrounding JSON whitespace (space, tab, carriage return, newline) is allowed.
 
-**Known schema limit:** `validate` / `try_validate` can still accept malformed trailing closing delimiters in schema text (for example `{"type":"integer"}]`). Check schema text with `decode(schema_text)` first, then pass the **original text** to `validate(data, schema_text)`. Schema parsing currently uses [`jsonschema/v5 v5.3.1`](https://github.com/santhosh-tekuri/jsonschema/blob/v5.3.1/resource.go#L269). This limitation does not describe `decode` / `try_decode`.
+Schema text must contain exactly one complete JSON value; surrounding JSON whitespace (space, tab, carriage return, newline) is allowed. Malformed schema text returns `invalid schema` and is not cached. On a cache miss, checking the complete schema adds an extra scan whose CPU cost grows with the schema text; cache hits reuse the compiled schema and skip this additional check.
 
 Schemas must be **self-contained**: an external `$ref` (`file://`, `http://`) is rejected (`not allowed`) — this is what keeps the module pure. A bad schema or malformed data text reports `invalid schema` / `invalid data`. Compiled schemas are cached (bounded), so repeated validation against the same schema text avoids recompilation.
 
