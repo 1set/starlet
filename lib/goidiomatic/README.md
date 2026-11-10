@@ -313,23 +313,18 @@ print(sum([1, 2, 3]), sum([1, 2, 4], start=8), sum([1, 2, None]))
 
 ### `distinct(iterable) -> iterable`
 
-Removes duplicates, preserving first-seen order. Returns a **list** for a list or custom iterable, a **tuple** for a tuple, the result of `.keys()` (a list) for a dict, and the original **set** unchanged for a set. Errors with `unhashable type: <type>` if an element cannot be hashed, and `got <type>, want iterable` for a non-iterable argument.
+Removes duplicates using Starlark equality, preserving first-seen order and the first value (including its type). Unequal values with the same hash remain distinct. Returns a **list** for a list or custom iterable, a **tuple** for a tuple, the result of `.keys()` (a list) for a dict, and the original **set** unchanged for a set. Errors with `unhashable type: <type>` if an element cannot be hashed, propagates equality errors with a `distinct:` prefix, and errors with `got <type>, want iterable` for a non-iterable argument.
 
-A mutable list input remains mutable after the call, including when an element cannot be hashed.
+A mutable list input remains mutable after the call, including when hashing or equality comparison fails.
 
-**Known limitation:** `distinct` currently compares hashes alone, so unequal values with the same hash can be dropped: `distinct([1, 4294967297])` returns `[1]`. The equality fix in [#198](https://github.com/1set/starlet/pull/198) is not merged. For native integers, a Starlark dict compares keys and preserves first-seen order:
-
-```python
-values = [1, 4294967297, 1]
-unique = {value: None for value in values}.keys()
-print(unique)
-# Output: [1, 4294967297]
-```
+Deduplication keeps a temporary index of unique results and compares values sharing a hash. Benchmarks show additional CPU and memory costs on list/tuple inputs; the cost depends on input size, values, Go version and hardware.
 
 ```python
 load("go_idiomatic", "distinct")
 print(distinct([1, 2, 2, 3, 3, 3]), distinct((1, 2, 2, 3)))
 # Output: [1, 2, 3] (1, 2, 3)
+print(distinct([1, 4294967297, 1]), distinct([1.0, 1]))
+# Output: [1, 4294967297] [1.0]
 ```
 
 ### `hex(x) -> str` / `oct(x) -> str` / `bin(x) -> str`
