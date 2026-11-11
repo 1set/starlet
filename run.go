@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/fs"
 	"math"
+	"os"
 	"sync"
 	"time"
 
@@ -150,9 +151,12 @@ func (m *Machine) watchLoadThread(thread *starlark.Thread) (stop func()) {
 func (m *Machine) runInternal(ctx context.Context, extras StringAnyMap, allowCache bool) (out StringAnyMap, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			if me, ok := r.(MaxStepsExceededError); ok {
-				err = errorStarlarkError("exec", me)
-			} else {
+			switch e := r.(type) {
+			case MaxStepsExceededError:
+				err = errorStarlarkError("exec", e)
+			case PrintLimitExceededError:
+				err = errorStarlarkError("exec", e)
+			default:
 				err = errorStarlarkPanic("exec", r)
 			}
 		}
@@ -288,22 +292,23 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 		}
 
 		// cache load&read + printf -> thread
-		m.loadCache = &cache{
+		if m.state == nil {
+			m.state = &machineState{}
+		}
+		m.state.loads = cache{
 			cache:    make(map[string]*entry),
 			execOpts: m.getFileOptions(),
 			loadMod:  m.lazyloadMods.GetLazyLoader(),
 			readFile: func(name string) ([]byte, error) {
 				return readScriptFile(name, m.scriptFS)
 			},
-			globals:     m.predeclared,
-			newThread:   m.newLoadThread,
-			watchCancel: m.watchLoadThread,
+			globals: m.predeclared,
+			machine: m,
 		}
 		m.thread = &starlark.Thread{
-			Name:  "starlet",
-			Print: m.printFunc,
+			Name: "starlet",
 			Load: func(thread *starlark.Thread, module string) (starlark.StringDict, error) {
-				return m.loadCache.Load(module)
+				return m.state.loads.Load(module)
 			},
 		}
 	} else {
@@ -315,17 +320,86 @@ func (m *Machine) prepareThread(extras StringAnyMap) (err error) {
 		}
 
 		// set globals for cache
-		m.loadCache.loadMod = m.lazyloadMods.GetLazyLoader()
-		m.loadCache.globals = m.predeclared
+		m.state.loads.loadMod = m.lazyloadMods.GetLazyLoader()
+		m.state.loads.globals = m.predeclared
 
 		// reset for each run
-		m.thread.Print = m.printFunc
 		m.thread.Uncancel()
 	}
 
 	// arm the per-run step budget
 	m.applyStepBudget()
+	m.applyPrintBudget()
 	return nil
+}
+
+// applyPrintBudget installs one allowance shared by the main and load threads.
+// The Machine serializes executions; the separate mutex protects the shared
+// accounting without holding a lock while the host print handler runs.
+func (m *Machine) applyPrintBudget() {
+	limit := m.state.maxPrintBytes
+	if limit == 0 {
+		m.thread.Print = m.printFunc
+		return
+	}
+	m.installPrintBudget(limit)
+}
+
+// installPrintBudget keeps the limited-handler allocation off the unlimited path.
+func (m *Machine) installPrintBudget(limit uint64) {
+	print := m.printFunc
+	var mu sync.Mutex
+	var used uint64
+	m.thread.Print = func(thread *starlark.Thread, msg string) {
+		mu.Lock()
+		n := uint64(len(msg))
+		exceeded := n > limit-used
+		if !exceeded {
+			used += n
+		}
+		mu.Unlock()
+		if exceeded {
+			// Like the step guard, unwind immediately even when this print is
+			// the last statement. Run/Call preserve the typed error, and the
+			// load cache evicts the interrupted entry before re-raising it.
+			panic(PrintLimitExceededError{Limit: limit})
+		}
+		if print != nil {
+			print(thread, msg)
+		} else {
+			fmt.Fprintln(os.Stderr, msg)
+		}
+	}
+}
+
+// replInternal owns the Machine for a complete REPL session. The native
+// frontend supplies terminal input and error reporting; keeping execution here
+// lets the same budget boundary be exercised with a scripted driver, without
+// depending on platform-specific console readers or importing them on wasm.
+func (m *Machine) replInternal(driver func(*syntax.FileOptions, *starlark.Thread, starlark.StringDict), report func(error)) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	completed := false
+	defer func() {
+		if completed {
+			return
+		}
+		r := recover()
+		if limit, ok := r.(PrintLimitExceededError); ok {
+			report(errorStarlarkError("repl", limit))
+			return
+		}
+		// A completion marker also preserves panic(nil) on the Go 1.19
+		// floor, where recover() cannot distinguish it from normal return.
+		panic(r)
+	}()
+	if err := m.prepareThread(nil); err != nil {
+		completed = true
+		report(err)
+		return
+	}
+	driver(m.getFileOptions(), m.thread, m.predeclared)
+	completed = true
 }
 
 // newLoadThread builds the thread that runs a module executed by load(),
@@ -353,6 +427,8 @@ func (m *Machine) newLoadThread(load func(*starlark.Thread, string) (starlark.St
 		}
 	}
 	if m.thread != nil {
+		// Reuse the exact handler so loads consume the same print allowance.
+		t.Print = m.thread.Print
 		if ctx := m.thread.Local("context"); ctx != nil {
 			t.SetLocal("context", ctx)
 		}
@@ -394,7 +470,17 @@ func (m *Machine) Reset() {
 
 	m.runTimes = 0
 	m.thread = nil
-	m.loadCache = nil
+	if m.state != nil {
+		limit := m.state.maxPrintBytes
+		if limit == 0 {
+			m.state = nil
+		} else if m.state.loads.machine != nil {
+			// A loaded thread may have exposed a Load closure that still owns
+			// the completed cache. Replace it instead of rewriting its mutex,
+			// entries or globals in place; only the configuration survives.
+			m.state = &machineState{maxPrintBytes: limit}
+		}
+	}
 	m.predeclared = nil
 }
 

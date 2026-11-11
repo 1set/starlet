@@ -133,3 +133,14 @@ type MaxStepsExceededError struct {
 func (e MaxStepsExceededError) Error() string {
 	return fmt.Sprintf("execution exceeded the step limit (%d)", e.Limit)
 }
+
+// PrintLimitExceededError marks an execution stopped by SetMaxPrintBytes.
+// Detect it with errors.As through the execution error chain.
+type PrintLimitExceededError struct {
+	Limit uint64
+}
+
+// Error returns the error message.
+func (e PrintLimitExceededError) Error() string {
+	return fmt.Sprintf("execution exceeded the print byte limit (%d)", e.Limit)
+}

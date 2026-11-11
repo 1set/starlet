@@ -2,12 +2,79 @@ package starlet
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
 
 	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
 )
+
+// REPL print-budget sections: separate input chunks share one allowance, the
+// error boundary only handles its own budget sentinel, and zero is unlimited.
+func TestREPLPrintByteBudget(t *testing.T) {
+	for _, limit := range []uint64{0, 2} {
+		m := NewDefault()
+		m.SetMaxPrintBytes(limit)
+		var delivered strings.Builder
+		m.SetPrintFunc(func(_ *starlark.Thread, msg string) { delivered.WriteString(msg) })
+		var reported error
+		completed := false
+		m.replInternal(func(opts *syntax.FileOptions, thread *starlark.Thread, globals starlark.StringDict) {
+			for _, input := range []string{`print("a")`, `print("b")`, `print("c")`} {
+				if _, err := starlark.ExecFileOptions(opts, thread, "repl-input.star", input, globals); err != nil {
+					t.Fatal(err)
+				}
+			}
+			completed = true
+		}, func(err error) { reported = err })
+		if limit == 0 {
+			if reported != nil || !completed || delivered.String() != "abc" {
+				t.Fatalf("unlimited session: completed=%v output=%q err=%v", completed, delivered.String(), reported)
+			}
+		} else {
+			var limitErr PrintLimitExceededError
+			if !errors.As(reported, &limitErr) || limitErr.Limit != limit || completed || delivered.String() != "ab" {
+				t.Fatalf("limited session: completed=%v output=%q err=%v", completed, delivered.String(), reported)
+			}
+		}
+		// The boundary must release the Machine lock after either outcome.
+		m.SetMaxPrintBytes(0)
+	}
+}
+
+func TestREPLPrintHandlerPanicIsNotSwallowed(t *testing.T) {
+	m := NewDefault()
+	m.SetMaxPrintBytes(2)
+	sentinel := errors.New("host print callback failed")
+	m.SetPrintFunc(func(_ *starlark.Thread, _ string) { panic(sentinel) })
+	defer func() {
+		if got := recover(); got != sentinel {
+			t.Fatalf("host panic changed: %v", got)
+		}
+	}()
+	m.replInternal(func(opts *syntax.FileOptions, thread *starlark.Thread, globals starlark.StringDict) {
+		_, _ = starlark.ExecFileOptions(opts, thread, "repl-input.star", `print("a")`, globals)
+	}, func(err error) { t.Fatalf("host panic was reported as a budget error: %v", err) })
+}
+
+func TestREPLNilPrintHandlerPanicIsNotSwallowed(t *testing.T) {
+	m := NewDefault()
+	m.SetMaxPrintBytes(2)
+	m.SetPrintFunc(func(_ *starlark.Thread, _ string) { panic(nil) })
+	returned := false
+	func() {
+		defer func() { _ = recover() }()
+		m.replInternal(func(opts *syntax.FileOptions, thread *starlark.Thread, globals starlark.StringDict) {
+			_, _ = starlark.ExecFileOptions(opts, thread, "repl-input.star", `print("a")`, globals)
+		}, func(err error) { t.Fatalf("host panic was reported as a budget error: %v", err) })
+		returned = true
+	}()
+	if returned {
+		t.Fatal("REPL swallowed the host callback's panic(nil)")
+	}
+}
 
 // TestWatchLoadThread covers the load-thread cancel watcher's two arms. A load
 // thread with no run context (e.g. a load during a REPL, which sets none) must
