@@ -1,6 +1,6 @@
 # serial
 
-`serial` serializes Starlark **data values** to and from a compact JSON envelope, round-tripping the types plain JSON cannot: `bytes`, `set`, `tuple`, arbitrary-precision `int`, `time`, and dicts with **non-string keys**. It is the persistence companion to the `json` module — where `json.encode`/`decode` speak the JSON subset, `serial.dumps`/`loads` preserve the full Starlark data shape so a value written by one script reads back identically in another (caches, content-addressed keys, cross-run state).
+`serial` serializes Starlark **data values** to and from a compact JSON envelope, preserving `bytes`, `set`, `tuple`, `time`, and dicts with **non-string keys**, with explicit tags for integers outside int64. It is the persistence companion to the `json` module: `serial.dumps`/`loads` preserve these Starlark data types across scripts and runs.
 
 **Capability profile: Pure.** No filesystem, network, process, or logging side effects — it only transforms a value to a string and back.
 
@@ -106,13 +106,13 @@ print(val, e1, bad, e2 != None)
 # Output: [1, 2, 3] None None True
 ```
 
-**Known limit:** `loads` / `try_loads` can accept malformed trailing closing delimiters, for example `1]`. They are not strict JSON syntax validators. Validate input syntax in the host first if that guarantee is required; the [tail-check fix](https://github.com/1set/starlet/pull/185) is separate from this documentation update.
+`loads` / `try_loads` require one complete JSON value; only JSON whitespace (space, tab, carriage return, newline) may follow it.
 
 ## Notes / boundaries
 
 - **Engine** — encoding/decoding uses the Go standard `encoding/json`; decoding preserves number precision via `json.Number` (`UseNumber`), so large integers do not lose precision through a float round-trip.
 - **Determinism** — output is byte-stable for a given value: object keys sorted, set elements and `mapkv` pairs ordered by encoded form. This is what makes a `dumps` string usable as a cache key.
 - **`$t` reserved key** — `"$t"` is the envelope discriminator. A real string-keyed dict that contains a `"$t"` key is automatically wrapped in an `object` envelope and unwrapped on `loads`, so such dicts still round-trip; you do not need to avoid the key.
-- **Difference from `json`** — `json.encode`/`decode` cover only JSON-native types and silently lose `tuple`/`set`/`bytes`/big-int/`time`/non-string keys; `serial` preserves all of them and instead refuses (with an actionable error) the things that genuinely cannot be persisted as data (code, structs, host objects, non-finite floats, cycles).
+- **Difference from `json`** — the pinned `json.encode`/`decode` already preserve arbitrary-precision integers. JSON arrays do not preserve tuple/set identity; binary/time types and non-string dict keys need an explicit representation. `serial` supplies these tags and rejects code, structs, host objects, non-finite floats and cycles instead of flattening them silently.
 - **`module name`** — load as `load('serial', 'dumps', 'loads')`; the module constant `ModuleName` is `"serial"`.
 - All exported names are snake_case; no non-conforming identifiers.

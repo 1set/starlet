@@ -3,13 +3,17 @@ package goidiomatic_test
 // Sections: helper behavior; data constructors; flat expression builtins.
 
 import (
+	"encoding/hex"
+	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	itn "github.com/1set/starlet/internal"
 	"github.com/1set/starlet/lib/goidiomatic"
 	"github.com/1set/starlight/convert"
 	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
 )
 
 type testStruct struct {
@@ -84,6 +88,545 @@ func (it *customIntRangeIterator) Done() {}
 // newCustomIntRange creates a new customIntRange value.
 func newCustomIntRange(start, end int) *customIntRange {
 	return &customIntRange{start: start, end: end}
+}
+
+type trackedDistinctIterable struct {
+	starlark.Tuple
+	iterateCalls, nextCalls, doneCalls int
+}
+
+func (v *trackedDistinctIterable) Iterate() starlark.Iterator {
+	v.iterateCalls++
+	return &trackedDistinctIterator{owner: v}
+}
+
+type trackedDistinctIterator struct {
+	owner *trackedDistinctIterable
+	index int
+}
+
+func (it *trackedDistinctIterator) Next(value *starlark.Value) bool {
+	it.owner.nextCalls++
+	if it.index == len(it.owner.Tuple) {
+		return false
+	}
+	*value = it.owner.Tuple[it.index]
+	it.index++
+	return true
+}
+
+func (it *trackedDistinctIterator) Done() {
+	it.owner.doneCalls++
+}
+
+func TestDistinctReleasesIterator(t *testing.T) {
+	exports, err := goidiomatic.LoadModule()
+	if err != nil {
+		t.Fatal(err)
+	}
+	unhashable := starlark.NewList(nil)
+	tests := []struct {
+		name      string
+		values    starlark.Tuple
+		want      string
+		wantError bool
+		wantNext  int
+	}{
+		{name: "empty", want: "[]", wantNext: 1},
+		{name: "duplicates", values: starlark.Tuple{starlark.MakeInt(2), starlark.MakeInt(1), starlark.MakeInt(2)}, want: "[2, 1]", wantNext: 4},
+		{name: "first_hash_error", values: starlark.Tuple{unhashable}, want: "None", wantError: true, wantNext: 1},
+		{name: "later_hash_error", values: starlark.Tuple{starlark.MakeInt(1), unhashable, starlark.MakeInt(2)}, want: "None", wantError: true, wantNext: 2},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, native := range []bool{true, false} {
+				name := "custom"
+				if native {
+					name = "list"
+				}
+				t.Run(name, func(t *testing.T) {
+					list := starlark.NewList(append([]starlark.Value(nil), tt.values...))
+					tracked := &trackedDistinctIterable{Tuple: tt.values}
+					var input starlark.Value = tracked
+					if native {
+						input = list
+					}
+					before := input.String()
+					result, err := starlark.Call(&starlark.Thread{}, exports["distinct"], starlark.Tuple{input}, nil)
+					if (err != nil) != tt.wantError {
+						t.Fatalf("distinct error = %v; want error %v", err, tt.wantError)
+					}
+					if err != nil && !strings.Contains(err.Error(), "distinct: unhashable type: list") {
+						t.Fatalf("distinct error = %v", err)
+					}
+					if result.String() != tt.want {
+						t.Errorf("distinct = %s; want %s", result, tt.want)
+					}
+					if input.String() != before {
+						t.Error("distinct changed its input")
+					}
+					if native {
+						if err := list.Append(starlark.MakeInt(9)); err != nil {
+							t.Errorf("append after distinct: %v", err)
+						}
+						if result.String() != tt.want {
+							t.Error("appending to input changed distinct result")
+						}
+					} else if tracked.iterateCalls != 1 || tracked.doneCalls != 1 || tracked.nextCalls != tt.wantNext {
+						t.Errorf("iterator calls = Iterate:%d Next:%d Done:%d; want 1/%d/1", tracked.iterateCalls, tracked.nextCalls, tracked.doneCalls, tt.wantNext)
+					}
+				})
+			}
+		})
+	}
+}
+
+// All these values deliberately collide, including unequal values.
+type distinctCollisionValue struct {
+	label      string
+	compareErr error
+	hashCalls  int
+}
+
+func (v *distinctCollisionValue) String() string       { return v.label }
+func (v *distinctCollisionValue) Type() string         { return "distinct_collision" }
+func (v *distinctCollisionValue) Freeze()              {}
+func (v *distinctCollisionValue) Truth() starlark.Bool { return starlark.True }
+func (v *distinctCollisionValue) Hash() (uint32, error) {
+	v.hashCalls++
+	return 1, nil
+}
+func (v *distinctCollisionValue) CompareSameType(op syntax.Token, other starlark.Value, depth int) (bool, error) {
+	y := other.(*distinctCollisionValue)
+	if v.compareErr != nil {
+		return false, v.compareErr
+	}
+	if y.compareErr != nil {
+		return false, y.compareErr
+	}
+	switch op {
+	case syntax.EQL:
+		return v.label == y.label, nil
+	case syntax.NEQ:
+		return v.label != y.label, nil
+	default:
+		return false, fmt.Errorf("unsupported comparison: %s", op)
+	}
+}
+
+func TestDistinctEquality(t *testing.T) {
+	exports, err := goidiomatic.LoadModule()
+	if err != nil {
+		t.Fatal(err)
+	}
+	big := starlark.MakeInt64(4294967297)
+	tests := []struct {
+		name   string
+		values starlark.Tuple
+		first  []int
+	}{
+		{"native_int_collision", starlark.Tuple{starlark.MakeInt(1), big, starlark.MakeInt(1), big}, []int{0, 1}},
+		{"collision_order", starlark.Tuple{big, starlark.MakeInt(1), big, starlark.MakeInt(2), starlark.MakeInt(1)}, []int{0, 1, 3}},
+		{"float_first", starlark.Tuple{starlark.Float(1), starlark.MakeInt(1), starlark.Float(2), starlark.MakeInt(2)}, []int{0, 2}},
+		{"int_first_with_collision", starlark.Tuple{starlark.MakeInt(1), starlark.Float(1), big, starlark.Float(4294967297)}, []int{0, 2}},
+		{"custom_collision", starlark.Tuple{&distinctCollisionValue{label: "a"}, &distinctCollisionValue{label: "b"}, &distinctCollisionValue{label: "a"}, &distinctCollisionValue{label: "b"}}, []int{0, 1}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, tuple := range []bool{false, true} {
+				name := "list"
+				var input starlark.Value = starlark.NewList(tt.values)
+				if tuple {
+					name, input = "tuple", tt.values
+				}
+				t.Run(name, func(t *testing.T) {
+					for _, v := range tt.values {
+						if c, ok := v.(*distinctCollisionValue); ok {
+							c.hashCalls = 0
+						}
+					}
+					result, err := starlark.Call(&starlark.Thread{}, exports["distinct"], starlark.Tuple{input}, nil)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if tuple {
+						if _, ok := result.(starlark.Tuple); !ok {
+							t.Fatalf("result type = %T; want tuple", result)
+						}
+					} else if _, ok := result.(*starlark.List); !ok {
+						t.Fatalf("result type = %T; want list", result)
+					}
+					seq := result.(starlark.Indexable)
+					if seq.Len() != len(tt.first) {
+						t.Fatalf("distinct = %s; want input indices %v", result, tt.first)
+					}
+					for i, first := range tt.first {
+						// These fixtures are comparable: retain the exact first value,
+						// including its numeric type or custom object identity.
+						if seq.Index(i) != tt.values[first] {
+							t.Errorf("result[%d] = %s (%T); want input[%d] = %s (%T)", i, seq.Index(i), seq.Index(i), first, tt.values[first], tt.values[first])
+						}
+					}
+					for i, v := range tt.values {
+						if c, ok := v.(*distinctCollisionValue); ok && c.hashCalls != 1 {
+							t.Errorf("input[%d] Hash calls = %d; want 1", i, c.hashCalls)
+						}
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestDistinctEqualityErrorReleasesIterator(t *testing.T) {
+	exports, err := goidiomatic.LoadModule()
+	if err != nil {
+		t.Fatal(err)
+	}
+	sentinel := errors.New("custom equality failed")
+	for _, native := range []bool{true, false} {
+		name := "custom"
+		if native {
+			name = "list"
+		}
+		t.Run(name, func(t *testing.T) {
+			first := &distinctCollisionValue{label: "a"}
+			bad := &distinctCollisionValue{label: "b", compareErr: sentinel}
+			later := &distinctCollisionValue{label: "c"}
+			values := starlark.Tuple{first, bad, later}
+			list := starlark.NewList(values)
+			tracked := &trackedDistinctIterable{Tuple: values}
+			var input starlark.Value = tracked
+			if native {
+				input = list
+			}
+			result, err := starlark.Call(&starlark.Thread{}, exports["distinct"], starlark.Tuple{input}, nil)
+			if !errors.Is(err, sentinel) || !strings.Contains(err.Error(), "distinct: custom equality failed") {
+				t.Fatalf("error = %v; want distinct prefix and equality error cause", err)
+			}
+			if result != starlark.None {
+				t.Errorf("result = %v; want None", result)
+			}
+			if first.hashCalls != 1 || bad.hashCalls != 1 || later.hashCalls != 0 {
+				t.Errorf("Hash calls = %d/%d/%d; want 1/1/0", first.hashCalls, bad.hashCalls, later.hashCalls)
+			}
+			if native {
+				if err := list.Append(starlark.MakeInt(9)); err != nil {
+					t.Errorf("append after equality error: %v", err)
+				}
+			} else if tracked.iterateCalls != 1 || tracked.nextCalls != 2 || tracked.doneCalls != 1 {
+				t.Errorf("iterator calls = Iterate:%d Next:%d Done:%d; want 1/2/1", tracked.iterateCalls, tracked.nextCalls, tracked.doneCalls)
+			}
+		})
+	}
+}
+
+func TestDistinctCollisionChain(t *testing.T) {
+	exports, err := goidiomatic.LoadModule()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, kind := range []string{"list", "tuple", "custom"} {
+		t.Run(kind, func(t *testing.T) {
+			var values starlark.Tuple
+			for _, id := range []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 2, 0, 11, 5} {
+				values = append(values, &distinctCollisionValue{label: fmt.Sprintf("key%d", id)})
+			}
+			tracked := &trackedDistinctIterable{Tuple: values}
+			var input starlark.Value = tracked
+			switch kind {
+			case "list":
+				input = starlark.NewList(values)
+			case "tuple":
+				input = values
+			}
+			result, err := starlark.Call(&starlark.Thread{}, exports["distinct"], starlark.Tuple{input}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			seq := result.(starlark.Indexable)
+			if seq.Len() != 12 {
+				t.Fatalf("distinct = %s; want 12 unique values", result)
+			}
+			for i := 0; i < 12; i++ {
+				if seq.Index(i) != values[i] {
+					t.Errorf("result[%d] did not retain the first input object", i)
+				}
+			}
+			for i, v := range values {
+				if n := v.(*distinctCollisionValue).hashCalls; n != 1 {
+					t.Errorf("input[%d] Hash calls = %d; want 1", i, n)
+				}
+			}
+			if kind == "custom" && (tracked.nextCalls != 17 || tracked.doneCalls != 1) {
+				t.Errorf("iterator calls = Next:%d Done:%d; want 17/1", tracked.nextCalls, tracked.doneCalls)
+			}
+		})
+	}
+}
+
+func TestDistinctLaterEqualityErrorReleasesIterator(t *testing.T) {
+	exports, err := goidiomatic.LoadModule()
+	if err != nil {
+		t.Fatal(err)
+	}
+	sentinel := errors.New("later equality failed")
+	for _, native := range []bool{true, false} {
+		name := "custom"
+		if native {
+			name = "list"
+		}
+		t.Run(name, func(t *testing.T) {
+			values := starlark.Tuple{
+				&distinctCollisionValue{label: "a"},
+				&distinctCollisionValue{label: "b"},
+				&distinctCollisionValue{label: "c"},
+				&distinctCollisionValue{label: "bad", compareErr: sentinel},
+				&distinctCollisionValue{label: "later"},
+			}
+			list := starlark.NewList(values)
+			tracked := &trackedDistinctIterable{Tuple: values}
+			var input starlark.Value = tracked
+			if native {
+				input = list
+			}
+			result, err := starlark.Call(&starlark.Thread{}, exports["distinct"], starlark.Tuple{input}, nil)
+			if !errors.Is(err, sentinel) || !strings.Contains(err.Error(), "distinct: later equality failed") {
+				t.Fatalf("error = %v; want distinct prefix and equality error cause", err)
+			}
+			if result != starlark.None {
+				t.Errorf("result = %v; want None", result)
+			}
+			for i, v := range values {
+				want := 1
+				if i == 4 {
+					want = 0
+				}
+				if n := v.(*distinctCollisionValue).hashCalls; n != want {
+					t.Errorf("input[%d] Hash calls = %d; want %d", i, n, want)
+				}
+			}
+			if native {
+				if err := list.Append(starlark.MakeInt(9)); err != nil {
+					t.Errorf("append after later equality error: %v", err)
+				}
+			} else if tracked.iterateCalls != 1 || tracked.nextCalls != 4 || tracked.doneCalls != 1 {
+				t.Errorf("iterator calls = Iterate:%d Next:%d Done:%d; want 1/4/1", tracked.iterateCalls, tracked.nextCalls, tracked.doneCalls)
+			}
+		})
+	}
+}
+
+// These stateful callbacks inject defensive host errors only during rehashing.
+// They do not claim that stable, successful Starlark keys are invalid.
+type distinctGrowState struct {
+	mode           string
+	hashCalls      [10]int
+	growPhase      bool
+	injectedErrors int
+	events         []string
+}
+
+type distinctGrowValue struct {
+	id    int
+	state *distinctGrowState
+}
+
+func (v *distinctGrowValue) String() string       { return fmt.Sprintf("grow%d", v.id) }
+func (v *distinctGrowValue) Type() string         { return "distinct_grow_value" }
+func (v *distinctGrowValue) Freeze()              {}
+func (v *distinctGrowValue) Truth() starlark.Bool { return starlark.True }
+func (v *distinctGrowValue) Hash() (uint32, error) {
+	s := v.state
+	s.hashCalls[v.id]++
+	s.events = append(s.events, fmt.Sprintf("Hash(%d)#%d", v.id, s.hashCalls[v.id]))
+	if v.id == 0 && s.hashCalls[v.id] == 2 {
+		s.growPhase = true
+	}
+	if s.mode == "hash_rehash_error" {
+		if v.id == 3 && s.hashCalls[v.id] == 2 {
+			s.injectedErrors++
+			return 0, errors.New("rehash hash failure")
+		}
+		return uint32(v.id + 1), nil
+	}
+	return 1, nil
+}
+func (v *distinctGrowValue) CompareSameType(op syntax.Token, other starlark.Value, depth int) (bool, error) {
+	y := other.(*distinctGrowValue)
+	s := v.state
+	s.events = append(s.events, fmt.Sprintf("Equal(%d,%d,grow=%t)", v.id, y.id, s.growPhase))
+	if s.mode == "equality_rehash_error" && s.growPhase && v.id == 1 && y.id == 0 {
+		s.injectedErrors++
+		return false, errors.New("rehash equality failure")
+	}
+	switch op {
+	case syntax.EQL:
+		return v.id == y.id, nil
+	case syntax.NEQ:
+		return v.id != y.id, nil
+	default:
+		return false, fmt.Errorf("unsupported comparison: %s", op)
+	}
+}
+
+func TestDistinctGrowCallbacks(t *testing.T) {
+	exports, err := goidiomatic.LoadModule()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, mode := range []string{"hash_rehash_error", "equality_rehash_error"} {
+		t.Run(mode, func(t *testing.T) {
+			state := &distinctGrowState{mode: mode}
+			var values starlark.Tuple
+			for i := 0; i < 10; i++ {
+				values = append(values, &distinctGrowValue{id: i, state: state})
+			}
+			input := &trackedDistinctIterable{Tuple: values}
+			result, err := starlark.Call(&starlark.Thread{}, exports["distinct"], starlark.Tuple{input}, nil)
+			t.Logf("result=%v error=%v HashCalls=%v injectedErrors=%d events=%v", result, err, state.hashCalls, state.injectedErrors, state.events)
+			if err != nil {
+				t.Errorf("distinct error = %v; callback must not be re-entered for an earlier input", err)
+			}
+			if list, ok := result.(*starlark.List); !ok || list.Len() != 10 {
+				t.Errorf("distinct = %v; want all 10 unique input values", result)
+			} else {
+				for i, want := range values {
+					if list.Index(i) != want {
+						t.Errorf("result[%d] did not retain input[%d]", i, i)
+					}
+				}
+			}
+			for i, n := range state.hashCalls {
+				if n != 1 {
+					t.Errorf("input[%d] Hash calls = %d; want 1", i, n)
+				}
+			}
+			if state.injectedErrors != 0 {
+				t.Errorf("unexpected rehash callbacks produced %d hidden errors", state.injectedErrors)
+			}
+			if input.iterateCalls != 1 || input.nextCalls != 11 || input.doneCalls != 1 {
+				t.Errorf("iterator calls = Iterate:%d Next:%d Done:%d; want 1/11/1", input.iterateCalls, input.nextCalls, input.doneCalls)
+			}
+		})
+	}
+}
+
+func TestDistinctNativeFastPaths(t *testing.T) {
+	exports, err := goidiomatic.LoadModule()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dict := starlark.NewDict(2)
+	set := starlark.NewSet(2)
+	for _, key := range []starlark.Value{starlark.MakeInt(2), starlark.MakeInt(1)} {
+		if err := dict.SetKey(key, starlark.None); err != nil {
+			t.Fatal(err)
+		}
+		if err := set.Insert(key); err != nil {
+			t.Fatal(err)
+		}
+	}
+	result, err := starlark.Call(&starlark.Thread{}, exports["distinct"], starlark.Tuple{dict}, nil)
+	if err != nil || result.String() != "[2, 1]" {
+		t.Fatalf("distinct(dict) = %v, %v; want [2, 1]", result, err)
+	}
+	result, err = starlark.Call(&starlark.Thread{}, exports["distinct"], starlark.Tuple{set}, nil)
+	if err != nil || result != set {
+		t.Fatalf("distinct(set) = %v, %v; want original set", result, err)
+	}
+}
+
+func TestBytesHexGroupingBounds(t *testing.T) {
+	exports, err := goidiomatic.LoadModule()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tests := []struct {
+		name  string
+		bytes string
+		group int64
+		want  string
+	}{
+		{name: "min_int64", bytes: "ab", group: -1 << 63, want: "6162"},
+		{name: "max_int64", bytes: "ab", group: 1<<63 - 1, want: "6162"},
+		{name: "min_int32", bytes: "ab", group: -1 << 31, want: "6162"},
+		{name: "above_max_int32", bytes: "ab", group: 1 << 31, want: "6162"},
+		{name: "int32_wrap_positive", bytes: "ab", group: 1<<32 + 1, want: "6162"},
+		{name: "int32_wrap_negative", bytes: "ab", group: -(1<<32 + 1), want: "6162"},
+		{name: "empty_min", group: -1 << 63, want: ""},
+		{name: "empty_max", group: 1<<63 - 1, want: ""},
+		{name: "single_min", bytes: "a", group: -1 << 63, want: "61"},
+		{name: "single_max", bytes: "a", group: 1<<63 - 1, want: "61"},
+		{name: "positive_length", bytes: "ab", group: 2, want: "6162"},
+		{name: "negative_length", bytes: "ab", group: -2, want: "6162"},
+		{name: "above_length", bytes: "ab", group: 3, want: "6162"},
+		{name: "below_negative_length", bytes: "ab", group: -3, want: "6162"},
+		{name: "zero", bytes: "ab", want: "6162"},
+		{name: "positive_one", bytes: "ab", group: 1, want: "61:62"},
+		{name: "negative_one", bytes: "ab", group: -1, want: "61:62"},
+		{name: "positive_groups", bytes: "abcde", group: 2, want: "61:6263:6465"},
+		{name: "negative_groups", bytes: "abcde", group: -2, want: "6162:6364:65"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				if p := recover(); p != nil {
+					t.Errorf("bytes_hex panicked for group %d: %v", tt.group, p)
+				}
+			}()
+			result, err := starlark.Call(&starlark.Thread{}, exports["bytes_hex"], starlark.Tuple{
+				starlark.Bytes(tt.bytes), starlark.String(":"), starlark.MakeInt64(tt.group),
+			}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result != starlark.String(tt.want) {
+				t.Errorf("bytes_hex = %s; want %q", result, tt.want)
+			}
+		})
+	}
+}
+
+func TestBytesHexBinaryData(t *testing.T) {
+	exports, err := goidiomatic.LoadModule()
+	if err != nil {
+		t.Fatal(err)
+	}
+	allBytes := make([]byte, 256)
+	for i := range allBytes {
+		allBytes[i] = byte(i)
+	}
+	tests := []struct {
+		name  string
+		bytes string
+		sep   string
+		group int64
+		want  string
+	}{
+		{name: "all_byte_values", bytes: string(allBytes), want: hex.EncodeToString(allBytes)},
+		{name: "valid_utf8", bytes: "\xc3\xa9", want: "c3a9"},
+		{name: "invalid_utf8", bytes: "\xff\xc3", want: "ffc3"},
+		{name: "nul", bytes: "\x00a\x00", want: "006100"},
+		{name: "positive_groups", bytes: "\xff\x00\xc3\xa9\x80", sep: ":", group: 2, want: "ff:00c3:a980"},
+		{name: "negative_groups", bytes: "\xff\x00\xc3\xa9\x80", sep: ":", group: -2, want: "ff00:c3a9:80"},
+		{name: "single_byte_groups", bytes: "\xff\x00\xc3\xa9", sep: ":", group: 1, want: "ff:00:c3:a9"},
+		{name: "multi_character_separator", bytes: "\xff\x00\xc3\xa9", sep: "::", group: 1, want: "ff::00::c3::a9"},
+		{name: "empty_separator", bytes: "\xff\x00\xc3\xa9", group: 1, want: "ff00c3a9"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := starlark.Call(&starlark.Thread{}, exports["bytes_hex"], starlark.Tuple{
+				starlark.Bytes(tt.bytes), starlark.String(tt.sep), starlark.MakeInt64(tt.group),
+			}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result != starlark.String(tt.want) {
+				t.Errorf("bytes_hex = %s; want %q", result, tt.want)
+			}
+		})
+	}
 }
 
 func TestLoadModule_GoIdiomatic(t *testing.T) {
@@ -512,6 +1055,29 @@ func TestLoadModule_GoIdiomatic(t *testing.T) {
 				load('go_idiomatic', 'bytes_hex')
 				assert.eq('313233343536', bytes_hex(b'123456'))
 			`),
+		},
+		{
+			name: `bytes_hex raw bytes`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'bytes_hex')
+				assert.eq('ffc3a900', bytes_hex(b'\xff\xc3\xa9\x00'))
+			`),
+		},
+		{
+			name: `bytes_hex group above int64`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'bytes_hex')
+				bytes_hex(b'ab', ':', 9223372036854775808)
+			`),
+			wantErr: `invalid bytes_per_sep: 9223372036854775808`,
+		},
+		{
+			name: `bytes_hex group below int64`,
+			script: itn.HereDoc(`
+				load('go_idiomatic', 'bytes_hex')
+				bytes_hex(b'ab', ':', -9223372036854775809)
+			`),
+			wantErr: `invalid bytes_per_sep: -9223372036854775809`,
 		},
 		{
 			name: `bytes_hex(b'123456', "_")`,
@@ -1148,6 +1714,125 @@ func TestLoadModuleEvaluationFunctions(t *testing.T) {
 		}
 		if name == "try_eval" && value.String() != "(5, None)" {
 			t.Fatalf("try_eval = %v", value)
+		}
+	}
+}
+
+var distinctBenchmarkResult starlark.Value
+
+func BenchmarkDistinctIterator(b *testing.B) {
+	exports, err := goidiomatic.LoadModule()
+	if err != nil {
+		b.Fatal(err)
+	}
+	values := starlark.Tuple{
+		starlark.MakeInt(2), starlark.MakeInt(1), starlark.MakeInt(2), starlark.MakeInt(3),
+		starlark.MakeInt(1), starlark.MakeInt(4), starlark.MakeInt(4), starlark.MakeInt(2),
+	}
+	large := make(starlark.Tuple, 128)
+	for i := range large {
+		large[i] = starlark.MakeInt(i % 16)
+	}
+	dict, set := starlark.NewDict(8), starlark.NewSet(8)
+	for i := 0; i < 8; i++ {
+		value := starlark.MakeInt(i)
+		if err := dict.SetKey(value, starlark.None); err != nil {
+			b.Fatal(err)
+		}
+		if err := set.Insert(value); err != nil {
+			b.Fatal(err)
+		}
+	}
+	hashError := starlark.Tuple{starlark.MakeInt(1), starlark.NewList(nil)}
+	tests := []struct {
+		name      string
+		input     func() starlark.Value
+		want      string
+		wantError bool
+	}{
+		{"List0", func() starlark.Value { return starlark.NewList(nil) }, "[]", false},
+		{"List8", func() starlark.Value { return starlark.NewList(values) }, "[2, 1, 3, 4]", false},
+		{"List128", func() starlark.Value { return starlark.NewList(large) }, "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]", false},
+		{"Tuple8", func() starlark.Value { return values }, "(2, 1, 3, 4)", false},
+		{"Custom8", func() starlark.Value { return newCustomIntRange(0, 8) }, "[0, 1, 2, 3, 4, 5, 6, 7]", false},
+		{"HashError", func() starlark.Value { return starlark.NewList(hashError) }, "None", true},
+		{"Dict8Control", func() starlark.Value { return dict }, "[0, 1, 2, 3, 4, 5, 6, 7]", false},
+		{"Set8Control", func() starlark.Value { return set }, "set([0, 1, 2, 3, 4, 5, 6, 7])", false},
+	}
+	for _, tt := range tests {
+		b.Run(tt.name, func(b *testing.B) {
+			thread := &starlark.Thread{}
+			result, err := starlark.Call(thread, exports["distinct"], starlark.Tuple{tt.input()}, nil)
+			if (err != nil) != tt.wantError || result == nil || result.String() != tt.want {
+				b.Fatalf("distinct = %v, %v; want %s, error %v", result, err, tt.want, tt.wantError)
+			}
+			if err != nil && !strings.Contains(err.Error(), "distinct: unhashable type: list") {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				distinctBenchmarkResult, err = starlark.Call(thread, exports["distinct"], starlark.Tuple{tt.input()}, nil)
+				if (err != nil) != tt.wantError {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+var bytesHexBenchmarkResult starlark.Value
+
+func BenchmarkBytesToHex(b *testing.B) {
+	exports, err := goidiomatic.LoadModule()
+	if err != nil {
+		b.Fatal(err)
+	}
+	cases := []struct {
+		name        string
+		bps         int64
+		defaultArgs bool
+	}{
+		{"Plus1", 1, false}, {"Minus1", -1, false},
+		{"Plus4", 4, false}, {"Minus4", -4, false},
+		{"Zero", 0, false}, {"MaxInt64", 1<<63 - 1, false},
+		{"DefaultEmptySep", 1, true},
+	}
+	for _, size := range []int{32, 4096} {
+		data := []byte(strings.Repeat("a", size))
+		plain := hex.EncodeToString(data)
+		for _, tc := range cases {
+			b.Run(fmt.Sprintf("Bytes%d/%s", size, tc.name), func(b *testing.B) {
+				args := starlark.Tuple{starlark.Bytes(string(data)), starlark.String(":"), starlark.MakeInt64(tc.bps)}
+				want := plain
+				if tc.defaultArgs {
+					args = args[:1]
+				} else if tc.bps == 1 || tc.bps == -1 || tc.bps == 4 || tc.bps == -4 {
+					width := int(tc.bps)
+					if width < 0 {
+						width = -width
+					}
+					parts := make([]string, size/width)
+					for i := range parts {
+						parts[i] = plain[2*i*width : 2*(i+1)*width]
+					}
+					want = strings.Join(parts, ":")
+				}
+				thread := &starlark.Thread{}
+				value, err := starlark.Call(thread, exports["bytes_hex"], args, nil)
+				text, ok := starlark.AsString(value)
+				if err != nil || !ok || text != want {
+					b.Fatalf("bytes_hex returned %v, %v; want %q", value, err, want)
+				}
+				b.ReportAllocs()
+				b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					bytesHexBenchmarkResult, err = starlark.Call(thread, exports["bytes_hex"], args, nil)
+					if err != nil {
+						b.Fatal(err)
+					}
+				}
+			})
 		}
 	}
 }

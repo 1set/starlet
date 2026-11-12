@@ -30,7 +30,8 @@ var (
 // compileSchema compiles (with caching) a JSON Schema from its text. $ref to
 // external resources — files or the network — is blocked, keeping the json
 // module pure: a schema must be self-contained.
-func compileSchema(text string) (*jsonschema.Schema, error) {
+func compileSchema(data []byte) (*jsonschema.Schema, error) {
+	text := string(data)
 	schemaCacheMu.Lock()
 	defer schemaCacheMu.Unlock()
 	if s, ok := schemaCache[text]; ok {
@@ -42,6 +43,11 @@ func compileSchema(text string) (*jsonschema.Schema, error) {
 	}
 	if err := c.AddResource("inline://schema", strings.NewReader(text)); err != nil {
 		return nil, err
+	}
+	// Preserve resource parsing errors, then reject tails ignored by the
+	// dependency before the schema can be compiled or cached.
+	if !json.Valid(data) {
+		return nil, fmt.Errorf("schema must contain exactly one valid JSON value")
 	}
 	s, err := c.Compile("inline://schema")
 	if err != nil {
@@ -84,8 +90,8 @@ func formatValidationError(ve *jsonschema.ValidationError) string {
 // pointer-per-violation message otherwise. try_validate distinguishes the
 // three outcomes: (True, None) valid, (False, details) invalid, and
 // (None, error) when validation could not run (bad schema, bad arguments,
-// malformed JSON text). Known limitation: malformed trailing closing delimiters
-// can be accepted in data or schema text; this is not strict syntax validation.
+// malformed JSON text). Data and schema text must each contain exactly one
+// complete JSON value.
 func generateValidate(try bool) func(*starlark.Thread, *starlark.Builtin, starlark.Tuple, []starlark.Tuple) (starlark.Value, error) {
 	return func(_ *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var data, schema starlark.Value
@@ -123,7 +129,7 @@ func prepareValidation(data, schema starlark.Value) (*jsonschema.Schema, interfa
 	if err != nil {
 		return nil, nil, fmt.Errorf("invalid schema: %w", err)
 	}
-	compiled, err := compileSchema(string(schemaBytes))
+	compiled, err := compileSchema(schemaBytes)
 	if err != nil {
 		return nil, nil, fmt.Errorf("invalid schema: %w", err)
 	}
@@ -137,11 +143,9 @@ func prepareValidation(data, schema starlark.Value) (*jsonschema.Schema, interfa
 	if err := dec.Decode(&doc); err != nil {
 		return nil, nil, fmt.Errorf("invalid data: %w", err)
 	}
-	// Validate a single JSON document. Trailing content (a second document
-	// or garbage) means the whole input was never checked, so reject it
-	// rather than silently validating only the first value. dec.More()
-	// stays false for trailing whitespace.
-	if dec.More() {
+	// Only JSON whitespace may follow the first value. Inspect the suffix
+	// directly so rejected input does not decode a second document.
+	if len(bytes.TrimLeft(dataBytes[dec.InputOffset():], " \t\r\n")) != 0 {
 		return nil, nil, fmt.Errorf("invalid data: unexpected trailing content after JSON document")
 	}
 	return compiled, doc, nil

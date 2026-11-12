@@ -15,7 +15,7 @@ permissions: read-all
 jobs:
   build:
     name: Test with ${{ matrix.go-version }} on ${{ matrix.vm-os }}
-    runs-on: ${{ matrix.vm-os }}
+    runs-on: ${{ matrix.vm-os == 'macos-15' && 'macos-15-intel' || matrix.vm-os }}
     env:
       CI_REPORT: ${{ matrix.vm-os == 'ubuntu-22.04' && matrix.go-version == '1.19.x' }}
     strategy:
@@ -93,7 +93,7 @@ jobs:
 
   wasm:
     name: Cross-build ${{ matrix.goos }}/${{ matrix.goarch }} with ${{ matrix.go-version }} on ${{ matrix.vm-os }}
-    runs-on: ${{ matrix.vm-os }}
+    runs-on: ${{ matrix.vm-os == 'macos-15' && 'macos-15-intel' || matrix.vm-os }}
     strategy:
       max-parallel: 10
       fail-fast: false

@@ -98,20 +98,41 @@ func distinct(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple,
 	}
 	// get the list elements for list or tuple
 	var (
-		lsv  []starlark.Value
-		hm   = make(map[uint32]struct{})
-		x    starlark.Value
-		iter = itr.Iterate()
+		lsv      []starlark.Value
+		seen     = make(map[uint32]int)
+		previous map[int]int
+		x        starlark.Value
+		iter     = itr.Iterate()
 	)
+	defer iter.Done()
 	// loop through the list/tuple and add distinct elements
 	for iter.Next(&x) {
-		h, e := x.Hash()
-		if e != nil {
-			return none, fmt.Errorf("%s: %w", b.Name(), e)
+		h, err := x.Hash()
+		if err != nil {
+			return none, fmt.Errorf("%s: %w", b.Name(), err)
 		}
-		if _, ok := hm[h]; !ok {
-			hm[h] = struct{}{}
+		// Indices are stored plus one, so zero ends a hash's collision chain.
+		head := seen[h]
+		index := head
+		for index != 0 {
+			equal, err := starlark.Equal(x, lsv[index-1])
+			if err != nil {
+				return none, fmt.Errorf("%s: %w", b.Name(), err)
+			}
+			if equal {
+				break
+			}
+			index = previous[index]
+		}
+		if index == 0 {
+			if head != 0 {
+				if previous == nil {
+					previous = make(map[int]int)
+				}
+				previous[len(lsv)+1] = head
+			}
 			lsv = append(lsv, x)
+			seen[h] = len(lsv)
 		}
 	}
 	// return the new iterable as per the input type
@@ -187,12 +208,16 @@ func bytesToHex(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tupl
 	}
 	// convert the bytes to hexadecimal, positive values calculate the separator position from the right, negative values from the left.
 	var (
-		bpsInt   = int(bytesPerSep)
+		bpsInt   int
 		sepStr   = string(sep)
 		hexBytes = make([]string, len(bs))
 	)
-	for i, b := range bs {
-		hexBytes[i] = fmt.Sprintf("%02x", b)
+	// Only smaller groups can insert separators. Check before narrowing or negating.
+	if bytesPerSep > -int64(len(bs)) && bytesPerSep < int64(len(bs)) {
+		bpsInt = int(bytesPerSep)
+	}
+	for i := 0; i < len(bs); i++ {
+		hexBytes[i] = fmt.Sprintf("%02x", bs[i])
 	}
 	if bpsInt > 0 { // for downto
 		for i := len(hexBytes) - bpsInt; i > 0; i -= bpsInt {
@@ -389,9 +414,9 @@ func prettyPrint(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tup
 	return starlark.None, nil
 }
 
-// convertToDict creates a Starlark dict from a Starlark dict, module, struct, GoStruct, or SharedDict.
+// convertToDict converts supported values to native Starlark values, usually a dict.
 // It works as a complement to the builtin dict() function of Starlark, not a replacement or alternative.
-// For GoStruct, it converts the underlying Go struct to JSON string using Go standard JSON encoder, and then decodes it to a Starlark dict with Starlark JSON decoder.
+// For GoStruct, it decodes Go's JSON representation to a native Starlark value; custom JSON marshaling may produce a non-dict result.
 // Errors are returned if the conversion fails.
 func convertToDict(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var v starlark.Value

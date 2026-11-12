@@ -74,6 +74,7 @@ Unknown builtin names make `NewWithNames` panic. For names supplied by callers, 
 - `Reset()` discards runtime bindings and loaded-module state, while retaining configuration and the optional compiled-program cache. It does not undo host-side effects.
 - `RunScript` executes supplied bytes without the compiled-program cache. For reusable named scripts, use `SetScript` + `Run`, or `RunFile`; enable caching with `SetScriptCacheEnabled(true)` when needed.
 - Route script `print(...)` with `SetPrintFunc`; `nil` uses stderr and `NoopPrintFunc` discards output. See [file execution, output, and errors](USAGE.md).
+- `SetMaxPrintBytes(n)` optionally limits messages sent through that handler; `0` is unlimited. See [print byte budgets](USAGE.md#print-byte-budget).
 - After loading function definitions, use `Call`, `CallWithContext`, or `CallWithTimeout` to invoke them from Go. Context cancellation is cooperative; it cannot preempt arbitrary Go callbacks.
 - `SetMaxExecutionSteps` bounds VM steps; `0` means unlimited. The counter resets for each Run/Call, and file-loaded module initialization receives a separate thread allowance. This is not a wall-clock or memory limit.
 

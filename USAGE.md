@@ -45,6 +45,37 @@ func main() {
 
 `SetScript(name, content, fileSys)` + `Run()` supports supplied source with the same file-load root. `RunScript` clears that filesystem and bypasses the compiled-program cache. `Reset` retains configuration and the optional compiled-program cache; it does not undo host writes or detach shared values. [Custom source-loader constructors](module.go) use bare threads and do not inherit the Machine's execution guards.
 
+## Calling script functions
+
+First execute the function definitions successfully, then use `Call(name, args...)` to pass positional Go arguments and receive `(result, error)`:
+
+```go
+package main
+
+import (
+    "fmt"
+    "log"
+
+    "github.com/1set/starlet"
+)
+
+func main() {
+    m := starlet.NewDefault()
+    if _, err := m.RunScript([]byte("def add(x, y):\n    return x + y\n"), nil); err != nil {
+        log.Fatal(err)
+    }
+    result, err := m.Call("add", 20, 22)
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Println(result)
+}
+
+// Output: 42
+```
+
+`Call` takes positional arguments only, converting them through Starlight even when global/extra input conversion is disabled. Results use the configured output conversion. Calling before execution, using a missing name, or selecting a value other than a script function or builtin returns an error. Use `CallWithContext(ctx, name, args...)` or `CallWithTimeout(timeout, name, args...)` for cooperative cancellation; plain `Call` has no context or deadline. See [errors and cancellation](#errors-and-cancellation).
+
 ## Script output
 
 `print(...)` goes to stderr by default. Install a `PrintFunc` to route it, use `NoopPrintFunc` to discard it, or pass `nil` to restore the default. Host callbacks must not reenter the same Machine's locking methods.
@@ -77,6 +108,14 @@ func main() {
 // Output: script: hello
 ```
 
+### Print byte budget
+
+`m.SetMaxPrintBytes(64 * 1024)` limits bytes delivered through the Machine's print handler. The default `0` is unlimited. Each Run or Call gets a fresh allowance; a REPL session shares one allowance across its inputs. Machine-loaded source modules consume the caller's allowance. `Reset` preserves the configured limit.
+
+The limit counts UTF-8 message bytes before host formatting or added newlines. A message that would exceed it is withheld in full, and Run/Call stop with the value error `PrintLimitExceededError`; use `errors.As` as shown below. An exceeded REPL allowance ends the session and reports the error.
+
+The limit does not bound loggers, direct stderr writes such as `eprint()`, returned values, message construction, or trusted source-loader helpers using separate threads. Those channels need separate host limits. A nonzero budget adds allocation and synchronized accounting work; configuring it can allocate before the first execution. Costs depend on the compiler, machine and workload.
+
 ## Errors and cancellation
 
 Machine execution returns Go errors. `ExecError` unwraps its cause; use `errors.As` to classify the exported **value** error types, rather than matching message text:
@@ -95,6 +134,7 @@ func describe(err error) {
     var missing starlet.ModuleNotFoundError
     var withheld starlet.ModuleWithheldError
     var steps starlet.MaxStepsExceededError
+    var printLimit starlet.PrintLimitExceededError
     switch {
     case errors.As(err, &missing):
         fmt.Println("missing:", missing.Name)
@@ -102,6 +142,8 @@ func describe(err error) {
         fmt.Println("withheld:", withheld.Name)
     case errors.As(err, &steps):
         fmt.Println("step limit:", steps.Limit)
+    case errors.As(err, &printLimit):
+        fmt.Println("print byte limit:", printLimit.Limit)
     default:
         fmt.Println(err)
     }
@@ -116,15 +158,20 @@ func main() {
     m.SetMaxExecutionSteps(1)
     _, err = m.RunScript([]byte(`answer = [i * i for i in range(10)]`), nil)
     describe(err)
+    m.SetMaxExecutionSteps(0)
+    m.SetMaxPrintBytes(2)
+    _, err = m.RunScript([]byte(`print("too long")`), nil)
+    describe(err)
 }
 
 // Output:
 // withheld: json
 // missing: missing_module
 // step limit: 1
+// print byte limit: 2
 ```
 
-Use `errors.As(err, &evalErr)` with `var evalErr *starlark.EvalError` to obtain a Starlark backtrace. `SetMaxExecutionSteps(0)` removes the step limit. The budget is per Run/Call; file-loaded module initialization gets a separate allowance.
+Use `errors.As(err, &evalErr)` with `var evalErr *starlark.EvalError` to obtain a Starlark backtrace. `SetMaxExecutionSteps(0)` removes the step limit. The step budget is per Run/Call; file-loaded module initialization gets a separate allowance.
 
 `RunWithContext` uses source previously set with `SetScript`; `CallWithContext` invokes an already-defined function. An already-cancelled context fails before main-script execution; module preparation happens first:
 

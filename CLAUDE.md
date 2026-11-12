@@ -4,12 +4,12 @@ Guidance for Claude Code (claude.ai/code) working in this repository.
 
 ## What this is
 
-`starlet` is the L2 layer of the Star* stack: stdlib-style [Starlark](https://github.com/google/starlark-go) modules (`lib/*`) plus the `Machine` runner that wires them into an embeddable scripting environment. It sits on `starlight` (L1, the Go⇄Starlark bridge — `dataconv` wraps it) and under `starbox`/`starpkg`/`starcli`. Pure library plus a nested `cmd/starlet` CLI module. Module floor is **Go 1.19** with the fixed interpreter baseline `ffb3f39dd27a`; see SECURITY.md for the known parser limitation.
+`starlet` is the L2 layer of the Star* stack: stdlib-style [Starlark](https://github.com/google/starlark-go) modules (`lib/*`) plus the `Machine` runner that wires them into an embeddable scripting environment. It uses `starlight` (L1) for the Machine's default Go⇄Starlark bridge and sits under `starbox`/`starpkg`/`starcli`. Explicit `dataconv.Marshal`/`Unmarshal` use a separate native-value conversion contract. Pure library plus a nested `cmd/starlet` CLI module. Module floor is **Go 1.19** with the fixed interpreter baseline `ffb3f39dd27a`; see SECURITY.md for the known parser limitation.
 
 ## Commands
 
 ```bash
-make ci                                    # the CI bar: -race -cover -count 1 ./... + bench compile
+make ci                                    # race/coverage tests and benchmarks
 go test -race -count=2 ./...               # the real local bar (race + repeat catches flakiness)
 go test ./lib/json/ -run TestJSONRepair    # a single test
 make test_integration                      # real-network smoke (//go:build integration); default suite is hermetic
@@ -20,13 +20,13 @@ go vet ./... && gofmt -l .                 # must be clean before commit
 docker run --rm --platform linux/amd64 -v "$PWD":/src -v "$HOME/go/pkg/mod":/go/pkg/mod -w /src golang:1.19 go test -race -count=1 ./...
 ```
 
-CI (`.github/workflows/build.yml`): Go `1.19.x`/`1.27.x` × ubuntu-22.04 / macos-14 / windows-2022. The coverage gate is the `codecov/project` + `codecov/patch` commit statuses (not the upload step). `cmd/starlet` has its own go.mod and builds in a separate **non-gating** job. Merge only when `gh pr checks <n> --watch` exits 0, and read the bot comments (Codacy/Codecov) — they have caught real issues here.
+CI (`.github/workflows/build.yml`): Go `1.19.x`/`1.27.x` × ubuntu-22.04 / macos-15 / windows-2022. The coverage gate is `codecov/project` + `codecov/patch` from the Codecov app, not the upload step. `cmd/starlet` has its own go.mod and builds in a separate **non-gating** job. Before merging, require actual SUCCESS for the exact head's required checks and both Codecov contexts, read bot/review comments, then require `gh pr checks <n> --watch` to exit 0. Missing, cancelled or skipped checks are not success.
 
 ## Architecture
 
 - **Root package** — the runner: `machine.go` (the `Machine`), `run.go`/`exec.go`/`call.go` (script execution and Go⇄script calls), `cache.go`, `module.go`/`types.go`/`error.go`, and `config.go` — the **module registry** (`allBuiltinModules`) plus the **capability map** (`builtinModuleCapabilities`).
-- **`dataconv`** — value conversion built on starlight's `convert`: `Marshal`/`Unmarshal` (Starlark⇄Go), `MarshalStarlarkJSON`/`UnmarshalStarlarkJSON`, `ConvertStruct`/`ConvertJSONStruct`.
-- **`lib/<m>`** — one directory per module: `<m>.go` (a `LoadModule` returning a `starlarkstruct.Module`), `<m>_test.go`, `README.md`. Modules are self-contained; cross-module reuse goes through `dataconv` or `internal`.
+- **`dataconv`** — explicit `Marshal`/`Unmarshal` for common Go/native Starlark values, JSON helpers, and `ConvertStruct`/`ConvertJSONStruct` for Starlight-backed struct access. This is separate from the Machine's default bridge.
+- **`lib/<m>`** — one directory per module: `<m>.go` (`LoadModule` exports bindings, usually a named module; some expose flat helpers), `<m>_test.go`, `README.md`. Modules are self-contained; cross-module reuse goes through `dataconv` or `internal`. The upstream `struct` registration exposes a constructor.
 - **`internal`** — test loader helpers: `ExecModuleWithErrorTest` (runs a script with `assert.star`, matches `wantErr` by substring) and `HereDoc`.
 
 ## Module selection standard — what belongs in starlet (ADR-016)
@@ -51,10 +51,10 @@ A new `lib/<m>` is never enough on its own; wire the whole ring or the build/tes
 
 1. `config.go` — add the import, register in `allBuiltinModules`, AND classify in `builtinModuleCapabilities` (`CapPure` / `CapLog` / `CapProcess` / `CapFileSystem` / `CapNetwork`). `TestModuleCapabilities` fails the build if a registered module is unclassified — mandatory.
 2. `module_test.go` — add the name to the `builtinModules` list (sorted; the test asserts the exact set and order).
-3. Repo `README.md` — a row in the libraries table **and** the example `Modules: [...]` line.
+3. Repo `README.md` — a row in the libraries table; keep the constructor and module-selection examples accurate.
 4. `lib/<m>/README.md` — functions table, types, examples; state the module's boundaries (what errors and why).
 5. `lib/<m>/<m>_test.go` — table-driven via `itn.ExecModuleWithErrorTest`; test-first; coverage must clear the codecov patch gate (~93%+; only genuinely unreachable defensive arms may stay uncovered).
-6. Downstream (NOT this PR; flag for the release legs): repos asserting the module list (starbox's SafeModuleSet goldens) see the new name in their own pin PR. A *pure* module entering the Safe set is correct.
+6. Downstream (NOT this PR; flag for the release legs): review explicit host allowlists and module-list tests, such as starbox's SafeModuleSet goldens, in their adoption PRs. `CapPure` does not guarantee determinism or automatically update those policies.
 
 ## Writing module tests — conventions and traps
 
@@ -85,7 +85,7 @@ Style: names always in backticks; lead with the table before prose; examples rea
 ## Release discipline
 
 - **Never tag or publish autonomously.** Draft the release title + notes, show the user, and tag only after explicit approval. Patch bump by default. A published tag is immutable in the Go module proxy.
-- Before tagging: run each key downstream (starbox first) on a **baseline leg** (its pins) and an **upgrade leg** (`go mod edit -replace` to this repo) at the existing floor and the new declared floor; also compare both legs at the release toolchain (Go 1.27.1) — only failures new to the upgrade leg are regressions. Preserve old-floor incompatibility as an explicit expected change; measure the binary delta (the declared floor container, `-trimpath -ldflags="-s -w"`); scan tag/notes/PR text for internal names.
+- Before tagging: run each key downstream (starbox first) on a **baseline leg** (its pins) and an **upgrade leg** (`go mod edit -replace` to this repo) at its declared floor and the production toolchain selected for that candidate. Keep Go floors and interpreter pins unchanged unless separately approved. Only failures new to the upgrade leg are regressions; measure the binary delta in the declared-floor container (`-trimpath -ldflags="-s -w"`), and scan tag/notes/PR text for internal names.
 - Commit style: `[feat]`/`[fix]`/`[refactor]`/`[test]`/`[style]`/`[doc]`/`[ci]`/`[build]` prefixes, imperative subject; PRs reference the Backlog/requirement IDs.
 
 ## Reply marker

@@ -1,6 +1,7 @@
 package serial_test
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -423,6 +424,68 @@ func TestLoadModule_Serial(t *testing.T) {
 			_, err := itn.ExecModuleWithErrorTest(t, serial.ModuleName, serial.LoadModule, tt.script, tt.wantErr, pred)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("serial(%q) expects error = %q, got %v", tt.name, tt.wantErr, err)
+			}
+		})
+	}
+}
+
+// JSON document boundaries preserve the throwing and try_loads error contracts.
+func TestLoadsSingleDocument(t *testing.T) {
+	members, err := itn.NewAssertLoader(serial.ModuleName, serial.LoadModule)(&starlark.Thread{}, serial.ModuleName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, input := range []string{
+		`1]`, `1}`, `null]`, `null }`, `1] false`, " \t1 \r\n]", `{"a":1}]`, `{"a":1}}`, `[1]]`, `[1]}`,
+		`1 2`, `{} {}`, `1 junk`, `1 [`,
+		"1\v", "1\f", "1\u00a0", "1\ufeff",
+		"1 [" + strings.Repeat("0,", 8192) + "0]",
+	} {
+		name := input
+		if len(name) > 80 {
+			name = "large second document"
+		}
+		t.Run(name, func(t *testing.T) {
+			for _, name := range []string{"loads", "try_loads"} {
+				t.Run(name, func(t *testing.T) {
+					got, err := starlark.Call(&starlark.Thread{}, members[name], starlark.Tuple{starlark.String(input)}, nil)
+					if name == "loads" {
+						if err == nil || !strings.Contains(err.Error(), "serial.loads: unexpected trailing data") {
+							t.Fatalf("loads(%q) = %v, %v; want trailing-data error", input, got, err)
+						}
+						return
+					}
+					if err != nil {
+						t.Fatalf("try_loads(%q): %v", input, err)
+					}
+					pair, ok := got.(starlark.Tuple)
+					if !ok || len(pair) != 2 || pair[0] != starlark.None || !strings.Contains(pair[1].String(), "unexpected trailing data") {
+						t.Fatalf("try_loads(%q) = %v; want (None, trailing-data message)", input, got)
+					}
+				})
+			}
+		})
+	}
+	for _, input := range []string{"123456789012345678901234567890", " \t\r\n123456789012345678901234567890 \t\r\n"} {
+		t.Run(input, func(t *testing.T) {
+			for _, name := range []string{"loads", "try_loads"} {
+				got, err := starlark.Call(&starlark.Thread{}, members[name], starlark.Tuple{starlark.String(input)}, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if name == "try_loads" {
+					pair, ok := got.(starlark.Tuple)
+					if !ok || len(pair) != 2 {
+						t.Fatalf("try_loads(%q) = %v; want result/error tuple", input, got)
+					}
+					if pair[1] != starlark.None {
+						t.Fatalf("try_loads(%q) error = %v", input, pair[1])
+					}
+					got = pair[0]
+				}
+				if got.String() != "123456789012345678901234567890" || got.Type() != "int" {
+					t.Fatalf("%s(%q) = %v; want exact integer", name, input, got)
+				}
 			}
 		})
 	}

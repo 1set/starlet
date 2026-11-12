@@ -27,7 +27,7 @@ Load name for `load()`: `go_idiomatic`.
 | `make_struct(name, **kv) -> struct` | Build a struct whose constructor name is `name`. |
 | `shared_dict() -> shared_dict` | Create an empty thread-safe shared dictionary. |
 | `make_shared_dict(name="", data=None) -> shared_dict` | Create a shared dictionary with an optional type name and initial data. |
-| `to_dict(v) -> dict` | Convert a dict, `module`, `struct`, `GoStruct`, or `shared_dict` into a plain dict. |
+| `to_dict(v) -> value` | Convert a dict, `module`, `struct`, `GoStruct`, or `shared_dict`; usually returns a dict. |
 | `eprint(*args, sep=" ")` | `print`-style output to stderr. |
 | `pprint(*args, sep=" ")` | `print`-style output formatted as indented JSON. |
 
@@ -313,12 +313,18 @@ print(sum([1, 2, 3]), sum([1, 2, 4], start=8), sum([1, 2, None]))
 
 ### `distinct(iterable) -> iterable`
 
-Removes duplicates, preserving first-seen order. Returns a **list** for a list or custom iterable, a **tuple** for a tuple, the result of `.keys()` (a list) for a dict, and the original **set** unchanged for a set. Errors with `unhashable type: <type>` if an element cannot be hashed, and `got <type>, want iterable` for a non-iterable argument.
+Removes duplicates using Starlark equality, preserving first-seen order and the first value (including its type). Unequal values with the same hash remain distinct. Returns a **list** for a list or custom iterable, a **tuple** for a tuple, the result of `.keys()` (a list) for a dict, and the original **set** unchanged for a set. Errors with `unhashable type: <type>` if an element cannot be hashed, propagates equality errors with a `distinct:` prefix, and errors with `got <type>, want iterable` for a non-iterable argument.
+
+A mutable list input remains mutable after the call, including when hashing or equality comparison fails.
+
+Deduplication keeps a temporary index of unique results and compares values sharing a hash. Benchmarks show additional CPU and memory costs on list/tuple inputs; the cost depends on input size, values, Go version and hardware.
 
 ```python
 load("go_idiomatic", "distinct")
 print(distinct([1, 2, 2, 3, 3, 3]), distinct((1, 2, 2, 3)))
 # Output: [1, 2, 3] (1, 2, 3)
+print(distinct([1, 4294967297, 1]), distinct([1.0, 1]))
+# Output: [1, 4294967297] [1.0]
 ```
 
 ### `hex(x) -> str` / `oct(x) -> str` / `bin(x) -> str`
@@ -339,12 +345,14 @@ print(hex(-15), oct(-56), bin(-255))
 
 ### `bytes_hex(bytes, sep="", bytes_per_sep=1) -> str`
 
-Two lowercase hex digits per byte. With a one-character `sep`, the separator is inserted between groups of `bytes_per_sep` bytes — a positive count groups from the right, a negative count from the left. Errors with `missing argument for bytes` if `bytes` is omitted.
+Two lowercase hex digits per raw byte, without UTF-8 decoding. `sep` may be any string. A positive `bytes_per_sep` groups from the right, a negative count from the left; zero or a group magnitude at least the input length inserts no separator. The count must fit a signed 64-bit integer, otherwise `invalid bytes_per_sep` is returned. Errors with `missing argument for bytes` if `bytes` is omitted.
 
 ```python
 load("go_idiomatic", "bytes_hex")
 print(bytes_hex(b"123456"))
 # Output: 313233343536
+print(bytes_hex(b"\xff\xc3\xa9"))
+# Output: ffc3a9
 ```
 
 ```python
@@ -418,9 +426,9 @@ print(make_shared_dict("manaʻo", {"abc": 123}))
 # Output: manaʻo({"abc": 123})
 ```
 
-### `to_dict(v) -> dict`
+### `to_dict(v) -> value`
 
-Converts a value into a plain Starlark `dict`. Accepts a native `dict` (cloned), a `module` or `struct` (members become entries), a `GoStruct` (marshalled to JSON via Go's encoder then decoded to a dict — Go field names are preserved, nil fields become `None`), and a `shared_dict` (clone of its contents). Any other type errors with `unsupported type: <type>`; a Go struct holding a JSON-unencodable field (e.g. a channel) surfaces the encoder error (`json: unsupported type: chan int`).
+Converts a supported value to a plain Starlark value, usually a `dict`. Accepts a native `dict` (cloned), a `module` or `struct` (members become entries), a `GoStruct` (encoded with Go's `encoding/json` then decoded), and a `shared_dict` (clone of its contents). For Go structs, exported fields, `json` tags, `omitempty`, and custom JSON marshaling follow Go's encoder; field names are not necessarily the Go names. Custom JSON marshaling can produce a non-dict result. Any other input type errors with `unsupported type: <type>`; a JSON-unencodable field (e.g. a channel) surfaces the encoder error (`json: unsupported type: chan int`).
 
 ```python
 load("go_idiomatic", "to_dict", "struct", "module")
@@ -444,7 +452,7 @@ eprint("Path", "/home/user/docs", sep=" -> ")
 
 ### `pprint(*args, sep=" ")`
 
-Like `print()` but renders each argument as **indented JSON** (4-space indent) before writing through the thread's `Print` handler (falling back to stderr). Values that cannot be JSON-encoded — including self-referential structures — fall back to their string form, so `pprint` never fails on cyclic input. A non-string `sep` errors with `got <type>, want string`.
+Like `print()` but renders each argument as **indented JSON** (4-space indent) before writing through the thread's `Print` handler (falling back to stderr). Values that cannot be JSON-encoded fall back to their string form, retaining that value's formatting and synchronization constraints. A non-string `sep` errors with `got <type>, want string`.
 
 ```python
 load("go_idiomatic", "pprint")
@@ -462,7 +470,7 @@ pprint({"key": "value", "list": [1, 2, 3]})
 ## Notes / boundaries
 
 - **`length` vs `len`.** `length` counts Unicode code points for strings; the builtin `len` counts UTF-8 bytes. They agree for sequences.
-- **`distinct` ordering.** First-seen order is preserved for list/tuple/custom inputs; dict-key order from `.keys()` is **not** guaranteed (sort it if you need stability). Sets are returned unchanged.
+- **`distinct` ordering.** First-seen order is preserved for list/tuple/custom inputs; a native dict returns its keys in insertion order. Sets are returned unchanged.
 - **Process effects.** `sleep` blocks (and respects context cancellation); `exit`/`quit` do not stop the goroutine themselves — they return `ErrSystemExit` for the host runner to act on, and set the thread-local `exit_code`.
-- **Determinism.** `struct`/`make_struct`/`module` print fields in sorted order; `to_dict` of a `GoStruct` keeps the Go field names verbatim.
+- **Determinism.** `struct`/`make_struct`/`module` print fields in sorted order; `to_dict` of a `GoStruct` follows Go's JSON field naming rules.
 - **`shared_dict` scope.** Locking protects a single instance across threads; it does not make the values it holds deeply immutable or persist anything beyond the process.
