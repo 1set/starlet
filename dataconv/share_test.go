@@ -1,7 +1,7 @@
 package dataconv
 
 // SharedDict tests cover constructors/names, script methods, frozen/nil values,
-// concurrent access, formatting snapshots, and JSON conversion.
+// concurrent access, caller-synchronized output, snapshots, and JSON conversion.
 
 import (
 	"fmt"
@@ -278,6 +278,78 @@ func TestSharedDict_SnapshotStringConcurrent(t *testing.T) {
 	}()
 	close(start)
 	workers.Wait()
+}
+
+// This verifies the caller's synchronization discipline; String and ToJSON do
+// not acquire the application mutex or become safe for unsynchronized callers.
+func TestSharedDict_ExternalSynchronization(t *testing.T) {
+	sd := NewSharedDict()
+	key := starlark.String("generation")
+	items := starlark.NewList([]starlark.Value{starlark.MakeInt(0)})
+	if err := sd.SetKey(key, starlark.MakeInt(0)); err != nil {
+		t.Fatal(err)
+	}
+	if err := sd.SetKey(starlark.String("items"), items); err != nil {
+		t.Fatal(err)
+	}
+
+	var gate sync.Mutex
+	generation := 0
+	update := func() error {
+		gate.Lock()
+		defer gate.Unlock()
+		generation++
+		value := starlark.MakeInt(generation)
+		if err := sd.SetKey(key, value); err != nil {
+			return err
+		}
+		// The alias mutation belongs to the same compound update as SetKey.
+		return items.SetIndex(0, value)
+	}
+	check := func() error {
+		gate.Lock()
+		defer gate.Unlock()
+		wantText := fmt.Sprintf("shared_dict({\"generation\": %d, \"items\": [%d]})", generation, generation)
+		if got := sd.String(); got != wantText {
+			return fmt.Errorf("String() = %q, want %q", got, wantText)
+		}
+		got, err := sd.ToJSON()
+		if err != nil {
+			return err
+		}
+		wantJSON := fmt.Sprintf("{\"generation\":%d,\"items\":[%d]}", generation, generation)
+		if got != wantJSON {
+			return fmt.Errorf("ToJSON() = %q, want %q", got, wantJSON)
+		}
+		return nil
+	}
+
+	const iterations = 128
+	start := make(chan struct{})
+	var workers sync.WaitGroup
+	workers.Add(4)
+	run := func(name string, operation func() error) {
+		defer workers.Done()
+		<-start
+		for i := 0; i < iterations; i++ {
+			if err := operation(); err != nil {
+				t.Errorf("%s iteration %d: %v", name, i, err)
+				return
+			}
+		}
+	}
+	for i := 0; i < 2; i++ {
+		go run("writer", update)
+		go run("reader", check)
+	}
+	close(start)
+	workers.Wait()
+	if generation != 2*iterations {
+		t.Errorf("generation = %d, want %d", generation, 2*iterations)
+	}
+	if err := check(); err != nil {
+		t.Error(err)
+	}
 }
 
 type sharedDictFormatValue struct {

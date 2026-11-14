@@ -283,6 +283,8 @@ print(sd.to_json())
 # Output: {"new_key":"new_value"}
 ```
 
+For Go `String`/`ToJSON` and shared nested values, use one owner or a common application mutex for every access, including all writers. See the [shared-value synchronization example and callback limits](../../USAGE.md#shared-values).
+
 ## Details & examples
 
 ### `length(obj) -> int`
