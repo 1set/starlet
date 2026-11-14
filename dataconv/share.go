@@ -10,6 +10,7 @@ import (
 	itn "github.com/1set/starlet/internal"
 	stdjson "go.starlark.net/lib/json"
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/syntax"
 )
 
@@ -83,6 +84,10 @@ func (s *SharedDict) String() string {
 // SnapshotString formats a shallow snapshot of the mapping in insertion order.
 // It releases the mapping lock before invoking formatting callbacks. Mutable
 // nested values remain shared and require their own synchronization.
+// Nested SharedDict values are not locked by this method. Cycle detection spans
+// native lists/dictionaries/sets, SharedDict and structs with unique field names,
+// following references via tuples. Other values retain their own String behavior.
+// Set elements are captured before formatting callbacks run; the values remain shared.
 // Call it without holding this dictionary's mutex, and outside callbacks from
 // operations that hold it (for example a key's Hash/Equal or a value's Freeze).
 func (s *SharedDict) SnapshotString() string {
@@ -94,12 +99,20 @@ func (s *SharedDict) SnapshotString() string {
 	}
 	s.RUnlock()
 
-	f := sharedDictFormatter{root: dict, items: items}
+	if dict == nil {
+		return name + "()"
+	}
+	if len(items) == 0 {
+		return name + "({})"
+	}
+	var f sharedDictFormatter
+	f.shared = s
+	f.name = name
+	f.root = dict
+	f.items = items
 	f.WriteString(name)
 	f.WriteByte('(')
-	if dict != nil {
-		f.write(dict, nil)
-	}
+	f.write(dict, nil)
 	f.WriteByte(')')
 	return f.String()
 }
@@ -109,8 +122,10 @@ func (s *SharedDict) SnapshotString() string {
 // keys or invoking host callbacks under the mapping lock.
 type sharedDictFormatter struct {
 	strings.Builder
-	root  *starlark.Dict
-	items []starlark.Tuple
+	shared *SharedDict
+	name   string
+	root   *starlark.Dict
+	items  []starlark.Tuple
 }
 
 func (f *sharedDictFormatter) write(value starlark.Value, path []starlark.Value) {
@@ -143,6 +158,21 @@ func (f *sharedDictFormatter) write(value starlark.Value, path []starlark.Value)
 			f.WriteByte(',')
 		}
 		f.WriteByte(')')
+	case *SharedDict:
+		dict, name := f.root, f.name
+		if value != f.shared {
+			dict, name = value.dict, value.getTypeName()
+		}
+		f.WriteString(name)
+		f.WriteByte('(')
+		if dict != nil {
+			f.write(dict, path)
+		}
+		f.WriteByte(')')
+	case *starlark.Set:
+		f.writeSet(value, path)
+	case *starlarkstruct.Struct:
+		f.writeStruct(value, path)
 	case *starlark.Dict:
 		f.WriteByte('{')
 		if sharedDictPathContains(path, value) {
@@ -153,11 +183,12 @@ func (f *sharedDictFormatter) write(value starlark.Value, path []starlark.Value)
 				items = value.Items()
 			}
 			valuePath := append(path, value)
+			keyPath := path[:len(path):len(path)]
 			for i, item := range items {
 				if i > 0 {
 					f.WriteString(", ")
 				}
-				f.write(item[0], path)
+				f.write(item[0], keyPath)
 				f.WriteString(": ")
 				f.write(item[1], valuePath)
 			}
@@ -166,6 +197,83 @@ func (f *sharedDictFormatter) write(value starlark.Value, path []starlark.Value)
 	default:
 		f.WriteString(value.String())
 	}
+}
+
+func (f *sharedDictFormatter) writeSet(value *starlark.Set, path []starlark.Value) {
+	f.WriteString("set([")
+	if sharedDictPathContains(path, value) {
+		f.WriteString("...")
+	} else {
+		var smallElements [8]starlark.Value
+		elements := smallElements[:0]
+		if size := value.Len(); size > len(smallElements) {
+			elements = make([]starlark.Value, 0, size)
+		}
+		iter := value.Iterate()
+		var element starlark.Value
+		for iter.Next(&element) {
+			elements = append(elements, element)
+		}
+		iter.Done()
+		var smallPath [8]starlark.Value
+		size := len(path) + 1
+		nextPath := smallPath[:0]
+		if size >= len(smallPath) {
+			nextPath = make([]starlark.Value, size, size+1)
+		} else {
+			nextPath = smallPath[:size]
+		}
+		copy(nextPath, path)
+		nextPath[size-1] = value
+		for i, element := range elements {
+			if i > 0 {
+				f.WriteString(", ")
+			}
+			f.write(element, nextPath)
+		}
+	}
+	f.WriteString("])")
+}
+
+func (f *sharedDictFormatter) writeStruct(value *starlarkstruct.Struct, path []starlark.Value) {
+	names := value.AttrNames()
+	for i := 1; i < len(names); i++ {
+		if names[i] == names[i-1] {
+			// Attr returns only the first entry of duplicate Go fields.
+			f.WriteString(value.String())
+			return
+		}
+	}
+	if sharedDictPathContains(path, value) {
+		f.WriteString("...")
+		return
+	}
+	path = append(path, value)
+	constructor := value.Constructor()
+	if name, ok := constructor.(starlark.String); ok {
+		f.WriteString(name.GoString())
+	} else {
+		if constructor == nil {
+			f.WriteString(value.String())
+			return
+		}
+		f.write(constructor, path)
+	}
+	f.WriteByte('(')
+	for i, name := range names {
+		if i > 0 {
+			f.WriteString(", ")
+		}
+		f.WriteString(name)
+		f.WriteString(" = ")
+		field, _ := value.Attr(name)
+		if field == nil {
+			f.WriteString(value.String())
+			return
+		}
+		f.write(field, path)
+	}
+	f.WriteByte(')')
 }
 
 func sharedDictPathContains(path []starlark.Value, value starlark.Value) bool {

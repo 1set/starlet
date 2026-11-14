@@ -4,9 +4,13 @@ package dataconv
 // concurrent access, caller-synchronized output, snapshots, and JSON conversion.
 
 import (
+	"context"
 	"fmt"
 	"math"
+	"os"
+	"os/exec"
 	"reflect"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"testing"
@@ -116,6 +120,19 @@ func TestSharedDict_SnapshotString(t *testing.T) {
 	t.Run("nil_underlying_dictionary", func(t *testing.T) {
 		if got := (&SharedDict{}).String(); got != "shared_dict()" {
 			t.Fatalf("String() = %q; want shared_dict()", got)
+		}
+		if got := (&SharedDict{}).SnapshotString(); got != "shared_dict()" {
+			t.Fatalf("SnapshotString() = %q; want shared_dict()", got)
+		}
+	})
+	t.Run("empty_root", func(t *testing.T) {
+		for _, test := range []struct {
+			dict *SharedDict
+			want string
+		}{{NewSharedDict(), "shared_dict({})"}, {NewNamedSharedDict("named"), "named({})"}, {&SharedDict{name: "zero"}, "zero()"}} {
+			if got := test.dict.SnapshotString(); got != test.want {
+				t.Fatalf("SnapshotString() = %q; want %q", got, test.want)
+			}
 		}
 	})
 }
@@ -352,6 +369,371 @@ func TestSharedDict_ExternalSynchronization(t *testing.T) {
 	}
 }
 
+func TestSharedDict_SnapshotStringFormattingGraph(t *testing.T) {
+	const childEnv = "STARLET_TEST_SNAPSHOT_GRAPH_CHILD"
+	if os.Getenv(childEnv) != "1" {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestSharedDict_SnapshotStringFormattingGraph$", "-test.v")
+		cmd.Env = append(os.Environ(), childEnv+"=1")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("bounded formatting child: %v (timeout: %v)\n%s", err, ctx.Err(), output)
+		}
+		// Exercise the same guarded cases here so Go 1.19 records coverage.
+	} else {
+		debug.SetMaxStack(128 << 10)
+	}
+	put := func(t *testing.T, dict starlark.HasSetKey, key string, value starlark.Value) {
+		t.Helper()
+		if err := dict.SetKey(starlark.String(key), value); err != nil {
+			t.Fatal(err)
+		}
+	}
+	check := func(t *testing.T, dict *SharedDict, want string) {
+		t.Helper()
+		if got := dict.SnapshotString(); got != want {
+			t.Fatalf("SnapshotString() = %q; want %q", got, want)
+		}
+	}
+	t.Run("shared_dict", func(t *testing.T) {
+		for _, test := range []struct{ name, want string }{
+			{"list", `root({"items": [root({...})]})`},
+			{"dict", `root({"items": {"back": root({...})}})`},
+			{"tuple", `root({"items": (root({...}),)})`},
+		} {
+			t.Run(test.name, func(t *testing.T) {
+				root := NewNamedSharedDict("root")
+				var value starlark.Value
+				switch test.name {
+				case "list":
+					value = starlark.NewList([]starlark.Value{root})
+				case "dict":
+					dict := starlark.NewDict(1)
+					put(t, dict, "back", root)
+					value = dict
+				case "tuple":
+					value = starlark.Tuple{root}
+				}
+				put(t, root, "items", value)
+				check(t, root, test.want)
+			})
+		}
+		t.Run("mutual", func(t *testing.T) {
+			a, b, c := NewNamedSharedDict("a"), NewNamedSharedDict("b"), NewNamedSharedDict("c")
+			back := starlark.NewDict(1)
+			put(t, back, "back", a)
+			put(t, a, "items", starlark.NewList([]starlark.Value{b}))
+			put(t, b, "items", starlark.Tuple{c})
+			put(t, c, "items", back)
+			check(t, a, `a({"items": [b({"items": (c({"items": {"back": a({...})}}),)})]})`)
+		})
+		t.Run("aliases_and_empty", func(t *testing.T) {
+			root, child := NewNamedSharedDict("root"), NewNamedSharedDict("child")
+			put(t, child, "n", starlark.MakeInt(1))
+			put(t, root, "items", starlark.NewList([]starlark.Value{child, child, NewNamedSharedDict("empty"), &SharedDict{name: "zero"}}))
+			check(t, root, `root({"items": [child({"n": 1}), child({"n": 1}), empty({}), zero()]})`)
+		})
+	})
+	t.Run("root_snapshot", func(t *testing.T) {
+		root := NewNamedSharedDict("root")
+		locked, calls := false, 0
+		defer func() {
+			if locked {
+				root.Unlock()
+			}
+		}()
+		callback := &sharedDictFormatValue{stringFunc: func() string {
+			calls++
+			put(t, root, "later", starlark.True)
+			root.Lock()
+			locked = true
+			return "changed"
+		}}
+		put(t, root, "change", callback)
+		put(t, root, "back", starlark.NewList([]starlark.Value{root}))
+		put(t, root, "native", root.dict)
+		check(t, root, `root({"change": changed, "back": [root({...})], "native": {...}})`)
+		if calls != 1 {
+			t.Fatalf("format callback calls = %d; want 1", calls)
+		}
+	})
+	t.Run("external_nested_lock", func(t *testing.T) {
+		root, child := NewNamedSharedDict("root"), NewNamedSharedDict("child")
+		put(t, root, "next", starlark.NewList([]starlark.Value{child}))
+		put(t, child, "next", starlark.NewList([]starlark.Value{root}))
+		child.Lock()
+		defer child.Unlock()
+		check(t, root, `root({"next": [child({"next": [root({...})]})]})`)
+	})
+	t.Run("callbacks", func(t *testing.T) {
+		for _, mode := range []string{"String", "Type"} {
+			t.Run(mode, func(t *testing.T) {
+				root, child := NewNamedSharedDict("root"), NewNamedSharedDict("child")
+				calls := 0
+				callback := func() string {
+					calls++
+					for _, dict := range []*SharedDict{root, child} {
+						if !dict.TryLock() {
+							t.Fatal("format callback ran with a mapping lock held")
+						}
+						dict.Unlock()
+						if dict.Len() != 1 {
+							t.Fatal("unexpected mapping length")
+						}
+					}
+					put(t, root, "later", starlark.True)
+					return "host"
+				}
+				host := &sharedDictFormatValue{stringFunc: func() string { return "receiver" }}
+				var value starlark.Value = host
+				wantValue := "host"
+				if mode == "String" {
+					host.stringFunc = callback
+				} else {
+					host.typeFunc = callback
+					value = starlark.NewBuiltin("method", func(*starlark.Thread, *starlark.Builtin, starlark.Tuple, []starlark.Tuple) (starlark.Value, error) {
+						return starlark.None, nil
+					}).BindReceiver(host)
+					wantValue = "<built-in method method of host value>"
+				}
+				put(t, child, "value", value)
+				put(t, root, "items", starlark.NewList([]starlark.Value{child}))
+				check(t, root, `root({"items": [child({"value": `+wantValue+`})]})`)
+				if calls != 1 || root.Len() != 2 {
+					t.Fatalf("callback calls=%d, root length=%d; want 1 and 2", calls, root.Len())
+				}
+			})
+		}
+	})
+	t.Run("concurrent_root_writer", func(t *testing.T) {
+		root, child := NewNamedSharedDict("root"), NewNamedSharedDict("child")
+		put(t, child, "n", starlark.MakeInt(1))
+		put(t, root, "items", starlark.NewList([]starlark.Value{child}))
+		put(t, root, "counter", starlark.MakeInt(0))
+		var workers sync.WaitGroup
+		workers.Add(2)
+		go func() {
+			defer workers.Done()
+			for i := 0; i < 128; i++ {
+				if err := root.SetKey(starlark.String("counter"), starlark.MakeInt(i)); err != nil {
+					t.Error(err)
+					return
+				}
+			}
+		}()
+		go func() {
+			defer workers.Done()
+			for i := 0; i < 128; i++ {
+				if got := root.SnapshotString(); !strings.HasPrefix(got, `root({"items": [child({"n": 1})], "counter": `) || !strings.HasSuffix(got, "})") {
+					t.Errorf("malformed snapshot: %q", got)
+					return
+				}
+			}
+		}()
+		workers.Wait()
+	})
+	t.Run("opposite_snapshots", func(t *testing.T) {
+		a, b := NewNamedSharedDict("a"), NewNamedSharedDict("b")
+		put(t, a, "next", starlark.NewList([]starlark.Value{b}))
+		put(t, b, "next", starlark.NewList([]starlark.Value{a}))
+		var workers sync.WaitGroup
+		for _, test := range []struct {
+			dict *SharedDict
+			want string
+		}{{a, `a({"next": [b({"next": [a({...})]})]})`}, {b, `b({"next": [a({"next": [b({...})]})]})`}} {
+			workers.Add(1)
+			go func(dict *SharedDict, want string) {
+				defer workers.Done()
+				for i := 0; i < 128; i++ {
+					if got := dict.SnapshotString(); got != want {
+						t.Errorf("SnapshotString() = %q; want %q", got, want)
+						return
+					}
+				}
+			}(test.dict, test.want)
+		}
+		workers.Wait()
+	})
+	t.Run("struct", func(t *testing.T) {
+		t.Run("list_cycle", func(t *testing.T) {
+			root := NewNamedSharedDict("root")
+			list := starlark.NewList(nil)
+			record := starlarkstruct.FromStringDict(starlark.String("record"), starlark.StringDict{"items": list})
+			if err := list.Append(record); err != nil {
+				t.Fatal(err)
+			}
+			put(t, root, "items", list)
+			check(t, root, `root({"items": [record(items = [...])]})`)
+		})
+		t.Run("root_wrapper", func(t *testing.T) {
+			root := NewNamedSharedDict("root")
+			put(t, root, "items", starlarkstruct.FromStringDict(starlark.String("record"), starlark.StringDict{"root": root}))
+			check(t, root, `root({"items": record(root = root({...}))})`)
+		})
+		t.Run("constructor_cycle", func(t *testing.T) {
+			root := NewNamedSharedDict("root")
+			constructor := starlark.NewList(nil)
+			record := starlarkstruct.FromStringDict(constructor, starlark.StringDict{"n": starlark.MakeInt(1)})
+			if err := constructor.Append(record); err != nil {
+				t.Fatal(err)
+			}
+			put(t, root, "items", record)
+			check(t, root, `root({"items": [...](n = 1)})`)
+		})
+		t.Run("oracle", func(t *testing.T) {
+			for _, constructor := range []starlark.Value{starlarkstruct.Default, starlark.String("record\"\n"), starlark.MakeInt(7), starlark.Tuple{starlark.String("kind")}} {
+				root := NewSharedDict()
+				record := starlarkstruct.FromStringDict(constructor, starlark.StringDict{"z": starlark.None, "a": starlark.Tuple{starlark.True}})
+				put(t, root, "items", starlark.NewList([]starlark.Value{record, record}))
+				check(t, root, "shared_dict("+root.dict.String()+")")
+			}
+		})
+		t.Run("duplicate_fields_oracle", func(t *testing.T) {
+			root := NewSharedDict()
+			record := starlarkstruct.FromKeywords(starlark.String("record"), []starlark.Tuple{{starlark.String("a"), starlark.MakeInt(1)}, {starlark.String("a"), starlark.MakeInt(2)}})
+			put(t, root, "items", record)
+			check(t, root, "shared_dict("+root.dict.String()+")")
+		})
+		for _, tupleKey := range []bool{false, true} {
+			t.Run(fmt.Sprintf("key_path/tuple=%v", tupleKey), func(t *testing.T) {
+				root := NewNamedSharedDict("root")
+				record := starlarkstruct.FromStringDict(starlark.String("key"), starlark.StringDict{"n": starlark.MakeInt(1)})
+				var key starlark.Value = record
+				wantKey := "key(n = 1)"
+				if tupleKey {
+					key = starlark.Tuple{record}
+					wantKey = "(key(n = 1),)"
+				}
+				bottom := starlark.NewDict(2)
+				if err := bottom.SetKey(key, record); err != nil {
+					t.Fatal(err)
+				}
+				put(t, bottom, "self", bottom)
+				put(t, root, "items", starlark.NewList([]starlark.Value{starlark.NewList([]starlark.Value{bottom})}))
+				check(t, root, `root({"items": [[{`+wantKey+`: key(n = 1), "self": {...}}]]})`)
+			})
+		}
+		for _, test := range []struct {
+			name  string
+			value starlark.Value
+		}{{"nil_field", starlarkstruct.FromStringDict(starlarkstruct.Default, starlark.StringDict{"value": nil})}, {"zero_value", new(starlarkstruct.Struct)}} {
+			t.Run(test.name, func(t *testing.T) {
+				root := NewSharedDict()
+				put(t, root, "items", test.value)
+				defer func() {
+					if recover() == nil {
+						t.Fatal("invalid Go struct no longer preserves upstream String panic")
+					}
+				}()
+				root.SnapshotString()
+			})
+		}
+	})
+	t.Run("set", func(t *testing.T) {
+		t.Run("constructor_cycle", func(t *testing.T) {
+			root := NewNamedSharedDict("root")
+			set, constructor := starlark.NewSet(1), starlark.NewList(nil)
+			record := starlarkstruct.FromStringDict(constructor, nil)
+			if err := set.Insert(record); err != nil {
+				t.Fatal(err)
+			}
+			if err := constructor.Append(set); err != nil {
+				t.Fatal(err)
+			}
+			put(t, root, "items", set)
+			check(t, root, `root({"items": set([[set([...])]()])})`)
+		})
+		t.Run("oracle", func(t *testing.T) {
+			for _, values := range [][]starlark.Value{nil, {starlark.None, starlark.True, starlark.Tuple{starlark.MakeInt(1)}}} {
+				root, set := NewSharedDict(), starlark.NewSet(len(values))
+				for _, value := range values {
+					if err := set.Insert(value); err != nil {
+						t.Fatal(err)
+					}
+				}
+				put(t, root, "items", set)
+				check(t, root, "shared_dict("+root.dict.String()+")")
+			}
+			for _, size := range []int{8, 9, 32} {
+				t.Run(fmt.Sprintf("size=%d", size), func(t *testing.T) {
+					root, set := NewSharedDict(), starlark.NewSet(size)
+					for i := 0; i < size; i++ {
+						if err := set.Insert(starlark.MakeInt(i)); err != nil {
+							t.Fatal(err)
+						}
+					}
+					put(t, root, "items", set)
+					check(t, root, "shared_dict("+root.dict.String()+")")
+				})
+			}
+		})
+		t.Run("deep_path", func(t *testing.T) {
+			root, set := NewSharedDict(), starlark.NewSet(1)
+			if err := set.Insert(starlark.MakeInt(1)); err != nil {
+				t.Fatal(err)
+			}
+			var value starlark.Value = set
+			for i := 0; i < 9; i++ {
+				value = starlark.NewList([]starlark.Value{value})
+			}
+			put(t, root, "items", value)
+			check(t, root, "shared_dict("+root.dict.String()+")")
+		})
+		t.Run("deep_ancestor_cycle", func(t *testing.T) {
+			root, set := NewSharedDict(), starlark.NewSet(1)
+			var value starlark.Value = set
+			for i := 0; i < 9; i++ {
+				value = starlark.NewList([]starlark.Value{value})
+			}
+			record := starlarkstruct.FromStringDict(value, nil)
+			if err := set.Insert(record); err != nil {
+				t.Fatal(err)
+			}
+			put(t, root, "items", value)
+			check(t, root, `shared_dict({"items": `+strings.Repeat("[", 9)+`set([[...]()])`+strings.Repeat("]", 9)+`})`)
+		})
+		t.Run("callback_insert", func(t *testing.T) {
+			root, set := NewSharedDict(), starlark.NewSet(1)
+			calls := 0
+			value := &sharedDictFormatValue{stringFunc: func() string {
+				calls++
+				if err := set.Insert(starlark.String("later")); err != nil {
+					t.Fatal(err)
+				}
+				return "first"
+			}}
+			if err := set.Insert(value); err != nil {
+				t.Fatal(err)
+			}
+			put(t, root, "items", set)
+			check(t, root, `shared_dict({"items": set([first])})`)
+			if calls != 1 || set.Len() != 2 {
+				t.Fatalf("format calls=%d, set length=%d; want 1 and 2", calls, set.Len())
+			}
+		})
+		t.Run("callback_panic", func(t *testing.T) {
+			root, set := NewSharedDict(), starlark.NewSet(1)
+			value := &sharedDictFormatValue{stringFunc: func() string { panic("set format panic") }}
+			if err := set.Insert(value); err != nil {
+				t.Fatal(err)
+			}
+			put(t, root, "items", set)
+			func() {
+				defer func() {
+					if got := recover(); got != "set format panic" {
+						t.Fatalf("format panic = %v", got)
+					}
+				}()
+				root.SnapshotString()
+			}()
+			if err := set.Insert(starlark.True); err != nil {
+				t.Fatalf("set iterator remained active after formatting panic: %v", err)
+			}
+		})
+	})
+}
+
 type sharedDictFormatValue struct {
 	stringFunc  func() string
 	hashFunc    func() (uint32, error)
@@ -492,6 +874,34 @@ func BenchmarkSharedDictReadPaths(b *testing.B) {
 	if err := nested.SetKey(starlark.String("nested"), flat8.dict); err != nil {
 		b.Fatal(err)
 	}
+	nestedShared := NewSharedDict()
+	if err := nestedShared.SetKey(starlark.String("nested"), starlark.NewList([]starlark.Value{flat8})); err != nil {
+		b.Fatal(err)
+	}
+	repeatedShared := NewSharedDict()
+	if err := repeatedShared.SetKey(starlark.String("nested"), starlark.NewList([]starlark.Value{flat8, flat8})); err != nil {
+		b.Fatal(err)
+	}
+	record := NewSharedDict()
+	if err := record.SetKey(starlark.String("record"), starlarkstruct.FromStringDict(starlark.String("record"), starlark.StringDict{"entries": flat8.dict})); err != nil {
+		b.Fatal(err)
+	}
+	makeSet := func(n int, records bool) *SharedDict {
+		dict, set := NewSharedDict(), starlark.NewSet(n)
+		for i := 0; i < n; i++ {
+			var value starlark.Value = starlark.MakeInt(i)
+			if records {
+				value = starlarkstruct.FromStringDict(starlark.String("key"), starlark.StringDict{"id": value})
+			}
+			if err := set.Insert(value); err != nil {
+				b.Fatal(err)
+			}
+		}
+		if err := dict.SetKey(starlark.String("set"), set); err != nil {
+			b.Fatal(err)
+		}
+		return dict
+	}
 	cycle := NewSharedDict()
 	if err := cycle.SetKey(starlark.String("self"), cycle.dict); err != nil {
 		b.Fatal(err)
@@ -502,11 +912,14 @@ func BenchmarkSharedDictReadPaths(b *testing.B) {
 	}{
 		{"Flat0", makeFlat(0)}, {"Flat1", makeFlat(1)}, {"Flat8", flat8},
 		{"Flat128", makeFlat(128)}, {"Nested8", nested}, {"Cycle", cycle},
+		{"NestedShared8", nestedShared}, {"RepeatedShared8", repeatedShared}, {"Struct8", record},
+		{"Set8", makeSet(8, false)}, {"SetStruct8", makeSet(8, true)},
+		{"Set32", makeSet(32, false)}, {"SetStruct32", makeSet(32, true)},
 	} {
 		b.Run("Snapshot/"+test.name, func(b *testing.B) {
-			format := test.dict.String
-			if snapshot, ok := interface{}(test.dict).(interface{ SnapshotString() string }); ok {
-				format = snapshot.SnapshotString
+			format := test.dict.SnapshotString
+			if got, want := format(), test.dict.String(); got != want {
+				b.Fatalf("SnapshotString() = %q; want %q", got, want)
 			}
 			b.ReportAllocs()
 			b.ResetTimer()
