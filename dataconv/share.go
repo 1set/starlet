@@ -481,14 +481,13 @@ func (s *SharedDict) CloneDict() (*starlark.Dict, error) {
 	return CloneDict(s.dict)
 }
 
-// ToJSON serializes the SharedDict instance into a JSON string representation.
+// ToJSON serializes the SharedDict with the Starlark JSON encoder.
 // Direct Go callers must synchronize it with mapping writes; the Starlark
 // to_json method acquires the mapping lock through its attribute wrapper.
-// This method facilitates the conversion of complex, nested data structures stored within a SharedDict into a universally recognizable format (JSON),
-// making it easier to export or log the data contained within the SharedDict.
-//
-// It is important to note that the serialization process adheres to JSON's limitations, such as not supporting circular references. If the SharedDict contains
-// circular references or types not supported by JSON (e.g., functions), `ToJSON` will return an error.
+// Mutable nested values require their own ownership or synchronization.
+// The encoder rejects unsupported values and cycles in native Starlark containers.
+// This does not guarantee cycle detection or termination inside arbitrary host
+// MarshalJSON methods, attribute callbacks or Go-backed values.
 func (s *SharedDict) ToJSON() (string, error) {
 	return EncodeStarlarkJSON(s.dict)
 }

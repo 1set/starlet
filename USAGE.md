@@ -214,9 +214,48 @@ print("new" in original, original["items"])
 # Output: False [1, 2]
 ```
 
-Own or synchronize mutable nested values separately. Default Starlark
-formatting/printing and the Go `String`/`ToJSON` methods still require external
-synchronization with mapping writers.
+Prefer one owner goroutine for a shared value, with other goroutines sending it requests. Serialize both updates and output at that owner. Default Starlark formatting/printing and the Go `String`/`ToJSON` methods do not lock the mapping themselves.
+
+If multiple goroutines need access, use one application mutex for **every access to the shared mutable graph**, including output and reads/writes through nested aliases. Hold it for an entire Machine `Run`/`Call` that can read or change the same value. The dictionary's internal locks do not make other accesses participate in this application mutex. This minimal Go example keeps the dictionary private to the synchronized operations:
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+	"sync"
+
+	"github.com/1set/starlet/dataconv"
+	"go.starlark.net/starlark"
+)
+
+func main() {
+	var gate sync.Mutex
+	shared := dataconv.NewSharedDict()
+	store := func(n int) error {
+		gate.Lock()
+		defer gate.Unlock()
+		return shared.SetKey(starlark.String("count"), starlark.MakeInt(n))
+	}
+	encode := func() (string, error) {
+		gate.Lock()
+		defer gate.Unlock()
+		return shared.ToJSON()
+	}
+	if err := store(1); err != nil {
+		log.Fatal(err)
+	}
+	text, err := encode()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(text)
+	// Output: {"count":1}
+}
+```
+
+The example contains only a native integer. Formatting and JSON encoding of Go-backed values can invoke host callbacks: while holding the application mutex, do not reenter it or wait for work that needs it. A callback at the owner goroutine must likewise not wait for that owner to handle another request. For complex host values, have the owner construct independent plain data, then encode that data after leaving the ownership or lock boundary. `to_dict()`/`CloneDict()` are shallow copies; freezing the original shared value changes that original rather than creating an isolated copy. Neither substitutes for ownership of nested mutable values.
 
 For on-demand debugging and diagnostics in Go, use
 `text := shared.SnapshotString()` to capture and format the mapping's entries
