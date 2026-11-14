@@ -257,18 +257,29 @@ func main() {
 
 The example contains only a native integer. Formatting and JSON encoding of Go-backed values can invoke host callbacks: while holding the application mutex, do not reenter it or wait for work that needs it. A callback at the owner goroutine must likewise not wait for that owner to handle another request. For complex host values, have the owner construct independent plain data, then encode that data after leaving the ownership or lock boundary. `to_dict()`/`CloneDict()` are shallow copies; freezing the original shared value changes that original rather than creating an isolated copy. Neither substitutes for ownership of nested mutable values.
 
-From Go, use `text := shared.SnapshotString()` to format a snapshot of the
-mapping's entries without racing with mapping updates. Formatting callbacks run
-after the mapping lock is released; mutable nested values remain shared.
+For on-demand debugging and diagnostics in Go, use
+`text := shared.SnapshotString()` to capture and format the mapping's entries
+without racing with mapping updates. Formatting callbacks run after the mapping
+lock is released; mutable nested values remain shared.
 Call `SnapshotString` without already holding that dictionary's mutex, and
 outside callbacks from operations that hold it, such as key `Hash`/`Equal` or
 value `Freeze`. This Go method does not add a Starlark builtin or change default
 printing. See [shared_dict methods and callback rules](lib/goidiomatic/README.md#shared_dict).
 
-Snapshot formatting copies entries into temporary memory. Larger or nested
-dictionaries can use more bytes than direct formatting; avoiding intermediate
-strings and repeated path allocations can offset some work. The net cost depends
-on the values, Go version and machine. Run the included comparisons with:
+Cycle detection follows list/dict/set references through tuples, nested
+`SharedDict` values and structs with unique field names. Nested `SharedDict`
+values are not locked; synchronize them separately. Sets capture their elements
+before formatting callbacks run. Custom values and Go-created structs with
+duplicate field names keep their own `String` behavior. Go-created cycles
+consisting only of tuples are not detected. There is no general depth or output
+limit.
+
+Snapshot formatting copies entries and tracks container paths, adding temporary
+memory and work. Large sets and nested containers can take longer and use more
+bytes than direct formatting. Call it only when diagnostic output is needed;
+avoid high-frequency business loops. Normal execution and default printing do
+not call it automatically. Costs depend on the values, Go version and machine.
+Run the included comparisons with:
 
 ```bash
 go test ./dataconv -run '^$' -bench '^BenchmarkSharedDictReadPaths$' -benchmem
