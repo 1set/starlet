@@ -25,7 +25,7 @@ Load name for `load()`: `go_idiomatic`.
 | `module(name, **kv) -> module` | Build a `starlarkstruct` module named `name`. |
 | `struct(**kv) -> struct` | Build an anonymous comparable struct. |
 | `make_struct(name, **kv) -> struct` | Build a struct whose constructor name is `name`. |
-| `shared_dict() -> shared_dict` | Create an empty thread-safe shared dictionary. |
+| `shared_dict() -> shared_dict` | Create an empty dictionary with synchronized top-level access. |
 | `make_shared_dict(name="", data=None) -> shared_dict` | Create a shared dictionary with an optional type name and initial data. |
 | `to_dict(v) -> value` | Convert a dict, `module`, `struct`, `GoStruct`, or `shared_dict`; usually returns a dict. |
 | `eprint(*args, sep=" ")` | `print`-style output to stderr. |
@@ -230,16 +230,16 @@ provide the workloads, sample results and reproduction commands.
 
 ### `shared_dict`
 
-A mutable dictionary returned by `shared_dict()` and `make_shared_dict()`. Indexing and dictionary methods lock the top-level mapping; this does not protect mutable nested values or make every operation safe during concurrent writes. In particular, format/print the dictionary only while writers are stopped or externally synchronized. Its `type()` is `shared_dict` by default, or the custom name passed to `make_shared_dict`. It supports indexing (`sd["k"] = v`, `sd["k"]`), membership (`in`), the `.len()` method, and `==`/`!=` comparison with another `shared_dict`. It is **not** iterable, and the builtin `len()` does not apply — use the `.len()` method.
+A mutable dictionary returned by `shared_dict()` and `make_shared_dict()`. Indexing and dictionary methods lock the top-level mapping. Default output takes an internal snapshot or returns `shared_dict(<busy>)`; JSON output reports an error when it cannot safely proceed. Mutable native aliases still require their own ownership or synchronization. Its `type()` is `shared_dict` by default, or the custom name passed to `make_shared_dict`. It supports indexing (`sd["k"] = v`, `sd["k"]`), membership (`in`), the `.len()` method, and `==`/`!=` comparison with another `shared_dict`. It is **not** iterable, and the builtin `len()` does not apply — use the `.len()` method.
 
 Beyond the standard dict methods it inherits (`clear`, `get`, `items`, `keys`, `pop`, `popitem`, `setdefault`, `update`, `values`), it adds the methods below.
 
 | method | description |
 |--------|-------------|
 | `len() -> int` | Number of items in the dictionary. |
-| `perform(fn)` | Call `fn(dict)` with the underlying plain dict while holding the lock, for atomic compound updates. Do not retain that dict or reenter this `shared_dict` from the callback. |
+| `perform(fn)` | Call `fn(dict)` with the underlying plain dict while holding the lock, for atomic compound updates. Do not retain that dict or call locking methods on the owning `shared_dict` from the callback; output calls report busy rather than waiting. |
 | `to_dict() -> dict` | Copy top-level entries into a plain dict. Inserting/removing clone entries is independent; nested values remain shared. |
-| `to_json() -> str` | Serialize the contents to a JSON string. |
+| `to_json() -> str` | Serialize supported native data; a busy lock or unsupported host value raises an error. |
 | `from_json(json_str)` | Decode a JSON object string and merge its pairs into the dictionary. |
 
 ```python
@@ -283,7 +283,7 @@ print(sd.to_json())
 # Output: {"new_key":"new_value"}
 ```
 
-For Go `String`/`ToJSON` and shared nested values, use one owner or a common application mutex for every access, including all writers. See the [shared-value synchronization example and callback limits](../../USAGE.md#shared-values).
+Default output captures entries and returns `shared_dict(<busy>)` instead of waiting for an occupied output or mapping lock. `to_json()` uses the native-data-only Go `ToJSON` path and reports a busy or unsupported-value error without returning partial JSON. Raw nested aliases still require one owner or common synchronization. See the [shared-value output and ownership rules](../../USAGE.md#shared-values).
 
 ## Details & examples
 

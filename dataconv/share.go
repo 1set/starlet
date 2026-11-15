@@ -1,14 +1,16 @@
 package dataconv
 
 import (
+	"errors"
 	"fmt"
-	"sort"
+	"reflect"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	tps "github.com/1set/starlet/dataconv/types"
 	itn "github.com/1set/starlet/internal"
-	stdjson "go.starlark.net/lib/json"
+	starlarktime "go.starlark.net/lib/time"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/syntax"
@@ -18,24 +20,29 @@ import (
 // methods, Len, CloneDict, LoadJSON, Freeze and comparison.
 // Returned keys/values and shallow clones can retain mutable nested aliases;
 // the mapping's lock does not synchronize access through those aliases.
-// String and the Go ToJSON method do not lock: stop or externally synchronize
-// writers before formatting or serializing the dictionary. Configure its type
-// name before sharing it between goroutines.
-// SnapshotString provides explicit snapshot formatting from Go without holding
-// the mapping lock while formatting values.
+// String and SnapshotString capture entries before formatting, and ToJSON
+// serializes native Starlark data under the mapping lock. Output methods do not
+// wait for a busy dictionary: formatting returns shared_dict(<busy>), while
+// ToJSON returns ErrSharedDictBusy. Type names can be changed concurrently.
 // A frozen SharedDict rejects mapping updates and freezes its contained values.
 type SharedDict struct {
 	_ itn.DoNotCompare
 	sync.RWMutex
-	dict   *starlark.Dict
-	frozen bool
-	name   string
+	outputMu sync.Mutex
+	dict     *starlark.Dict
+	frozen   bool
+	name     atomic.Pointer[string]
 }
 
 const (
 	defaultSharedDictSize = 8
 	defaultSharedDictName = "shared_dict"
+	sharedDictBusyString  = "shared_dict(<busy>)"
 )
+
+// ErrSharedDictBusy reports output that could not safely acquire its locks.
+// Retry outside callbacks or critical sections; a busy result contains no JSON.
+var ErrSharedDictBusy = errors.New("shared dictionary is busy")
 
 var (
 	_ starlark.Value      = (*SharedDict)(nil)
@@ -54,10 +61,9 @@ func NewSharedDict() *SharedDict {
 
 // NewNamedSharedDict creates a new SharedDict instance with the given name.
 func NewNamedSharedDict(name string) *SharedDict {
-	return &SharedDict{
-		dict: starlark.NewDict(defaultSharedDictSize),
-		name: name,
-	}
+	s := NewSharedDict()
+	s.SetTypeName(name)
+	return s
 }
 
 // NewSharedDictFromDict creates a new SharedDict instance from the given starlark.Dict.
@@ -74,46 +80,22 @@ func NewSharedDictFromDict(d *starlark.Dict) *SharedDict {
 }
 
 func (s *SharedDict) String() string {
-	var v string
-	if s != nil && s.dict != nil {
-		v = s.dict.String()
-	}
-	return fmt.Sprintf("%s(%s)", s.getTypeName(), v)
+	return s.SnapshotString()
 }
 
 // SnapshotString formats a shallow snapshot of the mapping in insertion order.
-// It releases the mapping lock before invoking formatting callbacks. Mutable
-// nested values remain shared and require their own synchronization.
-// Nested SharedDict values are not locked by this method. Cycle detection spans
+// It releases mapping locks before invoking formatting callbacks. Output from
+// each visited SharedDict is serialized without waiting for a busy lock; a busy
+// dictionary is rendered as shared_dict(<busy>), including reentrant calls.
+// Mutable native aliases still require their own ownership or synchronization.
+// Cycle detection spans
 // native lists/dictionaries/sets, SharedDict and structs with unique field names,
 // following references via tuples. Other values retain their own String behavior.
 // Set elements are captured before formatting callbacks run; the values remain shared.
-// Call it without holding this dictionary's mutex, and outside callbacks from
-// operations that hold it (for example a key's Hash/Equal or a value's Freeze).
 func (s *SharedDict) SnapshotString() string {
-	s.RLock()
-	dict, name := s.dict, s.getTypeName()
-	var items []starlark.Tuple
-	if dict != nil {
-		items = dict.Items()
-	}
-	s.RUnlock()
-
-	if dict == nil {
-		return name + "()"
-	}
-	if len(items) == 0 {
-		return name + "({})"
-	}
 	var f sharedDictFormatter
-	f.shared = s
-	f.name = name
-	f.root = dict
-	f.items = items
-	f.WriteString(name)
-	f.WriteByte('(')
-	f.write(dict, nil)
-	f.WriteByte(')')
+	defer f.release()
+	f.write(s, nil)
 	return f.String()
 }
 
@@ -122,10 +104,49 @@ func (s *SharedDict) SnapshotString() string {
 // keys or invoking host callbacks under the mapping lock.
 type sharedDictFormatter struct {
 	strings.Builder
+	snapshots []sharedDictSnapshot
+}
+
+type sharedDictSnapshot struct {
 	shared *SharedDict
+	dict   *starlark.Dict
 	name   string
-	root   *starlark.Dict
 	items  []starlark.Tuple
+}
+
+func (f *sharedDictFormatter) release() {
+	for i := len(f.snapshots) - 1; i >= 0; i-- {
+		f.snapshots[i].shared.outputMu.Unlock()
+	}
+}
+
+func (f *sharedDictFormatter) capture(shared *SharedDict) (*sharedDictSnapshot, bool) {
+	for i := range f.snapshots {
+		if f.snapshots[i].shared == shared {
+			return &f.snapshots[i], true
+		}
+	}
+	if !shared.outputMu.TryLock() {
+		return nil, false
+	}
+	if !shared.TryLock() {
+		shared.outputMu.Unlock()
+		return nil, false
+	}
+	captured := false
+	defer func() {
+		shared.Unlock()
+		if !captured {
+			shared.outputMu.Unlock()
+		}
+	}()
+	snapshot := sharedDictSnapshot{shared: shared, dict: shared.dict, name: shared.getTypeName()}
+	if snapshot.dict != nil {
+		snapshot.items = snapshot.dict.Items()
+	}
+	f.snapshots = append(f.snapshots, snapshot)
+	captured = true
+	return &f.snapshots[len(f.snapshots)-1], true
 }
 
 func (f *sharedDictFormatter) write(value starlark.Value, path []starlark.Value) {
@@ -159,14 +180,19 @@ func (f *sharedDictFormatter) write(value starlark.Value, path []starlark.Value)
 		}
 		f.WriteByte(')')
 	case *SharedDict:
-		dict, name := f.root, f.name
-		if value != f.shared {
-			dict, name = value.dict, value.getTypeName()
+		if value == nil {
+			f.WriteString(defaultSharedDictName + "()")
+			return
 		}
-		f.WriteString(name)
+		snapshot, ok := f.capture(value)
+		if !ok {
+			f.WriteString(sharedDictBusyString)
+			return
+		}
+		f.WriteString(snapshot.name)
 		f.WriteByte('(')
-		if dict != nil {
-			f.write(dict, path)
+		if snapshot.dict != nil {
+			f.write(snapshot.dict, path)
 		}
 		f.WriteByte(')')
 	case *starlark.Set:
@@ -178,8 +204,15 @@ func (f *sharedDictFormatter) write(value starlark.Value, path []starlark.Value)
 		if sharedDictPathContains(path, value) {
 			f.WriteString("...")
 		} else {
-			items := f.items
-			if value != f.root {
+			var items []starlark.Tuple
+			captured := false
+			for _, snapshot := range f.snapshots {
+				if snapshot.dict == value {
+					items, captured = snapshot.items, true
+					break
+				}
+			}
+			if !captured {
 				items = value.Items()
 			}
 			valuePath := append(path, value)
@@ -287,15 +320,20 @@ func sharedDictPathContains(path []starlark.Value, value starlark.Value) bool {
 
 // SetTypeName sets the type name of the SharedDict.
 func (s *SharedDict) SetTypeName(name string) {
-	s.name = name
+	if name == "" {
+		s.name.Store(nil)
+		return
+	}
+	s.name.Store(&name)
 }
 
 // getTypeName returns the type name of the SharedDict.
 func (s *SharedDict) getTypeName() string {
-	if s.name == "" {
+	name := s.name.Load()
+	if name == nil {
 		return defaultSharedDictName
 	}
-	return s.name
+	return *name
 }
 
 // Type returns the type name of the SharedDict.
@@ -365,58 +403,55 @@ func (s *SharedDict) SetKey(k, v starlark.Value) error {
 // Attr returns the value of the specified attribute, or (nil, nil) if the attribute is not found.
 // It implements the starlark.HasAttrs interface.
 func (s *SharedDict) Attr(name string) (starlark.Value, error) {
-	s.Lock()
-	defer s.Unlock()
-
-	// basic check
-	if s.dict == nil {
-		return nil, nil
+	if name == "to_json" {
+		return starlark.NewBuiltin(name, s.sharedDictToJSON), nil
 	}
-
-	var (
-		attr starlark.Value
-		err  error
-	)
-	// try to get the new custom builtin
-	if b, ok := customSharedDictMethods[name]; ok {
-		attr = b.BindReceiver(s.dict)
-	} else {
-		// get the builtin from the original dict
-		attr, err = s.dict.Attr(name)
-	}
-
-	// convert to builtin
-	if attr == nil || err != nil {
-		return attr, err
-	}
-	btl, ok := attr.(*starlark.Builtin)
+	btl, ok := customSharedDictMethods[name]
 	if !ok {
-		return nil, fmt.Errorf("unsupported attribute: %s", name)
+		attr, err := sharedDictMethodPrototype.Attr(name)
+		if attr == nil || err != nil {
+			return attr, err
+		}
+		btl, ok = attr.(*starlark.Builtin)
+		if !ok {
+			return nil, fmt.Errorf("unsupported attribute: %s", name)
+		}
 	}
-
-	// wrap the builtin
-	return starlark.NewBuiltin(name, func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		// lock the shared dict
+	// Metadata lookup does not touch the live mapping. Acquire its lock only
+	// when calling the method, preserving the existing method-call contract.
+	return starlark.NewBuiltin(name, func(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		s.Lock()
 		defer s.Unlock()
-
-		// call the original builtin
-		return starlark.Call(thread, btl, args, kwargs)
+		s.ensureDict()
+		return starlark.Call(thread, btl.BindReceiver(s.dict), args, kwargs)
 	}), nil
 }
 
 // AttrNames returns a new slice containing the names of all the attributes of the SharedDict.
 // It implements the starlark.HasAttrs interface.
 func (s *SharedDict) AttrNames() []string {
-	if s.dict != nil {
-		names := s.dict.AttrNames()
-		for cn := range customSharedDictMethods {
-			names = append(names, cn)
-		}
-		sort.Strings(names)
-		return names
+	if s == nil {
+		return nil
 	}
-	return nil
+	return append([]string(nil), sharedDictAttrNames...)
+}
+
+var sharedDictMethodPrototype = starlark.NewDict(0)
+
+var sharedDictAttrNames = []string{
+	"clear", "from_json", "get", "items", "keys", "len", "perform", "pop",
+	"popitem", "setdefault", "to_dict", "to_json", "update", "values",
+}
+
+// The caller holds the mapping's write lock. A zero-value dictionary is empty;
+// initialization must preserve a Freeze that happened before its first use.
+func (s *SharedDict) ensureDict() {
+	if s.dict == nil {
+		s.dict = starlark.NewDict(defaultSharedDictSize)
+		if s.frozen {
+			s.dict.Freeze()
+		}
+	}
 }
 
 // CompareSameType compares the SharedDict with another value of the same type.
@@ -481,15 +516,166 @@ func (s *SharedDict) CloneDict() (*starlark.Dict, error) {
 	return CloneDict(s.dict)
 }
 
-// ToJSON serializes the SharedDict with the Starlark JSON encoder.
-// Direct Go callers must synchronize it with mapping writes; the Starlark
-// to_json method acquires the mapping lock through its attribute wrapper.
-// Mutable nested values require their own ownership or synchronization.
-// The encoder rejects unsupported values and cycles in native Starlark containers.
-// This does not guarantee cycle detection or termination inside arbitrary host
-// MarshalJSON methods, attribute callbacks or Go-backed values.
+// ToJSON serializes native Starlark data with the official JSON encoder.
+// It returns ErrSharedDictBusy rather than waiting for another output operation
+// or an already-held mapping lock. Supported JSON data includes native scalars,
+// containers, structs/modules, duration and the interpreter's immutable range
+// and string/bytes iterator sources. Dictionary keys must be strings.
+// Other Go-backed values and custom JSON/attribute implementations are rejected
+// before encoding, so no host code runs while the mapping lock is held.
+// Mutable native aliases still require ownership or external synchronization.
+// The Starlark to_json method uses the same rules. Errors return an empty string.
 func (s *SharedDict) ToJSON() (string, error) {
-	return EncodeStarlarkJSON(s.dict)
+	return s.toJSON(nil)
+}
+
+func (s *SharedDict) toJSON(thread *starlark.Thread) (string, error) {
+	if s == nil {
+		return "", fmt.Errorf("shared_dict.to_json: nil shared dictionary")
+	}
+	if !s.outputMu.TryLock() {
+		return "", ErrSharedDictBusy
+	}
+	defer s.outputMu.Unlock()
+	if !s.TryLock() {
+		return "", ErrSharedDictBusy
+	}
+	defer s.Unlock()
+	s.ensureDict()
+	if err := sharedDictCheckJSON(s.dict); err != nil {
+		return "", err
+	}
+	if thread == nil {
+		return EncodeStarlarkJSON(s.dict)
+	}
+	value, err := starlark.Call(thread, starJSONEncode, starlark.Tuple{s.dict}, nil)
+	if err != nil {
+		return "", err
+	}
+	return string(value.(starlark.String)), nil
+}
+
+// Validate only the exact native types whose JSON traversal invokes no host
+// callbacks. A work list and visited identities also terminate on Go-created
+// tuple cycles; the encoder itself reports supported-container cycle errors.
+func sharedDictCheckJSON(root starlark.Value) error {
+	type tupleIdentity struct {
+		first *starlark.Value
+		len   int
+	}
+	seen := make(map[interface{}]bool)
+	visit := func(key interface{}) bool {
+		if seen[key] {
+			return false
+		}
+		seen[key] = true
+		return true
+	}
+	invalid := func(value starlark.Value) error {
+		return fmt.Errorf("shared_dict.to_json: unsupported value %T; want native Starlark JSON data", value)
+	}
+	pending := []starlark.Value{root}
+	for len(pending) > 0 {
+		value := pending[len(pending)-1]
+		pending = pending[:len(pending)-1]
+		switch value := value.(type) {
+		case starlark.NoneType, starlark.Bool, starlark.Int, starlark.Float, starlark.String,
+			starlarktime.Duration, starlarktime.Time:
+			continue
+		case *starlark.Dict:
+			if value == nil {
+				return invalid(value)
+			}
+			if !visit(value) {
+				continue
+			}
+			for _, item := range value.Items() {
+				if _, ok := item[0].(starlark.String); !ok {
+					return fmt.Errorf("shared_dict.to_json: dictionary key must be string (got %T)", item[0])
+				}
+				pending = append(pending, item[1])
+			}
+		case *starlark.List:
+			if value == nil {
+				return invalid(value)
+			}
+			if !visit(value) {
+				continue
+			}
+			for i := 0; i < value.Len(); i++ {
+				pending = append(pending, value.Index(i))
+			}
+		case starlark.Tuple:
+			if len(value) == 0 || !visit(tupleIdentity{&value[0], len(value)}) {
+				continue
+			}
+			pending = append(pending, value...)
+		case *starlark.Set:
+			if value == nil {
+				return invalid(value)
+			}
+			if !visit(value) {
+				continue
+			}
+			func() {
+				iter := value.Iterate()
+				defer iter.Done()
+				var element starlark.Value
+				for iter.Next(&element) {
+					pending = append(pending, element)
+				}
+			}()
+		case *starlarkstruct.Struct:
+			if value == nil {
+				return invalid(value)
+			}
+			if !visit(value) {
+				continue
+			}
+			for _, name := range value.AttrNames() {
+				field, err := value.Attr(name)
+				if err != nil || field == nil {
+					return fmt.Errorf("shared_dict.to_json: invalid native struct field")
+				}
+				pending = append(pending, field)
+			}
+		case *starlarkstruct.Module:
+			if value == nil {
+				return invalid(value)
+			}
+			if !visit(value) {
+				continue
+			}
+			for _, name := range value.AttrNames() {
+				field, err := value.Attr(name)
+				if err != nil || field == nil {
+					return fmt.Errorf("shared_dict.to_json: invalid native module member")
+				}
+				pending = append(pending, field)
+			}
+		default:
+			if sharedDictSafeJSONIterable(value) {
+				continue
+			}
+			return invalid(value)
+		}
+	}
+	return nil
+}
+
+// These four immutable, private iterator sources are closed over scalar data in
+// the pinned interpreter. Do not trust arbitrary Iterable implementations or
+// pre-traverse a potentially large range merely to validate its element types.
+func sharedDictSafeJSONIterable(value starlark.Value) bool {
+	typ := reflect.TypeOf(value)
+	if typ == nil || typ.Kind() != reflect.Struct || typ.PkgPath() != "go.starlark.net/starlark" {
+		return false
+	}
+	switch typ.Name() {
+	case "rangeValue", "stringElems", "stringCodepoints", "bytesIterable":
+		return true
+	}
+	return false
 }
 
 // LoadJSON updates the SharedDict instance with key-value pairs decoded from a given JSON string.
@@ -540,7 +726,6 @@ var (
 		"len":       starlark.NewBuiltin("len", sharedDictLen),
 		"perform":   starlark.NewBuiltin("perform", sharedDictPerform),
 		"to_dict":   starlark.NewBuiltin("to_dict", sharedDictToDict),
-		"to_json":   starlark.NewBuiltin("to_json", sharedDictToJSON),
 		"from_json": starlark.NewBuiltin("from_json", sharedDictFromJSON),
 	}
 )
@@ -588,24 +773,17 @@ func sharedDictToDict(thread *starlark.Thread, b *starlark.Builtin, args starlar
 }
 
 // sharedDictToJSON converts the underlying dictionary to a JSON string.
-func sharedDictToJSON(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (s *SharedDict) sharedDictToJSON(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	// check the arguments: no arguments
 	if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
 		return nil, err
 	}
 
-	// get the receiver
-	d := b.Receiver().(*starlark.Dict)
-
-	// get the JSON encoder
-	jm, ok := stdjson.Module.Members["encode"]
-	if !ok {
-		return nil, fmt.Errorf("json.encode not found")
+	text, err := s.toJSON(thread)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", b.Name(), err)
 	}
-	enc := jm.(*starlark.Builtin)
-
-	// convert to JSON
-	return starlark.Call(thread, enc, starlark.Tuple{d}, nil)
+	return starlark.String(text), nil
 }
 
 // sharedDictFromJSON converts a starlark.Value to a starlark.Dict, and wraps it with a SharedDict.
