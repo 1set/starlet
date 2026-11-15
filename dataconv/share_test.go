@@ -1,16 +1,19 @@
 package dataconv
 
 // SharedDict tests cover constructors/names, script methods, frozen/nil values,
-// concurrent access, caller-synchronized output, snapshots, and JSON conversion.
+// concurrent access, nonblocking output, snapshots, and native JSON conversion.
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"os"
 	"os/exec"
 	"reflect"
 	"runtime/debug"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -126,10 +129,12 @@ func TestSharedDict_SnapshotString(t *testing.T) {
 		}
 	})
 	t.Run("empty_root", func(t *testing.T) {
+		zero := new(SharedDict)
+		zero.SetTypeName("zero")
 		for _, test := range []struct {
 			dict *SharedDict
 			want string
-		}{{NewSharedDict(), "shared_dict({})"}, {NewNamedSharedDict("named"), "named({})"}, {&SharedDict{name: "zero"}, "zero()"}} {
+		}{{NewSharedDict(), "shared_dict({})"}, {NewNamedSharedDict("named"), "named({})"}, {zero, "zero()"}} {
 			if got := test.dict.SnapshotString(); got != test.want {
 				t.Fatalf("SnapshotString() = %q; want %q", got, test.want)
 			}
@@ -261,6 +266,15 @@ func TestSharedDict_SnapshotStringCallbackPanic(t *testing.T) {
 		t.Fatal("mapping lock remained held after a formatting panic")
 	}
 	sd.Unlock()
+	if err := sd.SetKey(starlark.String("value"), starlark.None); err != nil {
+		t.Fatal(err)
+	}
+	if sd.String() == sharedDictBusyString || sd.SnapshotString() == sharedDictBusyString {
+		t.Fatal("output lock leaked after formatting panic")
+	}
+	if _, err := sd.ToJSON(); err != nil {
+		t.Fatalf("ToJSON after formatting panic: %v", err)
+	}
 }
 
 func TestSharedDict_SnapshotStringConcurrent(t *testing.T) {
@@ -287,7 +301,7 @@ func TestSharedDict_SnapshotStringConcurrent(t *testing.T) {
 		<-start
 		for i := 0; i < 1000; i++ {
 			got := sd.SnapshotString()
-			if !strings.HasPrefix(got, `shared_dict({"counter": `) || !strings.HasSuffix(got, "})") {
+			if got != sharedDictBusyString && (!strings.HasPrefix(got, `shared_dict({"counter": `) || !strings.HasSuffix(got, "})")) {
 				t.Errorf("malformed concurrent String: %q", got)
 				return
 			}
@@ -297,8 +311,423 @@ func TestSharedDict_SnapshotStringConcurrent(t *testing.T) {
 	workers.Wait()
 }
 
-// This verifies the caller's synchronization discipline; String and ToJSON do
-// not acquire the application mutex or become safe for unsynchronized callers.
+func TestSharedDict_OutputLocks(t *testing.T) {
+	sd := NewNamedSharedDict("named")
+	if err := sd.SetKey(starlark.String("n"), starlark.MakeInt(1)); err != nil {
+		t.Fatal(err)
+	}
+	encode, err := sd.Attr("to_json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, lock := range []struct {
+		name   string
+		lock   func()
+		unlock func()
+	}{{"write", sd.Lock, sd.Unlock}, {"read", sd.RLock, sd.RUnlock}, {"output", sd.outputMu.Lock, sd.outputMu.Unlock}} {
+		t.Run(lock.name, func(t *testing.T) {
+			lock.lock()
+			defer lock.unlock()
+			if got := sd.String(); got != sharedDictBusyString {
+				t.Errorf("String while busy = %q", got)
+			}
+			if got := sd.SnapshotString(); got != sharedDictBusyString {
+				t.Errorf("SnapshotString while busy = %q", got)
+			}
+			if text, err := sd.ToJSON(); text != "" || !errors.Is(err, ErrSharedDictBusy) {
+				t.Errorf("ToJSON while busy = (%q, %v)", text, err)
+			}
+			if _, err := starlark.Call(&starlark.Thread{}, encode, nil, nil); !errors.Is(err, ErrSharedDictBusy) {
+				t.Errorf("script to_json while busy = %v", err)
+			}
+			if lock.name == "write" {
+				if method, err := sd.Attr("to_json"); method == nil || err != nil {
+					t.Errorf("to_json lookup while locked = (%v,%v)", method, err)
+				}
+				if names := sd.AttrNames(); !reflect.DeepEqual(names, sharedDictAttrNames) {
+					t.Errorf("attribute names while locked = %v", names)
+				}
+			}
+		})
+	}
+	if got := sd.String(); got != `named({"n": 1})` {
+		t.Errorf("String after busy calls = %q", got)
+	}
+	if text, err := sd.ToJSON(); text != `{"n":1}` || err != nil {
+		t.Errorf("ToJSON after busy calls = (%q, %v)", text, err)
+	}
+	var nilDict *SharedDict
+	if names := nilDict.AttrNames(); names != nil {
+		t.Errorf("nil AttrNames = %v", names)
+	}
+	if got := nilDict.String(); got != "shared_dict()" {
+		t.Errorf("nil String = %q", got)
+	}
+	if text, err := nilDict.ToJSON(); text != "" || err == nil {
+		t.Errorf("nil ToJSON = (%q, %v)", text, err)
+	}
+	if text, err := new(SharedDict).ToJSON(); text != "{}" || err != nil {
+		t.Errorf("zero ToJSON = (%q, %v)", text, err)
+	}
+}
+
+func TestSharedDict_OutputConcurrent(t *testing.T) {
+	for _, withWriter := range []bool{false, true} {
+		t.Run(fmt.Sprintf("writer=%v", withWriter), func(t *testing.T) {
+			sd := NewSharedDict()
+			if err := sd.SetKey(starlark.String("counter"), starlark.MakeInt(0)); err != nil {
+				t.Fatal(err)
+			}
+			set := starlark.NewSet(2)
+			for _, n := range []int{1, 2} {
+				if err := set.Insert(starlark.MakeInt(n)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := sd.SetKey(starlark.String("list"), starlark.NewList([]starlark.Value{starlark.MakeInt(1)})); err != nil {
+				t.Fatal(err)
+			}
+			if err := sd.SetKey(starlark.String("set"), set); err != nil {
+				t.Fatal(err)
+			}
+			start := make(chan struct{})
+			var workers sync.WaitGroup
+			for _, format := range []func() string{sd.String, sd.SnapshotString} {
+				format := format
+				workers.Add(1)
+				go func() {
+					defer workers.Done()
+					<-start
+					for i := 0; i < 128; i++ {
+						got := format()
+						if got != sharedDictBusyString && (!strings.HasPrefix(got, `shared_dict({"counter": `) || !strings.HasSuffix(got, `, "list": [1], "set": set([1, 2])})`)) {
+							t.Errorf("concurrent format = %q", got)
+							return
+						}
+					}
+				}()
+			}
+			workers.Add(1)
+			go func() {
+				defer workers.Done()
+				<-start
+				for i := 0; i < 128; i++ {
+					text, err := sd.ToJSON()
+					if errors.Is(err, ErrSharedDictBusy) && text == "" {
+						continue
+					}
+					var got struct {
+						Counter int   `json:"counter"`
+						List    []int `json:"list"`
+						Set     []int `json:"set"`
+					}
+					if err != nil || json.Unmarshal([]byte(text), &got) != nil || got.Counter < 0 || got.Counter >= 128 || !reflect.DeepEqual(got.List, []int{1}) || !reflect.DeepEqual(got.Set, []int{1, 2}) {
+						t.Errorf("concurrent ToJSON = (%q, %v)", text, err)
+						return
+					}
+				}
+			}()
+			if withWriter {
+				workers.Add(1)
+				go func() {
+					defer workers.Done()
+					<-start
+					for i := 0; i < 128; i++ {
+						if err := sd.SetKey(starlark.String("counter"), starlark.MakeInt(i)); err != nil {
+							t.Error(err)
+							return
+						}
+					}
+				}()
+			}
+			close(start)
+			workers.Wait()
+			counter := 0
+			if withWriter {
+				counter = 127
+			}
+			wantText := fmt.Sprintf(`shared_dict({"counter": %d, "list": [1], "set": set([1, 2])})`, counter)
+			if got := sd.String(); got != wantText {
+				t.Errorf("uncontended String = %q, want %q", got, wantText)
+			}
+			wantJSON := fmt.Sprintf(`{"counter":%d,"list":[1],"set":[1,2]}`, counter)
+			if got, err := sd.ToJSON(); got != wantJSON || err != nil {
+				t.Errorf("uncontended ToJSON = (%q,%v), want %q", got, err, wantJSON)
+			}
+		})
+	}
+}
+
+func TestSharedDict_ConcurrentTypeName(t *testing.T) {
+	sd := NewSharedDict()
+	start := make(chan struct{})
+	var workers sync.WaitGroup
+	workers.Add(2)
+	go func() {
+		defer workers.Done()
+		<-start
+		for i := 0; i < 128; i++ {
+			sd.SetTypeName([]string{"left", "right", ""}[i%3])
+		}
+	}()
+	go func() {
+		defer workers.Done()
+		<-start
+		for i := 0; i < 128; i++ {
+			if name := sd.Type(); name != "left" && name != "right" && name != "shared_dict" {
+				t.Errorf("concurrent Type = %q", name)
+			}
+			if text := sd.String(); text != "left({})" && text != "right({})" && text != "shared_dict({})" && text != sharedDictBusyString {
+				t.Errorf("concurrent named String = %q", text)
+			}
+		}
+	}()
+	close(start)
+	workers.Wait()
+}
+
+func TestSharedDict_ConcurrentNestedOutput(t *testing.T) {
+	a, b := NewNamedSharedDict("a"), NewNamedSharedDict("b")
+	for _, pair := range []struct{ owner, child *SharedDict }{{a, b}, {b, a}} {
+		if err := pair.owner.SetKey(starlark.String("items"), starlark.NewList([]starlark.Value{pair.child})); err != nil {
+			t.Fatal(err)
+		}
+	}
+	start := make(chan struct{})
+	var workers sync.WaitGroup
+	for _, dict := range []*SharedDict{a, b} {
+		dict := dict
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			<-start
+			for i := 0; i < 128; i++ {
+				if text := dict.String(); text == "" {
+					t.Error("empty opposite-root output")
+					return
+				}
+			}
+		}()
+	}
+	workers.Add(1)
+	go func() {
+		defer workers.Done()
+		<-start
+		for i := 0; i < 128; i++ {
+			if err := b.SetKey(starlark.String("counter"), starlark.MakeInt(i)); err != nil {
+				t.Error(err)
+				return
+			}
+		}
+	}()
+	close(start)
+	workers.Wait()
+	if got, found, err := b.Get(starlark.String("counter")); err != nil || !found || got != starlark.MakeInt(127) {
+		t.Fatalf("child writer result = (%v,%v,%v)", got, found, err)
+	}
+	if got := a.String(); got != `a({"items": [b({"items": [a({...})], "counter": 127})]})` {
+		t.Errorf("cycle after concurrent output = %q", got)
+	}
+}
+
+func TestSharedDict_NestedOutputLocks(t *testing.T) {
+	root, child := NewNamedSharedDict("root"), NewNamedSharedDict("child")
+	if err := child.SetKey(starlark.String("n"), starlark.MakeInt(1)); err != nil {
+		t.Fatal(err)
+	}
+	if err := root.SetKey(starlark.String("items"), starlark.NewList([]starlark.Value{child, child})); err != nil {
+		t.Fatal(err)
+	}
+	child.Lock()
+	got := root.String()
+	child.Unlock()
+	if got != `root({"items": [shared_dict(<busy>), shared_dict(<busy>)]})` {
+		t.Errorf("locked child = %q", got)
+	}
+	panicValue := &sharedDictFormatValue{stringFunc: func() string { panic("format panic") }}
+	if err := child.SetKey(starlark.String("panic"), panicValue); err != nil {
+		t.Fatal(err)
+	}
+	func() {
+		defer func() {
+			if recover() == nil {
+				t.Error("expected nested formatting panic")
+			}
+		}()
+		root.SnapshotString()
+	}()
+	if err := child.SetKey(starlark.String("panic"), starlark.None); err != nil {
+		t.Fatal(err)
+	}
+	for _, dict := range []*SharedDict{root, child} {
+		if got := dict.String(); got == sharedDictBusyString || strings.Contains(got, "<busy>") {
+			t.Errorf("output lock leaked after panic: %q", got)
+		}
+	}
+}
+
+type sharedDictRejectedJSONValue struct{ calls *int }
+
+func (v *sharedDictRejectedJSONValue) called()                      { (*v.calls)++; panic("JSON invoked host code") }
+func (v *sharedDictRejectedJSONValue) String() string               { v.called(); return "host" }
+func (v *sharedDictRejectedJSONValue) Type() string                 { v.called(); return "host" }
+func (v *sharedDictRejectedJSONValue) Freeze()                      { v.called() }
+func (*sharedDictRejectedJSONValue) Truth() starlark.Bool           { return true }
+func (*sharedDictRejectedJSONValue) Hash() (uint32, error)          { return 1, nil }
+func (v *sharedDictRejectedJSONValue) MarshalJSON() ([]byte, error) { v.called(); return nil, nil }
+func (v *sharedDictRejectedJSONValue) AttrNames() []string          { v.called(); return nil }
+func (v *sharedDictRejectedJSONValue) Attr(string) (starlark.Value, error) {
+	v.called()
+	return nil, nil
+}
+
+func TestSharedDict_JSONMethodThread(t *testing.T) {
+	sd := NewSharedDict()
+	method, err := sd.Attr("to_json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	method.Freeze()
+	if err := sd.SetKey(starlark.String("n"), starlark.MakeInt(1)); err != nil {
+		t.Fatalf("freezing method froze receiver: %v", err)
+	}
+	thread := &starlark.Thread{Name: "script-caller"}
+	marker := new(int)
+	thread.SetLocal("json-marker", marker)
+	old := starJSONEncode
+	defer func() { starJSONEncode = old }()
+	called := false
+	starJSONEncode = starlark.NewBuiltin("encode", func(got *starlark.Thread, _ *starlark.Builtin, _ starlark.Tuple, _ []starlark.Tuple) (starlark.Value, error) {
+		called = got == thread && got.Local("json-marker") == marker
+		return starlark.String(`{"n":1}`), nil
+	})
+	if _, err := starlark.Call(thread, method, nil, nil); err != nil || !called {
+		t.Fatalf("JSON lost caller thread: called=%v, err=%v", called, err)
+	}
+	starJSONEncode = old
+	if err := sd.SetKey(starlark.String("bad"), starlark.Float(math.NaN())); err != nil {
+		t.Fatal(err)
+	}
+	_, err = starlark.ExecFile(thread, "json-source.star", "def encode_here():\n    return sd.to_json()\nencode_here()\n", starlark.StringDict{"sd": sd})
+	if eval, ok := err.(*starlark.EvalError); !ok || !strings.Contains(eval.Backtrace(), "json-source.star") || !strings.Contains(eval.Backtrace(), "encode_here") {
+		t.Fatalf("JSON error source lost: %v", err)
+	}
+}
+
+func TestSharedDict_AttributeNames(t *testing.T) {
+	sd := new(SharedDict)
+	want := starlark.NewDict(0).AttrNames()
+	for name := range customSharedDictMethods {
+		want = append(want, name)
+	}
+	want = append(want, "to_json")
+	sort.Strings(want)
+	if got := sd.AttrNames(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("zero AttrNames = %v, want %v", got, want)
+	}
+	names := sd.AttrNames()
+	names[0] = "changed"
+	if reflect.DeepEqual(names, sd.AttrNames()) {
+		t.Fatal("AttrNames returned shared mutable list")
+	}
+	for _, frozen := range []bool{false, true} {
+		sd := new(SharedDict)
+		if frozen {
+			sd.Freeze()
+		}
+		method, err := sd.Attr("to_json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got, err := starlark.Call(&starlark.Thread{}, method, nil, nil); err != nil || got != starlark.String("{}") {
+			t.Fatalf("zero JSON = (%v,%v)", got, err)
+		}
+		update, err := sd.Attr("update")
+		if err != nil {
+			t.Fatal(err)
+		}
+		arg := starlark.NewDict(1)
+		if err := arg.SetKey(starlark.String("n"), starlark.MakeInt(1)); err != nil {
+			t.Fatal(err)
+		}
+		_, err = starlark.Call(&starlark.Thread{}, update, starlark.Tuple{arg}, nil)
+		if (err != nil) != frozen {
+			t.Fatalf("zero initialization lost frozen=%v: %v", frozen, err)
+		}
+	}
+}
+
+func TestSharedDict_ToJSONAdmission(t *testing.T) {
+	calls := 0
+	host := &sharedDictRejectedJSONValue{calls: &calls}
+	var list *starlark.List
+	var dict *starlark.Dict
+	var set *starlark.Set
+	var record *starlarkstruct.Struct
+	var module *starlarkstruct.Module
+	longTuple := starlark.Tuple{starlark.MakeInt(1), host}
+	badKey := starlark.NewDict(1)
+	if err := badKey.SetKey(host, starlark.MakeInt(1)); err != nil {
+		t.Fatal(err)
+	}
+	for _, value := range []starlark.Value{host, list, dict, set, record, module, nil, badKey, starlarkstruct.FromStringDict(starlarkstruct.Default, starlark.StringDict{"nil": nil}), &starlarkstruct.Module{Name: "nil_member", Members: starlark.StringDict{"nil": nil}}, starlarkstruct.FromStringDict(starlarkstruct.Default, starlark.StringDict{"bad": host}), &starlarkstruct.Module{Name: "host_member", Members: starlark.StringDict{"bad": host}}, starlark.Bytes("x"), starlark.Universe["len"], starlark.NewList([]starlark.Value{longTuple, longTuple[:1]})} {
+		sd := NewSharedDict()
+		if err := sd.SetKey(starlark.String("value"), value); err != nil {
+			t.Fatal(err)
+		}
+		if text, err := sd.ToJSON(); text != "" || err == nil || errors.Is(err, ErrSharedDictBusy) {
+			t.Errorf("unsupported %T produced (%q, %v)", value, text, err)
+		}
+		if calls != 0 {
+			t.Fatal("JSON invoked a host callback")
+		}
+		if err := sd.SetKey(starlark.String("value"), starlark.MakeInt(1)); err != nil {
+			t.Fatal(err)
+		}
+		if text, err := sd.ToJSON(); text != `{"value":1}` || err != nil {
+			t.Errorf("JSON locks leaked after rejection: (%q, %v)", text, err)
+		}
+	}
+	globals, err := starlark.ExecFile(&starlark.Thread{}, "json-values.star", "values = [range(3), 'abc'.elems(), 'abc'.elem_ords(), '雪'.codepoints(), '雪'.codepoint_ords(), b'abc'.elems()]", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	aliasSet := starlark.NewSet(1)
+	if err := aliasSet.Insert(starlark.MakeInt(1)); err != nil {
+		t.Fatal(err)
+	}
+	aliasList := starlark.NewList([]starlark.Value{starlark.MakeInt(2)})
+	aliasRecord := starlarkstruct.FromStringDict(starlarkstruct.Default, starlark.StringDict{"n": starlark.MakeInt(1)})
+	aliasModule := &starlarkstruct.Module{Name: "alias", Members: starlark.StringDict{"n": starlark.MakeInt(1)}}
+	aliases := starlark.Tuple{aliasList, aliasList, aliasSet, aliasSet, aliasRecord, aliasRecord, aliasModule, aliasModule}
+	values := []starlark.Value{aliases, globals["values"], starlarktime.Duration(time.Second), starlarktime.Time(time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)), &starlarkstruct.Struct{}, starlarkstruct.FromStringDict(host, starlark.StringDict{"n": starlark.MakeInt(1)}), &starlarkstruct.Module{Name: "module", Members: starlark.StringDict{"n": starlark.MakeInt(1)}}}
+	for _, value := range values {
+		sd := NewSharedDict()
+		if err := sd.SetKey(starlark.String("value"), value); err != nil {
+			t.Fatal(err)
+		}
+		want, wantErr := EncodeStarlarkJSON(sd.dict)
+		got, gotErr := sd.ToJSON()
+		if got != want || fmt.Sprint(gotErr) != fmt.Sprint(wantErr) {
+			t.Errorf("native %T: got (%q,%v), want (%q,%v)", value, got, gotErr, want, wantErr)
+		}
+	}
+	if calls != 0 {
+		t.Fatal("native struct JSON invoked its constructor")
+	}
+	cycle := make(starlark.Tuple, 1)
+	cycle[0] = cycle
+	sd := NewSharedDict()
+	if err := sd.SetKey(starlark.String("cycle"), cycle); err != nil {
+		t.Fatal(err)
+	}
+	if text, err := sd.ToJSON(); text != "" || err == nil || !strings.Contains(err.Error(), "cycle in JSON structure") {
+		t.Errorf("tuple cycle = (%q, %v)", text, err)
+	}
+}
+
+// An application mutex is still needed for compound updates to native aliases;
+// output locks do not make the two assignments one atomic application operation.
 func TestSharedDict_ExternalSynchronization(t *testing.T) {
 	sd := NewSharedDict()
 	key := starlark.String("generation")
@@ -384,6 +813,29 @@ func TestSharedDict_SnapshotStringFormattingGraph(t *testing.T) {
 	} else {
 		debug.SetMaxStack(128 << 10)
 	}
+	t.Run("json_metadata_held_lock", func(t *testing.T) {
+		sd := NewSharedDict()
+		sd.Lock()
+		text, err := EncodeStarlarkJSON(sd)
+		sd.Unlock()
+		if text != "" || err == nil {
+			t.Fatalf("generic JSON while locked = (%q,%v)", text, err)
+		}
+	})
+	t.Run("json_method_freeze", func(t *testing.T) {
+		sd := NewSharedDict()
+		method, err := sd.Attr("to_json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := sd.SetKey(starlark.String("method"), method); err != nil {
+			t.Fatal(err)
+		}
+		sd.Freeze()
+		if err := sd.SetKey(starlark.String("n"), starlark.MakeInt(1)); err == nil {
+			t.Fatal("Freeze did not freeze mapping")
+		}
+	})
 	put := func(t *testing.T, dict starlark.HasSetKey, key string, value starlark.Value) {
 		t.Helper()
 		if err := dict.SetKey(starlark.String(key), value); err != nil {
@@ -429,9 +881,11 @@ func TestSharedDict_SnapshotStringFormattingGraph(t *testing.T) {
 			check(t, a, `a({"items": [b({"items": (c({"items": {"back": a({...})}}),)})]})`)
 		})
 		t.Run("aliases_and_empty", func(t *testing.T) {
+			zero := new(SharedDict)
+			zero.SetTypeName("zero")
 			root, child := NewNamedSharedDict("root"), NewNamedSharedDict("child")
 			put(t, child, "n", starlark.MakeInt(1))
-			put(t, root, "items", starlark.NewList([]starlark.Value{child, child, NewNamedSharedDict("empty"), &SharedDict{name: "zero"}}))
+			put(t, root, "items", starlark.NewList([]starlark.Value{child, child, NewNamedSharedDict("empty"), zero}))
 			check(t, root, `root({"items": [child({"n": 1}), child({"n": 1}), empty({}), zero()]})`)
 		})
 	})
@@ -463,7 +917,11 @@ func TestSharedDict_SnapshotStringFormattingGraph(t *testing.T) {
 		put(t, root, "next", starlark.NewList([]starlark.Value{child}))
 		put(t, child, "next", starlark.NewList([]starlark.Value{root}))
 		child.Lock()
-		defer child.Unlock()
+		got := root.SnapshotString()
+		child.Unlock()
+		if want := `root({"next": [shared_dict(<busy>)]})`; got != want {
+			t.Fatalf("locked child snapshot = %q; want %q", got, want)
+		}
 		check(t, root, `root({"next": [child({"next": [root({...})]})]})`)
 	})
 	t.Run("callbacks", func(t *testing.T) {
@@ -525,7 +983,7 @@ func TestSharedDict_SnapshotStringFormattingGraph(t *testing.T) {
 		go func() {
 			defer workers.Done()
 			for i := 0; i < 128; i++ {
-				if got := root.SnapshotString(); !strings.HasPrefix(got, `root({"items": [child({"n": 1})], "counter": `) || !strings.HasSuffix(got, "})") {
+				if got := root.SnapshotString(); got != sharedDictBusyString && (!strings.HasPrefix(got, `root({"items": [child({"n": 1})], "counter": `) || !strings.HasSuffix(got, "})")) {
 					t.Errorf("malformed snapshot: %q", got)
 					return
 				}
@@ -541,19 +999,22 @@ func TestSharedDict_SnapshotStringFormattingGraph(t *testing.T) {
 		for _, test := range []struct {
 			dict *SharedDict
 			want string
-		}{{a, `a({"next": [b({"next": [a({...})]})]})`}, {b, `b({"next": [a({"next": [b({...})]})]})`}} {
+			busy string
+		}{{a, `a({"next": [b({"next": [a({...})]})]})`, `a({"next": [shared_dict(<busy>)]})`}, {b, `b({"next": [a({"next": [b({...})]})]})`, `b({"next": [shared_dict(<busy>)]})`}} {
 			workers.Add(1)
-			go func(dict *SharedDict, want string) {
+			go func(dict *SharedDict, want, busy string) {
 				defer workers.Done()
 				for i := 0; i < 128; i++ {
-					if got := dict.SnapshotString(); got != want {
+					if got := dict.SnapshotString(); got != want && got != busy && got != sharedDictBusyString {
 						t.Errorf("SnapshotString() = %q; want %q", got, want)
 						return
 					}
 				}
-			}(test.dict, test.want)
+			}(test.dict, test.want, test.busy)
 		}
 		workers.Wait()
+		check(t, a, `a({"next": [b({"next": [a({...})]})]})`)
+		check(t, b, `b({"next": [a({"next": [b({...})]})]})`)
 	})
 	t.Run("struct", func(t *testing.T) {
 		t.Run("list_cycle", func(t *testing.T) {
@@ -773,36 +1234,62 @@ func (v *sharedDictFormatValue) CompareSameType(op syntax.Token, other starlark.
 	return equal == (op == syntax.EQL), nil
 }
 
-func TestSharedDict_StringLegacyReentry(t *testing.T) {
-	for _, test := range []string{"external_lock", "Hash", "Equal", "Freeze"} {
+func TestSharedDict_StringBusyReentry(t *testing.T) {
+	for _, test := range []string{"external_lock", "external_read_lock", "Hash", "Equal", "Freeze"} {
 		t.Run(test, func(t *testing.T) {
 			sd := NewNamedSharedDict("named")
-			var pending []chan string
+			type result struct {
+				text string
+				err  error
+			}
+			var pending []chan result
 			checks := 0
-			checkString := func(want string) {
+			checkOutput := func() {
 				checks++
-				done := make(chan string, 1)
-				go func() { done <- sd.String() }()
-				select {
-				case got := <-done:
-					if got != want {
-						t.Errorf("String while locked = %q; want %q", got, want)
+				for _, output := range []struct {
+					name string
+					call func() (string, error)
+					json bool
+				}{{"String", func() (string, error) { return sd.String(), nil }, false}, {"SnapshotString", func() (string, error) { return sd.SnapshotString(), nil }, false}, {"ToJSON", sd.ToJSON, true}} {
+					done := make(chan result, 1)
+					call := output.call
+					go func() { text, err := call(); done <- result{text, err} }()
+					select {
+					case got := <-done:
+						if output.json {
+							if got.text != "" || !errors.Is(got.err, ErrSharedDictBusy) {
+								t.Errorf("locked %s = (%q,%v)", output.name, got.text, got.err)
+							}
+						} else if got.text != sharedDictBusyString || got.err != nil {
+							t.Errorf("locked %s = (%q,%v)", output.name, got.text, got.err)
+						}
+					case <-time.After(2 * time.Second):
+						t.Errorf("%s waited for the mapping lock", output.name)
+						pending = append(pending, done)
 					}
-				case <-time.After(2 * time.Second):
-					t.Error("legacy String unexpectedly waited for the mapping lock")
-					// Return from the callback so the operation unlocks, then
-					// drain the worker below even if a regression blocks it.
-					pending = append(pending, done)
 				}
 			}
 			key := &sharedDictFormatValue{stringFunc: func() string { return "key" }}
 			switch test {
 			case "external_lock":
 				sd.Lock()
-				checkString("named({})")
+				checkOutput()
 				sd.Unlock()
+			case "external_read_lock":
+				key.stringFunc = func() string {
+					if err := sd.SetKey(starlark.String("new"), starlark.None); err != nil {
+						t.Error(err)
+					}
+					return "key"
+				}
+				if err := sd.SetKey(starlark.String("value"), key); err != nil {
+					t.Fatal(err)
+				}
+				sd.RLock()
+				checkOutput()
+				sd.RUnlock()
 			case "Hash":
-				key.hashFunc = func() (uint32, error) { checkString("named({})"); return 1, nil }
+				key.hashFunc = func() (uint32, error) { checkOutput(); return 1, nil }
 				if err := sd.SetKey(key, starlark.True); err != nil {
 					t.Fatal(err)
 				}
@@ -810,13 +1297,12 @@ func TestSharedDict_StringLegacyReentry(t *testing.T) {
 				if err := sd.SetKey(key, starlark.True); err != nil {
 					t.Fatal(err)
 				}
-				other := &sharedDictFormatValue{stringFunc: func() string { return "other" }}
-				other.compareFunc = func() { checkString("named({key: True})") }
+				other := &sharedDictFormatValue{stringFunc: func() string { return "other" }, compareFunc: checkOutput}
 				if err := sd.SetKey(other, starlark.False); err != nil {
 					t.Fatal(err)
 				}
 			case "Freeze":
-				key.freezeFunc = func() { checkString(`named({"value": key})`) }
+				key.freezeFunc = checkOutput
 				if err := sd.SetKey(starlark.String("value"), key); err != nil {
 					t.Fatal(err)
 				}
@@ -826,11 +1312,11 @@ func TestSharedDict_StringLegacyReentry(t *testing.T) {
 				select {
 				case <-done:
 				case <-time.After(2 * time.Second):
-					t.Fatal("formatting worker remained blocked after the operation unlocked")
+					t.Fatal("output worker remained blocked after unlocking")
 				}
 			}
 			if checks != 1 {
-				t.Fatalf("String compatibility callback count = %d; want 1", checks)
+				t.Fatalf("callback count = %d; want 1", checks)
 			}
 		})
 	}
@@ -1763,9 +2249,8 @@ func TestSharedDict_NilDict(t *testing.T) {
 			name: `attr: len`,
 			script: itn.HereDoc(`
 				load('share', 'sd')
-				sd.len()
+				assert.eq(sd.len(), 0)
 			`),
-			wantErr: `shared_dict has no .len field or method`,
 		},
 		{
 			name: `to json`,
@@ -1773,13 +2258,12 @@ func TestSharedDict_NilDict(t *testing.T) {
 				load('share', 'sd')
 				assert.eq(sd.to_json(), '{}')
 			`),
-			wantErr: `shared_dict has no .to_json field or method`,
 		},
 		{
 			name: `attr names`,
 			script: itn.HereDoc(`
 				load('share', 'sd')
-				assert.eq(dir(sd), [])
+				assert.eq(dir(sd), ['clear', 'from_json', 'get', 'items', 'keys', 'len', 'perform', 'pop', 'popitem', 'setdefault', 'to_dict', 'to_json', 'update', 'values'])
 			`),
 		},
 		{
@@ -2165,4 +2649,169 @@ func TestSharedDict_LoadJSON(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Shared by the baseline validation copy and candidate. Native children remain
+// mutable and owner-exclusive during these single-threaded success-path runs.
+var (
+	sharedDictOutputSafetyStringSink string
+	sharedDictOutputSafetyDictSink   *SharedDict
+	sharedDictOutputSafetyValueSink  starlark.Value
+)
+
+func BenchmarkSharedDictOutputSafety(b *testing.B) {
+	put := func(dict *SharedDict, key string, value starlark.Value) {
+		if err := dict.SetKey(starlark.String(key), value); err != nil {
+			b.Fatal(err)
+		}
+	}
+	flat := func(size int) (*SharedDict, string, string) {
+		dict := NewSharedDict()
+		text, encoded := make([]string, size), make([]string, size)
+		for i := 0; i < size; i++ {
+			key := fmt.Sprintf("k%d", i)
+			put(dict, key, starlark.MakeInt(i))
+			text[i] = fmt.Sprintf("%q: %d", key, i)
+			encoded[i] = fmt.Sprintf("%q:%d", key, i)
+		}
+		return dict, "shared_dict({" + strings.Join(text, ", ") + "})", "{" + strings.Join(encoded, ",") + "}"
+	}
+	flat0, text0, _ := flat(0)
+	flat8, text8, json8 := flat(8)
+	flat64, text64, _ := flat(64)
+	values, numbers := make([]starlark.Value, 32), make([]string, 32)
+	set := starlark.NewSet(32)
+	for i := range values {
+		values[i] = starlark.MakeInt(i)
+		numbers[i] = fmt.Sprint(i)
+		if err := set.Insert(values[i]); err != nil {
+			b.Fatal(err)
+		}
+	}
+	list := starlark.NewList(values)
+	setDict, listDict := NewSharedDict(), NewSharedDict()
+	put(setDict, "items", set)
+	put(listDict, "items", list)
+	setText := "shared_dict({\"items\": set([" + strings.Join(numbers, ", ") + "])})"
+	sequenceJSON := "{\"items\":[" + strings.Join(numbers, ",") + "]}"
+	for _, test := range []struct {
+		name     string
+		dict     *SharedDict
+		want     string
+		snapshot bool
+		json     bool
+	}{
+		{name: "StringFlat0", dict: flat0, want: text0},
+		{name: "StringFlat8", dict: flat8, want: text8},
+		{name: "StringFlat64", dict: flat64, want: text64},
+		{name: "StringSet32", dict: setDict, want: setText},
+		{name: "SnapshotSet32", dict: setDict, want: setText, snapshot: true},
+		{name: "JSONFlat8", dict: flat8, want: json8, json: true},
+		{name: "JSONNestedList32", dict: listDict, want: sequenceJSON, json: true},
+		{name: "JSONSet32", dict: setDict, want: sequenceJSON, json: true},
+	} {
+		test := test
+		b.Run(test.name, func(b *testing.B) {
+			b.ReportAllocs()
+			switch {
+			case test.json:
+				if got, err := test.dict.ToJSON(); err != nil || got != test.want {
+					b.Fatalf("ToJSON() = %q, %v; want %q, nil", got, err, test.want)
+				}
+				b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					got, err := test.dict.ToJSON()
+					if err != nil {
+						b.Fatal(err)
+					}
+					sharedDictOutputSafetyStringSink = got
+				}
+			case test.snapshot:
+				if got := test.dict.SnapshotString(); got != test.want {
+					b.Fatalf("SnapshotString() = %q; want %q", got, test.want)
+				}
+				b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					sharedDictOutputSafetyStringSink = test.dict.SnapshotString()
+				}
+			default:
+				if got := test.dict.String(); got != test.want {
+					b.Fatalf("String() = %q; want %q", got, test.want)
+				}
+				b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					sharedDictOutputSafetyStringSink = test.dict.String()
+				}
+			}
+		})
+	}
+	b.Run("NewShared", func(b *testing.B) {
+		if dict := NewSharedDict(); dict.Len() != 0 || dict.Type() != "shared_dict" {
+			b.Fatal("unexpected default constructor result")
+		}
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			sharedDictOutputSafetyDictSink = NewSharedDict()
+		}
+	})
+	b.Run("NewNamed", func(b *testing.B) {
+		if dict := NewNamedSharedDict("bench"); dict.Len() != 0 || dict.Type() != "bench" {
+			b.Fatal("unexpected named constructor result")
+		}
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			sharedDictOutputSafetyDictSink = NewNamedSharedDict("bench")
+		}
+	})
+	b.Run("SetTypeName", func(b *testing.B) {
+		dict := NewSharedDict()
+		names := [2]string{"bench_a", "bench_b"}
+		sharedDictOutputSafetyDictSink = dict
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			dict.SetTypeName(names[i&1])
+		}
+		b.StopTimer()
+		if b.N > 0 && dict.Type() != names[(b.N-1)&1] {
+			b.Fatal("SetTypeName did not store the final name")
+		}
+	})
+	b.Run("SetKeyExisting", func(b *testing.B) {
+		dict := NewSharedDict()
+		key := starlark.String("existing")
+		values := [2]starlark.Value{starlark.MakeInt(0), starlark.MakeInt(1)}
+		if err := dict.SetKey(key, values[0]); err != nil {
+			b.Fatal(err)
+		}
+		sharedDictOutputSafetyDictSink = dict
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			if err := dict.SetKey(key, values[i&1]); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+	b.Run("GetExisting", func(b *testing.B) {
+		dict := NewSharedDict()
+		key, want := starlark.String("existing"), starlark.MakeInt(1)
+		if err := dict.SetKey(key, want); err != nil {
+			b.Fatal(err)
+		}
+		if got, found, err := dict.Get(key); err != nil || !found || got != want {
+			b.Fatalf("Get() = %v, %v, %v; want %v, true, nil", got, found, err, want)
+		}
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			got, found, err := dict.Get(key)
+			if err != nil || !found {
+				b.Fatalf("Get() found=%v, err=%v", found, err)
+			}
+			sharedDictOutputSafetyValueSink = got
+		}
+	})
 }

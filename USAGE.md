@@ -214,39 +214,32 @@ print("new" in original, original["items"])
 # Output: False [1, 2]
 ```
 
-Prefer one owner goroutine for a shared value, with other goroutines sending it requests. Serialize both updates and output at that owner. Default Starlark formatting/printing and the Go `String`/`ToJSON` methods do not lock the mapping themselves.
+`String()` (including Starlark `print`/`str`/`repr`) and `SnapshotString()` now capture mapping entries under an internal lock, then release that lock before formatting callbacks. Concurrent output operations are serialized without waiting: if an output or mapping lock is already held, they return the fixed marker `shared_dict(<busy>)`. This also applies to nested SharedDict values and reentrant calls. Normal output retains insertion order and configured type names. `SetTypeName` is safe to call concurrently.
 
-If multiple goroutines need access, use one application mutex for **every access to the shared mutable graph**, including output and reads/writes through nested aliases. Hold it for an entire Machine `Run`/`Call` that can read or change the same value. The dictionary's internal locks do not make other accesses participate in this application mutex. This minimal Go example keeps the dictionary private to the synchronized operations:
+Go `ToJSON() (string, error)` and Starlark `to_json()` use the same nonblocking serialization path. Go callers can check `errors.Is(err, dataconv.ErrSharedDictBusy)`; a failed call returns no JSON. Retry after leaving the current lock or callback, rather than retrying in a loop that still holds it.
 
 ```go
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
-	"sync"
 
 	"github.com/1set/starlet/dataconv"
 	"go.starlark.net/starlark"
 )
 
 func main() {
-	var gate sync.Mutex
 	shared := dataconv.NewSharedDict()
-	store := func(n int) error {
-		gate.Lock()
-		defer gate.Unlock()
-		return shared.SetKey(starlark.String("count"), starlark.MakeInt(n))
-	}
-	encode := func() (string, error) {
-		gate.Lock()
-		defer gate.Unlock()
-		return shared.ToJSON()
-	}
-	if err := store(1); err != nil {
+	if err := shared.SetKey(starlark.String("count"), starlark.MakeInt(1)); err != nil {
 		log.Fatal(err)
 	}
-	text, err := encode()
+	text, err := shared.ToJSON()
+	if errors.Is(err, dataconv.ErrSharedDictBusy) {
+		log.Print("shared output is busy; retry outside the current critical section")
+		return
+	}
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -255,31 +248,13 @@ func main() {
 }
 ```
 
-The example contains only a native integer. Formatting and JSON encoding of Go-backed values can invoke host callbacks: while holding the application mutex, do not reenter it or wait for work that needs it. A callback at the owner goroutine must likewise not wait for that owner to handle another request. For complex host values, have the owner construct independent plain data, then encode that data after leaving the ownership or lock boundary. `to_dict()`/`CloneDict()` are shallow copies; freezing the original shared value changes that original rather than creating an isolated copy. Neither substitutes for ownership of nested mutable values.
+SharedDict JSON accepts native JSON scalars and containers, native structs/modules, duration, and the interpreter's immutable range/string/bytes iterator sources. Dictionary keys must be strings. Unsupported values and native container cycles return errors. **Custom Go JSON marshalers and attribute implementations are no longer executed by SharedDict JSON.** Convert such values to independently owned plain data before storing or encoding them. The general `EncodeStarlarkJSON` helper retains its existing behavior, including host callbacks, and requires the caller to own or synchronize its input.
 
-For on-demand debugging and diagnostics in Go, use
-`text := shared.SnapshotString()` to capture and format the mapping's entries
-without racing with mapping updates. Formatting callbacks run after the mapping
-lock is released; mutable nested values remain shared.
-Call `SnapshotString` without already holding that dictionary's mutex, and
-outside callbacks from operations that hold it, such as key `Hash`/`Equal` or
-value `Freeze`. This Go method does not add a Starlark builtin or change default
-printing. See [shared_dict methods and callback rules](lib/goidiomatic/README.md#shared_dict).
+Internal output locks do not take ownership of raw nested List/Dict/Set aliases or native data shared by independent SharedDict owners. Keep those values under one owner or a common application mutex for every access. Use that same boundary for whole Machine `Run`/`Call` operations and compound updates that need an atomic application snapshot. Formatting callbacks must not reenter an application mutex or wait for its owner while that boundary is held. `to_dict()`/`CloneDict()` are shallow copies; freezing the original changes that original rather than creating an isolated copy.
 
-Cycle detection follows list/dict/set references through tuples, nested
-`SharedDict` values and structs with unique field names. Nested `SharedDict`
-values are not locked; synchronize them separately. Sets capture their elements
-before formatting callbacks run. Custom values and Go-created structs with
-duplicate field names keep their own `String` behavior. Go-created cycles
-consisting only of tuples are not detected. There is no general depth or output
-limit.
+`SnapshotString` remains a Go-only name for the same formatter used by default output. Cycle detection follows list/dict/set references through tuples, nested SharedDict values and structs with unique field names. Formatting callbacks run after mapping locks are released; nested references reuse captured owner views, while reentrant output calls return a busy marker. Custom values and Go-created structs with duplicate field names retain their own `String` behavior. Go-created tuple-only cycles and general depth/output limits remain outside this formatter's guarantees. Other dictionary operations retain their ordinary mutex discipline.
 
-Snapshot formatting copies entries and tracks container paths, adding temporary
-memory and work. Large sets and nested containers can take longer and use more
-bytes than direct formatting. Call it only when diagnostic output is needed;
-avoid high-frequency business loops. Normal execution and default printing do
-not call it automatically. Costs depend on the values, Go version and machine.
-Run the included comparisons with:
+Output locking, entry snapshots, cycle paths and JSON validation add work and temporary memory. Costs depend on data, compiler and machine; avoid unnecessary formatting in business hot loops. Compare the included read paths with:
 
 ```bash
 go test ./dataconv -run '^$' -bench '^BenchmarkSharedDictReadPaths$' -benchmem
