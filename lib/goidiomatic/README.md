@@ -25,7 +25,7 @@ Load name for `load()`: `go_idiomatic`.
 | `module(name, **kv) -> module` | Build a `starlarkstruct` module named `name`. |
 | `struct(**kv) -> struct` | Build an anonymous comparable struct. |
 | `make_struct(name, **kv) -> struct` | Build a struct whose constructor name is `name`. |
-| `shared_dict() -> shared_dict` | Create an empty thread-safe shared dictionary. |
+| `shared_dict() -> shared_dict` | Create an empty dictionary with synchronized top-level access. |
 | `make_shared_dict(name="", data=None) -> shared_dict` | Create a shared dictionary with an optional type name and initial data. |
 | `to_dict(v) -> value` | Convert a dict, `module`, `struct`, `GoStruct`, or `shared_dict`; usually returns a dict. |
 | `eprint(*args, sep=" ")` | `print`-style output to stderr. |

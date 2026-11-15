@@ -248,16 +248,16 @@ func main() {
 }
 ```
 
-SharedDict JSON accepts native JSON scalars and containers, native structs/modules, duration, and the interpreter's immutable range/string/bytes iterator sources. Dictionary keys must be strings. Unsupported values and native container cycles return errors. **Custom Go JSON marshalers and attribute implementations are no longer executed by SharedDict JSON.** Convert such values to independently owned plain data before storing or encoding them. The general `EncodeStarlarkJSON` helper retains its existing behavior, including host callbacks, and requires the caller to own or synchronize its input.
+SharedDict JSON accepts native JSON scalars and containers, native structs/modules, duration, and the interpreter's immutable range/string/bytes iterator sources. Dictionary keys must be strings. Unsupported values and native container cycles return errors. **Other Go-backed values, including `GoStruct`, `GoMap`, `GoSlice` and custom JSON/attribute implementations, are rejected by SharedDict JSON.** Convert such values to independently owned plain data before storing or encoding them. The general `EncodeStarlarkJSON` helper retains its existing behavior, including host callbacks, and requires the caller to own or synchronize its input.
 
 Internal output locks do not take ownership of raw nested List/Dict/Set aliases or native data shared by independent SharedDict owners. Keep those values under one owner or a common application mutex for every access. Use that same boundary for whole Machine `Run`/`Call` operations and compound updates that need an atomic application snapshot. Formatting callbacks must not reenter an application mutex or wait for its owner while that boundary is held. `to_dict()`/`CloneDict()` are shallow copies; freezing the original changes that original rather than creating an isolated copy.
 
 `SnapshotString` remains a Go-only name for the same formatter used by default output. Cycle detection follows list/dict/set references through tuples, nested SharedDict values and structs with unique field names. Formatting callbacks run after mapping locks are released; nested references reuse captured owner views, while reentrant output calls return a busy marker. Custom values and Go-created structs with duplicate field names retain their own `String` behavior. Go-created tuple-only cycles and general depth/output limits remain outside this formatter's guarantees. Other dictionary operations retain their ordinary mutex discipline.
 
-Output locking, entry snapshots, cycle paths and JSON validation add work and temporary memory. Costs depend on data, compiler and machine; avoid unnecessary formatting in business hot loops. Compare the included read paths with:
+Output locking, entry snapshots, cycle paths and JSON validation add work and temporary memory. Paired benchmarks observed higher costs for set formatting and JSON encoding; ordinary `Get`/`SetKey` added no allocations. Setting a nonempty type name also allocates. Results depend on data, compiler, machine and load; avoid unnecessary formatting in business hot loops. Run the included read and output benchmarks with:
 
 ```bash
-go test ./dataconv -run '^$' -bench '^BenchmarkSharedDictReadPaths$' -benchmem
+go test ./dataconv -run '^$' -bench '^BenchmarkSharedDict(ReadPaths|OutputSafety)$' -benchmem
 ```
 
 ## Terminal REPL
